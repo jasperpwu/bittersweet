@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "Security Scanner",
+  "description": "Automatically scans TypeScript and JavaScript files for security vulnerabilities including exposed sensitive data, input validation issues, authentication flows, and native permissions",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.{ts",
+      "tsx",
+      "js",
+      "jsx}",
+      "!node_modules/**"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Scan for security vulnerabilities:\n\n1. Check for exposed sensitive data:\n   - API keys, tokens, or credentials in code\n   - Hardcoded URLs with internal endpoints\n   - Console.logs with sensitive information\n   - AsyncStorage keys with sensitive data\n\n2. Validate input sanitization:\n   - User inputs are validated with Zod schemas\n   - SQL injection prevention (if using SQLite)\n   - XSS prevention in WebViews\n\n3. Check authentication flows:\n   - Tokens stored securely (expo-secure-store)\n   - Proper token expiration handling\n   - Secure communication (HTTPS only)\n\n4. Native permissions:\n   - Only requested when needed\n   - Proper permission rationale provided\n   - Graceful handling of denied permissions\n\n5. Generate security report with severity levels"
+  }
+}

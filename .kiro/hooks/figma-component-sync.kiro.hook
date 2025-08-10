@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Figma Component Sync",
+  "description": "Monitors UI component changes and validates styling against Figma design system specifications, checking for color token compliance, typography consistency, and proper spacing usage",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/components/ui/**/*.tsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "When a UI component in src/components/ui/ is modified, perform the following analysis:\n\n1. **Figma Reference Check**: Look for Figma reference comments (// Figma: [component-name]) in the component file\n\n2. **Design System Validation**: \n   - Verify colors match the defined design tokens from the design system (primary: #6592E9, success: #51BC6F, error: #EF786C, etc.)\n   - Check typography uses proper Poppins font variants and sizing (headline-24, subtitle-16, body-14, etc.)\n   - Validate spacing follows the standard scale (4, 8, 12, 16, 20, 24, 32, 40, 48px)\n   - Ensure border radius matches design system (12px for buttons, 16px for cards)\n\n3. **NativeWind Class Validation**:\n   - Confirm only Tailwind utility classes are used\n   - Check custom colors are defined in tailwind.config.js\n   - Verify responsive breakpoints align with design system\n   - Validate proper dark mode class usage (dark:text-dark-text-primary, etc.)\n\n4. **Component Structure Check**:\n   - Ensure proper TypeScript interfaces matching Figma properties\n   - Verify accessibility props are implemented (accessibilityLabel, accessibilityRole)\n   - Check for proper memo usage and component optimization\n\n5. **Generate Analysis Report**: Create a detailed comment block with findings:\n```tsx\n/**\n * Figma Sync Report:\n * ✅ Colors match design tokens\n * ⚠️ Font should use font-poppins-semibold not font-semibold\n * ❌ Padding should use p-4 (16px) not p-3 (12px) per design system\n * ✅ Border radius follows design system (rounded-xl = 12px)\n * ⚠️ Missing dark mode variant classes\n * \n * Design System Compliance: 80%\n * Figma Reference: [component-name if found]\n */\n```\n\nFocus on ensuring the component strictly adheres to the bittersweet design system tokens and NativeWind best practices."
+  }
+}

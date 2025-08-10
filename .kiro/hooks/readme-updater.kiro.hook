@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "README Updater",
+  "description": "Automatically updates README.md and CHANGELOG.md when new React Native components, hooks, or screens are created. Maintains component inventory, hook documentation, screen navigation structure, and tracks new features in the changelog.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/components/**/*.tsx",
+      "src/hooks/**/*.ts",
+      "src/app/**/*.tsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "New React Native files have been created in the project. Please analyze the new files and update the project documentation:\n\n1. **Update README.md with:**\n   - Component inventory in a markdown table showing component name, location, purpose, and key props\n   - Hook documentation with usage examples and return values\n   - Screen navigation structure showing the app's routing hierarchy\n   - Any new dependencies that were added\n\n2. **Update CHANGELOG.md with:**\n   - New features that were added\n   - Components that were created with brief descriptions\n   - Hooks that were implemented and their functionality\n   - Use proper semantic versioning format\n\n3. **Keep documentation synchronized:**\n   - Ensure all code examples are accurate\n   - Update any outdated information\n   - Maintain consistent formatting and style\n   - Include TypeScript interfaces where relevant\n\nFocus on the newly created files and their integration with the existing React Native architecture. Use the project's design system and follow React Native best practices in the documentation."
+  }
+}
