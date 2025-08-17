@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, SafeAreaView } from 'react-native';
 import { CalendarView } from '../../src/components/journal/CalendarView';
 import { ActivityList } from '../../src/components/journal/ActivityList';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, ScrollView, SafeAreaView } from 'react-native';
 import { ProgressChart } from '../../src/components/analytics/ProgressChart';
 import { StatCard } from '../../src/components/analytics/StatCard';
