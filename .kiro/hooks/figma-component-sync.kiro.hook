@@ -4,7 +4,7 @@
   "description": "Monitors UI component changes and validates styling against Figma design system specifications, checking for color token compliance, typography consistency, and proper spacing usage",
   "version": "1",
   "when": {
-    "type": "fileEdited",
+    "type": "userTriggered",
     "patterns": [
       "src/components/ui/**/*.tsx"
     ]

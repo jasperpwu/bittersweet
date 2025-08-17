@@ -4,7 +4,7 @@
   "description": "Automatically updates README.md and CHANGELOG.md when new React Native components, hooks, or screens are created. Maintains component inventory, hook documentation, screen navigation structure, and tracks new features in the changelog.",
   "version": "1",
   "when": {
-    "type": "fileEdited",
+    "type": "userTriggered",
     "patterns": [
       "src/components/**/*.tsx",
       "src/hooks/**/*.ts",

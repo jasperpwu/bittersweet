@@ -4,7 +4,7 @@
   "description": "Automatically scans TypeScript and JavaScript files for security vulnerabilities including exposed sensitive data, input validation issues, authentication flows, and native permissions",
   "version": "1",
   "when": {
-    "type": "fileEdited",
+    "type": "userTriggered",
     "patterns": [
       "**/*.{ts",
       "tsx",
