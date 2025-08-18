@@ -1,6 +1,7 @@
 import React, { FC } from 'react';
 import { View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -52,12 +53,11 @@ const ActionButton: FC<{ action: HeaderAction; variant?: 'default' | 'danger' }>
       accessibilityLabel={action.accessibilityLabel}
       className="w-10 h-10 items-center justify-center"
     >
-      <Typography 
-        variant="headline-18" 
-        color={variant === 'danger' ? 'error' : 'white'}
-      >
-        {action.icon}
-      </Typography>
+      <Ionicons 
+        name={action.icon as keyof typeof Ionicons.glyphMap}
+        size={20}
+        color={variant === 'danger' ? '#EF786C' : '#FFFFFF'}
+      />
     </AnimatedPressable>
   );
 };

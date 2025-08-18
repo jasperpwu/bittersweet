@@ -1,36 +1,78 @@
-import { View, Text, SafeAreaView, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { Alert } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Header } from '../../src/components/ui/Header';
+import { TaskForm, CreateTaskInput } from '../../src/components/forms/TaskForm';
 
 export default function AddTaskScreen() {
-  const handleCreateTask = () => {
-    router.push('/(modals)/task-creation');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (taskData: CreateTaskInput) => {
+    setIsLoading(true);
+    
+    try {
+      // TODO: Implement actual task creation logic
+      // This would typically involve:
+      // 1. Validating the data
+      // 2. Saving to local storage or API
+      // 3. Updating global state
+      
+      console.log('Creating task:', taskData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      Alert.alert(
+        'Success',
+        'Task created successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate back to the focus tab after creating task
+              router.push('/(tabs)/');
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error creating task:', error);
+      Alert.alert(
+        'Error',
+        'Failed to create task. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // Navigate back to the focus tab
+    router.push('/(tabs)/');
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-dark-bg">
-      <View className="flex-1 items-center justify-center px-6">
-        <View className="items-center mb-8">
-          <View className="w-20 h-20 bg-primary rounded-full items-center justify-center mb-4">
-            <Ionicons name="add" size={40} color="#FFFFFF" />
-          </View>
-          <Text className="text-dark-text-primary font-poppins-semibold text-headline-20 text-center">
-            Create New Task
-          </Text>
-          <Text className="text-dark-text-secondary font-poppins-regular text-body-14 mt-2 text-center">
-            Start a new focus session or add a task to your schedule
-          </Text>
-        </View>
+    <>
+      <StatusBar style="light" backgroundColor="#1B1C30" />
+      
+      <Header
+        title="Create new task"
+        rightAction={{
+          icon: 'settings-outline',
+          onPress: () => {
+            // TODO: Implement settings action
+            console.log('Settings pressed');
+          },
+        }}
+      />
 
-        <Pressable
-          onPress={handleCreateTask}
-          className="bg-primary px-8 py-4 rounded-xl active:opacity-80"
-        >
-          <Text className="text-white font-poppins-semibold text-subtitle-16">
-            Create Task
-          </Text>
-        </Pressable>
-      </View>
-    </SafeAreaView>
+      <TaskForm
+        onSubmit={handleSubmit}
+        isLoading={isLoading}
+      />
+    </>
   );
 }

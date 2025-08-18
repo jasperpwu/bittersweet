@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { View, Alert } from 'react-native';
+import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../../src/components/ui/Header';
 import { TaskForm, CreateTaskInput } from '../../src/components/forms/TaskForm';
 

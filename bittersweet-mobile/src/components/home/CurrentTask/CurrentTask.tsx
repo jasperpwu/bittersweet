@@ -1,6 +1,5 @@
 import React, { FC } from 'react';
 import { View, Pressable } from 'react-native';
-import { router } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -23,7 +22,6 @@ interface CurrentTaskProps {
   task: Task | null;
   onPlayPress: () => void;
   onPausePress: () => void;
-  onCreateTaskPress?: () => void;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -62,7 +60,6 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
   task,
   onPlayPress,
   onPausePress,
-  onCreateTaskPress,
 }) => {
   const playButtonScale = useSharedValue(1);
 
@@ -82,41 +79,38 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
     transform: [{ scale: playButtonScale.value }],
   }));
 
-  const handleCreateTaskPress = () => {
-    if (onCreateTaskPress) {
-      onCreateTaskPress();
-    } else {
-      // Default navigation to task creation modal
-      router.push('/task-creation');
-    }
-  };
+
 
   if (!task) {
     return (
       <Card variant="default" className="mx-5 mb-6 bg-dark-bg border border-dark-border">
-        <Pressable 
-          onPress={handleCreateTaskPress}
-          className="items-center py-8 active:opacity-80"
-          accessibilityRole="button"
-          accessibilityLabel="Create new task"
-          accessibilityHint="Double tap to open task creation screen"
-        >
-          <View className="w-16 h-16 rounded-full bg-primary/20 items-center justify-center mb-4">
-            <Ionicons name="add-outline" size={32} color="#6592E9" />
+        <View className="p-4">
+          {/* Header */}
+          <View className="flex-row items-center justify-between mb-4">
+            <Typography 
+              variant="subtitle-14-medium" 
+              className="text-dark-text-secondary"
+            >
+              Current task
+            </Typography>
           </View>
-          <Typography 
-            variant="subtitle-16" 
-            className="text-dark-text-primary mb-2"
-          >
-            No active task
-          </Typography>
-          <Typography 
-            variant="body-14" 
-            className="text-dark-text-secondary text-center"
-          >
-            Create a new task to start focusing
-          </Typography>
-        </Pressable>
+
+          {/* Empty State */}
+          <View className="items-center py-8">
+            <Typography 
+              variant="subtitle-16" 
+              className="text-dark-text-primary mb-2"
+            >
+              No active task
+            </Typography>
+            <Typography 
+              variant="body-14" 
+              className="text-dark-text-secondary text-center"
+            >
+              Select a task from your list to start focusing
+            </Typography>
+          </View>
+        </View>
       </Card>
     );
   }
