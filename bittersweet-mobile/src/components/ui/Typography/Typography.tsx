@@ -12,18 +12,17 @@ interface TypographyProps extends TextProps {
   children: ReactNode;
 }
 
-
 const variantClasses = {
-  'headline-24': 'font-poppins-semibold text-2xl leading-6',
-  'headline-20': 'font-poppins-semibold text-xl leading-5',
-  'headline-18': 'font-poppins-semibold text-lg leading-5',
-  'subtitle-16': 'font-poppins-semibold text-base leading-4',
-  'subtitle-14-semibold': 'font-poppins-semibold text-sm leading-4',
-  'subtitle-14-medium': 'font-poppins-medium text-sm leading-4',
-  'body-14': 'font-poppins-regular text-sm leading-4',
-  'paragraph-14': 'font-poppins-regular text-sm leading-6',
-  'body-12': 'font-poppins-regular text-xs leading-3',
-  'tiny-10': 'font-poppins-regular text-xs leading-3',
+  'headline-24': 'font-poppins-semibold text-headline-24',
+  'headline-20': 'font-poppins-semibold text-headline-20',
+  'headline-18': 'font-poppins-semibold text-headline-18',
+  'subtitle-16': 'font-poppins-semibold text-subtitle-16',
+  'subtitle-14-semibold': 'font-poppins-semibold text-subtitle-14',
+  'subtitle-14-medium': 'font-poppins-medium text-subtitle-14',
+  'body-14': 'font-poppins-regular text-body-14',
+  'paragraph-14': 'font-poppins-regular text-paragraph-14',
+  'body-12': 'font-poppins-regular text-body-12',
+  'tiny-10': 'font-poppins-regular text-tiny-10',
 };
 
 const colorClasses = {

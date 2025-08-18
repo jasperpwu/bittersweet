@@ -1,201 +1,101 @@
-import { useState, useEffect } from 'react';
-import { View, ScrollView, SafeAreaView } from 'react-native';
-import { useFocusStore } from '../../src/store/slices/focusSlice';
-import { CircularTimer } from '../../src/components/focus/CircularTimer';
-import { TimerControls } from '../../src/components/focus/TimerControls';
-import { SessionStatus } from '../../src/components/focus/SessionStatus';
-import { TagSelector } from '../../src/components/focus/TagSelector';
-import { Typography } from '../../src/components/ui/Typography';
-import { Card } from '../../src/components/ui/Card';
+import { ScrollView, SafeAreaView } from 'react-native';
+import { StatusBar } from '../../src/components/ui/StatusBar';
+import { UserProfile } from '../../src/components/home/UserProfile';
+import { CurrentTask } from '../../src/components/home/CurrentTask';
+import { DailyGoals } from '../../src/components/home/DailyGoals';
+import { TasksList } from '../../src/components/home/TasksList';
+import { useHomeStore } from '../../src/store/slices/homeSlice';
 
-
-
-export default function FocusScreen() {
+export default function HomeScreen() {
   const {
-    currentSession,
-    isTimerRunning,
-    remainingTime,
-    defaultDuration,
-    categories,
-    tags,
-    startSession,
-    pauseSession,
-    resumeSession,
-    stopSession,
-    completeSession,
-    updateRemainingTime,
-  } = useFocusStore();
+    user,
+    currentTask,
+    todaysTasks,
+    dailyGoals,
+    notificationCount,
+    startTask,
+    pauseTask,
+  } = useHomeStore();
 
-  const [selectedCategory, setSelectedCategory] = useState('Work');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const handleNotificationPress = () => {
+    console.log('Notification pressed');
+    // TODO: Navigate to notifications screen
+  };
 
-  // Timer effect
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (isTimerRunning && remainingTime > 0) {
-      interval = setInterval(() => {
-        updateRemainingTime(remainingTime - 1);
-      }, 1000);
-    } else if (remainingTime === 0 && currentSession) {
-      // Session completed
-      completeSession();
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval);
+  const handleTaskPress = (taskId: string) => {
+    const task = todaysTasks.find(t => t.id === taskId);
+    if (task) {
+      if (task.isActive) {
+        pauseTask(taskId);
+      } else if (task.isCompleted) {
+        console.log('Task already completed');
+      } else {
+        startTask(taskId);
       }
-    };
-  }, [isTimerRunning, remainingTime, currentSession, updateRemainingTime, completeSession]);
-
-  const handleStart = () => {
-    startSession(defaultDuration, selectedCategory, selectedTags);
+    }
   };
 
-  const handlePause = () => {
-    pauseSession();
+  const handleCurrentTaskPlay = () => {
+    if (currentTask) {
+      startTask(currentTask.id);
+    } else {
+      // Find the next incomplete task
+      const nextTask = todaysTasks.find(t => !t.isCompleted && !t.isActive);
+      if (nextTask) {
+        startTask(nextTask.id);
+      }
+    }
   };
 
-  const handleResume = () => {
-    resumeSession();
+  const handleCurrentTaskPause = () => {
+    if (currentTask) {
+      pauseTask(currentTask.id);
+    }
   };
 
-  const handleStop = () => {
-    stopSession();
+  const handleViewAllTasks = () => {
+    console.log('View all tasks pressed');
+    // TODO: Navigate to tasks screen
   };
-
-  const handleReset = () => {
-    stopSession();
-  };
-
-  const handleTagSelect = (tagId: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId) 
-        ? prev.filter(id => id !== tagId)
-        : [...prev, tagId]
-    );
-  };
-
-  const tagData = tags.map(tag => ({
-    id: tag,
-    name: tag,
-    color: '#6592E9',
-  }));
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-dark-bg">
+    <SafeAreaView className="flex-1 bg-dark-bg">
+      {/* Status Bar with dark background integration */}
+      <StatusBar variant="dark" backgroundColor="#1B1C30" />
+      
       <ScrollView 
         className="flex-1"
-        contentContainerStyle={{ paddingVertical: 20 }}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ 
+          paddingBottom: 32,
+          flexGrow: 1,
+        }}
+        bounces={true}
+        alwaysBounceVertical={false}
       >
-        {/* Header */}
-        <View className="px-4 mb-6">
-          <Typography variant="headline-24" color="primary" className="text-center">
-            Focus Session
-          </Typography>
-          <Typography variant="body-14" color="secondary" className="text-center mt-2">
-            Stay focused and earn seeds for your progress
-          </Typography>
-        </View>
-
-        {/* Session Status */}
-        {currentSession && (
-          <SessionStatus
-            currentSession={1}
-            totalSessions={4}
-            sessionType="focus"
-            completedSessions={0}
-          />
-        )}
-
-        {/* Timer */}
-        <View className="items-center mb-8">
-          <CircularTimer
-            duration={currentSession?.targetDuration ? currentSession.targetDuration * 60 : defaultDuration * 60}
-            remainingTime={remainingTime}
-            size={250}
-            strokeWidth={12}
-            isRunning={isTimerRunning}
-          />
-        </View>
-
-        {/* Category Selection */}
-        {!currentSession && (
-          <Card variant="default" padding="medium" className="mx-4 mb-4">
-            <Typography variant="subtitle-16" color="primary" className="mb-3">
-              Choose Category
-            </Typography>
-            <View className="flex-row flex-wrap">
-              {categories.map((category) => (
-                <View
-                  key={category}
-                  className={`
-                    px-4 py-2 rounded-full mr-2 mb-2 border
-                    ${selectedCategory === category 
-                      ? 'bg-primary border-primary' 
-                      : 'bg-transparent border-light-border dark:border-dark-border'
-                    }
-                  `}
-                  onTouchEnd={() => setSelectedCategory(category)}
-                >
-                  <Typography 
-                    variant="body-14" 
-                    color={selectedCategory === category ? 'white' : 'primary'}
-                  >
-                    {category}
-                  </Typography>
-                </View>
-              ))}
-            </View>
-          </Card>
-        )}
-
-        {/* Tag Selection */}
-        {!currentSession && (
-          <View className="mb-6">
-            <Typography variant="subtitle-16" color="primary" className="px-4 mb-3">
-              Add Tags (Optional)
-            </Typography>
-            <TagSelector
-              tags={tagData}
-              selectedTags={selectedTags}
-              onTagSelect={handleTagSelect}
-              maxSelections={3}
-            />
-          </View>
-        )}
-
-        {/* Timer Controls */}
-        <TimerControls
-          isRunning={isTimerRunning}
-          isPaused={currentSession?.isPaused || false}
-          onStart={handleStart}
-          onPause={handlePause}
-          onResume={handleResume}
-          onStop={handleStop}
-          onReset={handleReset}
+        {/* User Profile Section - Top section with avatar and greeting */}
+        <UserProfile
+          user={user}
+          onNotificationPress={handleNotificationPress}
+          notificationCount={notificationCount}
         />
 
-        {/* Session Info */}
-        {currentSession && (
-          <Card variant="default" padding="medium" className="mx-4 mt-6">
-            <View className="items-center">
-              <Typography variant="subtitle-14-semibold" color="primary" className="mb-2">
-                Current Session
-              </Typography>
-              <Typography variant="body-12" color="secondary" className="mb-1">
-                Category: {currentSession.category}
-              </Typography>
-              {currentSession.tags.length > 0 && (
-                <Typography variant="body-12" color="secondary">
-                  Tags: {currentSession.tags.join(', ')}
-                </Typography>
-              )}
-            </View>
-          </Card>
-        )}
+        {/* Current Task Section - Active task display with controls */}
+        <CurrentTask
+          task={currentTask}
+          onPlayPress={handleCurrentTaskPlay}
+          onPausePress={handleCurrentTaskPause}
+        />
+
+        {/* Daily Goals Section - Circular progress with gradient background */}
+        <DailyGoals progress={dailyGoals} />
+
+        {/* Today's Tasks Section - Task list with "View all" link */}
+        <TasksList
+          tasks={todaysTasks}
+          onTaskPress={handleTaskPress}
+          onViewAllPress={handleViewAllTasks}
+        />
       </ScrollView>
     </SafeAreaView>
   );

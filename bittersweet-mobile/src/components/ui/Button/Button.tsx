@@ -1,5 +1,11 @@
 import React, { FC, memo } from 'react';
-import { Pressable, PressableProps, Text } from 'react-native';
+import { Pressable, PressableProps } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { Typography } from '../Typography';
 
 interface ButtonProps extends Omit<PressableProps, 'children'> {
   variant?: 'primary' | 'secondary';
@@ -8,40 +14,71 @@ interface ButtonProps extends Omit<PressableProps, 'children'> {
   children: string;
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export const Button: FC<ButtonProps> = memo(({
   variant = 'primary',
   size = 'medium',
   disabled = false,
   children,
+  className,
   ...props
 }) => {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    if (!disabled) {
+      scale.value = withSpring(0.95);
+    }
+  };
+
+  const handlePressOut = () => {
+    if (!disabled) {
+      scale.value = withSpring(1);
+    }
+  };
+
+  const sizeClasses = {
+    small: 'px-4 py-2 min-h-[36px]',
+    medium: 'px-5 py-3 min-h-[48px]',
+    large: 'px-6 py-4 min-h-[56px]',
+  };
+
+  const variantClasses = {
+    primary: 'bg-primary',
+    secondary: 'bg-transparent border border-light-border dark:border-dark-border',
+  };
+
   return (
-    <Pressable
-      style={{
-        backgroundColor: variant === 'primary' ? '#6592E9' : 'transparent',
-        borderWidth: variant === 'secondary' ? 1 : 0,
-        borderColor: variant === 'secondary' ? '#E1E1E1' : 'transparent',
-        paddingHorizontal: size === 'small' ? 16 : size === 'large' ? 24 : 20,
-        paddingVertical: size === 'small' ? 8 : size === 'large' ? 16 : 12,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: disabled ? 0.5 : 1,
-      }}
+    <AnimatedPressable
+      style={animatedStyle}
+      className={`
+        ${variantClasses[variant]}
+        ${sizeClasses[size]}
+        rounded-xl
+        items-center
+        justify-center
+        ${disabled ? 'opacity-50' : 'active:opacity-80'}
+        ${className || ''}
+      `}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
       {...props}
     >
-      <Text 
-        style={{
-          color: variant === 'primary' ? '#FFFFFF' : '#4C4C4C',
-          fontFamily: 'Poppins-SemiBold',
-          fontSize: 14,
-          fontWeight: '600',
-        }}
+      <Typography 
+        variant="subtitle-14-semibold" 
+        color={variant === 'primary' ? 'white' : 'primary'}
       >
         {children}
-      </Text>
-    </Pressable>
+      </Typography>
+    </AnimatedPressable>
   );
 });
 
