@@ -7,3 +7,4 @@ export * from './analytics';
 export * from './social';
 export * from './home';
 export * from './forms';
+export * from './tasks';

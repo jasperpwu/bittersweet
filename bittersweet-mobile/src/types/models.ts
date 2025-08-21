@@ -40,6 +40,38 @@ export interface FocusSettings {
   strictMode: boolean;
 }
 
+// Task Types
+export interface Task {
+  id: string;
+  title: string;
+  category: TaskCategory;
+  date: Date;
+  startTime: Date;
+  duration: number; // in minutes
+  workingSessions: number;
+  shortBreakDuration: number;
+  longBreakDuration: number;
+  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  progress: TaskProgress;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TaskCategory {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+}
+
+export interface TaskProgress {
+  completedSessions: number;
+  totalSessions: number;
+  timeSpent: number; // in seconds
+  isActive: boolean;
+  currentSessionType: 'focus' | 'shortBreak' | 'longBreak';
+}
+
 // Focus Session Types
 export interface FocusSession {
   id: string;

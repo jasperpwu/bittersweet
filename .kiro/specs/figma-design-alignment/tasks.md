@@ -39,7 +39,8 @@
   - Create CategoryPicker component with 6 category icons (Reading, Sport, Music, Meditation, Code, IT) and proper colors
   - Implement working sessions slider (1-8 sessions) with real-time value display
   - Implement long break slider (10-30 minutes) with proper styling and thumb positioning
-  - Implement short break slider (1-10 minutes) with consistent design
+  - Implement short break slider (1-10 minutes) with consistent d2299
+
   - Add "Create new project" button with proper styling and loading states
   - Add form validation and error handling with user-friendly messages
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 9.1, 9.2, 9.3, 9.4, 9.5_
