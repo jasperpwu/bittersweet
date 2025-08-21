@@ -8,6 +8,14 @@
 - **TypeScript 5.0+** with strict mode enabled
 - **Node.js 18+** for development environment
 
+### Key Feature Requirements
+- **Focus Sessions**: Circular timer with fruit-growing background animation
+- **Smart App Blocking**: Native iOS ScreenTime and Android UsageStats integration
+- **Fruit Reward System**: 1 fruit per 5 minutes of focus, 1 fruit = 1 minute app access
+- **AI Coach**: Behavioral insights and personalized productivity tips
+- **Social Squads**: Accountability groups with weekly challenges and progress sharing
+- **Dynamic Island**: iOS integration for active session and unlock timer display
+
 ### Navigation & Routing
 - **Expo Router** (file-based routing system)
 - **React Navigation v6** for complex navigation patterns
@@ -107,11 +115,11 @@ Development mode causes significant performance degradation and should never be 
 
 ## Native Integration Requirements
 
-### Screen Time Tracking
+### Screen Time Tracking & App Blocking
 
-#### iOS Implementation
+#### iOS Implementation with Smart Blocking
 ```typescript
-// iOS ScreenTime framework integration
+// iOS ScreenTime framework integration with fruit-based unlocking
 import { ScreenTime } from './native-modules/ScreenTime';
 
 class IOSScreenTimeService {
@@ -126,16 +134,29 @@ class IOSScreenTimeService {
   static async setAppLimits(limits: AppLimit[]): Promise<void> {
     return ScreenTime.setAppLimits(limits);
   }
+  
+  static async blockApp(bundleId: string): Promise<void> {
+    return ScreenTime.blockApplication(bundleId);
+  }
+  
+  static async unlockAppWithTimer(bundleId: string, durationMinutes: number): Promise<void> {
+    return ScreenTime.unlockApplicationWithTimer(bundleId, durationMinutes);
+  }
+  
+  static async showUnlockModal(bundleId: string, fruitCost: number): Promise<boolean> {
+    return ScreenTime.showCustomUnlockModal(bundleId, fruitCost);
+  }
 }
 ```
 
 **Required Entitlements**:
 - `com.apple.developer.family-controls`
 - `com.apple.developer.deviceactivity`
+- `com.apple.developer.deviceactivity.reporting`
 
-#### Android Implementation
+#### Android Implementation with App Blocking
 ```typescript
-// Android UsageStatsManager integration
+// Android UsageStatsManager integration with overlay blocking
 import { UsageStats } from './native-modules/UsageStats';
 
 class AndroidUsageStatsService {
@@ -150,12 +171,26 @@ class AndroidUsageStatsService {
   static async getAppUsageEvents(): Promise<UsageEvent[]> {
     return UsageStats.queryEvents();
   }
+  
+  static async blockApp(packageName: string): Promise<void> {
+    return UsageStats.createAppBlockOverlay(packageName);
+  }
+  
+  static async unlockAppWithTimer(packageName: string, durationMinutes: number): Promise<void> {
+    return UsageStats.unlockAppWithTimer(packageName, durationMinutes);
+  }
+  
+  static async showUnlockModal(packageName: string, fruitCost: number): Promise<boolean> {
+    return UsageStats.showCustomUnlockModal(packageName, fruitCost);
+  }
 }
 ```
 
 **Required Permissions**:
 - `android.permission.PACKAGE_USAGE_STATS`
-- `android.permission.SYSTEM_ALERT_WINDOW` (for app blocking)
+- `android.permission.SYSTEM_ALERT_WINDOW` (for app blocking overlays)
+- `android.permission.BIND_ACCESSIBILITY_SERVICE` (for app detection)
+- `android.permission.FOREGROUND_SERVICE` (for background monitoring)
 
 ### Background Processing
 
@@ -186,6 +221,76 @@ const startTimerService = (duration: number) => {
   });
 };
 ```
+
+### AI Coach & Insights Integration
+
+#### AI-Powered Behavioral Analysis
+```typescript
+// AI service for generating personalized insights
+class AICoachService {
+  static async generateInsights(userData: UserAnalyticsData): Promise<AIInsight[]> {
+    const response = await apiClient.post('/ai/insights', {
+      focusHistory: userData.focusHistory,
+      productivityPatterns: userData.patterns,
+      goalProgress: userData.goals
+    });
+    return response.data.insights;
+  }
+  
+  static async getPersonalizedTips(userBehavior: BehaviorData): Promise<ProductivityTip[]> {
+    const response = await apiClient.post('/ai/tips', userBehavior);
+    return response.data.tips;
+  }
+  
+  static async analyzeOptimalFocusTimes(sessionData: SessionData[]): Promise<TimeAnalysis> {
+    return apiClient.post('/ai/analyze-times', { sessions: sessionData });
+  }
+}
+```
+
+**Features**:
+- Behavioral pattern recognition
+- Optimal focus time analysis
+- Personalized productivity recommendations
+- Goal adjustment suggestions based on performance
+
+#### Dynamic Island Integration (iOS)
+```typescript
+// Dynamic Island integration for active sessions and unlock timers
+import { DynamicIsland } from './native-modules/DynamicIsland';
+
+class DynamicIslandService {
+  static async showFocusSession(sessionData: ActiveSession): Promise<void> {
+    return DynamicIsland.showActivity({
+      type: 'focus-session',
+      title: sessionData.tagName,
+      subtitle: `${sessionData.elapsedTime} elapsed`,
+      progress: sessionData.progress,
+      color: sessionData.tagColor
+    });
+  }
+  
+  static async showUnlockTimer(appName: string, remainingTime: number): Promise<void> {
+    return DynamicIsland.showActivity({
+      type: 'unlock-timer',
+      title: appName,
+      subtitle: `${remainingTime}m remaining`,
+      progress: 1 - (remainingTime / totalUnlockTime),
+      color: '#EF786C'
+    });
+  }
+  
+  static async clearActivity(): Promise<void> {
+    return DynamicIsland.clearCurrentActivity();
+  }
+}
+```
+
+**Integration Points**:
+- Active focus session display with progress
+- App unlock timer countdown
+- Session completion celebrations
+- Background timer continuation
 
 ### Push Notifications
 
@@ -260,23 +365,47 @@ class CacheService {
 
 ### State Management Architecture
 
-#### Zustand Store Structure
+#### Zustand Store Structure with Fruit Rewards
 ```typescript
-// Focus session store
+// Enhanced focus session store with fruit rewards and tags
 interface FocusState {
   currentSession: Session | null;
   isActive: boolean;
   isPaused: boolean;
   elapsedTime: number;
   sessionHistory: Session[];
+  tags: FocusTag[];
+  selectedTag?: FocusTag;
+  customNote?: string;
+  sessionGoal?: Goal;
 }
 
 interface FocusActions {
   startSession: (session: Omit<Session, 'id'>) => void;
   pauseSession: () => void;
   resumeSession: () => void;
-  completeSession: () => void;
+  completeSession: (accomplishment?: string, completed?: boolean) => void;
   updateElapsedTime: (time: number) => void;
+  setSelectedTag: (tag: FocusTag) => void;
+  setCustomNote: (note: string) => void;
+  setSessionGoal: (goal: Goal) => void;
+  logManualSession: (session: ManualSession) => void;
+}
+
+// Fruit reward store
+interface RewardState {
+  fruitBalance: number;
+  totalFruitsEarned: number;
+  unlockedApps: UnlockedApp[];
+  blockedApps: string[];
+}
+
+interface RewardActions {
+  earnFruits: (minutes: number) => void; // 1 fruit per 5 minutes
+  spendFruits: (amount: number, appId: string) => void;
+  unlockApp: (appId: string, durationMinutes: number) => void;
+  blockApp: (appId: string) => void;
+  updateUnlockTimer: (appId: string, remainingTime: number) => void;
 }
 
 export const useFocusStore = create<FocusState & FocusActions>()(
@@ -288,25 +417,35 @@ export const useFocusStore = create<FocusState & FocusActions>()(
       isPaused: false,
       elapsedTime: 0,
       sessionHistory: [],
+      tags: defaultTags,
       
       // Actions
       startSession: (session) => set({
-        currentSession: { ...session, id: generateId() },
+        currentSession: { 
+          ...session, 
+          id: generateId(),
+          tag: get().selectedTag,
+          customNote: get().customNote,
+          goal: get().sessionGoal
+        },
         isActive: true,
         isPaused: false,
         elapsedTime: 0
       }),
       
-      pauseSession: () => set({ isPaused: true }),
-      resumeSession: () => set({ isPaused: false }),
-      
-      completeSession: () => {
+      completeSession: (accomplishment, completed) => {
         const { currentSession, elapsedTime } = get();
         if (currentSession) {
+          const fruitsEarned = Math.floor(elapsedTime / 300); // 1 fruit per 5 minutes
+          
+          // Update focus store
           set(state => ({
             sessionHistory: [...state.sessionHistory, {
               ...currentSession,
               duration: elapsedTime,
+              accomplishment,
+              completed,
+              fruitsEarned,
               completedAt: new Date()
             }],
             currentSession: null,
@@ -314,10 +453,24 @@ export const useFocusStore = create<FocusState & FocusActions>()(
             isPaused: false,
             elapsedTime: 0
           }));
+          
+          // Award fruits
+          useRewardStore.getState().earnFruits(fruitsEarned);
         }
       },
       
-      updateElapsedTime: (time) => set({ elapsedTime: time })
+      logManualSession: (session) => {
+        const fruitsEarned = Math.floor(session.duration / 300);
+        set(state => ({
+          sessionHistory: [...state.sessionHistory, {
+            ...session,
+            id: generateId(),
+            fruitsEarned,
+            isManual: true
+          }]
+        }));
+        useRewardStore.getState().earnFruits(fruitsEarned);
+      }
     }),
     {
       name: 'focus-store',

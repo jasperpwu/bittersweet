@@ -68,9 +68,9 @@ interface CardProps {
 - **Visual**: Category color indicator, progress ring
 - **Actions**: View details, Restart session
 
-### 4. Timer Components
+### 4. Focus Session Components
 
-#### Circular Timer
+#### Circular Timer with Fruit Garden
 ```typescript
 interface CircularTimerProps {
   duration: number;        // Total duration in seconds
@@ -80,6 +80,7 @@ interface CircularTimerProps {
   color: string;          // Progress ring color
   size?: number;          // Timer diameter
   strokeWidth?: number;   // Ring thickness
+  fruitCount: number;     // Number of fruits earned (1 per 5 minutes)
 }
 ```
 
@@ -88,21 +89,72 @@ interface CircularTimerProps {
 - **Stroke Width**: 8px for progress ring
 - **Colors**: Red (#EF786C) for focus, Blue/Green for breaks
 - **Animation**: Smooth progress with native driver
+- **Background**: Animated fruit garden showing seeds growing into trees
 
-#### Timer Controls
+#### Fruit Garden Background
 ```typescript
-interface TimerControlsProps {
-  isActive: boolean;
-  isPaused: boolean;
-  onPlay: () => void;
-  onPause: () => void;
-  onStop: () => void;
-  onReset?: () => void;
+interface FruitGardenProps {
+  fruitCount: number;      // Total fruits collected
+  isGrowing: boolean;      // Animation state during session
+  sessionProgress: number; // Current session progress (0-1)
 }
 ```
 
-**Layout**: Horizontal button group at bottom of timer screen
-**Buttons**: Play/Pause (primary), Stop (secondary), Reset (tertiary)
+**Visual Elements**:
+- Seeds that grow into trees during focus sessions
+- Fruits appear on trees (1 fruit per 5 minutes of focus)
+- Smooth growth animations synchronized with timer progress
+- Bottom display showing total fruits collected
+
+#### Tag Selector with Goals
+```typescript
+interface TagSelectorProps {
+  tags: FocusTag[];
+  selectedTag?: string;
+  onTagSelect: (tagId: string) => void;
+  onCustomNote: (note: string) => void;
+  onGoalSet: (goal: Goal) => void;
+}
+
+interface FocusTag {
+  id: string;
+  name: string; // Study, Read, Work, etc.
+  color: string;
+  customNote?: string;
+  goal?: Goal; // daily, weekly, monthly
+}
+```
+
+**Layout**: Horizontal scrollable tag list with custom note and goal options
+**Features**: Predefined tags (Study, Read, Work) with custom notes and goal setting
+
+#### Session Reflection Modal
+```typescript
+interface SessionReflectionProps {
+  sessionDuration: number;
+  fruitsEarned: number;
+  onAccomplishmentSubmit: (accomplishment: string, completed: boolean) => void;
+  onClose: () => void;
+}
+```
+
+**Content**: "What did you accomplish?" with text input and ✅/❌ completion tracking
+**Visual**: Celebration animation with fruits earned display
+
+#### Manual Logger
+```typescript
+interface ManualLoggerProps {
+  onTimeRangeSubmit: (startTime: Date, endTime: Date, category: string, name?: string) => void;
+  onDurationSubmit: (duration: number, category: string, name?: string) => void;
+  categories: Category[];
+}
+```
+
+**Features**: 
+- Time range picker for offline focus tracking
+- Duration input option
+- Category selection with optional custom naming
+- Integration with main focus session tracking
 
 ### 5. Input Components
 
@@ -254,7 +306,92 @@ interface SessionHistoryProps {
 **Layout**: Grouped by date with section headers
 **Content**: Session duration, category, completion status
 
-### 10. Calendar Components
+### 10. AI Coach & Insights Components
+
+#### AI Insight Card
+```typescript
+interface AIInsightCardProps {
+  insight: AIInsight;
+  onDismiss: () => void;
+  onApplyTip: () => void;
+}
+
+interface AIInsight {
+  id: string;
+  type: 'behavioral' | 'productivity' | 'goal' | 'streak';
+  title: string;
+  description: string;
+  actionable: boolean;
+  tip?: string;           // Actionable productivity tip
+  data?: InsightData;     // Supporting data visualization
+}
+```
+
+**Examples**:
+- "You focus best between 9–11am. Try making it a habit."
+- "Your productivity increases 40% after 15-minute breaks."
+- "You're 3 days away from your longest focus streak!"
+
+**Visual**: Card with AI-generated insights and actionable tips
+**Actions**: Apply tip, Dismiss, View detailed analysis
+
+#### Goal Progress Tracker
+```typescript
+interface GoalProgressProps {
+  goals: Goal[];
+  currentProgress: GoalProgress;
+  onGoalUpdate: (goalId: string, progress: number) => void;
+  onGoalCreate: () => void;
+}
+
+interface Goal {
+  id: string;
+  type: 'daily' | 'weekly' | 'monthly';
+  target: number;         // Target focus minutes
+  category?: string;      // Optional category filter
+  deadline: Date;
+  progress: number;       // Current progress
+}
+```
+
+**Features**:
+- Daily, weekly, monthly goal tracking
+- Category-specific goals (Study, Work, Read, etc.)
+- Visual progress indicators with completion celebrations
+- AI-suggested goal adjustments based on performance
+
+#### Streak Counter
+```typescript
+interface StreakCounterProps {
+  currentStreak: number;
+  longestStreak: number;
+  streakType: 'daily' | 'weekly';
+  onStreakDetails: () => void;
+}
+```
+
+**Visual**: Fire emoji with streak number, progress toward next milestone
+**Animation**: Celebration effects for streak milestones
+**Features**: Daily and weekly streak tracking with historical data
+
+#### Trend Analysis Chart
+```typescript
+interface TrendAnalysisProps {
+  data: TrendData[];
+  timeRange: 'week' | 'month' | 'year';
+  metric: 'focus_time' | 'sessions' | 'productivity_score';
+  onTimeRangeChange: (range: string) => void;
+  insights?: string[];    // AI-generated trend insights
+}
+```
+
+**Features**:
+- Weekly/monthly/yearly trend visualization
+- Multiple metrics: focus time, session count, productivity score
+- AI-generated insights about trends and patterns
+- Interactive chart with data point details
+
+### 11. Calendar Components
 
 #### Calendar View
 ```typescript
@@ -270,62 +407,164 @@ interface CalendarViewProps {
 **Customization**: Match Figma theme colors
 **Markers**: Dots for sessions, different colors for categories
 
-### 11. Reward Components
+### 11. Reward System Components
 
-#### Seed Counter
+#### Fruit Counter
 ```typescript
-interface SeedCounterProps {
+interface FruitCounterProps {
   count: number;
   animated?: boolean;
   size?: 'small' | 'medium' | 'large';
+  showEarningAnimation?: boolean;
 }
 ```
 
-**Visual**: Seed icon with animated counter
-**Animation**: Bounce effect when seeds are earned
-**Colors**: Green theme for positive reinforcement
+**Visual**: Fruit icon with animated counter (updated from seeds)
+**Animation**: Bounce effect when fruits are earned (1 fruit per 5 minutes)
+**Colors**: Green/orange theme for positive reinforcement
 
-#### Unlock Modal
+#### App Unlock Modal
 ```typescript
-interface UnlockModalProps {
+interface AppUnlockModalProps {
   appName: string;
-  seedCost: number;
+  appIcon: string;
+  fruitCost: number;        // 1 fruit = 1 minute of access
   currentBalance: number;
+  motivationalQuote: string;
+  nextGoal?: string;        // Suggested next focus goal
   onConfirm: () => void;
   onCancel: () => void;
+  onViewAlternatives: () => void;
 }
 ```
 
-**Content**: App icon, unlock cost, balance after unlock
-**Actions**: Confirm unlock, Cancel, View alternatives
+**Content**: 
+- Motivational productivity quote
+- App icon and unlock cost (1 fruit per minute)
+- Current fruit balance display
+- Suggested next goal to earn more fruits
+**Actions**: Confirm unlock, Cancel, View focus alternatives
 
-### 12. Social Components
+#### Unlock Timer
+```typescript
+interface UnlockTimerProps {
+  remainingTime: number;    // Seconds remaining for app access
+  appName: string;
+  onTimeExpired: () => void;
+  showInDynamicIsland?: boolean;
+}
+```
+
+**Features**:
+- Dynamic Island integration for iOS
+- Real-time countdown display
+- Auto-block when time expires
+- Background timer continuation
+
+#### Motivational Quote Display
+```typescript
+interface MotivationalQuoteProps {
+  quote: string;
+  author?: string;
+  category: 'productivity' | 'focus' | 'mindfulness';
+  onDismiss?: () => void;
+}
+```
+
+**Usage**: Displayed when users attempt to open blocked apps
+**Content**: Inspirational quotes about productivity and focus
+**Animation**: Typewriter effect or fade-in presentation
+
+### 12. Social Components (Squads)
 
 #### Squad Card
 ```typescript
 interface SquadCardProps {
   squad: Squad;
   memberProgress: MemberProgress[];
+  currentUserProgress: UserProgress;
   onJoin?: () => void;
   onLeave?: () => void;
+  onViewDetails: () => void;
+}
+
+interface Squad {
+  id: string;
+  name: string;
+  description?: string;
+  memberCount: number;
+  weeklyGoal: number;      // Weekly focus minutes goal
+  currentWeekProgress: number;
+  isPublic: boolean;
 }
 ```
 
-**Content**: Squad name, member avatars, progress indicators
-**Visual**: Overlapping avatar group, progress rings
+**Content**: Squad name, member avatars, weekly progress indicators
+**Visual**: Overlapping avatar group, collective progress rings
+**Features**: Accountability group management with family/friends
 
 #### Challenge Card
 ```typescript
 interface ChallengeCardProps {
-  challenge: Challenge;
-  progress: number;
+  challenge: WeeklyChallenge;
+  userProgress: number;
+  squadRanking?: number;
   onJoin: () => void;
-  onViewDetails: () => void;
+  onViewLeaderboard: () => void;
+}
+
+interface WeeklyChallenge {
+  id: string;
+  title: string;
+  description: string;
+  goal: number;            // Target focus minutes
+  startDate: Date;
+  endDate: Date;
+  participants: number;
+  reward?: string;         // Trophy or badge
 }
 ```
 
 **Layout**: Card with challenge details and progress
-**Actions**: Join challenge, View leaderboard
+**Actions**: Join challenge, View leaderboard, Share progress
+**Features**: Weekly challenges similar to Duolingo streaks
+
+#### Trophy Display
+```typescript
+interface TrophyDisplayProps {
+  trophies: Trophy[];
+  weeklyStreak: number;
+  monthlyStreak: number;
+  onTrophyPress: (trophy: Trophy) => void;
+}
+
+interface Trophy {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  earnedDate?: Date;
+  category: 'streak' | 'challenge' | 'milestone';
+}
+```
+
+**Visual**: Trophy collection with streak counters
+**Animation**: Celebration effects when earning new trophies
+**Features**: Achievement system for motivation and gamification
+
+#### Progress Share
+```typescript
+interface ProgressShareProps {
+  weeklyProgress: WeeklyProgress;
+  squadMembers: SquadMember[];
+  onShare: (platform: 'squad' | 'social') => void;
+  onEncourage: (memberId: string) => void;
+}
+```
+
+**Content**: Weekly focus progress, squad member comparisons
+**Actions**: Share progress, Encourage squad members
+**Features**: Social accountability and positive reinforcement
 
 ## Implementation Guidelines
 

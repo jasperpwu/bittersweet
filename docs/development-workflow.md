@@ -116,29 +116,35 @@ mcp_react_native_guide_debug_issue({
 
 ### 3. Feature Implementation Workflow
 
-#### Focus Session Feature Example
+#### Focus Session Feature Example (Updated)
 
 1. **Architecture Planning**
 ```bash
 mcp_react_native_guide_architecture_advice({
   project_type: "complex_app",
-  features: ["focus_sessions", "timer_functionality"]
+  features: ["focus_sessions", "fruit_rewards", "app_blocking", "ai_insights"]
 })
 ```
 
-2. **Create Timer Component**
+2. **Create Enhanced Timer Component with Fruit Garden**
 ```typescript
 // components/focus/CircularTimer/CircularTimer.tsx
 export const CircularTimer: FC<CircularTimerProps> = memo(({
   duration,
   elapsed,
   isActive,
+  fruitCount,
   color = '#EF786C'
 }) => {
   const progress = useSharedValue(0);
+  const fruitScale = useSharedValue(1);
   
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${progress.value * 360}deg` }]
+  }));
+  
+  const fruitAnimationStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fruitScale.value }]
   }));
   
   useEffect(() => {
@@ -148,10 +154,94 @@ export const CircularTimer: FC<CircularTimerProps> = memo(({
     });
   }, [elapsed, duration]);
   
+  // Animate fruit earning every 5 minutes
+  useEffect(() => {
+    if (elapsed > 0 && elapsed % 300 === 0) {
+      fruitScale.value = withSequence(
+        withTiming(1.2, { duration: 200 }),
+        withTiming(1, { duration: 200 })
+      );
+    }
+  }, [elapsed]);
+  
   return (
-    <StyledView className="items-center justify-center">
-      <Animated.View style={animatedStyle}>
-        {/* Timer ring implementation */}
+    <StyledView className="items-center justify-center relative">
+      {/* Fruit Garden Background */}
+      <FruitGarden 
+        fruitCount={fruitCount}
+        isGrowing={isActive}
+        sessionProgress={progress.value}
+      />
+      
+      {/* Timer Ring */}
+      <Animated.View style={animatedStyle} className="absolute">
+        <Svg width={280} height={280}>
+          <Circle
+            cx={140}
+            cy={140}
+            r={130}
+            stroke={color}
+            strokeWidth={8}
+            fill="transparent"
+            strokeDasharray={`${progress.value * 816} 816`}
+            strokeLinecap="round"
+          />
+        </Svg>
+      </Animated.View>
+      
+      {/* Fruit Counter */}
+      <Animated.View style={fruitAnimationStyle} className="absolute bottom-4">
+        <FruitCounter count={fruitCount} animated showEarningAnimation />
+      </Animated.View>
+    </StyledView>
+  );
+});
+```
+
+3. **Create Fruit Garden Background Component**
+```typescript
+// components/focus/FruitGarden/FruitGarden.tsx
+export const FruitGarden: FC<FruitGardenProps> = memo(({
+  fruitCount,
+  isGrowing,
+  sessionProgress
+}) => {
+  const treeGrowth = useSharedValue(0);
+  
+  const animatedTreeStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: treeGrowth.value }]
+  }));
+  
+  useEffect(() => {
+    if (isGrowing) {
+      treeGrowth.value = withTiming(sessionProgress, {
+        duration: 1000,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1)
+      });
+    }
+  }, [sessionProgress, isGrowing]);
+  
+  return (
+    <StyledView className="absolute inset-0 items-center justify-center">
+      <Animated.View style={animatedTreeStyle}>
+        <Svg width={200} height={200}>
+          {/* Tree trunk */}
+          <Rect x={95} y={150} width={10} height={40} fill="#8B4513" />
+          
+          {/* Tree crown */}
+          <Circle cx={100} cy={140} r={30} fill="#228B22" />
+          
+          {/* Fruits based on count */}
+          {Array.from({ length: Math.min(fruitCount, 8) }).map((_, index) => (
+            <Circle
+              key={index}
+              cx={85 + (index % 4) * 8}
+              cy={125 + Math.floor(index / 4) * 8}
+              r={3}
+              fill="#FF6B35"
+            />
+          ))}
+        </Svg>
       </Animated.View>
     </StyledView>
   );
@@ -277,15 +367,19 @@ mcp_react_native_guide_analyze_test_coverage({
 3. Run comprehensive codebase analysis
 4. Review any new issues or recommendations
 
-### Feature Development
+### Feature Development (Updated for bittersweet)
 1. Get architecture advice before starting
-2. Create component scaffold
-3. Implement core functionality
-4. Analyze component with MCP
-5. Build and test
-6. Debug any issues
-7. Optimize performance
-8. Generate tests
+2. Create component scaffold with design system compliance
+3. Implement core functionality with fruit reward integration
+4. Add AI coach integration points where applicable
+5. Implement Dynamic Island integration (iOS)
+6. Analyze component with MCP
+7. Build and test (Debug and Release)
+8. Test app blocking functionality (if applicable)
+9. Debug any issues
+10. Optimize performance (especially animations)
+11. Generate comprehensive tests
+12. Verify accessibility compliance
 
 ### Pre-Commit Checklist
 - [ ] Component analysis passed

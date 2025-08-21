@@ -1,7 +1,7 @@
 # bittersweet App - Design Document & User Flow
 
 ## Overview
-bittersweet is a React Native mobile application that provides a smarter, more human way to manage screen time, build focus habits, and track meaningful use of time — solo or with a squad. The app combines mindful productivity with positive reinforcement through a seed-based reward system.
+bittersweet is a React Native mobile application that provides a smarter, more human way to manage screen time, build focus habits, and track meaningful use of time — solo or with a squad. The app combines Focus Sessions, smart app locks, and positive reinforcement through a fruit-based reward system, built around trust, accountability, and delayed gratification rather than punishment.
 
 ## Design System Analysis
 
@@ -58,6 +58,71 @@ bittersweet is a React Native mobile application that provides a smarter, more h
 - Circular progress indicators for timers
 - Modal overlays for detailed interactions
 - Consistent button styling with rounded corners
+
+## Core Features Overview
+
+### 🧠 1. Focus Session Tab (Primary Feature)
+**Top Navigation:**
+- **Settings** (Top Left): Blocklist management, custom ringtones, tag configuration
+- **Manual Logging** (Top Right): Add time range/duration for offline focus tracking
+
+**Center Interface:**
+- **Focus Timer**: Circular timer with tap-to-start functionality
+- **Tag Selection**: Choose from predefined tags (Study, Read, Work, etc.) with custom notes and goals
+- **Background Visual**: Seeds growing into trees with fruits (1 fruit = 5 minutes of focus)
+- **Session Status**: Dynamic Island/badge notification during active sessions
+
+**End-of-Session:**
+- **Reflection Modal**: "What did you accomplish?" with ✅/❌ completion tracking
+- **Fruit Collection**: Visual feedback showing fruits earned based on session duration
+
+### ⏳ 2. Reward-Based App Rules & Point System
+**Fruit Economy:**
+- Earn fruits through completed focus sessions (1 fruit per 5 minutes)
+- Use fruits to unlock blocked apps (1 minute of app access per fruit)
+- Smart app blocking with motivational quotes and remaining fruit balance display
+
+**App Unlock Flow:**
+- Blocked app shows productivity quote
+- Display available fruits and unlock cost
+- Suggest next focus goal to earn more fruits
+- Track remaining time with Dynamic Island integration
+- Auto-block when time expires
+
+### 📊 3. Time Journal Tab
+**Calendar Integration:**
+- Daily/weekly calendar view for session tracking
+- Visual indicators for completed sessions
+- Category-based color coding
+
+**Activity Tracking:**
+- Manual time entry for offline activities
+- Category selection with custom naming
+- Duration tracking and goal progress
+
+### 📈 4. Insights Dashboard & Time Coach Tab
+**Analytics & Reports:**
+- Weekly/monthly/yearly goal progress tracking
+- Streak counters and trend analysis
+- Time distribution by task and category type
+- Performance insights and patterns
+
+**AI-Powered Coaching:**
+- Personalized tips for better time management
+- Behavioral insights: "You focus best between 9–11am. Try making it a habit."
+- Goal recommendations based on usage patterns
+
+### 👥 5. Social Motivation Tab - Squads
+**Accountability Features:**
+- Add friends/family to create accountability groups
+- Weekly challenges and progress sharing
+- Collaborative productivity goals
+- Trophy system similar to Duolingo streaks
+
+**Profile & Settings:**
+- Premium plan management
+- Contact support and social links
+- Parental control features (future expansion)
 
 ## Complete App Flow & Screen Analysis
 
@@ -212,60 +277,62 @@ bittersweet is a React Native mobile application that provides a smarter, more h
 ### 🧠 Focus Session Tab
 **Mapped Screens**: Timer screens (9:58 active, 2:16 paused, completion)
 - **Implementation**: 
-  - Circular progress timer with dynamic colors
+  - Circular progress timer with fruit-growing background animation
   - Session state management (active/paused/complete)
-  - Bottom controls for play/pause/stop
-  - Tag selection integration
-  - Manual logging capability
+  - Top navigation: Settings (left) and Manual Logging (right)
+  - Tag selection with custom notes and goals (daily/weekly/monthly)
+  - End-session reflection with accomplishment tracking
 
 ### ⏳ Reward System & App Blocking
 **Mapped Screens**: Task categories, statistics dashboard
 - **Implementation**:
-  - Seed counter integration in timer screens
-  - Category-based reward calculation
-  - Progress tracking for unlock credits
-  - Motivational quotes overlay (not directly shown but implied)
+  - Fruit counter integration in timer screens (1 fruit = 5 minutes)
+  - Smart app blocking with motivational quotes
+  - Unlock cost display and remaining balance
+  - Dynamic Island time tracking for unlocked apps
+  - Auto-relock when time expires
 
 ### 📊 Time Journal Tab
 **Mapped Screens**: Calendar integration, statistics dashboard, task history
 - **Implementation**:
-  - Calendar view for daily/weekly tracking
-  - Chart-based analytics
-  - Time distribution visualization
-  - Historical data presentation
+  - Daily/weekly calendar view with session indicators
+  - Manual time entry for offline activities
+  - Category-based time tracking
+  - Historical session data with visual progress
 
-### 📈 Insights Dashboard
+### 📈 Insights Dashboard & Time Coach
 **Mapped Screens**: Statistics overview, performance charts
 - **Implementation**:
-  - Weekly/monthly progress tracking
-  - Trend analysis with line charts
-  - Performance metrics display
-  - AI-powered insights integration
+  - Weekly/monthly/yearly goal progress
+  - Streak tracking and trend analysis
+  - AI-powered insights and behavioral patterns
+  - Personalized productivity tips and recommendations
 
 ### 👥 Social Features (Squads)
-**Note**: Not explicitly shown in current Figma screens
-- **Planned Implementation**:
-  - Additional tab for social features
-  - Friend/squad management
-  - Challenge tracking
-  - Progress sharing capabilities
+**New Implementation Required**:
+  - Squad creation and management interface
+  - Friend/family accountability groups
+  - Weekly challenges and trophy system
+  - Progress sharing and collaborative goals
+  - Parental control integration (future)
 
 ## Technical Implementation Notes
 
-### Navigation Structure (Based on Figma Screens)
+### Navigation Structure (Updated Based on New Design)
 ```
-TabNavigator (Bottom - 5 tabs visible in designs)
-├── Home (Dashboard & Quick Actions)
-├── Timer (Focus Sessions & Active Timer)
-├── Tasks (Categories & Task Management)
-├── Analytics (Statistics & Insights)
-└── Settings (Profile & Preferences)
+TabNavigator (Bottom - 5 tabs)
+├── Focus (Focus Sessions & Timer)
+├── Journal (Time Journal & Calendar)
+├── Insights (Analytics & AI Coach)
+├── Squads (Social Motivation & Challenges)
+└── Profile (Settings & Premium)
 
 Modal Overlays:
-├── Task Creation Modal
-├── Calendar Selection Modal
-├── Session Complete Modal
-└── Category Selection Modal
+├── Session Reflection Modal
+├── App Unlock Modal
+├── Manual Logging Modal
+├── Tag Configuration Modal
+└── Squad Creation Modal
 ```
 
 ### Bottom Tab Navigation Details
@@ -277,25 +344,36 @@ Modal Overlays:
 
 ### Key Components to Develop
 
-#### Timer Components
-- `CircularTimer`: Animated progress ring with time display
-- `TimerControls`: Play/pause/stop button group
-- `SessionStatus`: Current session information display
+#### Focus Session Components
+- `CircularTimer`: Animated progress ring with fruit-growing background
+- `FruitGarden`: Background animation showing seeds growing into trees
+- `TagSelector`: Horizontal scrollable tag selection with custom notes
+- `SessionReflection`: Post-session modal with accomplishment tracking
+- `ManualLogger`: Time range picker for offline focus tracking
 
-#### Analytics Components
-- `ProgressChart`: Line/bar charts for time tracking
-- `CategoryBreakdown`: Pie chart for time distribution
-- `StatCard`: Individual metric display cards
+#### Reward System Components
+- `FruitCounter`: Animated fruit balance display
+- `AppUnlockModal`: Motivational quotes with unlock cost and balance
+- `UnlockTimer`: Dynamic Island integration for active app usage
+- `MotivationalQuote`: Inspirational productivity quotes display
 
-#### Task Management
-- `TaskCard`: Individual task display with time tracking
-- `CategorySelector`: Color-coded category picker
-- `CalendarView`: Monthly/weekly calendar integration
+#### Time Journal Components
+- `CalendarView`: Daily/weekly calendar with session indicators
+- `TimeEntry`: Manual time logging interface
+- `ActivityList`: Historical session data with categories
+- `ProgressRing`: Visual progress indicators for goals
 
-#### UI Components
-- `CustomButton`: Consistent button styling across app
-- `ModalOverlay`: Reusable modal container
-- `ProgressIndicator`: Various progress display formats
+#### Analytics & Insights Components
+- `InsightCard`: AI-powered behavioral insights
+- `TrendChart`: Weekly/monthly/yearly progress visualization
+- `StreakCounter`: Focus streak tracking and celebration
+- `GoalProgress`: Visual goal completion tracking
+
+#### Social Components
+- `SquadCard`: Accountability group display with member progress
+- `ChallengeCard`: Weekly challenges with leaderboards
+- `TrophyDisplay`: Achievement and streak celebration
+- `ProgressShare`: Social progress sharing interface
 
 ## User Experience Flow
 

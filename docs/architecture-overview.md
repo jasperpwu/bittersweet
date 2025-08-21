@@ -8,20 +8,22 @@ Based on the design document analysis and React Native best practices, here's th
 src/
 ├── app/                    # Expo Router app directory (New Architecture)
 │   ├── (tabs)/            # Tab-based navigation screens
-│   │   ├── focus.tsx      # Focus Session tab
-│   │   ├── journal.tsx    # Time Journal tab
-│   │   ├── insights.tsx   # Insights Dashboard tab
-│   │   ├── tasks.tsx      # Task Management tab
-│   │   └── squads.tsx     # Social Motivation tab
+│   │   ├── focus.tsx      # Focus Session tab with timer and settings
+│   │   ├── journal.tsx    # Time Journal tab with calendar
+│   │   ├── insights.tsx   # Insights Dashboard & AI Coach tab
+│   │   ├── squads.tsx     # Social Motivation & Challenges tab
+│   │   └── profile.tsx    # Profile, Settings & Premium tab
 │   ├── (auth)/            # Authentication flow
 │   │   ├── onboarding.tsx
 │   │   ├── login.tsx
 │   │   ├── signup.tsx
 │   │   └── forgot-password.tsx
 │   ├── (modals)/          # Modal screens
-│   │   ├── task-creation.tsx
-│   │   ├── session-complete.tsx
-│   │   └── category-selection.tsx
+│   │   ├── session-reflection.tsx
+│   │   ├── app-unlock.tsx
+│   │   ├── manual-logging.tsx
+│   │   ├── tag-configuration.tsx
+│   │   └── squad-creation.tsx
 │   ├── _layout.tsx        # Root layout with providers
 │   └── index.tsx          # Entry point
 ├── components/
@@ -36,32 +38,38 @@ src/
 │   │   └── Typography/
 │   ├── focus/             # Focus session components
 │   │   ├── CircularTimer/
-│   │   ├── TimerControls/
-│   │   ├── SessionStatus/
-│   │   └── TagSelector/
+│   │   ├── FruitGarden/   # Background animation with growing trees
+│   │   ├── TagSelector/   # Tag selection with custom notes/goals
+│   │   ├── SessionReflection/
+│   │   └── ManualLogger/
 │   ├── rewards/           # Reward system components
-│   │   ├── SeedCounter/
-│   │   ├── UnlockModal/
-│   │   └── QuoteDisplay/
+│   │   ├── FruitCounter/  # Updated from SeedCounter
+│   │   ├── AppUnlockModal/
+│   │   ├── UnlockTimer/   # Dynamic Island integration
+│   │   └── MotivationalQuote/
 │   ├── journal/           # Time tracking components
 │   │   ├── CalendarView/
 │   │   ├── TimeEntry/
-│   │   └── ActivityList/
-│   ├── analytics/         # Analytics components
-│   │   ├── ProgressChart/
-│   │   ├── StatCard/
-│   │   └── TrendAnalysis/
+│   │   ├── ActivityList/
+│   │   └── ProgressRing/
+│   ├── insights/          # Analytics & AI Coach components
+│   │   ├── InsightCard/   # AI-powered insights
+│   │   ├── TrendChart/
+│   │   ├── StreakCounter/
+│   │   └── GoalProgress/
 │   └── social/            # Squad components
-│       ├── SquadList/
+│       ├── SquadCard/
 │       ├── ChallengeCard/
+│       ├── TrophyDisplay/
 │       └── ProgressShare/
 ├── services/
 │   ├── api/               # API layer
 │   │   ├── client.ts      # HTTP client configuration
 │   │   ├── auth.ts        # Authentication endpoints
 │   │   ├── focus.ts       # Focus session endpoints
-│   │   ├── rewards.ts     # Reward system endpoints
-│   │   └── social.ts      # Social features endpoints
+│   │   ├── rewards.ts     # Fruit-based reward system endpoints
+│   │   ├── social.ts      # Squad and challenge endpoints
+│   │   └── insights.ts    # AI coach and analytics endpoints
 │   ├── storage/           # Local storage
 │   │   ├── secure.ts      # Secure storage (tokens, sensitive data)
 │   │   ├── cache.ts       # App cache management
@@ -73,18 +81,25 @@ src/
 │   ├── screentime/        # Native screen time APIs
 │   │   ├── ios.ts         # iOS ScreenTime integration
 │   │   ├── android.ts     # Android UsageStats integration
+│   │   ├── blocker.ts     # App blocking service
 │   │   └── manager.ts     # Cross-platform manager
-│   └── analytics/         # Analytics service
-│       ├── tracker.ts     # Event tracking
-│       └── insights.ts    # AI-powered insights
+│   ├── analytics/         # Analytics service
+│   │   ├── tracker.ts     # Event tracking
+│   │   ├── insights.ts    # AI-powered behavioral insights
+│   │   └── coach.ts       # AI time management coach
+│   └── background/        # Background services
+│       ├── timer.ts       # Background timer management
+│       └── dynamicIsland.ts # Dynamic Island integration
 ├── store/                 # State management (Zustand)
 │   ├── slices/
 │   │   ├── authStore.ts   # Authentication state
-│   │   ├── focusStore.ts  # Focus session state
-│   │   ├── rewardStore.ts # Reward system state
-│   │   ├── journalStore.ts# Time journal state
-│   │   ├── squadStore.ts  # Social features state
-│   │   └── settingsStore.ts# App settings state
+│   │   ├── focusStore.ts  # Focus session state with tags and goals
+│   │   ├── rewardStore.ts # Fruit-based reward system state
+│   │   ├── journalStore.ts# Time journal and calendar state
+│   │   ├── squadStore.ts  # Social features and challenges state
+│   │   ├── insightsStore.ts# AI coach and analytics state
+│   │   ├── blockerStore.ts# App blocking and unlock state
+│   │   └── settingsStore.ts# App settings and preferences state
 │   ├── middleware/
 │   │   ├── persistence.ts # State persistence
 │   │   └── logger.ts      # Development logging
@@ -96,19 +111,30 @@ src/
 │   ├── focus/
 │   │   ├── useFocusSession.ts
 │   │   ├── useTimer.ts
+│   │   ├── useTagManagement.ts
+│   │   ├── useManualLogging.ts
 │   │   └── useSessionHistory.ts
 │   ├── rewards/
 │   │   ├── useRewards.ts
-│   │   └── useSeedBalance.ts
+│   │   ├── useFruitBalance.ts
+│   │   ├── useAppBlocking.ts
+│   │   └── useUnlockTimer.ts
 │   ├── journal/
 │   │   ├── useTimeTracking.ts
-│   │   └── useCalendar.ts
+│   │   ├── useCalendar.ts
+│   │   └── useActivityLogging.ts
+│   ├── insights/
+│   │   ├── useAICoach.ts
+│   │   ├── useAnalytics.ts
+│   │   └── useGoalTracking.ts
 │   ├── social/
 │   │   ├── useSquad.ts
-│   │   └── useChallenges.ts
+│   │   ├── useChallenges.ts
+│   │   └── useProgressSharing.ts
 │   └── common/
 │       ├── useScreenTime.ts
 │       ├── useNotifications.ts
+│       ├── useDynamicIsland.ts
 │       └── useOfflineSync.ts
 ├── utils/                 # Utility functions
 │   ├── time.ts           # Time formatting and calculations
@@ -264,11 +290,13 @@ export class FocusRepository {
    - Setup typography and color systems
 
 4. **Feature Implementation Priority**
-   - Authentication flow
-   - Focus session timer
-   - Basic task management
-   - Reward system
-   - Analytics dashboard
-   - Social features
+   - Authentication flow and onboarding
+   - Focus session timer with fruit garden animation
+   - Tag management and manual logging
+   - Fruit-based reward system with app blocking
+   - Time journal and calendar integration
+   - AI coach and insights dashboard
+   - Social squads and weekly challenges
+   - Dynamic Island integration (iOS)
 
 This architecture provides a solid foundation for building a scalable, maintainable React Native application that can grow with the product requirements.
