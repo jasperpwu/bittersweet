@@ -13,7 +13,6 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(modals)/task-creation" options={{ presentation: 'modal' }} />
       </Stack>
     </GestureHandlerRootView>
   );

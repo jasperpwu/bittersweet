@@ -66,12 +66,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="add-task"
+        name="focus"
         options={{
-          title: 'Add',
+          title: 'Focus',
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <Ionicons name="add" size={30} color={color} />
+              <Ionicons name="play" size={30} color={color} />
               {focused && (
                 <View 
                   style={{
@@ -131,7 +131,13 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* Hide the old tabs that don't match Figma design */}
+      {/* Hide unused tabs */}
+      <Tabs.Screen
+        name="add-task"
+        options={{
+          href: null, // This hides the tab
+        }}
+      />
       <Tabs.Screen
         name="journal"
         options={{

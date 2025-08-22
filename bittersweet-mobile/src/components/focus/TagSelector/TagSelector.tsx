@@ -43,17 +43,21 @@ export const TagSelector: FC<TagSelectorProps> = ({
             onPress={() => onTagSelect(tag.id)}
             disabled={disabled}
             className={`
-              px-4 py-2 rounded-full mr-2 border
+              px-4 py-3 rounded-full mr-3 border
               ${selected 
-                ? 'bg-primary border-primary' 
-                : 'bg-transparent border-light-border dark:border-dark-border'
+                ? 'border-white' 
+                : 'border-gray-600'
               }
               ${disabled ? 'opacity-50' : 'active:opacity-80'}
             `}
+            style={{
+              backgroundColor: selected ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+            }}
           >
             <Typography 
               variant="body-14" 
-              color={selected ? 'white' : 'primary'}
+              className="font-medium"
+              style={{ color: '#FFFFFF' }}
             >
               {tag.name}
             </Typography>
