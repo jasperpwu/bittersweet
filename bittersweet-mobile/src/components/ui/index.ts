@@ -5,6 +5,7 @@ export * from './CalendarModal';
 export * from './Card';
 export * from './CategoryPicker';
 export * from './DatePicker';
+export * from './EmojiPicker';
 export * from './Header';
 export * from './HeaderButton';
 export * from './Input';

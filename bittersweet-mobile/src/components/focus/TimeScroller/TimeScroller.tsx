@@ -19,9 +19,9 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   selectedTime,
   onTimeChange,
 }) => {
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<SrcrollView>(null);
   const isUserScrollingRef = useRef(false);
-  
+
   // Define the exact center position for both center line and triangle
   const centerPosition = screenWidth / 2;
   const centerOffset = (screenWidth - TICK_SPACING) / 2;
@@ -44,10 +44,10 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
     const rawIndex = scrollX / TICK_SPACING;
     const snappedIndex = Math.round(rawIndex);
     const snappedTime = Math.max(0, Math.min(60, snappedIndex * 5));
-    
+
     const targetScrollX = snappedIndex * TICK_SPACING;
     scrollViewRef.current?.scrollTo({ x: targetScrollX, animated: true });
-    
+
     if (snappedTime !== selectedTime) {
       onTimeChange(snappedTime);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -73,7 +73,6 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
             zIndex: 10,
           }}
         />
-        
         <ScrollView
           ref={scrollViewRef}
           horizontal
@@ -92,11 +91,11 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
           {Array.from({ length: 13 }, (_, i) => i * 5).map((time, idx) => {
             const isSelected = time === selectedTime;
             const distance = Math.abs(time - selectedTime);
-            
+
             let opacity = 1;
             let fontSize = 26;
             let fontFamily = FONT_REGULAR;
-            
+
             if (isSelected) {
               opacity = 1;
               fontSize = 56;
@@ -114,7 +113,6 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
               fontSize = 24;
               fontFamily = FONT_REGULAR;
             }
-            
             return (
               <View
                 key={time}
@@ -138,7 +136,6 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
                     {time === 0 ? '∞' : time}
                   </Text>
                 </View>
-                
                 {/* Minor ticks inside the segment (4 between major ticks) */}
                 <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, height: 20 }} pointerEvents="none">
                   {Array.from({ length: 4 }, (_, j) => j + 1).map((j) => {
@@ -173,7 +170,6 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
           })}
         </ScrollView>
       </View>
-      
       {/* Triangle pointer - positioned to align exactly with center line */}
       <View style={{ position: 'relative', height: 24, marginTop: 6 }}>
         <View

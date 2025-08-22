@@ -1,0 +1,1 @@
+export { EmojiPickerModal as EmojiPicker } from './EmojiPicker';
