@@ -25,13 +25,13 @@ export const Button: FC<ButtonProps> = ({
 
   const variantClasses = {
     primary: 'bg-primary',
-    secondary: 'bg-transparent border border-light-border dark:border-dark-border',
+    secondary: 'bg-transparent border border-dark-border',
     outline: 'bg-transparent border-2 border-primary',
   };
 
   const textColor = {
     primary: 'white' as const,
-    secondary: 'primary' as const,
+    secondary: 'white' as const,
     outline: 'primary' as const,
   };
 

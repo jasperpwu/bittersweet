@@ -1,4 +1,5 @@
 // UI components index
+export * from './AnimatedSplashScreen';
 export * from './Avatar';
 export * from './Button';
 export * from './CalendarModal';

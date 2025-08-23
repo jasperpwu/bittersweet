@@ -1,2 +1,3 @@
 .vscode/
 bittersweet-mobile/node_modules/*
+bittersweet-mobile/.expo/*

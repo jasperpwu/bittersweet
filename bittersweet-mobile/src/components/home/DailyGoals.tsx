@@ -14,12 +14,30 @@ interface DailyGoalsProgress {
 }
 
 interface DailyGoalsProps {
-  progress: DailyGoalsProgress;
+  progress?: DailyGoalsProgress;
 }
 
 export const DailyGoals: FC<DailyGoalsProps> = ({ progress }) => {
-  const focusPercentage = Math.min((progress.focusTime.current / progress.focusTime.target) * 100, 100);
-  const sessionsPercentage = Math.min((progress.sessions.current / progress.sessions.target) * 100, 100);
+  // Default progress values to prevent undefined errors
+  const defaultProgress: DailyGoalsProgress = {
+    focusTime: { current: 0, target: 240 },
+    sessions: { current: 0, target: 5 }
+  };
+
+  const safeProgress = progress || defaultProgress;
+
+  // Additional safety checks with proper fallbacks
+  const focusTime = safeProgress.focusTime || defaultProgress.focusTime;
+  const sessions = safeProgress.sessions || defaultProgress.sessions;
+
+  // Ensure we have valid numbers to prevent division by zero
+  const focusTarget = focusTime.target || 240;
+  const sessionsTarget = sessions.target || 5;
+  const focusCurrent = focusTime.current || 0;
+  const sessionsCurrent = sessions.current || 0;
+
+  const focusPercentage = Math.min((focusCurrent / focusTarget) * 100, 100);
+  const sessionsPercentage = Math.min((sessionsCurrent / sessionsTarget) * 100, 100);
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -44,7 +62,7 @@ export const DailyGoals: FC<DailyGoalsProps> = ({ progress }) => {
               Focus Time
             </Typography>
             <Typography variant="body-12" color="secondary">
-              {formatTime(progress.focusTime.current)} / {formatTime(progress.focusTime.target)}
+              {formatTime(focusCurrent)} / {formatTime(focusTarget)}
             </Typography>
           </View>
           
@@ -63,7 +81,7 @@ export const DailyGoals: FC<DailyGoalsProps> = ({ progress }) => {
               Sessions
             </Typography>
             <Typography variant="body-12" color="secondary">
-              {progress.sessions.current} / {progress.sessions.target}
+              {sessionsCurrent} / {sessionsTarget}
             </Typography>
           </View>
           

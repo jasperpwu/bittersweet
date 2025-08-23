@@ -31,9 +31,9 @@ export const Card: FC<CardProps> = ({
   };
 
   const variantClasses = {
-    default: 'bg-white dark:bg-dark-bg',
-    outlined: 'bg-transparent border border-light-border dark:border-dark-border',
-    elevated: 'bg-white dark:bg-dark-bg',
+    default: 'bg-dark-bg',
+    outlined: 'bg-transparent border border-dark-border',
+    elevated: 'bg-dark-bg',
   };
 
   const shadowStyle = variant === 'elevated' ? {
