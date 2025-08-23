@@ -82,7 +82,7 @@ const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: '#f1f1f1',
+              backgroundColor: '#000000',
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 1000,
@@ -95,10 +95,10 @@ const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
             loop={false}
             onAnimationFinish={onLottieAnimationFinish}
             style={{
-              width: 300,
-              height: 300,
+              width: 500,
+              height: 500,
             }}
-            source={require('../../../../assets/Cloudgenia.json')}
+            source={require('../../../../assets/Cloudgenia-dark.json')}
           />
         </Animated.View>
       )}
