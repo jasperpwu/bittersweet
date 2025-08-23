@@ -1,18 +1,24 @@
 /**
- * Generate an array of dates for the current week (7 days starting from today)
+ * Generate an array of dates for the current week
  */
-export const generateWeekDates = (startDate: Date = new Date()): Date[] => {
-  const dates: Date[] = [];
-  const currentDate = new Date(startDate);
+export const generateWeekDates = (): Date[] => {
+  const today = new Date();
+  const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const startOfWeek = new Date(today);
   
-  // Start from today and generate next 7 days
+  // Adjust to start from Monday (1) instead of Sunday (0)
+  const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+  startOfWeek.setDate(today.getDate() - daysFromMonday);
+  
+  const weekDates: Date[] = [];
+  
   for (let i = 0; i < 7; i++) {
-    const date = new Date(currentDate);
-    date.setDate(currentDate.getDate() + i);
-    dates.push(date);
+    const date = new Date(startOfWeek);
+    date.setDate(startOfWeek.getDate() + i);
+    weekDates.push(date);
   }
   
-  return dates;
+  return weekDates;
 };
 
 /**
@@ -23,40 +29,40 @@ export const isSameDay = (date1: Date, date2: Date): boolean => {
 };
 
 /**
- * Get the start of the day for a given date
+ * Check if a date is today
  */
-export const getStartOfDay = (date: Date): Date => {
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  return startOfDay;
-};
-
-/**
- * Get the end of the day for a given date
- */
-export const getEndOfDay = (date: Date): Date => {
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
-  return endOfDay;
+export const isToday = (date: Date): boolean => {
+  return isSameDay(date, new Date());
 };
 
 /**
  * Format date for display
  */
-export const formatDisplayDate = (date: Date): string => {
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  
-  if (isSameDay(date, today)) {
-    return 'Today';
-  } else if (isSameDay(date, tomorrow)) {
-    return 'Tomorrow';
-  } else {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
+export const formatDate = (date: Date, format: 'short' | 'long' = 'short'): string => {
+  if (format === 'long') {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
     });
   }
+  
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric' 
+  });
+};
+
+/**
+ * Get the start and end of a day
+ */
+export const getDayBounds = (date: Date): { start: Date; end: Date } => {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  
+  return { start, end };
 };

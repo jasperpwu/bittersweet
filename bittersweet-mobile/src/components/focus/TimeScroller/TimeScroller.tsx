@@ -19,7 +19,7 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   selectedTime,
   onTimeChange,
 }) => {
-  const scrollViewRef = useRef<SrcrollView>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const isUserScrollingRef = useRef(false);
 
   // Define the exact center position for both center line and triangle
@@ -124,13 +124,14 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
                   overflow: 'hidden',
                 }}
               >
-                <View style={{ height: 66, justifyContent: 'center', width: TICK_SPACING }}>
+                <View style={{ height: 80, justifyContent: 'center', width: TICK_SPACING }}>
                   <Text
                     style={{
                       color: `rgba(255, 255, 255, ${opacity})`,
                       fontSize: fontSize,
                       fontFamily: fontFamily,
                       textAlign: 'center',
+                      paddingBottom: 100
                     }}
                   >
                     {time === 0 ? '∞' : time}

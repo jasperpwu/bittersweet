@@ -1,150 +1,74 @@
 import React, { FC } from 'react';
-import { View, Modal, Text, Pressable, ScrollView } from 'react-native';
+import { View, Modal, Pressable, ScrollView, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Typography } from '../Typography';
 
-interface EmojiPickerProps {
+interface EmojiPickerModalProps {
   visible: boolean;
   onClose: () => void;
   onEmojiSelect: (emoji: string) => void;
   title?: string;
 }
 
-// Curated emoji collection for focus session tags
-const FOCUS_EMOJIS = [
-  // Work & Professional
-  '💼', '💻', '📊', '📈', '📝', '📋', '🗂️', '📁', '🖥️', '⌨️', '🖱️', '📞',
+const EMOJI_CATEGORIES = {
+  'Smileys & People': ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳'],
+  'Activities': ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛷', '⛸️'],
+  'Objects': ['⌚', '📱', '📲', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '🕹️', '🗜️', '💽', '💾', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽️', '🎞️', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙️', '🎚️'],
+  'Nature': ['🌱', '🌿', '☘️', '🍀', '🎍', '🎋', '🍃', '🍂', '🍁', '🍄', '🐚', '🌾', '💐', '🌷', '🌹', '🥀', '🌺', '🌸', '🌼', '🌻', '🌞', '🌝', '🌛', '🌜', '🌚', '🌕', '🌖', '🌗', '🌘', '🌑'],
+  'Food & Drink': ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌶️', '🫑', '🌽', '🥕', '🫒', '🧄', '🧅', '🥔'],
+};
 
-  // Study & Learning
-  '📚', '📖', '✏️', '📓', '📔', '🎓', '🧠', '💡', '🔬', '🧪', '📐', '🔍',
-
-  // Creative & Arts
-  '🎨', '🖌️', '✨', '🎭', '🎪', '🎬', '📸', '🎵', '🎶', '🎸', '🎹', '🎤',
-
-  // Health & Fitness
-  '💪', '🏃', '🧘', '🏋️', '🚴', '🏊', '🤸', '🧗', '⚽', '🏀', '🎾', '🏓',
-
-  // Food & Cooking
-  '🍳', '👨‍🍳', '🥗', '🍎', '🥑', '🥕', '☕', '🍵', '🥤', '🍪', '🧁', '🍰',
-
-  // Nature & Environment
-  '🌱', '🌳', '🌸', '🌺', '🌻', '🌿', '🍃', '🌲', '🌴', '🌵', '🌾', '🌙',
-
-  // Technology & Gaming
-  '📱', '⌚', '🎧', '📷', '🎮', '🕹️', '💾', '🔧', '⚙️', '🔌', '💻', '📡',
-
-  // Goals & Achievement
-  '🎯', '🏆', '🥇', '🏅', '⭐', '🌟', '💯', '✅', '🔥', '💎', '👑', '🚀'
-];
-
-export const EmojiPickerModal: FC<EmojiPickerProps> = ({
+export const EmojiPickerModal: FC<EmojiPickerModalProps> = ({
   visible,
   onClose,
   onEmojiSelect,
-  title = 'Choose Emoji'
+  title = 'Choose Emoji',
 }) => {
-  const handleEmojiSelect = (emoji: string) => {
-    console.log('Emoji selected:', emoji);
-    onEmojiSelect(emoji);
-    onClose();
-  };
-
-
-
-  if (!visible) {
-    return null;
-  }
-
   return (
     <Modal
       visible={visible}
-      transparent={true}
-      animationType="fade"
+      transparent
+      animationType="slide"
       onRequestClose={onClose}
-      presentationStyle="overFullScreen"
     >
-      <View style={{
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-        zIndex: 99999
-      }}>
-        <View style={{
-          backgroundColor: '#1B1C30',
-          borderRadius: 20,
-          width: '90%',
-          height: '70%',
-          overflow: 'hidden'
-        }}>
+      <View className="flex-1 bg-black bg-opacity-50 justify-end">
+        <View className="bg-dark-bg rounded-t-3xl max-h-96">
           {/* Header */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 20,
-            paddingVertical: 20,
-            borderBottomWidth: 1,
-            borderBottomColor: '#575757'
-          }}>
-            <Text style={{
-              fontSize: 18,
-              fontWeight: '600',
-              color: '#FFFFFF'
-            }}>
+          <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
+            <Typography variant="headline-20" color="white">
               {title}
-            </Text>
+            </Typography>
             <Pressable
               onPress={onClose}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: '#575757',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
+              className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center"
             >
-              <Ionicons name="close" size={18} color="#FFFFFF" />
+              <Ionicons name="close" size={20} color="#FFFFFF" />
             </Pressable>
           </View>
 
           {/* Emoji Grid */}
-          <View style={{ flex: 1, padding: 20 }}>
-            <ScrollView
-              style={{ flex: 1 }}
-              showsVerticalScrollIndicator={false}
-              nestedScrollEnabled={true}
-            >
-              <View style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start'
-              }}>
-                {FOCUS_EMOJIS.map((emoji, index) => (
-                  <Pressable
-                    key={`${emoji}-${index}`}
-                    onPress={() => handleEmojiSelect(emoji)}
-                    style={{
-                      width: 48,
-                      height: 48,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 12,
-                      backgroundColor: '#2A2A2A',
-                      marginBottom: 12,
-                      marginHorizontal: 2,
-                    }}
-                  >
-                    <Text style={{ fontSize: 24 }}>
-                      {emoji}
-                    </Text>
-                  </Pressable>
-                ))}
+          <ScrollView className="flex-1 p-4">
+            {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
+              <View key={category} className="mb-6">
+                <Typography variant="body-14" color="secondary" className="mb-3">
+                  {category}
+                </Typography>
+                <View className="flex-row flex-wrap">
+                  {emojis.map((emoji, index) => (
+                    <Pressable
+                      key={index}
+                      onPress={() => onEmojiSelect(emoji)}
+                      className="w-12 h-12 items-center justify-center m-1 rounded-lg bg-gray-700 active:bg-gray-600"
+                    >
+                      <Text className="text-2xl">
+                        {emoji}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-            </ScrollView>
-          </View>
+            ))}
+          </ScrollView>
         </View>
       </View>
     </Modal>

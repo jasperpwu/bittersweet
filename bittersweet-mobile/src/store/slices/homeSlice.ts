@@ -6,6 +6,7 @@ interface User {
   id: string;
   name: string;
   avatar?: string;
+  level?: number;
 }
 
 interface Task {
@@ -20,11 +21,14 @@ interface Task {
 }
 
 interface DailyGoalsProgress {
-  completed: number;
-  total: number;
-  percentage: number;
-  timeSpent: number; // in minutes
-  timeGoal: number; // in minutes
+  focusTime: {
+    current: number;
+    target: number;
+  };
+  sessions: {
+    current: number;
+    target: number;
+  };
 }
 
 interface HomeState {
@@ -53,6 +57,7 @@ const initialState: HomeState = {
     id: '1',
     name: 'Artiom',
     avatar: undefined,
+    level: 5,
   },
   currentTask: {
     id: '1',
@@ -102,11 +107,14 @@ const initialState: HomeState = {
     },
   ],
   dailyGoals: {
-    completed: 10,
-    total: 15,
-    percentage: 75,
-    timeSpent: 180, // 3 hours
-    timeGoal: 240, // 4 hours
+    focusTime: {
+      current: 180, // 3 hours in minutes
+      target: 240, // 4 hours in minutes
+    },
+    sessions: {
+      current: 3,
+      target: 5,
+    },
   },
   notificationCount: 3,
 };

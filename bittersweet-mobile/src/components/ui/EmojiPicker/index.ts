@@ -1,1 +1,1 @@
-export { EmojiPickerModal as EmojiPicker } from './EmojiPicker';
+export * from './EmojiPicker';

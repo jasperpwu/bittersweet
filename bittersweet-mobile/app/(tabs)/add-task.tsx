@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/ui/Header';
 import { TaskForm, CreateTaskInput } from '../../src/components/forms/TaskForm';
 
@@ -31,8 +30,8 @@ export default function AddTaskScreen() {
           {
             text: 'OK',
             onPress: () => {
-              // Navigate back to the focus tab after creating task
-              router.push('/(tabs)/');
+              // Navigate back to the home tab after creating task
+              router.push('/(tabs)');
             },
           },
         ]
@@ -50,8 +49,8 @@ export default function AddTaskScreen() {
   };
 
   const handleCancel = () => {
-    // Navigate back to the focus tab
-    router.push('/(tabs)/');
+    // Navigate back to the home tab
+    router.push('/(tabs)');
   };
 
   return (

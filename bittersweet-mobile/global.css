@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Set Poppins as the default font family for the entire app */
+@layer base {
+  * {
+    font-family: 'Poppins-Regular';
+  }
+}
+
+/* Ensure proper text rendering and prevent clipping */
+@layer utilities {
+  .text-no-clip {
+    overflow: visible;
+    text-overflow: clip;
+  }
+  
+  /* Fix for React Native text clipping issues */
+  .rn-text {
+    overflow: visible;
+  }
+}
