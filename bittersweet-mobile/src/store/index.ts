@@ -5,16 +5,11 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
 import { RootStore } from './types';
-import { 
-  createStoreMiddleware,
-  performanceMiddleware,
-  errorHandlingMiddleware,
-  loggingMiddleware
-} from './middleware';
 import { createNormalizedState } from './utils/entityManager';
 import { storeEventBus, createEventEmitter, createEventListener } from './utils/eventBus';
+import { createPerformanceMiddleware, initializePerformanceMonitoring } from './performance';
+import { persistenceConfig } from './middleware/persistence';
 
 // Import slice creators (will be implemented in subsequent tasks)
 import { createAuthSlice } from './slices/authSlice';
@@ -30,7 +25,13 @@ import { createUISlice } from './slices/uiSlice';
  */
 export const useAppStore = create<RootStore>()(
   devtools(
-    (set: any, get: any, api: any) => {
+    persist(
+      createPerformanceMiddleware({
+        enablePerformanceMonitoring: __DEV__,
+        enableMemoryCleanup: true,
+        memoryThreshold: 50
+      })(
+        (set: any, get: any, api: any) => {
       try {
         const store = {
           auth: createAuthSlice(set, get, api),
@@ -44,7 +45,7 @@ export const useAppStore = create<RootStore>()(
         
         if (__DEV__) {
           console.log('✅ Store slices created successfully:', Object.keys(store));
-          console.log('✅ Tasks slice functions:', store.tasks ? Object.keys(store.tasks).filter(key => typeof store.tasks[key] === 'function') : 'no tasks');
+          console.log('✅ Tasks slice functions:', store.tasks ? Object.keys(store.tasks).filter(key => typeof (store.tasks as any)[key] === 'function') : 'no tasks');
           console.log('✅ Tasks setSelectedDate type:', typeof store.tasks?.setSelectedDate);
         }
         
@@ -53,7 +54,9 @@ export const useAppStore = create<RootStore>()(
         console.error('❌ Error creating store slices:', error);
         throw error;
       }
-    },
+    }),
+    persistenceConfig
+    ),
     { name: 'bittersweet-store' }
   )
 );
@@ -100,14 +103,44 @@ export const useFocus = () => useAppStore((state) => {
 export const useTasks = () => useAppStore((state) => {
   if (!state.tasks) {
     console.warn('Tasks slice not initialized');
+    const today = new Date();
+    const currentDay = today.getDay();
+    const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - daysFromMonday);
+    weekStart.setHours(0, 0, 0, 0);
+    
     return {
       tasks: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
       selectedDate: new Date(),
       viewMode: 'day' as const,
-      currentWeekStart: new Date(),
+      currentWeekStart: weekStart,
     };
   }
-  return state.tasks;
+  
+  // Ensure selectedDate is always a valid Date object
+  const selectedDate = state.tasks.selectedDate instanceof Date 
+    ? state.tasks.selectedDate 
+    : new Date(state.tasks.selectedDate || new Date());
+    
+  // Ensure currentWeekStart is always a valid Date object
+  const currentWeekStart = state.tasks.currentWeekStart instanceof Date
+    ? state.tasks.currentWeekStart
+    : new Date(state.tasks.currentWeekStart || (() => {
+        const today = new Date();
+        const currentDay = today.getDay();
+        const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - daysFromMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        return weekStart;
+      })());
+  
+  return {
+    ...state.tasks,
+    selectedDate,
+    currentWeekStart,
+  };
 });
 export const useRewards = () => useAppStore((state) => {
   if (!state.rewards) {
@@ -217,48 +250,59 @@ export const useFocusActions = () => useAppStore((state) => ({
 }));
 
 export const useTasksActions = () => {
-  const store = useAppStore();
-  
-  if (__DEV__) {
-    console.log('useTasksActions called:', {
-      hasStore: !!store,
-      hasTasksSlice: !!store.tasks,
-      hasSetSelectedDate: !!store.tasks?.setSelectedDate,
-      setSelectedDateType: typeof store.tasks?.setSelectedDate,
-      tasksSliceKeys: store.tasks ? Object.keys(store.tasks).filter(key => typeof store.tasks[key] === 'function') : 'no tasks slice',
-      allTasksKeys: store.tasks ? Object.keys(store.tasks) : 'no tasks slice',
-      storeKeys: Object.keys(store),
-    });
-  }
-  
-  if (!store.tasks) {
-    console.warn('Tasks slice not available in useTasksActions');
-    return {
-      createTask: () => console.warn('createTask not available'),
-      updateTask: () => console.warn('updateTask not available'),
-      deleteTask: () => console.warn('deleteTask not available'),
-      startTask: () => console.warn('startTask not available'),
-      completeTask: () => console.warn('completeTask not available'),
-      setSelectedDate: () => console.warn('setSelectedDate not available'),
-      setViewMode: () => console.warn('setViewMode not available'),
-      goToPreviousWeek: () => console.warn('goToPreviousWeek not available'),
-      goToNextWeek: () => console.warn('goToNextWeek not available'),
-      goToCurrentWeek: () => console.warn('goToCurrentWeek not available'),
+  return useAppStore((state) => {
+    if (__DEV__) {
+      console.log('useTasksActions called:', {
+        hasStore: !!state,
+        hasTasksSlice: !!state.tasks,
+        hasSetSelectedDate: !!state.tasks?.setSelectedDate,
+        setSelectedDateType: typeof state.tasks?.setSelectedDate,
+        tasksSliceKeys: state.tasks ? Object.keys(state.tasks).filter(key => typeof (state.tasks as any)[key] === 'function') : 'no tasks slice',
+        allTasksKeys: state.tasks ? Object.keys(state.tasks) : 'no tasks slice',
+      });
+    }
+    
+    if (!state.tasks) {
+      console.warn('Tasks slice not available in useTasksActions');
+      return {
+        createTask: () => console.warn('createTask not available'),
+        updateTask: () => console.warn('updateTask not available'),
+        deleteTask: () => console.warn('deleteTask not available'),
+        startTask: () => console.warn('startTask not available'),
+        completeTask: () => console.warn('completeTask not available'),
+        setSelectedDate: (date: Date) => {
+          console.warn('setSelectedDate not available, received:', date);
+        },
+        setViewMode: () => console.warn('setViewMode not available'),
+        goToPreviousWeek: () => console.warn('goToPreviousWeek not available'),
+        goToNextWeek: () => console.warn('goToNextWeek not available'),
+        goToCurrentWeek: () => console.warn('goToCurrentWeek not available'),
+      };
+    }
+    
+    // Return the actions directly from the state
+    const actions = {
+      createTask: state.tasks.createTask,
+      updateTask: state.tasks.updateTask,
+      deleteTask: state.tasks.deleteTask,
+      startTask: state.tasks.startTask,
+      completeTask: state.tasks.completeTask,
+      setSelectedDate: state.tasks.setSelectedDate,
+      setViewMode: state.tasks.setViewMode,
+      goToPreviousWeek: state.tasks.goToPreviousWeek,
+      goToNextWeek: state.tasks.goToNextWeek,
+      goToCurrentWeek: state.tasks.goToCurrentWeek,
     };
-  }
-  
-  return {
-    createTask: store.tasks.createTask,
-    updateTask: store.tasks.updateTask,
-    deleteTask: store.tasks.deleteTask,
-    startTask: store.tasks.startTask,
-    completeTask: store.tasks.completeTask,
-    setSelectedDate: store.tasks.setSelectedDate,
-    setViewMode: store.tasks.setViewMode,
-    goToPreviousWeek: store.tasks.goToPreviousWeek,
-    goToNextWeek: store.tasks.goToNextWeek,
-    goToCurrentWeek: store.tasks.goToCurrentWeek,
-  };
+    
+    if (__DEV__) {
+      console.log('useTasksActions returning:', {
+        setSelectedDateType: typeof actions.setSelectedDate,
+        allActionTypes: Object.keys(actions).map(key => `${key}: ${typeof actions[key as keyof typeof actions]}`),
+      });
+    }
+    
+    return actions;
+  });
 };
 
 export const useRewardsActions = () => useAppStore((state) => ({
@@ -370,6 +414,9 @@ export { storeEventBus, createEventEmitter, createEventListener };
 export function initializeStore() {
   const state = getStoreState();
   
+  // Initialize performance monitoring
+  initializePerformanceMonitoring();
+  
   // Initialize event listeners for cross-store communication
   setupCrossStoreEventListeners();
   
@@ -480,3 +527,8 @@ initializeStore();
 export type { RootStore } from './types';
 export { createNormalizedState } from './utils/entityManager';
 export { STORE_EVENTS } from './utils/eventBus';
+
+// Export performance utilities
+export * from './performance';
+export * from './selectors';
+export * from './hooks';

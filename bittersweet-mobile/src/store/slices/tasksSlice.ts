@@ -4,7 +4,7 @@
  */
 
 import { TasksSlice, Task, TaskProgress } from '../types';
-import { createNormalizedState, EntityManager } from '../utils/entityManager';
+import { createNormalizedState, EntityManager, updateNormalizedState } from '../utils/entityManager';
 import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/eventBus';
 
 export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
@@ -21,8 +21,10 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
     
     // Find task linked to this session
     const tasks = get().tasks.tasks;
-    const manager = new EntityManager(tasks);
-    const linkedTask = manager.find(task => task.focusSessionIds.includes(sessionId));
+    const linkedTask = tasks.allIds
+      .map(id => tasks.byId[id])
+      .filter(Boolean)
+      .find(task => task.focusSessionIds.includes(sessionId));
     
     if (linkedTask) {
       // Update task progress with focus time
@@ -42,7 +44,7 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
   
   const slice = {
     // Normalized State
-    tasks: createNormalizedState(),
+    tasks: createNormalizedState<Task>(),
     
     // UI State
     selectedDate: new Date(),
@@ -107,20 +109,10 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
       };
       
       set((state: any) => {
-        const manager = new EntityManager(state.tasks.tasks);
-        manager.add(newTask);
-        return {
-          ...state,
-          tasks: {
-            ...state.tasks,
-            tasks: {
-              ...manager.getState(),
-              loading: false,
-              error: null,
-              lastUpdated: new Date(),
-            },
-          },
-        };
+        state.tasks.tasks = updateNormalizedState(
+          state.tasks.tasks,
+          (manager) => manager.add(newTask)
+        );
       });
       
       // Emit task created event
@@ -147,20 +139,10 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
       };
       
       set((state: any) => {
-        const manager = new EntityManager(state.tasks.tasks);
-        manager.update(id, updatedTask);
-        return {
-          ...state,
-          tasks: {
-            ...state.tasks,
-            tasks: {
-              ...manager.getState(),
-              loading: false,
-              error: null,
-              lastUpdated: new Date(),
-            },
-          },
-        };
+        state.tasks.tasks = updateNormalizedState(
+          state.tasks.tasks,
+          (manager) => manager.update(id, updatedTask)
+        );
       });
       
       // Emit task updated event
@@ -181,20 +163,10 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
       }
       
       set((state: any) => {
-        const manager = new EntityManager(state.tasks.tasks);
-        manager.remove(id);
-        return {
-          ...state,
-          tasks: {
-            ...state.tasks,
-            tasks: {
-              ...manager.getState(),
-              loading: false,
-              error: null,
-              lastUpdated: new Date(),
-            },
-          },
-        };
+        state.tasks.tasks = updateNormalizedState(
+          state.tasks.tasks,
+          (manager) => manager.remove(id)
+        );
       });
       
       // Emit task deleted event
@@ -220,8 +192,10 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
       
       // Check if there's another active task
       const tasks = get().tasks.tasks;
-      const manager = new EntityManager(tasks);
-      const activeTask = manager.find(task => task.status === 'active');
+      const activeTask = tasks.allIds
+        .map(id => tasks.byId[id])
+        .filter(Boolean)
+        .find(task => task.status === 'active');
       
       if (activeTask) {
         throw new Error('Another task is already active. Complete or cancel it first.');
@@ -264,7 +238,10 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
       });
       
       // Emit task completed event for cross-store communication
-      eventEmitter.emitTaskCompleted(id, currentTask.progress.focusTimeSpent);
+      eventEmitter.emit(STORE_EVENTS.TASK_COMPLETED, {
+        taskId: id,
+        focusTime: currentTask.progress.focusTimeSpent,
+      });
       
       if (__DEV__) {
         console.log('✅ Task completed:', currentTask.title);
@@ -349,8 +326,7 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
     getTaskById: (id: string) => {
       try {
         const tasks = get().tasks.tasks;
-        const manager = new EntityManager(tasks);
-        return manager.getById(id);
+        return tasks.byId[id];
       } catch (error) {
         console.error('Error in getTaskById:', error);
         return undefined;
@@ -368,10 +344,13 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
         
-        return manager.query(task => {
-          const taskDate = new Date(task.date);
-          return taskDate >= startOfDay && taskDate <= endOfDay;
-        }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+        return tasks.allIds
+          .map(id => tasks.byId[id])
+          .filter(Boolean)
+          .filter(task => {
+            const taskDate = new Date(task.date);
+            return taskDate >= startOfDay && taskDate <= endOfDay;
+          }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
       } catch (error) {
         console.error('Error in getTasksForDate:', error);
         return [];
@@ -381,8 +360,10 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
     getActiveTask: () => {
       try {
         const tasks = get().tasks.tasks;
-        const manager = new EntityManager(tasks);
-        return manager.find(task => task.status === 'active') || null;
+        return tasks.allIds
+          .map(id => tasks.byId[id])
+          .filter(Boolean)
+          .find(task => task.status === 'active') || null;
       } catch (error) {
         console.error('Error in getActiveTask:', error);
         return null;
@@ -394,10 +375,13 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
         const tasks = get().tasks.tasks;
         const manager = new EntityManager(tasks);
         
-        return manager.query(task => {
-          const taskDate = new Date(task.date);
-          return taskDate >= start && taskDate <= end;
-        }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+        return tasks.allIds
+          .map(id => tasks.byId[id])
+          .filter(Boolean)
+          .filter(task => {
+            const taskDate = new Date(task.date);
+            return taskDate >= start && taskDate <= end;
+          }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
       } catch (error) {
         console.error('Error in getTasksForDateRange:', error);
         return [];

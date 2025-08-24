@@ -257,7 +257,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         const manager = new EntityManager(state.focus.sessions);
         if (state.focus.currentSession.session) {
           manager.update(state.focus.currentSession.session.id, {
-            status: 'paused',
+            status: 'paused' as const,
             pauseHistory: state.focus.currentSession.session.pauseHistory,
           });
           state.focus.sessions = {
@@ -308,7 +308,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         const manager = new EntityManager(state.focus.sessions);
         if (state.focus.currentSession.session) {
           manager.update(state.focus.currentSession.session.id, {
-            status: 'active',
+            status: 'active' as const,
             pauseHistory: state.focus.currentSession.session.pauseHistory,
           });
           state.focus.sessions = {
@@ -397,7 +397,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         // Update in normalized state
         const manager = new EntityManager(state.focus.sessions);
         manager.update(currentSession.session!.id, {
-          status: 'cancelled',
+          status: 'cancelled' as const,
           endTime: new Date(),
           updatedAt: new Date(),
         });
@@ -481,8 +481,10 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     deleteCategory: (id: string) => {
       // Check if category is being used by any sessions
       const sessions = get().focus.sessions;
-      const manager = new EntityManager(sessions);
-      const sessionsUsingCategory = manager.query(session => session.categoryId === id);
+      const sessionsUsingCategory = sessions.allIds
+        .map(id => sessions.byId[id])
+        .filter(Boolean)
+        .filter(session => session.categoryId === id);
       
       if (sessionsUsingCategory.length > 0) {
         throw new Error('Cannot delete category that is being used by sessions');
@@ -507,23 +509,23 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     // Selectors
     getSessionById: (id: string) => {
       const sessions = get().focus.sessions;
-      const manager = new EntityManager(sessions);
-      return manager.getById(id);
+      return sessions.byId[id];
     },
     
     getSessionsForDateRange: (start: Date, end: Date) => {
       const sessions = get().focus.sessions;
-      const manager = new EntityManager(sessions);
-      return manager.query(session => {
-        const sessionDate = new Date(session.startTime);
-        return sessionDate >= start && sessionDate <= end;
-      });
+      return sessions.allIds
+        .map(id => sessions.byId[id])
+        .filter(Boolean)
+        .filter(session => {
+          const sessionDate = new Date(session.startTime);
+          return sessionDate >= start && sessionDate <= end;
+        });
     },
     
     getCategoryById: (id: string) => {
       const categories = get().focus.categories;
-      const manager = new EntityManager(categories);
-      return manager.getById(id);
+      return categories.byId[id];
     },
     
     getActiveSession: () => {
@@ -533,8 +535,10 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     // Analytics
     getChartData: (period: TimePeriod) => {
       const sessions = get().focus.sessions;
-      const manager = new EntityManager(sessions);
-      const completedSessions = manager.query(session => session.status === 'completed');
+      const completedSessions = sessions.allIds
+        .map(id => sessions.byId[id])
+        .filter(Boolean)
+        .filter(session => session.status === 'completed');
       
       // Group sessions by date based on period
       const groupedData: Record<string, number> = {};
@@ -572,8 +576,10 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     
     getProductivityInsights: () => {
       const sessions = get().focus.sessions;
-      const manager = new EntityManager(sessions);
-      const completedSessions = manager.query(session => session.status === 'completed');
+      const completedSessions = sessions.allIds
+        .map(id => sessions.byId[id])
+        .filter(Boolean)
+        .filter(session => session.status === 'completed');
       
       if (completedSessions.length === 0) {
         return {

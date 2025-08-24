@@ -1,11 +1,76 @@
 /**
- * UI slice implementation
- * Addresses Requirements: 7.4, 8.2, 9.1
+ * UI slice for application state, modals, and loading indicators
+ * Addresses Requirements: 2.2, 5.1, 5.2, 5.3, 6.2, 7.4, 8.2, 9.1
  */
 
 import { UISlice, StoreError, ModalState, LoadingState } from '../types';
+import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/eventBus';
+
+// Common modal types
+export const MODAL_TYPES = {
+  TASK_CREATION: 'task_creation',
+  CATEGORY_SELECTION: 'category_selection',
+  SESSION_COMPLETE: 'session_complete',
+  APP_UNLOCK_CONFIRM: 'app_unlock_confirm',
+  SQUAD_JOIN: 'squad_join',
+  CHALLENGE_CREATE: 'challenge_create',
+  SETTINGS: 'settings',
+  PROFILE: 'profile',
+  ERROR: 'error',
+  CONFIRMATION: 'confirmation',
+} as const;
+
+// Common loading actions
+export const LOADING_ACTIONS = {
+  LOGIN: 'login',
+  LOGOUT: 'logout',
+  PROFILE_UPDATE: 'profile_update',
+  SESSION_START: 'session_start',
+  SESSION_COMPLETE: 'session_complete',
+  TASK_CREATE: 'task_create',
+  TASK_UPDATE: 'task_update',
+  APP_UNLOCK: 'app_unlock',
+  SQUAD_JOIN: 'squad_join',
+  SQUAD_LEAVE: 'squad_leave',
+  CHALLENGE_JOIN: 'challenge_join',
+  SETTINGS_UPDATE: 'settings_update',
+} as const;
 
 export function createUISlice(set: any, get: any, api: any): UISlice {
+  const eventEmitter = createEventEmitter('ui');
+  const eventListener = createEventListener();
+
+  // Listen for various events to show appropriate modals or loading states
+  eventListener.on(STORE_EVENTS.FOCUS_SESSION_COMPLETED, (event) => {
+    const { sessionId, seedsEarned, duration } = event.payload;
+    get().ui.showModal(MODAL_TYPES.SESSION_COMPLETE, {
+      sessionId,
+      seedsEarned,
+      duration,
+    });
+  });
+
+  eventListener.on(STORE_EVENTS.APP_UNLOCKED, (event) => {
+    const { appName, cost } = event.payload;
+    get().ui.showModal(MODAL_TYPES.CONFIRMATION, {
+      title: 'App Unlocked!',
+      message: `${appName} has been unlocked for ${cost} seeds.`,
+      type: 'success',
+    });
+  });
+
+  eventListener.on(STORE_EVENTS.ERROR_OCCURRED, (event) => {
+    const error = event.payload;
+    get().ui.addError(error);
+    
+    // Show error modal for critical errors
+    if (!error.recoverable) {
+      get().ui.showModal(MODAL_TYPES.ERROR, {
+        error,
+      });
+    }
+  });
+
   return {
     // State
     isHydrated: false,
@@ -25,13 +90,25 @@ export function createUISlice(set: any, get: any, api: any): UISlice {
           data,
         };
       });
+
+      // Emit modal opened event
+      eventEmitter.emit(STORE_EVENTS.MODAL_OPENED, {
+        modalType: type,
+        data,
+      });
     },
     
     hideModal: (type: string) => {
       set((state: any) => {
         if (state.ui.modals[type]) {
           state.ui.modals[type].isVisible = false;
+          // Keep data for potential re-opening, but mark as not visible
         }
+      });
+
+      // Emit modal closed event
+      eventEmitter.emit(STORE_EVENTS.MODAL_CLOSED, {
+        modalType: type,
       });
     },
     
@@ -47,13 +124,22 @@ export function createUISlice(set: any, get: any, api: any): UISlice {
     
     addError: (error: StoreError) => {
       set((state: any) => {
-        state.ui.errors.push(error);
+        // Add timestamp if not present
+        const errorWithTimestamp = {
+          ...error,
+          timestamp: error.timestamp || new Date(),
+        };
+        
+        state.ui.errors.push(errorWithTimestamp);
         
         // Limit error history to prevent memory leaks
         if (state.ui.errors.length > 50) {
           state.ui.errors = state.ui.errors.slice(-25);
         }
       });
+
+      // Emit error event
+      eventEmitter.emit(STORE_EVENTS.ERROR_OCCURRED, error);
     },
     
     clearError: (errorId: string) => {

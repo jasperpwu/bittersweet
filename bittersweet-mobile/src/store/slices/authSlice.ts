@@ -4,9 +4,9 @@
  */
 
 import { AuthSlice, AsyncState, User, UserPreferences, UserStats } from '../types';
-import { createAsyncAction } from '../middleware';
+// Async action will be implemented inline
 import { createEventEmitter, STORE_EVENTS } from '../utils/eventBus';
-import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
+// get function will be provided by the slice creator
 
 // Mock API functions (replace with actual API calls)
 const authAPI = {
@@ -77,7 +77,7 @@ const authAPI = {
   updateProfile: async (userId: string, updates: Partial<User>): Promise<User> => {
     await new Promise(resolve => setTimeout(resolve, 500));
     // Return updated user (mock)
-    const currentUser = get().auth.user;
+    const currentUser = get().auth?.user;
     if (!currentUser) throw new Error('No user logged in');
     
     return {
@@ -101,15 +101,14 @@ export function createAuthSlice(set: any, get: any, api: any): AuthSlice {
     
     // Actions
     login: async (credentials: { email: string; password: string }) => {
-      const loginAction = createAsyncAction('login', authAPI.login);
+      // Set loading state
+      set((state: any) => {
+        state.auth.loginState.loading = true;
+        state.auth.loginState.error = null;
+      });
       
       try {
-        set((state: any) => {
-          state.auth.loginState.loading = true;
-          state.auth.loginState.error = null;
-        });
-        
-        const result = await loginAction(credentials, { set, get });
+        const result = await authAPI.login(credentials);
         
         set((state: any) => {
           state.auth.user = result.user;
@@ -162,7 +161,7 @@ export function createAuthSlice(set: any, get: any, api: any): AuthSlice {
     },
     
     refreshAuth: async () => {
-      const currentRefreshToken = get().auth.refreshToken;
+      const currentRefreshToken = get().auth?.refreshToken;
       
       if (!currentRefreshToken) {
         throw new Error('No refresh token available');
@@ -181,7 +180,7 @@ export function createAuthSlice(set: any, get: any, api: any): AuthSlice {
         }
       } catch (error) {
         // If refresh fails, logout user
-        get().auth.logout();
+        get().auth?.logout();
         
         if (__DEV__) {
           console.error('❌ Token refresh failed, logging out user:', error);
@@ -192,7 +191,7 @@ export function createAuthSlice(set: any, get: any, api: any): AuthSlice {
     },
     
     updateProfile: async (updates: Partial<User>) => {
-      const currentUser = get().auth.user;
+      const currentUser = get().auth?.user;
       
       if (!currentUser) {
         throw new Error('No user logged in');
@@ -227,7 +226,7 @@ export function createAuthSlice(set: any, get: any, api: any): AuthSlice {
     },
     
     // Selectors
-    getUser: () => get().auth.user,
-    isLoggedIn: () => get().auth.isAuthenticated,
+    getUser: () => get().auth?.user || null,
+    isLoggedIn: () => get().auth?.isAuthenticated || false,
   };
 }

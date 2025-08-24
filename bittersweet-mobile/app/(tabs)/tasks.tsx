@@ -8,12 +8,28 @@ import { useTasks, useTasksActions, useTasksSelectors } from '../../src/store';
 import { generateWeekDatesFromStart } from '../../src/utils/dateUtils';
 
 export default function TasksScreen() {
-  const { selectedDate: rawSelectedDate, currentWeekStart } = useTasks();
+  const tasksData = useTasks();
   const selectors = useTasksSelectors();
   const actions = useTasksActions();
   
+  // Safely extract data with fallbacks
+  const rawSelectedDate = tasksData?.selectedDate;
+  const currentWeekStart = tasksData?.currentWeekStart || (() => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - daysFromMonday);
+    weekStart.setHours(0, 0, 0, 0);
+    return weekStart;
+  })();
+  
   if (__DEV__) {
-    console.log('TasksScreen actions:', {
+    console.log('TasksScreen render data:', {
+      hasTasksData: !!tasksData,
+      rawSelectedDate,
+      rawSelectedDateType: typeof rawSelectedDate,
+      currentWeekStart,
       hasActions: !!actions,
       setSelectedDateType: typeof actions.setSelectedDate,
       actionsKeys: Object.keys(actions),
@@ -22,10 +38,23 @@ export default function TasksScreen() {
 
   // Ensure selectedDate is always a Date object
   const selectedDate = useMemo(() => {
-    if (!rawSelectedDate) return new Date();
-    if (rawSelectedDate instanceof Date) return rawSelectedDate;
+    if (!rawSelectedDate) {
+      console.warn('rawSelectedDate is null/undefined, using current date');
+      return new Date();
+    }
+    if (rawSelectedDate instanceof Date) {
+      return rawSelectedDate;
+    }
     // If it's a string, convert to Date
-    if (typeof rawSelectedDate === 'string') return new Date(rawSelectedDate);
+    if (typeof rawSelectedDate === 'string') {
+      const parsed = new Date(rawSelectedDate);
+      if (isNaN(parsed.getTime())) {
+        console.warn('Invalid date string, using current date:', rawSelectedDate);
+        return new Date();
+      }
+      return parsed;
+    }
+    console.warn('Unexpected selectedDate type, using current date:', typeof rawSelectedDate, rawSelectedDate);
     return new Date();
   }, [rawSelectedDate]);
 
@@ -41,8 +70,47 @@ export default function TasksScreen() {
     });
   }
 
+  // Ensure currentWeekStart is a valid Date object
+  const validCurrentWeekStart = useMemo(() => {
+    if (!currentWeekStart) {
+      console.warn('currentWeekStart is null/undefined, using calculated week start');
+      const today = new Date();
+      const currentDay = today.getDay();
+      const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - daysFromMonday);
+      weekStart.setHours(0, 0, 0, 0);
+      return weekStart;
+    }
+    if (currentWeekStart instanceof Date) {
+      return currentWeekStart;
+    }
+    if (typeof currentWeekStart === 'string') {
+      const parsed = new Date(currentWeekStart);
+      if (isNaN(parsed.getTime())) {
+        console.warn('Invalid currentWeekStart string, using calculated week start:', currentWeekStart);
+        const today = new Date();
+        const currentDay = today.getDay();
+        const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - daysFromMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        return weekStart;
+      }
+      return parsed;
+    }
+    console.warn('Unexpected currentWeekStart type, using calculated week start:', typeof currentWeekStart, currentWeekStart);
+    const today = new Date();
+    const currentDay = today.getDay();
+    const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - daysFromMonday);
+    weekStart.setHours(0, 0, 0, 0);
+    return weekStart;
+  }, [currentWeekStart]);
+
   // Generate week dates based on current week start
-  const weekDates = useMemo(() => generateWeekDatesFromStart(currentWeekStart), [currentWeekStart]);
+  const weekDates = useMemo(() => generateWeekDatesFromStart(validCurrentWeekStart), [validCurrentWeekStart]);
 
   // Get tasks for the selected date - with safety check
   const tasksForSelectedDate = useMemo(() => {
@@ -111,7 +179,7 @@ export default function TasksScreen() {
             weekDates={weekDates}
             onPreviousWeek={handlePreviousWeek}
             onNextWeek={handleNextWeek}
-            currentWeekStart={currentWeekStart}
+            currentWeekStart={validCurrentWeekStart}
           />
         </View>
 
