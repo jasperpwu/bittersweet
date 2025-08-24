@@ -189,6 +189,7 @@ export default function TasksScreen() {
             tasks={tasksForSelectedDate}
             currentTime={currentTime}
             onTaskPress={handleTaskPress}
+            onAddTask={handleAddTask}
           />
         </View>
       </View>

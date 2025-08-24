@@ -2,12 +2,14 @@ import { FC, useMemo } from 'react';
 import { View, ScrollView, Dimensions } from 'react-native';
 import { Typography } from '../../ui/Typography/Typography';
 import { TaskBlock } from '../TaskBlock';
+import { EmptyState } from '../EmptyState';
 import { Task } from '../../../types/models';
 
 interface TimelineProps {
   tasks: Task[];
   currentTime: Date;
   onTaskPress: (taskId: string) => void;
+  onAddTask?: () => void;
 }
 
 const TIME_COLUMN_WIDTH = 70;
@@ -52,6 +54,7 @@ export const Timeline: FC<TimelineProps> = ({
   tasks,
   currentTime,
   onTaskPress,
+  onAddTask,
 }) => {
   // Filter tasks for the selected date and sort by start time
   const sortedTasks = useMemo(() => {
@@ -62,6 +65,11 @@ export const Timeline: FC<TimelineProps> = ({
       })
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   }, [tasks]);
+
+  // Show empty state if no tasks
+  if (tasks.length === 0) {
+    return <EmptyState onAddTask={onAddTask} />;
+  }
 
   // Generate hour slots
   const hourSlots = useMemo(() => {

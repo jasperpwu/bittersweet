@@ -1,29 +1,33 @@
-import React, { useState } from 'react';
-import { Alert } from 'react-native';
+import { useState } from 'react';
+import { Alert, View } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/ui/Header';
 import { TaskForm, CreateTaskInput } from '../../src/components/forms/TaskForm';
+
+// Configure screen options to hide the default header
+export const unstable_settings = {
+  headerShown: false,
+};
 
 export default function TaskCreationModal() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (taskData: CreateTaskInput) => {
     setIsLoading(true);
-    
+
     try {
       // TODO: Implement actual task creation logic
       // This would typically involve:
       // 1. Validating the data
       // 2. Saving to local storage or API
       // 3. Updating global state
-      
+
       console.log('Creating task:', taskData);
-      
+
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       Alert.alert(
         'Success',
         'Task created successfully!',
@@ -47,27 +51,13 @@ export default function TaskCreationModal() {
   };
 
   const handleCancel = () => {
-    Alert.alert(
-      'Cancel Task Creation',
-      'Are you sure you want to cancel? Your changes will be lost.',
-      [
-        {
-          text: 'Continue Editing',
-          style: 'cancel',
-        },
-        {
-          text: 'Cancel',
-          style: 'destructive',
-          onPress: () => router.back(),
-        },
-      ]
-    );
+    router.back();
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-dark-bg">
+    <View className="flex-1 bg-dark-bg">
       <StatusBar style="light" backgroundColor="#1B1C30" />
-      
+
       <Header
         title="Create new task"
         leftAction={{
@@ -88,6 +78,6 @@ export default function TaskCreationModal() {
         onCancel={handleCancel}
         isLoading={isLoading}
       />
-    </SafeAreaView>
+    </View>
   );
 }

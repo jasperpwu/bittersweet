@@ -24,6 +24,14 @@ export default function RootLayout() {
         {fontsLoaded ? (
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen 
+              name="(modals)/task-creation" 
+              options={{ 
+                headerShown: false,
+                presentation: 'modal',
+                gestureEnabled: true,
+              }} 
+            />
           </Stack>
         ) : (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f1f1' }}>
