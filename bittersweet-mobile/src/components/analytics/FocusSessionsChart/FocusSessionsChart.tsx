@@ -3,7 +3,7 @@ import { View, Dimensions } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Line } from 'react-native-svg';
 import { Typography } from '../../ui/Typography';
 import { Button } from '../../ui/Button';
-import { ChartDataPoint, TimePeriod } from '../../../store/slices/focusSlice';
+import { ChartDataPoint, TimePeriod } from '../../../store/types';
 
 interface FocusSessionsChartProps {
   data: ChartDataPoint[];

@@ -2,4 +2,10 @@
 export * from './time';
 export * from './validation';
 export * from './formatting';
-export * from './dateUtils';
+export { 
+  generateWeekDates, 
+  isSameDay, 
+  isToday, 
+  getDayBounds,
+  formatDate as formatDateShort 
+} from './dateUtils';

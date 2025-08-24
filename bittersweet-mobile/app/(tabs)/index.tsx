@@ -2,14 +2,17 @@ import { ScrollView, SafeAreaView } from 'react-native';
 import { StatusBar } from '../../src/components/ui/StatusBar';
 import { UserProfile } from '../../src/components/home/UserProfile';
 import { DailyGoals } from '../../src/components/home/DailyGoals';
-import { useHomeStore } from '../../src/store/slices/homeSlice';
+import { useAuth } from '../../src/store';
 
 export default function HomeScreen() {
-  const {
-    user,
-    dailyGoals,
-    notificationCount,
-  } = useHomeStore();
+  const { user } = useAuth();
+  
+  // Placeholder data until we implement the full home functionality
+  const dailyGoals = {
+    focusTime: { current: 180, target: 240 },
+    sessions: { current: 3, target: 5 },
+  };
+  const notificationCount = 3;
 
   const handleNotificationPress = () => {
     console.log('Notification pressed');
@@ -32,11 +35,13 @@ export default function HomeScreen() {
         alwaysBounceVertical={false}
       >
         {/* User Profile Section - Top section with avatar and greeting */}
-        <UserProfile
-          user={user}
-          onNotificationPress={handleNotificationPress}
-          notificationCount={notificationCount}
-        />
+        {user && (
+          <UserProfile
+            user={user}
+            onNotificationPress={handleNotificationPress}
+            notificationCount={notificationCount}
+          />
+        )}
 
         {/* Daily Goals Section - Circular progress with gradient background */}
         <DailyGoals progress={dailyGoals} />

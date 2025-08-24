@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { View, Pressable } from 'react-native';
 import { Card } from '../../ui/Card';
 import { Typography } from '../../ui/Typography';
-import { FocusSession } from '../../../store/slices/focusSlice';
+import { FocusSession } from '../../../store/types';
 
 export interface SessionItemProps {
   session: FocusSession;
@@ -58,8 +58,8 @@ export const SessionItem: FC<SessionItemProps> = ({
   onPress,
   variant = 'detailed'
 }) => {
-  const categoryInfo = categoryMap[session.category as keyof typeof categoryMap] || {
-    name: session.category,
+  const categoryInfo = categoryMap[session.categoryId as keyof typeof categoryMap] || {
+    name: session.categoryId,
     icon: '⏱️',
     color: '#6592E9',
     gradient: 'from-blue-400 to-blue-500'
@@ -91,7 +91,7 @@ export const SessionItem: FC<SessionItemProps> = ({
                 numberOfLines={1}
                 className="mb-1"
               >
-                {session.category} Session
+                {session.categoryId} Session
               </Typography>
               <Typography 
                 variant="body-14" 
@@ -122,22 +122,22 @@ export const SessionItem: FC<SessionItemProps> = ({
         </View>
         
         {/* Tags (if any) */}
-        {session.tags.length > 0 && variant === 'detailed' && (
+        {session.tagIds.length > 0 && variant === 'detailed' && (
           <View className="flex-row flex-wrap mt-3 pt-3 border-t border-dark-border">
-            {session.tags.slice(0, 3).map((tag, index) => (
+            {session.tagIds.slice(0, 3).map((tagId: string, index: number) => (
               <View 
                 key={index}
                 className="bg-dark-border rounded-lg px-2 py-1 mr-2 mb-1"
               >
                 <Typography variant="body-12" color="secondary">
-                  {tag}
+                  {tagId}
                 </Typography>
               </View>
             ))}
-            {session.tags.length > 3 && (
+            {session.tagIds.length > 3 && (
               <View className="bg-dark-border rounded-lg px-2 py-1">
                 <Typography variant="body-12" color="secondary">
-                  +{session.tags.length - 3}
+                  +{session.tagIds.length - 3}
                 </Typography>
               </View>
             )}
@@ -145,7 +145,7 @@ export const SessionItem: FC<SessionItemProps> = ({
         )}
         
         {/* Completion indicator */}
-        {session.isCompleted && (
+        {session.status === 'completed' && (
           <View className="absolute top-2 right-2" testID="completion-indicator">
             <View className="w-2 h-2 rounded-full bg-success" />
           </View>

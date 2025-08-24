@@ -1,7 +1,7 @@
 import React, { FC } from 'react';
 import { View, ScrollView, Pressable } from 'react-native';
 import { Typography } from '../ui/Typography';
-import { Task } from '../../types/models';
+import { Task } from '../../store/types';
 
 interface TimelineProps {
   tasks: Task[];
@@ -70,7 +70,7 @@ export const Timeline: FC<TimelineProps> = ({
                     className={`p-3 rounded-xl mb-2 ${
                       task.status === 'completed' ? 'bg-success/20' : 'bg-gray-100 dark:bg-gray-700'
                     }`}
-                    style={{ borderLeftWidth: 4, borderLeftColor: task.category.color }}
+                    style={{ borderLeftWidth: 4, borderLeftColor: '#6592E9' }}
                   >
                     <Typography 
                       variant="subtitle-14-semibold" 
@@ -91,7 +91,7 @@ export const Timeline: FC<TimelineProps> = ({
                       })}
                     </Typography>
                     <Typography variant="body-12" color="secondary">
-                      {task.category.name} • {task.duration}min
+                      {task.categoryId} • {task.duration}min
                     </Typography>
                   </Pressable>
                 ))

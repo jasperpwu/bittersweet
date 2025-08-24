@@ -29,6 +29,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-system-ui": "~5.0.11",
     "expo-web-browser": "~14.2.0",
+    "immer": "^10.1.1",
     "lottie-react-native": "7.2.2",
     "nativewind": "latest",
     "react": "19.0.0",

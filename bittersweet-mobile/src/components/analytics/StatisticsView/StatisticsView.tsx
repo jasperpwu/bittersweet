@@ -3,7 +3,7 @@ import { View, ScrollView, Pressable } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { FocusSessionsChart } from '../FocusSessionsChart';
 import { SessionItem } from '../SessionItem';
-import { ChartDataPoint, FocusSession, TimePeriod } from '../../../store/slices/focusSlice';
+import { ChartDataPoint, FocusSession, TimePeriod } from '../../../store/types';
 
 interface StatisticsViewProps {
   chartData: ChartDataPoint[];

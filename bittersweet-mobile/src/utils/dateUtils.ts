@@ -22,6 +22,21 @@ export const generateWeekDates = (): Date[] => {
 };
 
 /**
+ * Generate an array of dates for a specific week starting from the given date
+ */
+export const generateWeekDatesFromStart = (weekStart: Date): Date[] => {
+  const weekDates: Date[] = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + i);
+    weekDates.push(date);
+  }
+  
+  return weekDates;
+};
+
+/**
  * Check if two dates are the same day
  */
 export const isSameDay = (date1: Date, date2: Date): boolean => {

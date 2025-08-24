@@ -1,490 +1,645 @@
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+/**
+ * Enhanced Focus slice with normalized structure and cross-store integration
+ * Addresses Requirements: 2.1, 2.2, 3.3, 4.2, 4.3, 5.1, 5.2, 8.2, 9.2, 9.3, 9.4
+ */
 
-interface FocusSession {
-  id: string;
-  startTime: Date;
-  endTime?: Date;
-  duration: number;
-  targetDuration: number;
-  category: string;
-  tags: string[];
-  isCompleted: boolean;
-  isPaused: boolean;
-  pausedAt?: Date;
-  totalPauseTime: number;
-  seedsEarned: number;
-}
+import { 
+  FocusSlice, 
+  FocusSettings, 
+  FocusSession, 
+  Category, 
+  Tag,
+  ChartDataPoint, 
+  TimePeriod,
+  ProductivityInsights 
+} from '../types';
+import { createNormalizedState, updateNormalizedState, EntityManager } from '../utils/entityManager';
+import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/eventBus';
 
-interface FocusState {
-  // Current session state
-  currentSession: FocusSession | null;
-  isTimerRunning: boolean;
-  remainingTime: number; // in seconds
-  
-  // Session history
-  sessions: FocusSession[];
-  
-  // Settings
-  defaultDuration: number; // in minutes
-  breakDuration: number; // in minutes
-  longBreakDuration: number; // in minutes
-  sessionsUntilLongBreak: number;
-  
-  // Categories and tags
-  categories: string[];
-  tags: string[];
-  
-  // Statistics
-  totalFocusTime: number; // in minutes
-  totalSessions: number;
-  currentStreak: number;
-  longestStreak: number;
-}
+// Re-export types for backward compatibility
+export type { FocusSession, ChartDataPoint, TimePeriod } from '../types';
 
-// Chart data interfaces for insights
-interface ChartDataPoint {
-  date: string;
-  value: number; // focus minutes
-  label: string; // day abbreviation
-}
-
-type TimePeriod = 'daily' | 'weekly' | 'monthly';
-
-interface FocusActions {
-  // Session management
-  startSession: (targetDuration: number, category: string, tags?: string[]) => void;
-  pauseSession: () => void;
-  resumeSession: () => void;
-  stopSession: () => void;
-  completeSession: () => void;
-  
-  // Timer management
-  updateRemainingTime: (time: number) => void;
-  
-  // Settings
-  updateSettings: (settings: Partial<Pick<FocusState, 'defaultDuration' | 'breakDuration' | 'longBreakDuration' | 'sessionsUntilLongBreak'>>) => void;
-  
-  // Categories and tags
-  addCategory: (category: string) => void;
-  removeCategory: (category: string) => void;
-  addTag: (tag: string) => void;
-  removeTag: (tag: string) => void;
-  
-  // Session history
-  addSession: (session: FocusSession) => void;
-  removeSession: (sessionId: string) => void;
-  
-  // Statistics
-  updateStats: () => void;
-  
-  // Insights data processing
-  getChartData: (period: TimePeriod) => ChartDataPoint[];
-  getSessionsByDate: () => Record<string, FocusSession[]>;
-  deleteSession: (sessionId: string) => void;
-  
-  // Reset
-  reset: () => void;
-}
-
-// Mock sessions for development
-const mockSessions: FocusSession[] = [
-  {
-    id: '1',
-    startTime: new Date(),
-    endTime: new Date(Date.now() + 25 * 60 * 1000),
-    duration: 25,
-    targetDuration: 25,
-    category: 'Work',
-    tags: ['important', 'project'],
-    isCompleted: true,
-    isPaused: false,
-    totalPauseTime: 0,
-    seedsEarned: 5,
-  },
-  {
-    id: '2',
-    startTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    endTime: new Date(Date.now() - 1.5 * 60 * 60 * 1000),
-    duration: 30,
-    targetDuration: 30,
-    category: 'Study',
-    tags: ['learning'],
-    isCompleted: true,
-    isPaused: false,
-    totalPauseTime: 0,
-    seedsEarned: 6,
-  },
-  {
-    id: '3',
-    startTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    endTime: new Date(Date.now() - 23.5 * 60 * 60 * 1000),
-    duration: 20,
-    targetDuration: 25,
-    category: 'Meditation',
-    tags: ['mindfulness'],
-    isCompleted: true,
-    isPaused: false,
-    totalPauseTime: 0,
-    seedsEarned: 4,
-  },
+// Default categories
+const defaultCategories: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>[] = [
+  { name: 'Work', color: '#6592E9', icon: '💼', isDefault: true, userId: '' },
+  { name: 'Study', color: '#51BC6F', icon: '📚', isDefault: true, userId: '' },
+  { name: 'Personal', color: '#EF786C', icon: '🏠', isDefault: true, userId: '' },
+  { name: 'Exercise', color: '#FF9800', icon: '💪', isDefault: true, userId: '' },
 ];
 
-const initialState: FocusState = {
-  currentSession: null,
-  isTimerRunning: false,
-  remainingTime: 0,
-  sessions: mockSessions,
-  defaultDuration: 25,
-  breakDuration: 5,
-  longBreakDuration: 15,
-  sessionsUntilLongBreak: 4,
-  categories: ['Work', 'Study', 'Reading', 'Exercise', 'Meditation'],
-  tags: ['important', 'urgent', 'learning', 'creative', 'routine'],
-  totalFocusTime: 75,
-  totalSessions: 3,
-  currentStreak: 2,
-  longestStreak: 2,
-};
+// Timer management
+let timerInterval: NodeJS.Timeout | null = null;
 
-// Helper functions for insights data processing
-const formatDateKey = (date: Date): string => {
-  const d = new Date(date);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-const formatDateLabel = (dateStr: string, period: TimePeriod): string => {
-  const date = new Date(dateStr);
+export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
+  const eventEmitter = createEventEmitter('focus');
+  const eventListener = createEventListener();
   
-  switch (period) {
-    case 'daily':
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
-    case 'weekly':
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay());
-      return `Week ${Math.ceil(date.getDate() / 7)}`;
-    case 'monthly':
-      return date.toLocaleDateString('en-US', { month: 'short' });
-    default:
-      return dateStr;
-  }
-};
-
-const getSessionsForPeriod = (sessions: FocusSession[], period: TimePeriod): FocusSession[] => {
-  const now = new Date();
-  let startDate: Date;
+  // Initialize default categories when user logs in
+  eventListener.on(STORE_EVENTS.USER_LOGGED_IN, (event) => {
+    const { user } = event.payload;
+    initializeDefaultCategories(user.id);
+  });
   
-  switch (period) {
-    case 'daily':
-      // Last 7 days
-      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
-    case 'weekly':
-      // Last 4 weeks
-      startDate = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
-      break;
-    case 'monthly':
-      // Last 6 months
-      startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-      break;
-    default:
-      startDate = new Date(0); // All time
-  }
-  
-  return sessions.filter(session => new Date(session.startTime) >= startDate);
-};
-
-const groupSessionsByPeriod = (sessions: FocusSession[], period: TimePeriod): Record<string, FocusSession[]> => {
-  return sessions.reduce((groups, session) => {
-    let groupKey: string;
-    const sessionDate = new Date(session.startTime);
-    
-    switch (period) {
-      case 'daily':
-        groupKey = formatDateKey(sessionDate);
-        break;
-      case 'weekly':
-        // Group by week start (Sunday)
-        const weekStart = new Date(sessionDate);
-        weekStart.setDate(sessionDate.getDate() - sessionDate.getDay());
-        groupKey = formatDateKey(weekStart);
-        break;
-      case 'monthly':
-        // Group by month
-        groupKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}-01`;
-        break;
-      default:
-        groupKey = formatDateKey(sessionDate);
-    }
-    
-    if (!groups[groupKey]) {
-      groups[groupKey] = [];
-    }
-    groups[groupKey].push(session);
-    return groups;
-  }, {} as Record<string, FocusSession[]>);
-};
-
-export const useFocusStore = create<FocusState & FocusActions>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
-
-      startSession: (targetDuration, category, tags = []) => {
-        const session: FocusSession = {
-          id: Date.now().toString(),
-          startTime: new Date(),
-          duration: 0,
-          targetDuration,
-          category,
-          tags,
-          isCompleted: false,
-          isPaused: false,
-          totalPauseTime: 0,
-          seedsEarned: 0,
+  // Initialize default categories if none exist
+  const initializeDefaultCategories = (userId: string) => {
+    const existingCategories = get().focus.categories;
+    if (existingCategories.allIds.length === 0) {
+      const categoriesWithIds = defaultCategories.map(cat => ({
+        ...cat,
+        id: `category-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+      
+      set((state: any) => {
+        const manager = new EntityManager(state.focus.categories);
+        categoriesWithIds.forEach(category => manager.add(category));
+        state.focus.categories = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
         };
-
-        set({
-          currentSession: session,
-          isTimerRunning: true,
-          remainingTime: targetDuration * 60, // convert to seconds
-        });
-      },
-
-      pauseSession: () => {
-        const { currentSession } = get();
-        if (currentSession && !currentSession.isPaused) {
-          set({
-            currentSession: {
-              ...currentSession,
-              isPaused: true,
-              pausedAt: new Date(),
-            },
-            isTimerRunning: false,
-          });
-        }
-      },
-
-      resumeSession: () => {
-        const { currentSession } = get();
-        if (currentSession && currentSession.isPaused && currentSession.pausedAt) {
-          const pauseTime = Date.now() - currentSession.pausedAt.getTime();
-          set({
-            currentSession: {
-              ...currentSession,
-              isPaused: false,
-              pausedAt: undefined,
-              totalPauseTime: currentSession.totalPauseTime + pauseTime,
-            },
-            isTimerRunning: true,
-          });
-        }
-      },
-
-      stopSession: () => {
-        const { currentSession } = get();
-        if (currentSession) {
-          const endTime = new Date();
-          const duration = Math.floor((endTime.getTime() - currentSession.startTime.getTime()) / 60000); // in minutes
-          
-          const completedSession: FocusSession = {
-            ...currentSession,
-            endTime,
-            duration,
-            isCompleted: false,
-          };
-
-          get().addSession(completedSession);
-        }
-
-        set({
-          currentSession: null,
-          isTimerRunning: false,
-          remainingTime: 0,
-        });
-      },
-
-      completeSession: () => {
-        const { currentSession } = get();
-        if (currentSession) {
-          const endTime = new Date();
-          const duration = currentSession.targetDuration; // Full duration completed
-          const seedsEarned = Math.floor(duration / 5); // 1 seed per 5 minutes
-          
-          const completedSession: FocusSession = {
-            ...currentSession,
-            endTime,
-            duration,
-            isCompleted: true,
-            seedsEarned,
-          };
-
-          get().addSession(completedSession);
-          get().updateStats();
-        }
-
-        set({
-          currentSession: null,
-          isTimerRunning: false,
-          remainingTime: 0,
-        });
-      },
-
-      updateRemainingTime: (time) => {
-        set({ remainingTime: Math.max(0, time) });
-      },
-
-      updateSettings: (settings) => {
-        set(settings);
-      },
-
-      addCategory: (category) => {
-        const { categories } = get();
-        if (!categories.includes(category)) {
-          set({ categories: [...categories, category] });
-        }
-      },
-
-      removeCategory: (category) => {
-        const { categories } = get();
-        set({ categories: categories.filter(c => c !== category) });
-      },
-
-      addTag: (tag) => {
-        const { tags } = get();
-        if (!tags.includes(tag)) {
-          set({ tags: [...tags, tag] });
-        }
-      },
-
-      removeTag: (tag) => {
-        const { tags } = get();
-        set({ tags: tags.filter(t => t !== tag) });
-      },
-
-      addSession: (session) => {
-        const { sessions } = get();
-        set({ sessions: [session, ...sessions] });
-      },
-
-      removeSession: (sessionId) => {
-        const { sessions } = get();
-        set({ sessions: sessions.filter(s => s.id !== sessionId) });
-      },
-
-      updateStats: () => {
-        const { sessions } = get();
-        const completedSessions = sessions.filter(s => s.isCompleted);
-        
-        const totalFocusTime = completedSessions.reduce((total, session) => total + session.duration, 0);
-        const totalSessions = completedSessions.length;
-        
-        // Calculate current streak
-        let currentStreak = 0;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        for (let i = 0; i < completedSessions.length; i++) {
-          const sessionDate = new Date(completedSessions[i].startTime);
-          sessionDate.setHours(0, 0, 0, 0);
-          
-          const daysDiff = Math.floor((today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
-          
-          if (daysDiff === currentStreak) {
-            currentStreak++;
-          } else {
-            break;
-          }
-        }
-        
-        // Calculate longest streak (simplified)
-        const longestStreak = Math.max(get().longestStreak, currentStreak);
-
-        set({
-          totalFocusTime,
-          totalSessions,
-          currentStreak,
-          longestStreak,
-        });
-      },
-
-      // Insights data processing actions
-      getChartData: (period) => {
-        const { sessions } = get();
-        const filteredSessions = getSessionsForPeriod(sessions, period);
-        const groupedSessions = groupSessionsByPeriod(filteredSessions, period);
-        
-        const chartData = Object.entries(groupedSessions).map(([date, sessionGroup]) => ({
-          date,
-          value: sessionGroup.reduce((total, session) => total + (session.duration || 0), 0),
-          label: formatDateLabel(date, period)
-        })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        // If no data, generate empty data points for the current period
-        if (chartData.length === 0) {
-          const now = new Date();
-          const emptyData: ChartDataPoint[] = [];
-          
-          if (period === 'weekly') {
-            // Generate 7 days of empty data
-            for (let i = 6; i >= 0; i--) {
-              const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-              emptyData.push({
-                date: formatDateKey(date),
-                value: 0,
-                label: date.toLocaleDateString('en-US', { weekday: 'short' })
-              });
-            }
-          }
-          
-          return emptyData;
-        }
-        
-        return chartData;
-      },
-
-      getSessionsByDate: () => {
-        const { sessions } = get();
-        return sessions.reduce((groups, session) => {
-          const dateKey = formatDateKey(session.startTime);
-          if (!groups[dateKey]) {
-            groups[dateKey] = [];
-          }
-          groups[dateKey].push(session);
-          return groups;
-        }, {} as Record<string, FocusSession[]>);
-      },
-
-      deleteSession: (sessionId) => {
-        const { sessions } = get();
-        const updatedSessions = sessions.filter(s => s.id !== sessionId);
-        set({ sessions: updatedSessions });
-        get().updateStats();
-      },
-
-      reset: () => {
-        set(initialState);
-      },
-    }),
-    {
-      name: 'focus-store',
-      storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({
-        sessions: state.sessions,
-        defaultDuration: state.defaultDuration,
-        breakDuration: state.breakDuration,
-        longBreakDuration: state.longBreakDuration,
-        sessionsUntilLongBreak: state.sessionsUntilLongBreak,
-        categories: state.categories,
-        tags: state.tags,
-        totalFocusTime: state.totalFocusTime,
-        totalSessions: state.totalSessions,
-        currentStreak: state.currentStreak,
-        longestStreak: state.longestStreak,
-      }),
+      });
+      
+      if (__DEV__) {
+        console.log('✅ Default categories initialized for user:', userId);
+      }
     }
-  )
-);
-
-export type { FocusSession, FocusState, FocusActions, ChartDataPoint, TimePeriod };
+  };
+  
+  // Calculate seeds earned based on session duration and completion
+  const calculateSeedsEarned = (session: FocusSession): number => {
+    if (session.status !== 'completed') return 0;
+    
+    const completionRate = session.duration / session.targetDuration;
+    const baseSeeds = Math.floor(session.duration / 60); // 1 seed per minute
+    const bonusMultiplier = completionRate >= 0.9 ? 1.5 : completionRate >= 0.7 ? 1.2 : 1;
+    
+    return Math.floor(baseSeeds * bonusMultiplier);
+  };
+  
+  // Start timer for current session
+  const startTimer = () => {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+    }
+    
+    timerInterval = setInterval(() => {
+      const currentSession = get().focus.currentSession;
+      
+      if (!currentSession.isRunning || !currentSession.session) {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        return;
+      }
+      
+      const elapsed = Date.now() - (currentSession.startedAt?.getTime() || 0);
+      const remaining = Math.max(0, (currentSession.session.targetDuration * 60 * 1000) - elapsed);
+      
+      set((state: any) => {
+        state.focus.currentSession.remainingTime = Math.floor(remaining / 1000);
+        
+        // Update session duration
+        if (state.focus.currentSession.session) {
+          state.focus.currentSession.session.duration = Math.floor(elapsed / 1000 / 60);
+        }
+      });
+      
+      // Auto-complete when time is up
+      if (remaining <= 0) {
+        get().focus.completeSession();
+      }
+    }, 1000);
+  };
+  
+  // Stop timer
+  const stopTimer = () => {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  };
+  
+  return {
+    // Normalized State
+    sessions: createNormalizedState(),
+    categories: createNormalizedState(),
+    tags: createNormalizedState(),
+    
+    // Current Session State
+    currentSession: {
+      session: null,
+      isRunning: false,
+      remainingTime: 0,
+      startedAt: null,
+    },
+    
+    // Settings
+    settings: {
+      defaultDuration: 25,
+      breakDuration: 5,
+      longBreakDuration: 15,
+      sessionsUntilLongBreak: 4,
+      soundEnabled: true,
+      vibrationEnabled: true,
+      autoStartBreaks: false,
+      autoStartSessions: false,
+    },
+    
+    // Actions
+    startSession: (params: { targetDuration: number; categoryId: string; tagIds: string[]; description?: string }) => {
+      const currentUser = get().auth?.user;
+      if (!currentUser) {
+        throw new Error('User must be logged in to start a session');
+      }
+      
+      // Validate parameters
+      if (!params.targetDuration || params.targetDuration <= 0) {
+        throw new Error('Target duration must be greater than 0');
+      }
+      
+      if (params.targetDuration > 180) {
+        throw new Error('Target duration cannot exceed 180 minutes');
+      }
+      
+      if (!params.categoryId) {
+        throw new Error('Category is required');
+      }
+      
+      // Check if category exists
+      const category = get().focus.getCategoryById(params.categoryId);
+      if (!category) {
+        throw new Error('Selected category does not exist');
+      }
+      
+      // Check if there's already an active session
+      const currentSession = get().focus.currentSession;
+      if (currentSession.session && currentSession.isRunning) {
+        throw new Error('A session is already running. Please complete or cancel the current session first.');
+      }
+      
+      const newSession: FocusSession = {
+        id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        userId: currentUser.id,
+        startTime: new Date(),
+        duration: 0,
+        targetDuration: params.targetDuration,
+        categoryId: params.categoryId,
+        tagIds: params.tagIds,
+        description: params.description,
+        status: 'active',
+        seedsEarned: 0,
+        pauseHistory: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      set((state: any) => {
+        // Add session to normalized state
+        const manager = new EntityManager(state.focus.sessions);
+        manager.add(newSession);
+        state.focus.sessions = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+        
+        // Set as current session
+        state.focus.currentSession = {
+          session: newSession,
+          isRunning: true,
+          remainingTime: params.targetDuration * 60,
+          startedAt: new Date(),
+        };
+      });
+      
+      // Start timer
+      startTimer();
+      
+      // Emit session started event
+      eventEmitter.emit(STORE_EVENTS.FOCUS_SESSION_STARTED, {
+        sessionId: newSession.id,
+        targetDuration: params.targetDuration,
+        categoryId: params.categoryId,
+      });
+      
+      if (__DEV__) {
+        console.log('✅ Focus session started:', newSession.id);
+      }
+    },
+    
+    pauseSession: () => {
+      const currentSession = get().focus.currentSession;
+      
+      if (!currentSession.session || !currentSession.isRunning) {
+        throw new Error('No active session to pause');
+      }
+      
+      const pauseRecord = {
+        startTime: new Date(),
+        endTime: new Date(), // Will be updated when resumed
+      };
+      
+      set((state: any) => {
+        if (state.focus.currentSession.session) {
+          state.focus.currentSession.session.status = 'paused';
+          state.focus.currentSession.session.pauseHistory.push(pauseRecord);
+          state.focus.currentSession.session.updatedAt = new Date();
+        }
+        state.focus.currentSession.isRunning = false;
+        
+        // Update in normalized state
+        const manager = new EntityManager(state.focus.sessions);
+        if (state.focus.currentSession.session) {
+          manager.update(state.focus.currentSession.session.id, {
+            status: 'paused',
+            pauseHistory: state.focus.currentSession.session.pauseHistory,
+          });
+          state.focus.sessions = {
+            ...manager.getState(),
+            loading: false,
+            error: null,
+            lastUpdated: new Date(),
+          };
+        }
+      });
+      
+      // Stop timer
+      stopTimer();
+      
+      // Emit session paused event
+      eventEmitter.emit(STORE_EVENTS.FOCUS_SESSION_PAUSED, {
+        sessionId: currentSession.session.id,
+      });
+      
+      if (__DEV__) {
+        console.log('⏸️ Focus session paused:', currentSession.session.id);
+      }
+    },
+    
+    resumeSession: () => {
+      const currentSession = get().focus.currentSession;
+      
+      if (!currentSession.session || currentSession.isRunning) {
+        throw new Error('No paused session to resume');
+      }
+      
+      set((state: any) => {
+        if (state.focus.currentSession.session) {
+          state.focus.currentSession.session.status = 'active';
+          
+          // Update last pause record end time
+          const pauseHistory = state.focus.currentSession.session.pauseHistory;
+          if (pauseHistory.length > 0) {
+            pauseHistory[pauseHistory.length - 1].endTime = new Date();
+          }
+          
+          state.focus.currentSession.session.updatedAt = new Date();
+        }
+        state.focus.currentSession.isRunning = true;
+        state.focus.currentSession.startedAt = new Date();
+        
+        // Update in normalized state
+        const manager = new EntityManager(state.focus.sessions);
+        if (state.focus.currentSession.session) {
+          manager.update(state.focus.currentSession.session.id, {
+            status: 'active',
+            pauseHistory: state.focus.currentSession.session.pauseHistory,
+          });
+          state.focus.sessions = {
+            ...manager.getState(),
+            loading: false,
+            error: null,
+            lastUpdated: new Date(),
+          };
+        }
+      });
+      
+      // Restart timer
+      startTimer();
+      
+      // Emit session resumed event
+      eventEmitter.emit(STORE_EVENTS.FOCUS_SESSION_RESUMED, {
+        sessionId: currentSession.session.id,
+      });
+      
+      if (__DEV__) {
+        console.log('▶️ Focus session resumed:', currentSession.session.id);
+      }
+    },
+    
+    completeSession: () => {
+      const currentSession = get().focus.currentSession;
+      
+      if (!currentSession.session) {
+        throw new Error('No active session to complete');
+      }
+      
+      const completedSession = {
+        ...currentSession.session,
+        status: 'completed' as const,
+        endTime: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      // Calculate seeds earned
+      const seedsEarned = calculateSeedsEarned(completedSession);
+      completedSession.seedsEarned = seedsEarned;
+      
+      set((state: any) => {
+        // Update in normalized state
+        const manager = new EntityManager(state.focus.sessions);
+        manager.update(completedSession.id, completedSession);
+        state.focus.sessions = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+        
+        // Clear current session
+        state.focus.currentSession = {
+          session: null,
+          isRunning: false,
+          remainingTime: 0,
+          startedAt: null,
+        };
+      });
+      
+      // Stop timer
+      stopTimer();
+      
+      // Emit session completed event for cross-store communication
+      eventEmitter.emitFocusSessionCompleted(
+        completedSession.id,
+        seedsEarned,
+        completedSession.duration
+      );
+      
+      if (__DEV__) {
+        console.log('✅ Focus session completed:', completedSession.id, `Seeds earned: ${seedsEarned}`);
+      }
+    },
+    
+    cancelSession: () => {
+      const currentSession = get().focus.currentSession;
+      
+      if (!currentSession.session) {
+        throw new Error('No active session to cancel');
+      }
+      
+      set((state: any) => {
+        // Update in normalized state
+        const manager = new EntityManager(state.focus.sessions);
+        manager.update(currentSession.session!.id, {
+          status: 'cancelled',
+          endTime: new Date(),
+          updatedAt: new Date(),
+        });
+        state.focus.sessions = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+        
+        // Clear current session
+        state.focus.currentSession = {
+          session: null,
+          isRunning: false,
+          remainingTime: 0,
+          startedAt: null,
+        };
+      });
+      
+      // Stop timer
+      stopTimer();
+      
+      // Emit session cancelled event
+      eventEmitter.emit(STORE_EVENTS.FOCUS_SESSION_CANCELLED, {
+        sessionId: currentSession.session.id,
+      });
+      
+      if (__DEV__) {
+        console.log('❌ Focus session cancelled:', currentSession.session.id);
+      }
+    },
+    
+    // Category/Tag Management
+    addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const currentUser = get().auth?.user;
+      if (!currentUser) {
+        throw new Error('User must be logged in to add categories');
+      }
+      
+      const newCategory: Category = {
+        ...category,
+        id: `category-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        userId: currentUser.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      set((state: any) => {
+        const manager = new EntityManager(state.focus.categories);
+        manager.add(newCategory);
+        state.focus.categories = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+      });
+      
+      if (__DEV__) {
+        console.log('✅ Category added:', newCategory.name);
+      }
+    },
+    
+    updateCategory: (id: string, updates: Partial<Category>) => {
+      set((state: any) => {
+        const manager = new EntityManager(state.focus.categories);
+        manager.update(id, updates);
+        state.focus.categories = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+      });
+      
+      if (__DEV__) {
+        console.log('✅ Category updated:', id);
+      }
+    },
+    
+    deleteCategory: (id: string) => {
+      // Check if category is being used by any sessions
+      const sessions = get().focus.sessions;
+      const manager = new EntityManager(sessions);
+      const sessionsUsingCategory = manager.query(session => session.categoryId === id);
+      
+      if (sessionsUsingCategory.length > 0) {
+        throw new Error('Cannot delete category that is being used by sessions');
+      }
+      
+      set((state: any) => {
+        const manager = new EntityManager(state.focus.categories);
+        manager.remove(id);
+        state.focus.categories = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+      });
+      
+      if (__DEV__) {
+        console.log('✅ Category deleted:', id);
+      }
+    },
+    
+    // Selectors
+    getSessionById: (id: string) => {
+      const sessions = get().focus.sessions;
+      const manager = new EntityManager(sessions);
+      return manager.getById(id);
+    },
+    
+    getSessionsForDateRange: (start: Date, end: Date) => {
+      const sessions = get().focus.sessions;
+      const manager = new EntityManager(sessions);
+      return manager.query(session => {
+        const sessionDate = new Date(session.startTime);
+        return sessionDate >= start && sessionDate <= end;
+      });
+    },
+    
+    getCategoryById: (id: string) => {
+      const categories = get().focus.categories;
+      const manager = new EntityManager(categories);
+      return manager.getById(id);
+    },
+    
+    getActiveSession: () => {
+      return get().focus.currentSession.session;
+    },
+    
+    // Analytics
+    getChartData: (period: TimePeriod) => {
+      const sessions = get().focus.sessions;
+      const manager = new EntityManager(sessions);
+      const completedSessions = manager.query(session => session.status === 'completed');
+      
+      // Group sessions by date based on period
+      const groupedData: Record<string, number> = {};
+      
+      completedSessions.forEach(session => {
+        let key: string;
+        const date = new Date(session.startTime);
+        
+        switch (period) {
+          case 'daily':
+            key = date.toISOString().split('T')[0];
+            break;
+          case 'weekly':
+            const weekStart = new Date(date);
+            weekStart.setDate(date.getDate() - date.getDay());
+            key = weekStart.toISOString().split('T')[0];
+            break;
+          case 'monthly':
+            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            break;
+          case 'yearly':
+            key = String(date.getFullYear());
+            break;
+        }
+        
+        groupedData[key] = (groupedData[key] || 0) + session.duration;
+      });
+      
+      return Object.entries(groupedData).map(([dateStr, value]) => ({
+        date: new Date(dateStr),
+        value,
+        label: dateStr,
+      }));
+    },
+    
+    getProductivityInsights: () => {
+      const sessions = get().focus.sessions;
+      const manager = new EntityManager(sessions);
+      const completedSessions = manager.query(session => session.status === 'completed');
+      
+      if (completedSessions.length === 0) {
+        return {
+          bestTimeOfDay: 'No data',
+          mostProductiveDay: 'No data',
+          averageSessionLength: 0,
+          completionRate: 0,
+          weeklyTrend: 'stable' as const,
+          suggestions: ['Start your first focus session to see insights!'],
+        };
+      }
+      
+      // Calculate insights
+      const totalSessions = manager.count();
+      const completionRate = (completedSessions.length / totalSessions) * 100;
+      const averageSessionLength = completedSessions.reduce((sum, session) => sum + session.duration, 0) / completedSessions.length;
+      
+      // Find best time of day
+      const hourCounts: Record<number, number> = {};
+      completedSessions.forEach(session => {
+        const hour = new Date(session.startTime).getHours();
+        hourCounts[hour] = (hourCounts[hour] || 0) + session.duration;
+      });
+      
+      const bestHour = Object.entries(hourCounts).reduce((best, [hour, duration]) => 
+        duration > best.duration ? { hour: parseInt(hour), duration } : best,
+        { hour: 0, duration: 0 }
+      );
+      
+      const bestTimeOfDay = `${bestHour.hour}:00 - ${bestHour.hour + 1}:00`;
+      
+      // Find most productive day
+      const dayCounts: Record<number, number> = {};
+      completedSessions.forEach(session => {
+        const day = new Date(session.startTime).getDay();
+        dayCounts[day] = (dayCounts[day] || 0) + session.duration;
+      });
+      
+      const bestDay = Object.entries(dayCounts).reduce((best, [day, duration]) => 
+        duration > best.duration ? { day: parseInt(day), duration } : best,
+        { day: 0, duration: 0 }
+      );
+      
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const mostProductiveDay = dayNames[bestDay.day];
+      
+      // Generate suggestions
+      const suggestions: string[] = [];
+      if (completionRate < 70) {
+        suggestions.push('Try shorter sessions to improve completion rate');
+      }
+      if (averageSessionLength < 15) {
+        suggestions.push('Consider longer sessions for deeper focus');
+      }
+      if (completedSessions.length < 5) {
+        suggestions.push('Build consistency with daily focus sessions');
+      }
+      
+      return {
+        bestTimeOfDay,
+        mostProductiveDay,
+        averageSessionLength: Math.round(averageSessionLength),
+        completionRate: Math.round(completionRate),
+        weeklyTrend: 'stable' as const, // TODO: Calculate actual trend
+        suggestions,
+      };
+    },
+  };
+}

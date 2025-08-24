@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { View, ScrollView } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { SwipeableSessionItem } from '../SwipeableSessionItem';
-import { FocusSession } from '../../../store/slices/focusSlice';
+import { FocusSession } from '../../../store/types';
 
 interface HistoryViewProps {
   sessionsByDate: Record<string, FocusSession[]>;

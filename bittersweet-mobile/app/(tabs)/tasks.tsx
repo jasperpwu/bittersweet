@@ -4,30 +4,69 @@ import { router } from 'expo-router';
 import { StatusBar } from '../../src/components/ui/StatusBar';
 import { Header } from '../../src/components/ui/Header';
 import { DateSelector, Timeline } from '../../src/components/tasks';
-import { useTasksStore } from '../../src/store/slices/tasksSlice';
-import { generateWeekDates } from '../../src/utils/dateUtils';
+import { useTasks, useTasksActions, useTasksSelectors } from '../../src/store';
+import { generateWeekDatesFromStart } from '../../src/utils/dateUtils';
 
 export default function TasksScreen() {
-  const {
-    selectedDate,
-    setSelectedDate,
-    getTasksForDate,
-  } = useTasksStore();
+  const { selectedDate: rawSelectedDate, currentWeekStart } = useTasks();
+  const selectors = useTasksSelectors();
+  const actions = useTasksActions();
+  
+  if (__DEV__) {
+    console.log('TasksScreen actions:', {
+      hasActions: !!actions,
+      setSelectedDateType: typeof actions.setSelectedDate,
+      actionsKeys: Object.keys(actions),
+    });
+  }
 
-  // Generate week dates starting from today
-  const weekDates = useMemo(() => generateWeekDates(), []);
+  // Ensure selectedDate is always a Date object
+  const selectedDate = useMemo(() => {
+    if (!rawSelectedDate) return new Date();
+    if (rawSelectedDate instanceof Date) return rawSelectedDate;
+    // If it's a string, convert to Date
+    if (typeof rawSelectedDate === 'string') return new Date(rawSelectedDate);
+    return new Date();
+  }, [rawSelectedDate]);
 
-  // Get tasks for the selected date
-  const tasksForSelectedDate = useMemo(() => 
-    getTasksForDate(selectedDate), 
-    [selectedDate, getTasksForDate]
-  );
+  // Debug logging
+  if (__DEV__) {
+    console.log('TasksScreen render:', {
+      rawSelectedDate,
+      selectedDate,
+      selectedDateType: typeof selectedDate,
+      isDateInstance: selectedDate instanceof Date,
+      selectorsAvailable: !!selectors,
+      getTasksForDateType: typeof selectors.getTasksForDate,
+    });
+  }
+
+  // Generate week dates based on current week start
+  const weekDates = useMemo(() => generateWeekDatesFromStart(currentWeekStart), [currentWeekStart]);
+
+  // Get tasks for the selected date - with safety check
+  const tasksForSelectedDate = useMemo(() => {
+    if (!selectors.getTasksForDate || typeof selectors.getTasksForDate !== 'function') {
+      console.warn('getTasksForDate is not available');
+      return [];
+    }
+    return selectors.getTasksForDate(selectedDate);
+  }, [selectedDate, selectors.getTasksForDate]);
 
   // Current time for the timeline indicator
   const currentTime = new Date();
 
   const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
+    if (__DEV__) {
+      console.log('handleDateSelect called with:', date, 'setSelectedDate type:', typeof actions.setSelectedDate);
+    }
+    
+    // Use the main store
+    if (typeof actions.setSelectedDate === 'function') {
+      actions.setSelectedDate(date);
+    } else {
+      console.warn('Main store setSelectedDate is not a function:', typeof actions.setSelectedDate);
+    }
   };
 
   const handleTaskPress = (taskId: string) => {
@@ -37,6 +76,18 @@ export default function TasksScreen() {
 
   const handleAddTask = () => {
     router.push('/(modals)/task-creation');
+  };
+
+  const handlePreviousWeek = () => {
+    if (typeof actions.goToPreviousWeek === 'function') {
+      actions.goToPreviousWeek();
+    }
+  };
+
+  const handleNextWeek = () => {
+    if (typeof actions.goToNextWeek === 'function') {
+      actions.goToNextWeek();
+    }
   };
 
   return (
@@ -58,6 +109,9 @@ export default function TasksScreen() {
             selectedDate={selectedDate}
             onDateSelect={handleDateSelect}
             weekDates={weekDates}
+            onPreviousWeek={handlePreviousWeek}
+            onNextWeek={handleNextWeek}
+            currentWeekStart={currentWeekStart}
           />
         </View>
 
