@@ -77,7 +77,7 @@ export const Avatar: FC<AvatarProps> = ({
       ) : (
         <Typography 
           variant={size === 'large' ? 'headline-18' : size === 'medium' ? 'subtitle-14-semibold' : 'body-12'} 
-          color="white"
+          className="text-white"
         >
           {getInitials(name)}
         </Typography>

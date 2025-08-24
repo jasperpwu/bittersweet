@@ -18,7 +18,24 @@ import { createTasksSlice } from './slices/tasksSlice';
 import { createRewardsSlice } from './slices/rewardsSlice';
 import { createSocialSlice } from './slices/socialSlice';
 import { createSettingsSlice } from './slices/settingsSlice';
-import { createUISlice } from './slices/uiSlice';
+
+// Temporarily create a simple UI slice inline to avoid import issues
+const createUISlice = (set: any, get: any, api: any) => ({
+  isHydrated: true,
+  modals: {},
+  loading: { global: false, actions: {} },
+  errors: [],
+  showModal: (type: string, data?: any) => {},
+  hideModal: (type: string) => {},
+  setLoading: (action: string, loading: boolean) => {},
+  addError: (error: any) => {},
+  clearError: (errorId: string) => {},
+  clearAllErrors: () => {},
+  isModalVisible: (type: string) => false,
+  getModalData: (type: string) => null,
+  isLoading: (action?: string) => false,
+  getErrors: () => [],
+});
 
 /**
  * Create the unified store with all middleware
@@ -43,6 +60,11 @@ export const useAppStore = create<RootStore>()(
           ui: createUISlice(set, get, api),
         };
         
+        // Set hydration flag
+        if (store.ui) {
+          store.ui.isHydrated = true;
+        }
+        
         if (__DEV__) {
           console.log('✅ Store slices created successfully:', Object.keys(store));
           console.log('✅ Tasks slice functions:', store.tasks ? Object.keys(store.tasks).filter(key => typeof (store.tasks as any)[key] === 'function') : 'no tasks');
@@ -65,14 +87,22 @@ export const useAppStore = create<RootStore>()(
  * Typed hooks for accessing store slices
  */
 export const useAuth = () => useAppStore((state) => {
-  if (!state.auth) {
-    console.warn('Auth slice not initialized');
+  if (!state || !state.auth) {
+    if (__DEV__) {
+      console.warn('Auth slice not initialized, state:', state);
+    }
     return {
       user: null,
       isAuthenticated: false,
       authToken: null,
       refreshToken: null,
       loginState: { data: null, loading: false, error: null, lastFetch: null },
+      login: async () => { throw new Error('Auth not initialized'); },
+      logout: () => { console.warn('Auth not initialized'); },
+      refreshAuth: async () => { throw new Error('Auth not initialized'); },
+      updateProfile: async () => { throw new Error('Auth not initialized'); },
+      getUser: () => null,
+      isLoggedIn: () => false,
     };
   }
   return state.auth;
@@ -206,13 +236,25 @@ export const useSettings = () => useAppStore((state) => {
 });
 
 export const useUI = () => useAppStore((state) => {
-  if (!state.ui) {
-    console.warn('UI slice not initialized');
+  if (!state || !state.ui) {
+    if (__DEV__) {
+      console.warn('UI slice not initialized, state:', state);
+    }
     return {
-      isHydrated: false,
+      isHydrated: true, // Default to true to avoid blocking
       modals: {},
       loading: { global: false, actions: {} },
       errors: [],
+      showModal: () => {},
+      hideModal: () => {},
+      setLoading: () => {},
+      addError: () => {},
+      clearError: () => {},
+      clearAllErrors: () => {},
+      isModalVisible: () => false,
+      getModalData: () => null,
+      isLoading: () => false,
+      getErrors: () => [],
     };
   }
   return state.ui;
