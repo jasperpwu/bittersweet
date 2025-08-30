@@ -1,15 +1,17 @@
 import React, { FC, useState } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
 import { Typography } from '../ui/Typography';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useFocus } from '../../store';
 
 export interface CreateTaskInput {
   title: string;
   description?: string;
   startTime: Date;
   endTime: Date;
-  category: string;
+  category: string; // This will be the category ID
   priority: 'low' | 'medium' | 'high';
   tags: string[];
 }
@@ -27,23 +29,35 @@ export const TaskForm: FC<TaskFormProps> = ({
   isLoading = false,
   initialData,
 }) => {
+  const { categories } = useFocus();
+  
+  // Get available categories
+  const availableCategories = categories.allIds.map(id => categories.byId[id]).filter(Boolean);
+  const defaultCategoryId = availableCategories.length > 0 ? availableCategories[0].id : '';
+  
   const [formData, setFormData] = useState<CreateTaskInput>({
     title: initialData?.title || '',
     description: initialData?.description || '',
     startTime: initialData?.startTime || new Date(),
     endTime: initialData?.endTime || new Date(Date.now() + 60 * 60 * 1000), // 1 hour later
-    category: initialData?.category || 'Work',
+    category: initialData?.category || defaultCategoryId,
     priority: initialData?.priority || 'medium',
     tags: initialData?.tags || [],
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof CreateTaskInput, string>>>({});
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof CreateTaskInput, string>> = {};
 
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
+    }
+
+    if (!formData.category) {
+      newErrors.category = 'Category is required';
     }
 
     if (formData.startTime >= formData.endTime) {
@@ -98,15 +112,15 @@ export const TaskForm: FC<TaskFormProps> = ({
               Category
             </Typography>
             <View className="flex-row flex-wrap">
-              {['Work', 'Personal', 'Study', 'Exercise', 'Other'].map((category) => (
+              {availableCategories.map((category) => (
                 <Button
-                  key={category}
-                  variant={formData.category === category ? 'primary' : 'secondary'}
+                  key={category.id}
+                  variant={formData.category === category.id ? 'primary' : 'secondary'}
                   size="small"
-                  onPress={() => updateFormData('category', category)}
+                  onPress={() => updateFormData('category', category.id)}
                   className="mr-2 mb-2"
                 >
-                  {category}
+                  {category.icon} {category.name}
                 </Button>
               ))}
             </View>
@@ -132,19 +146,91 @@ export const TaskForm: FC<TaskFormProps> = ({
             </View>
           </View>
 
-          {/* Time placeholders - would need proper time pickers */}
+          {/* Time Selectors */}
           <View>
             <Typography variant="body-14" color="white" className="mb-3">
               Time
             </Typography>
-            <View className="bg-gray-700 rounded-xl p-4">
-              <Typography variant="body-14" color="secondary">
-                Start: {formData.startTime.toLocaleTimeString()}
+            
+            {/* Start Time */}
+            <View className="mb-3">
+              <Typography variant="body-12" color="secondary" className="mb-2">
+                Start Time
               </Typography>
-              <Typography variant="body-14" color="secondary" className="mt-2">
-                End: {formData.endTime.toLocaleTimeString()}
+              <Pressable
+                onPress={() => setShowStartTimePicker(true)}
+                className="bg-gray-700 rounded-xl p-4 border border-gray-600"
+              >
+                <Typography variant="body-14" color="white">
+                  {formData.startTime.toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: true 
+                  })}
+                </Typography>
+              </Pressable>
+            </View>
+
+            {/* End Time */}
+            <View className="mb-3">
+              <Typography variant="body-12" color="secondary" className="mb-2">
+                End Time
+              </Typography>
+              <Pressable
+                onPress={() => setShowEndTimePicker(true)}
+                className="bg-gray-700 rounded-xl p-4 border border-gray-600"
+              >
+                <Typography variant="body-14" color="white">
+                  {formData.endTime.toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: true 
+                  })}
+                </Typography>
+              </Pressable>
+            </View>
+
+            {/* Duration Display */}
+            <View className="bg-gray-800 rounded-xl p-3">
+              <Typography variant="body-12" color="secondary">
+                Duration: {Math.round((formData.endTime.getTime() - formData.startTime.getTime()) / (1000 * 60))} minutes
               </Typography>
             </View>
+
+            {/* Time Pickers */}
+            {showStartTimePicker && (
+              <DateTimePicker
+                value={formData.startTime}
+                mode="time"
+                display="default"
+                onChange={(event, selectedTime) => {
+                  setShowStartTimePicker(false);
+                  if (selectedTime) {
+                    updateFormData('startTime', selectedTime);
+                    // Auto-adjust end time to maintain duration if needed
+                    if (selectedTime >= formData.endTime) {
+                      const newEndTime = new Date(selectedTime.getTime() + 60 * 60 * 1000);
+                      updateFormData('endTime', newEndTime);
+                    }
+                  }
+                }}
+              />
+            )}
+
+            {showEndTimePicker && (
+              <DateTimePicker
+                value={formData.endTime}
+                mode="time"
+                display="default"
+                minimumDate={formData.startTime}
+                onChange={(event, selectedTime) => {
+                  setShowEndTimePicker(false);
+                  if (selectedTime) {
+                    updateFormData('endTime', selectedTime);
+                  }
+                }}
+              />
+            )}
           </View>
         </View>
       </ScrollView>

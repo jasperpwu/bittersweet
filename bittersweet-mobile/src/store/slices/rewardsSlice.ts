@@ -6,7 +6,13 @@
 import { RewardsSlice, RewardTransaction, UnlockableApp } from '../types';
 import { createNormalizedState, updateNormalizedState } from '../utils/entityManager';
 import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/eventBus';
-import { generateId } from '../utils/idGenerator';
+
+// Simple ID generator to avoid import issues
+const generateId = () => {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${randomStr}`;
+};
 
 // Mock data for unlockable apps
 const mockUnlockableApps: UnlockableApp[] = [

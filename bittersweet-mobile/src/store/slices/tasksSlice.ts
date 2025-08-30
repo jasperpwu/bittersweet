@@ -61,8 +61,11 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
     
     // Actions
     createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'focusSessionIds'>) => {
-      const currentUser = get().auth?.user;
-      if (!currentUser) {
+      const state = get();
+      const currentUser = state?.auth?.user;
+      
+      // Allow task creation in development even without a logged-in user
+      if (!currentUser && !__DEV__) {
         throw new Error('User must be logged in to create tasks');
       }
       
@@ -96,7 +99,7 @@ export function createTasksSlice(set: any, get: any, api: any): TasksSlice {
       const newTask: Task = {
         ...task,
         id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        userId: currentUser.id,
+        userId: task.userId || currentUser?.id || 'unknown-user',
         progress: {
           completed: false,
           focusTimeSpent: 0,

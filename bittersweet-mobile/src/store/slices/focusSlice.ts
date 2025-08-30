@@ -68,6 +68,27 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       }
     }
   };
+
+  // Initialize default categories immediately if we have a user or in development
+  // Use setTimeout to ensure store is fully initialized
+  setTimeout(() => {
+    try {
+      const state = get();
+      const currentUser = state?.auth?.user;
+      const categories = state?.focus?.categories;
+      
+      if (categories && categories.allIds.length === 0) {
+        const userId = currentUser?.id || (__DEV__ ? 'dev-user' : null);
+        if (userId) {
+          initializeDefaultCategories(userId);
+        }
+      }
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('Could not initialize default categories:', error);
+      }
+    }
+  }, 500); // Give more time for store initialization
   
   // Calculate seeds earned based on session duration and completion
   const calculateSeedsEarned = (session: FocusSession): number => {
@@ -152,7 +173,8 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     
     // Actions
     startSession: (params: { targetDuration: number; categoryId: string; tagIds: string[]; description?: string }) => {
-      const currentUser = get().auth?.user;
+      const state = get();
+      const currentUser = state?.auth?.user;
       if (!currentUser) {
         throw new Error('User must be logged in to start a session');
       }
@@ -432,7 +454,8 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     
     // Category/Tag Management
     addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => {
-      const currentUser = get().auth?.user;
+      const state = get();
+      const currentUser = state?.auth?.user;
       if (!currentUser) {
         throw new Error('User must be logged in to add categories');
       }

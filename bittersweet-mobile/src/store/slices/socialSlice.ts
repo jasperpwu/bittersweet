@@ -6,7 +6,22 @@
 import { SocialSlice, Squad, Challenge, User, SquadMember } from '../types';
 import { createNormalizedState, updateNormalizedState } from '../utils/entityManager';
 import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/eventBus';
-import { generateId, generateShortId } from '../utils/idGenerator';
+
+// Simple ID generators to avoid import issues
+const generateId = () => {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${randomStr}`;
+};
+
+const generateShortId = (length: number = 6) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 // Mock data for squads
 const mockSquads: Squad[] = [

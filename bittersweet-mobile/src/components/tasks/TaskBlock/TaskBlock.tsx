@@ -6,7 +6,8 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { Typography } from '../../ui/Typography/Typography';
-import { Task } from '../../../types/models';
+import { Task } from '../../../store/types';
+import { useFocus } from '../../../store';
 
 interface TaskBlockProps {
   task: Task;
@@ -64,6 +65,7 @@ export const TaskBlock: FC<TaskBlockProps> = ({
   style,
   pixelsPerMinute,
 }) => {
+  const { categories } = useFocus();
   const scale = useSharedValue(1);
   
   const animatedStyle = useAnimatedStyle(() => ({
@@ -81,8 +83,12 @@ export const TaskBlock: FC<TaskBlockProps> = ({
   // Calculate block height based on duration
   const blockHeight = Math.max(task.duration * pixelsPerMinute, 50);
   
+  // Get category from store
+  const category = categories.byId[task.categoryId];
+  const categoryName = category?.name || 'Unknown';
+  
   // Get category color
-  const categoryColor = categoryColors[task.category.name as keyof typeof categoryColors] || '#6592E9';
+  const categoryColor = category?.color || categoryColors[categoryName as keyof typeof categoryColors] || '#6592E9';
   
   // Get status color for the indicator
   const statusColor = getStatusColor(task.status);
@@ -155,13 +161,13 @@ export const TaskBlock: FC<TaskBlockProps> = ({
             />
             
             {/* Progress indicator */}
-            {task.progress.totalSessions > 0 && (
+            {task.progress.estimatedTime > 0 && (
               <Typography
                 variant="tiny-10"
                 className="text-white"
                 style={{ opacity: 0.9 }}
               >
-                {task.progress.completedSessions}/{task.progress.totalSessions}
+                {Math.round(task.progress.focusTimeSpent)}m/{Math.round(task.progress.estimatedTime)}m
               </Typography>
             )}
           </View>

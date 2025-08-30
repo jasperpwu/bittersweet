@@ -3,7 +3,7 @@ import { View, ScrollView, Dimensions } from 'react-native';
 import { Typography } from '../../ui/Typography/Typography';
 import { TaskBlock } from '../TaskBlock';
 import { EmptyState } from '../EmptyState';
-import { Task } from '../../../types/models';
+import { Task } from '../../../store/types';
 
 interface TimelineProps {
   tasks: Task[];

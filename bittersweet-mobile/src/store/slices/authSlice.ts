@@ -74,10 +74,9 @@ const authAPI = {
     };
   },
   
-  updateProfile: async (userId: string, updates: Partial<User>): Promise<User> => {
+  updateProfile: async (userId: string, updates: Partial<User>, currentUser: User): Promise<User> => {
     await new Promise(resolve => setTimeout(resolve, 500));
     // Return updated user (mock)
-    const currentUser = get().auth?.user;
     if (!currentUser) throw new Error('No user logged in');
     
     return {
@@ -161,7 +160,8 @@ export function createAuthSlice(set: any, get: any, api: any): AuthSlice {
     },
     
     refreshAuth: async () => {
-      const currentRefreshToken = get().auth?.refreshToken;
+      const state = get();
+      const currentRefreshToken = state?.auth?.refreshToken;
       
       if (!currentRefreshToken) {
         throw new Error('No refresh token available');
@@ -180,7 +180,12 @@ export function createAuthSlice(set: any, get: any, api: any): AuthSlice {
         }
       } catch (error) {
         // If refresh fails, logout user
-        get().auth?.logout();
+        try {
+          const state = get();
+          state?.auth?.logout();
+        } catch (logoutError) {
+          console.warn('Could not logout user:', logoutError);
+        }
         
         if (__DEV__) {
           console.error('❌ Token refresh failed, logging out user:', error);
@@ -191,7 +196,8 @@ export function createAuthSlice(set: any, get: any, api: any): AuthSlice {
     },
     
     updateProfile: async (updates: Partial<User>) => {
-      const currentUser = get().auth?.user;
+      const state = get();
+      const currentUser = state?.auth?.user;
       
       if (!currentUser) {
         throw new Error('No user logged in');
@@ -226,7 +232,21 @@ export function createAuthSlice(set: any, get: any, api: any): AuthSlice {
     },
     
     // Selectors
-    getUser: () => get().auth?.user || null,
-    isLoggedIn: () => get().auth?.isAuthenticated || false,
+    getUser: () => {
+      try {
+        const state = get();
+        return state?.auth?.user || null;
+      } catch (error) {
+        return null;
+      }
+    },
+    isLoggedIn: () => {
+      try {
+        const state = get();
+        return state?.auth?.isAuthenticated || false;
+      } catch (error) {
+        return false;
+      }
+    },
   };
 }

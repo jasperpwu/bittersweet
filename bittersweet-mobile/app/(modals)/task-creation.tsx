@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Header } from '../../src/components/ui/Header';
 import { TaskForm, CreateTaskInput } from '../../src/components/forms/TaskForm';
+import { useTasksActions, useAuth } from '../../src/store';
 
 // Configure screen options to hide the default header
 export const unstable_settings = {
@@ -12,21 +13,45 @@ export const unstable_settings = {
 
 export default function TaskCreationModal() {
   const [isLoading, setIsLoading] = useState(false);
+  const { createTask } = useTasksActions();
+  const { user } = useAuth();
+
+  console.log('🧪 Store status:', {
+    hasCreateTask: typeof createTask === 'function',
+    hasUser: !!user,
+  });
 
   const handleSubmit = async (taskData: CreateTaskInput) => {
+    if (!createTask) {
+      Alert.alert('Error', 'Task creation is not available. Please try again.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // TODO: Implement actual task creation logic
-      // This would typically involve:
-      // 1. Validating the data
-      // 2. Saving to local storage or API
-      // 3. Updating global state
+      // Use a fallback user ID if user is not available (for development)
+      const userId = user?.id || 'dev-user-' + Date.now();
 
-      console.log('Creating task:', taskData);
+      if (!user && __DEV__) {
+        console.warn('No user logged in, using fallback user ID for development');
+      }
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Convert CreateTaskInput to the format expected by the store
+      const taskForStore = {
+        title: taskData.title,
+        description: taskData.description,
+        categoryId: taskData.category, // This is already the category ID
+        date: taskData.startTime, // Use startTime as the task date
+        startTime: taskData.startTime,
+        duration: Math.round((taskData.endTime.getTime() - taskData.startTime.getTime()) / (1000 * 60)), // Convert to minutes
+        status: 'scheduled' as const,
+        priority: taskData.priority,
+        userId: userId,
+      };
+
+      console.log('✅ Creating task:', taskForStore);
+      createTask(taskForStore);
 
       Alert.alert(
         'Success',
@@ -42,7 +67,7 @@ export default function TaskCreationModal() {
       console.error('Error creating task:', error);
       Alert.alert(
         'Error',
-        'Failed to create task. Please try again.',
+        error instanceof Error ? error.message : 'Failed to create task. Please try again.',
         [{ text: 'OK' }]
       );
     } finally {
