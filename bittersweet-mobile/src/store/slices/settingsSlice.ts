@@ -13,8 +13,7 @@ const defaultSettings: AppSettings = {
     enabled: true,
     sessionReminders: true,
     breakReminders: true,
-    dailyGoals: true,
-    squadUpdates: true,
+    dailyGoals: true
   },
   privacy: {
     shareStats: true,

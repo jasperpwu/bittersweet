@@ -108,7 +108,7 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
         // Create transaction record
         const transaction: RewardTransaction = {
           id: generateId(),
-          userId: state.auth.user?.id || 'anonymous',
+          userId: 'anonymous',
           amount,
           type: 'earned',
           source,
@@ -144,7 +144,7 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
         // Create transaction record
         const transaction: RewardTransaction = {
           id: generateId(),
-          userId: state.auth.user?.id || 'anonymous',
+          userId: 'anonymous',
           amount,
           type: 'spent',
           source: purpose,

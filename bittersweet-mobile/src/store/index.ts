@@ -1,6 +1,5 @@
 /**
- * Unified Zustand store - consolidated working version
- * Fixed version that uses the working store implementation
+ * Unified Zustand store - simplified version without auth
  */
 
 import { create } from 'zustand';
@@ -16,7 +15,6 @@ interface Task {
   duration: number;
   status: 'scheduled' | 'active' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high';
-  userId: string;
   progress?: {
     completed: boolean;
     focusTimeSpent: number;
@@ -29,26 +27,11 @@ interface Task {
 }
 
 interface AppStore {
-  // Auth
-  auth: {
-    user: any;
-    isAuthenticated: boolean;
-    authToken: string | null;
-    refreshToken: string | null;
-    loginState: { data: any; loading: boolean; error: string | null; lastFetch: Date | null };
-    login: (credentials: { email: string; password: string }) => Promise<void>;
-    logout: () => void;
-    refreshAuth: () => Promise<void>;
-    updateProfile: (updates: any) => Promise<void>;
-    getUser: () => any;
-    isLoggedIn: () => boolean;
-  };
-  
   // Focus
   focus: {
     sessions: { byId: Record<string, any>; allIds: string[]; loading: boolean; error: string | null; lastUpdated: Date | null };
     categories: { 
-      byId: Record<string, { id: string; name: string; color: string; icon: string; isDefault?: boolean; userId: string; createdAt: Date; updatedAt: Date }>;
+      byId: Record<string, { id: string; name: string; color: string; icon: string; isDefault?: boolean; createdAt: Date; updatedAt: Date }>;
       allIds: string[];
       loading: boolean;
       error: string | null;
@@ -109,29 +92,9 @@ interface AppStore {
     theme: 'dark' | 'light';
     language: string;
     notifications: { enabled: boolean; sound: boolean; vibration: boolean };
-    privacy: { analytics: boolean; crashReporting: boolean };
-    updateTheme: () => void;
-    updateLanguage: () => void;
-    updateNotifications: () => void;
-    updatePrivacy: () => void;
-  };
-  
-  // Rewards
-  rewards: {
-    transactions: { byId: Record<string, any>; allIds: string[]; loading: boolean; error: string | null; lastUpdated: Date | null };
-    unlockableApps: { byId: Record<string, any>; allIds: string[]; loading: boolean; error: string | null; lastUpdated: Date | null };
-    totalPoints: number;
-    spentPoints: number;
-    availablePoints: number;
-  };
-  
-  // Social
-  social: {
-    squads: { byId: Record<string, any>; allIds: string[]; loading: boolean; error: string | null; lastUpdated: Date | null };
-    challenges: { byId: Record<string, any>; allIds: string[]; loading: boolean; error: string | null; lastUpdated: Date | null };
-    friends: { byId: Record<string, any>; allIds: string[]; loading: boolean; error: string | null; lastUpdated: Date | null };
-    currentSquadId: string | null;
-    activeChallenges: any[];
+    updateTheme: (theme: 'dark' | 'light') => void;
+    updateLanguage: (language: string) => void;
+    updateNotifications: (notifications: { enabled: boolean; sound: boolean; vibration: boolean }) => void;
   };
 }
 
@@ -148,59 +111,15 @@ const getWeekStart = () => {
 export const useAppStore = create<AppStore>()(
   devtools(
     (set, get) => ({
-      // Auth state and actions
-      auth: {
-        user: null,
-        isAuthenticated: false,
-        authToken: null,
-        refreshToken: null,
-        loginState: { data: null, loading: false, error: null, lastFetch: null },
-        
-        login: async (credentials) => {
-          console.log('🔐 Login called with:', credentials);
-          set((state) => ({
-            auth: {
-              ...state.auth,
-              user: { 
-                id: 'dev-user-' + Date.now(), 
-                email: credentials.email, 
-                name: 'Dev User',
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-              isAuthenticated: true,
-              authToken: 'mock-token',
-            }
-          }));
-        },
-        
-        logout: () => {
-          console.log('🚪 Logout called');
-          set((state) => ({
-            auth: {
-              ...state.auth,
-              user: null,
-              isAuthenticated: false,
-              authToken: null,
-            }
-          }));
-        },
-        
-        refreshAuth: async () => { console.log('🔄 Refresh auth called'); },
-        updateProfile: async () => { console.log('👤 Update profile called'); },
-        getUser: () => get().auth.user,
-        isLoggedIn: () => get().auth.isAuthenticated,
-      },
-      
       // Focus state
       focus: {
         sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
         categories: { 
           byId: {
-            'work': { id: 'work', name: 'Work', color: '#6592E9', icon: '💼', isDefault: true, userId: 'fallback', createdAt: new Date(), updatedAt: new Date() },
-            'study': { id: 'study', name: 'Study', color: '#51BC6F', icon: '📚', isDefault: true, userId: 'fallback', createdAt: new Date(), updatedAt: new Date() },
-            'personal': { id: 'personal', name: 'Personal', color: '#EF786C', icon: '🏠', isDefault: true, userId: 'fallback', createdAt: new Date(), updatedAt: new Date() },
-            'exercise': { id: 'exercise', name: 'Exercise', color: '#FF9800', icon: '💪', isDefault: true, userId: 'fallback', createdAt: new Date(), updatedAt: new Date() },
+            'work': { id: 'work', name: 'Work', color: '#6592E9', icon: '💼', isDefault: true, createdAt: new Date(), updatedAt: new Date() },
+            'study': { id: 'study', name: 'Study', color: '#51BC6F', icon: '📚', isDefault: true, createdAt: new Date(), updatedAt: new Date() },
+            'personal': { id: 'personal', name: 'Personal', color: '#EF786C', icon: '🏠', isDefault: true, createdAt: new Date(), updatedAt: new Date() },
+            'exercise': { id: 'exercise', name: 'Exercise', color: '#FF9800', icon: '💪', isDefault: true, createdAt: new Date(), updatedAt: new Date() },
           }, 
           allIds: ['work', 'study', 'personal', 'exercise'], 
           loading: false, 
@@ -241,7 +160,6 @@ export const useAppStore = create<AppStore>()(
             duration: taskData.duration,
             status: taskData.status || 'scheduled',
             priority: taskData.priority || 'medium',
-            userId: taskData.userId,
             progress: {
               completed: false,
               focusTimeSpent: 0,
@@ -376,16 +294,67 @@ export const useAppStore = create<AppStore>()(
         modals: {},
         loading: { global: false, actions: {} },
         errors: [],
-        showModal: () => {},
-        hideModal: () => {},
-        setLoading: () => {},
-        addError: () => {},
-        clearError: () => {},
-        clearAllErrors: () => {},
-        isModalVisible: () => false,
-        getModalData: () => null,
-        isLoading: () => false,
-        getErrors: () => [],
+        showModal: (type: string, data?: any) => {
+          set((state) => ({
+            ui: {
+              ...state.ui,
+              modals: { ...state.ui.modals, [type]: data || {} }
+            }
+          }));
+        },
+        hideModal: (type: string) => {
+          set((state) => {
+            const { [type]: removed, ...remainingModals } = state.ui.modals;
+            return {
+              ui: { ...state.ui, modals: remainingModals }
+            };
+          });
+        },
+        setLoading: (action: string, loading: boolean) => {
+          set((state) => ({
+            ui: {
+              ...state.ui,
+              loading: {
+                ...state.ui.loading,
+                actions: { ...state.ui.loading.actions, [action]: loading }
+              }
+            }
+          }));
+        },
+        addError: (error: any) => {
+          set((state) => ({
+            ui: { ...state.ui, errors: [...state.ui.errors, error] }
+          }));
+        },
+        clearError: (errorId: string) => {
+          set((state) => ({
+            ui: {
+              ...state.ui,
+              errors: state.ui.errors.filter((_, index) => index.toString() !== errorId)
+            }
+          }));
+        },
+        clearAllErrors: () => {
+          set((state) => ({
+            ui: { ...state.ui, errors: [] }
+          }));
+        },
+        isModalVisible: (type: string) => {
+          return !!get().ui.modals[type];
+        },
+        getModalData: (type: string) => {
+          return get().ui.modals[type] || null;
+        },
+        isLoading: (action?: string) => {
+          const { loading } = get().ui;
+          if (action) {
+            return loading.actions[action] || false;
+          }
+          return loading.global;
+        },
+        getErrors: () => {
+          return get().ui.errors;
+        },
       },
       
       // Settings state
@@ -393,29 +362,21 @@ export const useAppStore = create<AppStore>()(
         theme: 'dark',
         language: 'en',
         notifications: { enabled: true, sound: true, vibration: true },
-        privacy: { analytics: true, crashReporting: true },
-        updateTheme: () => {},
-        updateLanguage: () => {},
-        updateNotifications: () => {},
-        updatePrivacy: () => {},
-      },
-      
-      // Rewards state
-      rewards: {
-        transactions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        unlockableApps: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        totalPoints: 0,
-        spentPoints: 0,
-        availablePoints: 0,
-      },
-      
-      // Social state
-      social: {
-        squads: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        challenges: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        friends: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        currentSquadId: null,
-        activeChallenges: [],
+        updateTheme: (theme) => {
+          set((state) => ({
+            settings: { ...state.settings, theme }
+          }));
+        },
+        updateLanguage: (language) => {
+          set((state) => ({
+            settings: { ...state.settings, language }
+          }));
+        },
+        updateNotifications: (notifications) => {
+          set((state) => ({
+            settings: { ...state.settings, notifications }
+          }));
+        },
       },
     }),
     { name: 'bittersweet-store' }
@@ -425,30 +386,14 @@ export const useAppStore = create<AppStore>()(
 /**
  * Typed hooks for accessing store slices
  */
-export const useAuth = () => useAppStore((state) => state.auth);
 export const useFocus = () => useAppStore((state) => state.focus);
 export const useTasks = () => useAppStore((state) => state.tasks);
-export const useRewards = () => useAppStore((state) => state.rewards);
-export const useSocial = () => useAppStore((state) => state.social);
 export const useSettings = () => useAppStore((state) => state.settings);
 export const useUI = () => useAppStore((state) => state.ui);
 
 /**
- * Selective hooks for performance optimization
- */
-export const useAuthUser = () => useAppStore((state) => state.auth.user);
-export const useIsAuthenticated = () => useAppStore((state) => state.auth.isAuthenticated);
-
-/**
  * Store actions hooks
  */
-export const useAuthActions = () => useAppStore((state) => ({
-  login: state.auth.login,
-  logout: state.auth.logout,
-  refreshAuth: state.auth.refreshAuth,
-  updateProfile: state.auth.updateProfile,
-}));
-
 export const useTasksActions = () => useAppStore((state) => ({
   createTask: state.tasks.createTask,
   updateTask: state.tasks.updateTask,
@@ -471,8 +416,14 @@ export const useUIActions = () => useAppStore((state) => ({
   clearAllErrors: state.ui.clearAllErrors,
 }));
 
+export const useSettingsActions = () => useAppStore((state) => ({
+  updateTheme: state.settings.updateTheme,
+  updateLanguage: state.settings.updateLanguage,
+  updateNotifications: state.settings.updateNotifications,
+}));
+
 /**
- * Store selectors hooks - missing functions that components expect
+ * Store selectors hooks
  */
 export const useFocusSelectors = () => useAppStore((state) => ({
   getSessionById: (id: string) => {
@@ -685,21 +636,6 @@ export function initializeStore() {
     console.log('🔧 Initializing store...');
     const state = getStoreState();
     console.log('✅ Store initialized successfully');
-    
-    // Auto-login a test user in development mode
-    if (process.env.NODE_ENV === 'development') {
-      setTimeout(() => {
-        try {
-          const currentState = getStoreState();
-          if (currentState && currentState.auth && !currentState.auth.user) {
-            console.log('🔧 Auto-logging in test user for development...');
-            currentState.auth.login({ email: 'test@example.com', password: 'password123' }).catch(console.error);
-          }
-        } catch (error) {
-          console.warn('Could not auto-login:', error);
-        }
-      }, 1000);
-    }
   } catch (error) {
     console.error('❌ Error initializing store:', error);
     throw error;
@@ -709,24 +645,6 @@ export function initializeStore() {
 // Initialize store on module load
 try {
   initializeStore();
-  
-  // Initialize with mock data in development if no user is authenticated
-  if (process.env.NODE_ENV === 'development') {
-    import('./initializeMockData').then(({ autoInitializeMockData }) => {
-      autoInitializeMockData();
-    });
-  }
 } catch (error) {
   console.error('❌ Failed to initialize store:', error);
 }
-
-// Export manual initialization function
-export const loadDemoData = async () => {
-  try {
-    const { initializeStoreWithMockData } = await import('./initializeMockData');
-    return initializeStoreWithMockData();
-  } catch (error) {
-    console.error('❌ Failed to load demo data:', error);
-    return false;
-  }
-};

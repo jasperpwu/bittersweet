@@ -4,7 +4,7 @@
  */
 
 import { useMemo } from 'react';
-import { RootStore, FocusSession, Task, User, Squad, Challenge, ChartDataPoint, ProductivityInsights } from '../types';
+import { RootStore, FocusSession, Task, User, ChartDataPoint, ProductivityInsights } from '../types';
 import { useAppStore } from '../index';
 
 // Selector utilities
@@ -16,12 +16,6 @@ export const createMemoizedSelector = <T, R>(
     return useMemo(() => selector(state), [selector, state]);
   };
 };
-
-// Auth selectors
-export const selectUser = (state: RootStore) => state.auth.user;
-export const selectIsAuthenticated = (state: RootStore) => state.auth.isAuthenticated;
-export const selectAuthToken = (state: RootStore) => state.auth.authToken;
-export const selectLoginState = (state: RootStore) => state.auth.loginState;
 
 // Focus selectors
 export const selectFocusSessions = (state: RootStore) => state.focus.sessions;
@@ -178,23 +172,6 @@ export const selectAvailableApps = (state: RootStore) => {
     .filter(app => app && !app.isUnlocked);
 };
 
-// Social selectors
-export const selectSquads = (state: RootStore) => state.social.squads;
-export const selectChallenges = (state: RootStore) => state.social.challenges;
-export const selectFriends = (state: RootStore) => state.social.friends;
-export const selectUserSquads = (state: RootStore) => state.social.userSquads;
-export const selectActiveChallenges = (state: RootStore) => state.social.activeChallenges;
-
-export const selectUserSquadsList = (state: RootStore): Squad[] => {
-  const { squads, userSquads } = state.social;
-  return userSquads.map(squadId => squads.byId[squadId]).filter(Boolean);
-};
-
-export const selectActiveChallengesList = (state: RootStore): Challenge[] => {
-  const { challenges, activeChallenges } = state.social;
-  return activeChallenges.map(challengeId => challenges.byId[challengeId]).filter(Boolean);
-};
-
 // Settings selectors
 export const selectSettings = (state: RootStore) => state.settings.settings;
 export const selectTheme = (state: RootStore) => state.settings.settings.theme;
@@ -281,9 +258,7 @@ export const selectPerformanceMetrics = (state: RootStore) => {
     const totalEntities = 
       state.focus.sessions.allIds.length +
       state.tasks.tasks.allIds.length +
-      state.rewards.transactions.allIds.length +
-      state.social.squads.allIds.length +
-      state.social.challenges.allIds.length;
+      state.rewards.transactions.allIds.length;
     
     const loadingActions = Object.keys(state.ui.loading.actions).length;
     const errorCount = state.ui.errors.length;

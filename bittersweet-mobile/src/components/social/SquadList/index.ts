@@ -1,1 +1,0 @@
-export { SquadList } from './SquadList';

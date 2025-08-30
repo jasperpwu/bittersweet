@@ -12,11 +12,11 @@ This design document outlines the unified Zustand state management architecture 
 - `focusSlice.ts`: Fully implemented with complex logic, persistence, and mock data
 - `homeSlice.ts`: Partially implemented with user, tasks, and daily goals management
 - `tasksSlice.ts`: Implemented with mock data generation and basic CRUD operations
-- `authSlice.ts`, `rewardsSlice.ts`, `settingsSlice.ts`, `socialSlice.ts`: Empty placeholder stores
+- `rewardsSlice.ts`, `settingsSlice.ts`: Empty placeholder stores
 - `store/store.ts`: Legacy bear store example (unused)
 
 **Identified Issues:**
-1. **Data Duplication**: User data exists in both `homeSlice` and potential `authSlice`
+1. **Data Duplication**: User data exists in both `homeSlice`
 2. **Inconsistent Patterns**: Different persistence strategies and action naming conventions
 3. **Type Safety Gaps**: Missing comprehensive TypeScript interfaces
 4. **Cross-Store Dependencies**: Tasks and focus sessions share categories but manage them separately
@@ -27,11 +27,9 @@ This design document outlines the unified Zustand state management architecture 
 ```typescript
 // Root Store Structure
 interface RootStore {
-  auth: AuthSlice;
   focus: FocusSlice;
   tasks: TasksSlice;
   rewards: RewardsSlice;
-  social: SocialSlice;
   settings: SettingsSlice;
   ui: UISlice;
 }
@@ -41,11 +39,9 @@ const useAppStore = create<RootStore>()(
   devtools(
     persist(
       immer((set, get) => ({
-        auth: createAuthSlice(set, get),
         focus: createFocusSlice(set, get),
         tasks: createTasksSlice(set, get),
         rewards: createRewardsSlice(set, get),
-        social: createSocialSlice(set, get),
         settings: createSettingsSlice(set, get),
         ui: createUISlice(set, get),
       })),
@@ -53,11 +49,9 @@ const useAppStore = create<RootStore>()(
         name: 'bittersweet-store',
         storage: createJSONStorage(() => AsyncStorage),
         partialize: (state) => ({
-          auth: state.auth,
           focus: state.focus,
           tasks: state.tasks,
           rewards: state.rewards,
-          social: state.social,
           settings: state.settings,
           // UI state is not persisted
         }),
@@ -137,32 +131,6 @@ interface AsyncState<T = any> {
 ```
 
 ### Domain-Specific Store Slices
-
-#### Auth Slice
-```typescript
-interface AuthSlice {
-  // State
-  user: User | null;
-  isAuthenticated: boolean;
-  authToken: string | null;
-  refreshToken: string | null;
-  loginState: AsyncState<User>;
-  
-  // Actions
-  login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
-  refreshAuth: () => Promise<void>;
-  updateProfile: (updates: Partial<User>) => Promise<void>;
-  
-  // Selectors
-  getUser: () => User | null;
-  isLoggedIn: () => boolean;
-}
-
-const createAuthSlice: StateCreator<RootStore, [], [], AuthSlice> = (set, get) => ({
-  // Implementation
-});
-```
 
 #### Focus Slice (Enhanced)
 ```typescript
@@ -269,31 +237,6 @@ interface RewardsSlice {
 }
 ```
 
-#### Social Slice
-```typescript
-interface SocialSlice {
-  // State
-  squads: NormalizedState<Squad>;
-  challenges: NormalizedState<Challenge>;
-  friends: NormalizedState<User>;
-  
-  // Current User's Social Data
-  userSquads: string[];
-  activeChallenges: string[];
-  
-  // Actions
-  joinSquad: (squadId: string) => Promise<void>;
-  leaveSquad: (squadId: string) => Promise<void>;
-  createChallenge: (challenge: CreateChallengeParams) => Promise<void>;
-  joinChallenge: (challengeId: string) => Promise<void>;
-  
-  // Selectors
-  getUserSquads: () => Squad[];
-  getActiveChallenges: () => Challenge[];
-  getSquadLeaderboard: (squadId: string) => SquadMember[];
-}
-```
-
 ### Middleware Integration
 
 #### Persistence Middleware
@@ -302,11 +245,6 @@ const persistenceConfig = {
   name: 'bittersweet-store',
   storage: createJSONStorage(() => AsyncStorage),
   partialize: (state: RootStore) => ({
-    auth: {
-      user: state.auth.user,
-      authToken: state.auth.authToken,
-      refreshToken: state.auth.refreshToken,
-    },
     focus: {
       sessions: state.focus.sessions,
       categories: state.focus.categories,
@@ -321,10 +259,6 @@ const persistenceConfig = {
       totalEarned: state.rewards.totalEarned,
       totalSpent: state.rewards.totalSpent,
       transactions: state.rewards.transactions,
-    },
-    social: {
-      squads: state.social.squads,
-      userSquads: state.social.userSquads,
     },
     settings: state.settings,
   }),
@@ -360,9 +294,7 @@ const devtoolsConfig = {
   actionSanitizer: (action: any) => ({
     ...action,
     // Sanitize sensitive data in development
-    payload: action.type.includes('auth') 
-      ? { ...action.payload, password: '[REDACTED]' }
-      : action.payload,
+    payload: action.payload,
   }),
 };
 ```
@@ -604,11 +536,9 @@ const createTestStore = (initialState?: Partial<RootStore>) => {
     immer((set, get) => ({
       ...createDefaultState(),
       ...initialState,
-      auth: createAuthSlice(set, get),
       focus: createFocusSlice(set, get),
       tasks: createTasksSlice(set, get),
       rewards: createRewardsSlice(set, get),
-      social: createSocialSlice(set, get),
       settings: createSettingsSlice(set, get),
       ui: createUISlice(set, get),
     }))
@@ -620,11 +550,6 @@ export const storeTestHelpers = {
   // Create store with mock data
   createMockStore: (overrides?: Partial<RootStore>) => {
     return createTestStore({
-      auth: {
-        user: mockUser,
-        isAuthenticated: true,
-        ...overrides?.auth,
-      },
       focus: {
         sessions: { byId: {}, allIds: [], loading: false, error: null },
         ...overrides?.focus,
@@ -702,16 +627,14 @@ describe('FocusSlice', () => {
 4. Create migration utilities for existing data
 
 ### Phase 2: Core Domain Migration
-1. Migrate auth slice with user management
-2. Enhance focus slice with normalized structure
-3. Migrate tasks slice with improved relationships
-4. Implement cross-store communication patterns
+1. Enhance focus slice with normalized structure
+2. Migrate tasks slice with improved relationships
+3. Implement cross-store communication patterns
 
 ### Phase 3: Feature Domain Migration
 1. Implement rewards slice with transaction history
-2. Create social slice with squad management
-3. Enhance settings slice with comprehensive preferences
-4. Implement UI slice for application state
+2. Enhance settings slice with comprehensive preferences
+3. Implement UI slice for application state
 
 ### Phase 4: Integration and Optimization
 1. Implement cross-store event system

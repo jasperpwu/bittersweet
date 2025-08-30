@@ -13,7 +13,7 @@ This document outlines the requirements for unifying and optimizing the Zustand 
 #### Acceptance Criteria
 
 1. WHEN analyzing current stores THEN the system SHALL identify all existing Zustand store implementations and their usage patterns
-2. WHEN examining state fragmentation THEN the system SHALL document redundant state across different stores (e.g., user data in both homeSlice and potential authSlice)
+2. WHEN examining state fragmentation THEN the system SHALL document redundant state across different stores (e.g., user data in both homeSlice)
 3. WHEN reviewing cross-dependencies THEN the system SHALL identify stores that depend on data from other stores
 4. WHEN assessing TypeScript integration THEN the system SHALL evaluate type safety gaps and inconsistent typing patterns
 5. WHEN analyzing persistence patterns THEN the system SHALL document inconsistent AsyncStorage usage and middleware implementation
@@ -28,7 +28,7 @@ This document outlines the requirements for unifying and optimizing the Zustand 
 2. WHEN establishing store structure THEN the system SHALL implement standardized action patterns with consistent naming conventions
 3. WHEN creating store interfaces THEN the system SHALL define comprehensive TypeScript interfaces for all state domains
 4. WHEN designing middleware integration THEN the system SHALL standardize persistence, devtools, and logging middleware across all slices
-5. WHEN organizing store domains THEN the system SHALL separate concerns into auth, focus, tasks, rewards, social, settings, and UI domains
+5. WHEN organizing store domains THEN the system SHALL separate concerns into focus, tasks, rewards, settings, and UI domains
 
 ### Requirement 3: Type Safety and Interface Standardization
 
@@ -48,7 +48,7 @@ This document outlines the requirements for unifying and optimizing the Zustand 
 
 #### Acceptance Criteria
 
-1. WHEN normalizing state THEN the system SHALL implement normalized data structures for entities like users, tasks, sessions, and squads
+1. WHEN normalizing state THEN the system SHALL implement normalized data structures for entities like users, tasks, sessions
 2. WHEN managing relationships THEN the system SHALL create efficient lookup patterns for related data entities
 3. WHEN handling data updates THEN the system SHALL implement immutable update patterns that maintain referential integrity
 4. WHEN caching data THEN the system SHALL implement intelligent caching strategies that prevent unnecessary re-renders

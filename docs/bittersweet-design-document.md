@@ -1,7 +1,7 @@
 # bittersweet App - Design Document & User Flow
 
 ## Overview
-bittersweet is a React Native mobile application that provides a smarter, more human way to manage screen time, build focus habits, and track meaningful use of time — solo or with a squad. The app combines Focus Sessions, smart app locks, and positive reinforcement through a fruit-based reward system, built around trust, accountability, and delayed gratification rather than punishment.
+bittersweet is a React Native mobile application that provides a smarter, more human way to manage screen time, build focus habits, and track meaningful use of time. The app combines Focus Sessions, smart app locks, and positive reinforcement through a fruit-based reward system, built around trust, accountability, and delayed gratification rather than punishment.
 
 ## Design System Analysis
 
@@ -112,13 +112,6 @@ bittersweet is a React Native mobile application that provides a smarter, more h
 - Behavioral insights: "You focus best between 9–11am. Try making it a habit."
 - Goal recommendations based on usage patterns
 
-### 👥 5. Social Motivation Tab - Squads
-**Accountability Features:**
-- Add friends/family to create accountability groups
-- Weekly challenges and progress sharing
-- Collaborative productivity goals
-- Trophy system similar to Duolingo streaks
-
 **Profile & Settings:**
 - Premium plan management
 - Contact support and social links
@@ -150,32 +143,7 @@ bittersweet is a React Native mobile application that provides a smarter, more h
    - Sign up button
    - "Already have account?" login link
 
-### 2. Authentication & Recovery Flow (4 screens)
-
-#### Password Recovery Process
-1. **Forgot Password**: Email input screen
-   - Email address field
-   - "Send reset link" button
-   - Back to login option
-
-2. **Email Sent Confirmation**: 
-   - Mail icon illustration
-   - "Email has been sent" message
-   - Resend option
-   - Check spam folder reminder
-
-3. **Verification Code**: 6-digit PIN entry
-   - Number pad interface
-   - Auto-focus input fields
-   - Resend code option
-
-4. **Create New Password**: Password reset
-   - New password field
-   - Confirm password field
-   - Password strength indicator
-   - Save button
-
-### 3. Homepage & Task Management (3 screens)
+### 2. Homepage & Task Management (3 screens)
 
 #### Main Dashboard & Task Creation
 1. **Homepage**: Main dashboard
@@ -196,7 +164,7 @@ bittersweet is a React Native mobile application that provides a smarter, more h
    - Time slot booking
    - Event indicators
 
-### 4. Timer & Focus Sessions (4 screens)
+### 3. Timer & Focus Sessions (4 screens)
 
 #### Core Timer Functionality
 1. **Active Timer**: Focus session in progress (9:58)
@@ -224,7 +192,7 @@ bittersweet is a React Native mobile application that provides a smarter, more h
    - Performance metrics
    - Goal tracking
 
-### 5. Schedule, Tasks & Session Management (4 screens)
+### 4. Schedule, Tasks & Session Management (4 screens)
 
 #### Task Organization & Planning
 1. **Task Categories**: Color-coded organization
@@ -308,13 +276,6 @@ bittersweet is a React Native mobile application that provides a smarter, more h
   - AI-powered insights and behavioral patterns
   - Personalized productivity tips and recommendations
 
-### 👥 Social Features (Squads)
-**New Implementation Required**:
-  - Squad creation and management interface
-  - Friend/family accountability groups
-  - Weekly challenges and trophy system
-  - Progress sharing and collaborative goals
-  - Parental control integration (future)
 
 ## Technical Implementation Notes
 
@@ -324,15 +285,13 @@ TabNavigator (Bottom - 5 tabs)
 ├── Focus (Focus Sessions & Timer)
 ├── Journal (Time Journal & Calendar)
 ├── Insights (Analytics & AI Coach)
-├── Squads (Social Motivation & Challenges)
 └── Profile (Settings & Premium)
 
 Modal Overlays:
 ├── Session Reflection Modal
 ├── App Unlock Modal
 ├── Manual Logging Modal
-├── Tag Configuration Modal
-└── Squad Creation Modal
+└── Tag Configuration Modal
 ```
 
 ### Bottom Tab Navigation Details
@@ -369,11 +328,6 @@ Modal Overlays:
 - `StreakCounter`: Focus streak tracking and celebration
 - `GoalProgress`: Visual goal completion tracking
 
-#### Social Components
-- `SquadCard`: Accountability group display with member progress
-- `ChallengeCard`: Weekly challenges with leaderboards
-- `TrophyDisplay`: Achievement and streak celebration
-- `ProgressShare`: Social progress sharing interface
 
 ## User Experience Flow
 

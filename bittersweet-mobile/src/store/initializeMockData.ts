@@ -18,23 +18,6 @@ export const initializeStoreWithMockData = () => {
     console.log('👤 Mock user:', mockData.user?.name || 'UNDEFINED');
     console.log('📊 Mock data keys:', Object.keys(mockData));
 
-    // Initialize auth with mock user
-    useAppStore.setState((state) => ({
-      auth: {
-        ...state.auth,
-        user: mockData.user,
-        isAuthenticated: true,
-        authToken: 'mock-auth-token-123',
-        refreshToken: 'mock-refresh-token-123',
-        loginState: {
-          data: mockData.user,
-          loading: false,
-          error: null,
-          lastFetch: new Date(),
-        },
-      },
-    }));
-
     // Initialize focus data
     const focusUpdates: any = {
       sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: new Date() },
@@ -133,8 +116,6 @@ export const initializeStoreWithMockData = () => {
       },
     }));
 
-    // Social features will be initialized when types are available
-
     // Settings and UI state will be handled by the store's natural initialization
 
     console.log('✅ Mock data initialization completed!');
@@ -166,7 +147,7 @@ export const shouldInitializeMockData = (): boolean => {
     // - Check environment variables
     // - Check if user is already logged in
     const store = useAppStore.getState();
-    return !store.auth.isAuthenticated;
+    return true;
   }
   
   return false;

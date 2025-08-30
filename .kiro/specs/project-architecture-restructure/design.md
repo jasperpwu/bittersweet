@@ -97,16 +97,6 @@ src/components/
 │   └── TrendAnalysis/
 │       ├── TrendAnalysis.tsx
 │       └── index.ts
-└── social/                # Squad components
-    ├── SquadList/
-    │   ├── SquadList.tsx
-    │   └── index.ts
-    ├── ChallengeCard/
-    │   ├── ChallengeCard.tsx
-    │   └── index.ts
-    └── ProgressShare/
-        ├── ProgressShare.tsx
-        └── index.ts
 ```
 
 ### Service Layer Structure
@@ -115,10 +105,8 @@ src/components/
 src/services/
 ├── api/                   # API communication layer
 │   ├── client.ts          # HTTP client configuration
-│   ├── auth.ts            # Authentication endpoints
 │   ├── focus.ts           # Focus session endpoints
 │   ├── rewards.ts         # Reward system endpoints
-│   └── social.ts          # Social features endpoints
 ├── storage/               # Local storage management
 │   ├── secure.ts          # Secure storage for sensitive data
 │   ├── cache.ts           # App cache management
@@ -141,11 +129,9 @@ src/services/
 ```
 src/store/
 ├── slices/                # Feature-based store slices
-│   ├── authStore.ts       # Authentication state
 │   ├── focusStore.ts      # Focus session state
 │   ├── rewardStore.ts     # Reward system state
 │   ├── journalStore.ts    # Time journal state
-│   ├── squadStore.ts      # Social features state
 │   └── settingsStore.ts   # App settings state
 ├── middleware/            # Store middleware
 │   ├── persistence.ts     # State persistence
@@ -157,9 +143,6 @@ src/store/
 
 ```
 src/hooks/
-├── auth/                  # Authentication hooks
-│   ├── useAuth.ts
-│   └── useAuthGuard.ts
 ├── focus/                 # Focus session hooks
 │   ├── useFocusSession.ts
 │   ├── useTimer.ts
@@ -170,9 +153,6 @@ src/hooks/
 ├── journal/               # Time tracking hooks
 │   ├── useTimeTracking.ts
 │   └── useCalendar.ts
-├── social/                # Social feature hooks
-│   ├── useSquad.ts
-│   └── useChallenges.ts
 └── common/                # Shared hooks
     ├── useScreenTime.ts
     ├── useNotifications.ts
@@ -230,12 +210,6 @@ app/
 │   ├── journal.tsx        # New time journal tab
 │   ├── insights.tsx       # New insights dashboard tab
 │   ├── tasks.tsx          # New task management tab
-│   └── squads.tsx         # New social motivation tab
-├── (auth)/                # Authentication flow
-│   ├── onboarding.tsx
-│   ├── login.tsx
-│   ├── signup.tsx
-│   └── forgot-password.tsx
 ├── (modals)/              # Modal screens
 │   ├── task-creation.tsx
 │   ├── session-complete.tsx
@@ -305,7 +279,6 @@ app/
 
 ### Phase 6: App Directory Enhancement
 - Create additional tab files for new features
-- Establish auth and modals directory structures
 - Create placeholder screen files
 
 ### Phase 7: Validation and Testing

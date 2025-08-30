@@ -36,29 +36,18 @@ export function validateStoreIntegrity(useAppStore?: any): ValidationResult {
 
   try {
     // Validate required slices exist
-    const requiredSlices = ['auth', 'focus', 'tasks', 'rewards', 'social', 'settings', 'ui'];
+    const requiredSlices = ['focus', 'tasks', 'rewards', 'settings', 'ui'];
     requiredSlices.forEach(sliceName => {
       if (!state[sliceName as keyof RootStore]) {
         errors.push(`Missing required slice: ${sliceName}`);
       }
     });
 
-    // Validate auth slice
-    if (state.auth) {
-      if (state.auth.isAuthenticated && !state.auth.user) {
-        warnings.push('User is authenticated but user data is missing');
-      }
-      if (state.auth.user && !state.auth.user.id) {
-        errors.push('User exists but missing required ID');
-      }
-    }
-
     // Validate normalized structures
     const normalizedSlices = [
       { slice: 'focus', entities: ['sessions', 'categories', 'tags'] },
       { slice: 'tasks', entities: ['tasks'] },
       { slice: 'rewards', entities: ['transactions', 'unlockableApps'] },
-      { slice: 'social', entities: ['squads', 'challenges', 'friends'] },
     ];
 
     normalizedSlices.forEach(({ slice, entities }) => {
@@ -175,7 +164,7 @@ export function checkMigrationStatus(useAppStore?: any): MigrationStatus {
   const pendingMigrations: string[] = [];
 
   // Check if all expected slices are present and properly structured
-  const expectedSlices = ['auth', 'focus', 'tasks', 'rewards', 'social', 'settings', 'ui'];
+  const expectedSlices = ['focus', 'tasks', 'rewards', 'settings', 'ui'];
   
   expectedSlices.forEach(sliceName => {
     const slice = state[sliceName as keyof RootStore];
@@ -188,7 +177,7 @@ export function checkMigrationStatus(useAppStore?: any): MigrationStatus {
 
   // Check for legacy data patterns
   const legacyPatterns = [
-    'homeSlice', // Should be migrated to auth/tasks
+    'homeSlice', // Should be migrated to tasks
     'bearState', // Legacy example store
   ];
 
@@ -290,11 +279,6 @@ export function validateComponentIntegration(useAppStore?: any): ValidationResul
   try {
     // Test that all store hooks are accessible
     const state = useAppStore.getState();
-    
-    // Test auth hooks
-    if (!state.auth.login || typeof state.auth.login !== 'function') {
-      errors.push('Auth login action not accessible');
-    }
     
     // Test focus hooks
     if (!state.focus.startSession || typeof state.focus.startSession !== 'function') {

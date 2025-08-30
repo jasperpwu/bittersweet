@@ -74,11 +74,10 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
   setTimeout(() => {
     try {
       const state = get();
-      const currentUser = state?.auth?.user;
       const categories = state?.focus?.categories;
       
       if (categories && categories.allIds.length === 0) {
-        const userId = currentUser?.id || (__DEV__ ? 'dev-user' : null);
+        const userId = (__DEV__ ? 'dev-user' : null);
         if (userId) {
           initializeDefaultCategories(userId);
         }
@@ -174,10 +173,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     // Actions
     startSession: (params: { targetDuration: number; categoryId: string; tagIds: string[]; description?: string }) => {
       const state = get();
-      const currentUser = state?.auth?.user;
-      if (!currentUser) {
-        throw new Error('User must be logged in to start a session');
-      }
       
       // Validate parameters
       if (!params.targetDuration || params.targetDuration <= 0) {
@@ -206,7 +201,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       
       const newSession: FocusSession = {
         id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        userId: currentUser.id,
+        userId: 'dev-user',
         startTime: new Date(),
         duration: 0,
         targetDuration: params.targetDuration,
@@ -455,15 +450,11 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     // Category/Tag Management
     addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => {
       const state = get();
-      const currentUser = state?.auth?.user;
-      if (!currentUser) {
-        throw new Error('User must be logged in to add categories');
-      }
       
       const newCategory: Category = {
         ...category,
         id: `category-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        userId: currentUser.id,
+        userId: 'dev-user',
         createdAt: new Date(),
         updatedAt: new Date(),
       };

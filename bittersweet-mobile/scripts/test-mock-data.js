@@ -54,4 +54,3 @@ try {
 console.log('\n💡 To use mock data in your app:');
 console.log('   import { loadDemoData } from "./src/store";');
 console.log('   await loadDemoData();');
-console.log('\n🔧 Mock data will auto-load in development mode when no user is authenticated.');

@@ -153,51 +153,6 @@ export interface UnlockableApp extends BaseEntity {
   description?: string;
 }
 
-// Social Types
-export interface SquadMember {
-  userId: string;
-  joinedAt: Date;
-  role: 'member' | 'admin' | 'owner';
-  stats: {
-    totalFocusTime: number;
-    weeklyFocusTime: number;
-    currentStreak: number;
-  };
-}
-
-export interface Squad extends BaseEntity {
-  name: string;
-  description?: string;
-  icon: string;
-  isPrivate: boolean;
-  inviteCode: string;
-  ownerId: string;
-  members: Record<string, SquadMember>;
-  memberIds: string[];
-  maxMembers: number;
-  stats: {
-    totalFocusTime: number;
-    totalSessions: number;
-    averageSessionLength: number;
-  };
-}
-
-export interface Challenge extends BaseEntity {
-  title: string;
-  description: string;
-  type: 'individual' | 'squad';
-  targetType: 'duration' | 'sessions' | 'streak';
-  targetValue: number;
-  startDate: Date;
-  endDate: Date;
-  participants: string[];
-  rewards: {
-    seeds: number;
-    badges?: string[];
-  };
-  status: 'upcoming' | 'active' | 'completed' | 'cancelled';
-}
-
 // Settings Types
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
@@ -207,7 +162,6 @@ export interface AppSettings {
     sessionReminders: boolean;
     breakReminders: boolean;
     dailyGoals: boolean;
-    squadUpdates: boolean;
   };
   privacy: {
     shareStats: boolean;
@@ -256,24 +210,6 @@ export interface ProductivityInsights {
 export type TimePeriod = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 // Store Slice Interfaces
-export interface AuthSlice {
-  // State
-  user: User | null;
-  isAuthenticated: boolean;
-  authToken: string | null;
-  refreshToken: string | null;
-  loginState: AsyncState<User>;
-  
-  // Actions
-  login: (credentials: { email: string; password: string }) => Promise<void>;
-  logout: () => void;
-  refreshAuth: () => Promise<void>;
-  updateProfile: (updates: Partial<User>) => Promise<void>;
-  
-  // Selectors
-  getUser: () => User | null;
-  isLoggedIn: () => boolean;
-}
 
 export interface FocusSlice {
   // Normalized State
@@ -371,28 +307,6 @@ export interface RewardsSlice {
   canAfford: (amount: number) => boolean;
 }
 
-export interface SocialSlice {
-  // State
-  squads: NormalizedState<Squad>;
-  challenges: NormalizedState<Challenge>;
-  friends: NormalizedState<User>;
-  
-  // Current User's Social Data
-  userSquads: string[];
-  activeChallenges: string[];
-  
-  // Actions
-  joinSquad: (squadId: string) => Promise<void>;
-  leaveSquad: (squadId: string) => Promise<void>;
-  createChallenge: (challenge: Omit<Challenge, 'id' | 'createdAt' | 'updatedAt' | 'participants'>) => Promise<void>;
-  joinChallenge: (challengeId: string) => Promise<void>;
-  
-  // Selectors
-  getUserSquads: () => Squad[];
-  getActiveChallenges: () => Challenge[];
-  getSquadLeaderboard: (squadId: string) => SquadMember[];
-}
-
 export interface SettingsSlice {
   // State
   settings: AppSettings;
@@ -430,11 +344,9 @@ export interface UISlice {
 
 // Root Store Interface
 export interface RootStore {
-  auth: AuthSlice;
   focus: FocusSlice;
   tasks: TasksSlice;
   rewards: RewardsSlice;
-  social: SocialSlice;
   settings: SettingsSlice;
   ui: UISlice;
 }

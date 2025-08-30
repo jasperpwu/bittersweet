@@ -13,7 +13,7 @@ This document outlines the requirements for creating the file and directory stru
 #### Acceptance Criteria
 
 1. WHEN creating the directory structure THEN the system SHALL create all directories specified in the architecture overview
-2. WHEN organizing directories THEN the system SHALL create feature-based component directories (focus, rewards, journal, analytics, social)
+2. WHEN organizing directories THEN the system SHALL create feature-based component directories (focus, rewards, journal, analytics)
 3. WHEN setting up the structure THEN the system SHALL create service directories for API, storage, notifications, screentime, and analytics
 4. WHEN creating directories THEN the system SHALL establish store directories organized by feature slices
 5. WHEN organizing the structure THEN the system SHALL create hook directories grouped by feature domains
@@ -24,7 +24,7 @@ This document outlines the requirements for creating the file and directory stru
 
 #### Acceptance Criteria
 
-1. WHEN creating store files THEN the system SHALL create placeholder files for feature-specific stores (authStore.ts, focusStore.ts, rewardStore.ts, journalStore.ts, squadStore.ts, settingsStore.ts)
+1. WHEN creating store files THEN the system SHALL create placeholder files for feature-specific stores (focusStore.ts, rewardStore.ts, journalStore.ts, settingsStore.ts)
 2. WHEN organizing store structure THEN the system SHALL create a slices directory containing individual store files
 3. WHEN setting up store architecture THEN the system SHALL create middleware directory with placeholder files for persistence and logging
 4. WHEN creating the store structure THEN the system SHALL create a central index.ts file for store configuration
@@ -37,7 +37,7 @@ This document outlines the requirements for creating the file and directory stru
 #### Acceptance Criteria
 
 1. WHEN creating component structure THEN the system SHALL create ui directory with placeholder files for base components (Button, Card, Input, Modal, Typography)
-2. WHEN organizing feature components THEN the system SHALL create feature directories (focus, rewards, journal, analytics, social) with placeholder component files
+2. WHEN organizing feature components THEN the system SHALL create feature directories (focus, rewards, journal, analytics) with placeholder component files
 3. WHEN setting up component architecture THEN the system SHALL create component directories with index.ts files for clean imports
 4. WHEN creating component files THEN the system SHALL establish proper directory structure for each component with main file and index export
 5. WHEN organizing components THEN the system SHALL create placeholder files for all components specified in the architecture overview
@@ -49,7 +49,7 @@ This document outlines the requirements for creating the file and directory stru
 #### Acceptance Criteria
 
 1. WHEN creating service structure THEN the system SHALL create service directories for api, storage, notifications, screentime, and analytics
-2. WHEN organizing API services THEN the system SHALL create placeholder files for client.ts, auth.ts, focus.ts, rewards.ts, and social.ts
+2. WHEN organizing API services THEN the system SHALL create placeholder files for client.ts, focus.ts, rewards.ts.ts
 3. WHEN setting up storage services THEN the system SHALL create placeholder files for secure.ts, cache.ts, and offline.ts
 4. WHEN creating notification services THEN the system SHALL create placeholder files for manager.ts, scheduler.ts, and handlers.ts
 5. WHEN organizing screentime services THEN the system SHALL create placeholder files for ios.ts, android.ts, and manager.ts
@@ -60,11 +60,10 @@ This document outlines the requirements for creating the file and directory stru
 
 #### Acceptance Criteria
 
-1. WHEN creating hooks structure THEN the system SHALL create hook directories organized by feature domain (auth, focus, rewards, journal, social, common)
-2. WHEN organizing hook files THEN the system SHALL create placeholder files for authentication hooks (useAuth.ts, useAuthGuard.ts)
-3. WHEN setting up focus hooks THEN the system SHALL create placeholder files for focus session hooks (useFocusSession.ts, useTimer.ts, useSessionHistory.ts)
-4. WHEN creating reward hooks THEN the system SHALL create placeholder files for reward system hooks (useRewards.ts, useSeedBalance.ts)
-5. WHEN organizing common hooks THEN the system SHALL create placeholder files for shared hooks (useScreenTime.ts, useNotifications.ts, useOfflineSync.ts)
+1. WHEN creating hooks structure THEN the system SHALL create hook directories organized by feature domain (focus, rewards, journal, common)
+2. WHEN setting up focus hooks THEN the system SHALL create placeholder files for focus session hooks (useFocusSession.ts, useTimer.ts, useSessionHistory.ts)
+3. WHEN creating reward hooks THEN the system SHALL create placeholder files for reward system hooks (useRewards.ts, useSeedBalance.ts)
+4. WHEN organizing common hooks THEN the system SHALL create placeholder files for shared hooks (useScreenTime.ts, useNotifications.ts, useOfflineSync.ts)
 
 ### Requirement 6: Type Definition File Structure Creation
 
@@ -96,11 +95,10 @@ This document outlines the requirements for creating the file and directory stru
 
 #### Acceptance Criteria
 
-1. WHEN enhancing app structure THEN the system SHALL create additional tab files (focus.tsx, journal.tsx, insights.tsx, tasks.tsx, squads.tsx) in the (tabs) directory
-2. WHEN organizing navigation THEN the system SHALL create (auth) directory with placeholder files for authentication flow
-3. WHEN setting up modals THEN the system SHALL create (modals) directory with placeholder files for modal screens
-4. WHEN creating app structure THEN the system SHALL maintain existing _layout.tsx and index.tsx files
-5. WHEN organizing screens THEN the system SHALL ensure proper file naming conventions following Expo Router patterns
+1. WHEN enhancing app structure THEN the system SHALL create additional tab files (focus.tsx, journal.tsx, insights.tsx, tasks.tsx) in the (tabs) directory
+2. WHEN setting up modals THEN the system SHALL create (modals) directory with placeholder files for modal screens
+3. WHEN creating app structure THEN the system SHALL maintain existing _layout.tsx and index.tsx files
+4. WHEN organizing screens THEN the system SHALL ensure proper file naming conventions following Expo Router patterns
 
 ### Requirement 9: Existing File Preservation
 

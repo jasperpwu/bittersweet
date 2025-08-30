@@ -9,11 +9,9 @@ export function checkStoreInitialization() {
     const store = useAppStore.getState();
     
     const checks = {
-      auth: !!store.auth,
       focus: !!store.focus,
       tasks: !!store.tasks,
       rewards: !!store.rewards,
-      social: !!store.social,
       settings: !!store.settings,
       ui: !!store.ui,
     };

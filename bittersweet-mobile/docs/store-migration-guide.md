@@ -29,12 +29,11 @@ const tasksData = useTasksStore();
 ### After (Unified)
 ```typescript
 // Single unified store with typed hooks
-import { useFocus, useTasks, useAuth } from '../store';
+import { useFocus, useTasks } from '../store';
 
 // Consistent, optimized patterns
 const focusData = useFocus();
 const tasksData = useTasks();
-const authData = useAuth();
 ```
 
 ## Migration Steps
@@ -90,9 +89,6 @@ const Component = memo(() => {
 #### New Normalized Structure
 ```typescript
 // Separated into appropriate slices
-auth: {
-  user: { id, name, email, preferences, stats, ... }
-},
 tasks: {
   tasks: {
     byId: { [id]: task },
@@ -162,7 +158,6 @@ export const OptimizedDateSelector = memo(() => {
 The store automatically migrates data from previous versions:
 
 #### Version 1 Migration
-- Migrates `homeSlice` user data to `auth` slice
 - Converts task arrays to normalized structure
 - Removes legacy slice references
 
@@ -215,7 +210,6 @@ const mockStore = {
 import { createTestStore, storeTestHelpers } from '../store/test-utils';
 
 const store = storeTestHelpers.createMockStore({
-  auth: { user: mockUser },
   focus: { sessions: mockSessions }
 });
 ```

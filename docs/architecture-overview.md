@@ -11,19 +11,12 @@ src/
 │   │   ├── focus.tsx      # Focus Session tab with timer and settings
 │   │   ├── journal.tsx    # Time Journal tab with calendar
 │   │   ├── insights.tsx   # Insights Dashboard & AI Coach tab
-│   │   ├── squads.tsx     # Social Motivation & Challenges tab
 │   │   └── profile.tsx    # Profile, Settings & Premium tab
-│   ├── (auth)/            # Authentication flow
-│   │   ├── onboarding.tsx
-│   │   ├── login.tsx
-│   │   ├── signup.tsx
-│   │   └── forgot-password.tsx
 │   ├── (modals)/          # Modal screens
 │   │   ├── session-reflection.tsx
 │   │   ├── app-unlock.tsx
 │   │   ├── manual-logging.tsx
-│   │   ├── tag-configuration.tsx
-│   │   └── squad-creation.tsx
+│   │   └── tag-configuration.tsx
 │   ├── _layout.tsx        # Root layout with providers
 │   └── index.tsx          # Entry point
 ├── components/
@@ -53,22 +46,16 @@ src/
 │   │   ├── ActivityList/
 │   │   └── ProgressRing/
 │   ├── insights/          # Analytics & AI Coach components
-│   │   ├── InsightCard/   # AI-powered insights
-│   │   ├── TrendChart/
-│   │   ├── StreakCounter/
-│   │   └── GoalProgress/
-│   └── social/            # Squad components
-│       ├── SquadCard/
-│       ├── ChallengeCard/
-│       ├── TrophyDisplay/
-│       └── ProgressShare/
+│       ├── InsightCard/   # AI-powered insights
+│       ├── TrendChart/
+│       ├── StreakCounter/
+│       └── GoalProgress/
+│   
 ├── services/
 │   ├── api/               # API layer
 │   │   ├── client.ts      # HTTP client configuration
-│   │   ├── auth.ts        # Authentication endpoints
 │   │   ├── focus.ts       # Focus session endpoints
 │   │   ├── rewards.ts     # Fruit-based reward system endpoints
-│   │   ├── social.ts      # Squad and challenge endpoints
 │   │   └── insights.ts    # AI coach and analytics endpoints
 │   ├── storage/           # Local storage
 │   │   ├── secure.ts      # Secure storage (tokens, sensitive data)
@@ -92,11 +79,9 @@ src/
 │       └── dynamicIsland.ts # Dynamic Island integration
 ├── store/                 # State management (Zustand)
 │   ├── slices/
-│   │   ├── authStore.ts   # Authentication state
 │   │   ├── focusStore.ts  # Focus session state with tags and goals
 │   │   ├── rewardStore.ts # Fruit-based reward system state
 │   │   ├── journalStore.ts# Time journal and calendar state
-│   │   ├── squadStore.ts  # Social features and challenges state
 │   │   ├── insightsStore.ts# AI coach and analytics state
 │   │   ├── blockerStore.ts# App blocking and unlock state
 │   │   └── settingsStore.ts# App settings and preferences state
@@ -105,9 +90,6 @@ src/
 │   │   └── logger.ts      # Development logging
 │   └── index.ts           # Store configuration
 ├── hooks/                 # Custom React hooks
-│   ├── auth/
-│   │   ├── useAuth.ts
-│   │   └── useAuthGuard.ts
 │   ├── focus/
 │   │   ├── useFocusSession.ts
 │   │   ├── useTimer.ts
@@ -127,10 +109,6 @@ src/
 │   │   ├── useAICoach.ts
 │   │   ├── useAnalytics.ts
 │   │   └── useGoalTracking.ts
-│   ├── social/
-│   │   ├── useSquad.ts
-│   │   ├── useChallenges.ts
-│   │   └── useProgressSharing.ts
 │   └── common/
 │       ├── useScreenTime.ts
 │       ├── useNotifications.ts
@@ -281,7 +259,6 @@ export class FocusRepository {
 
 2. **Implement Core Architecture**
    - Create base store structure with Zustand
-   - Setup API client and authentication
    - Implement navigation structure
 
 3. **Develop Design System**
@@ -290,13 +267,11 @@ export class FocusRepository {
    - Setup typography and color systems
 
 4. **Feature Implementation Priority**
-   - Authentication flow and onboarding
    - Focus session timer with fruit garden animation
    - Tag management and manual logging
    - Fruit-based reward system with app blocking
    - Time journal and calendar integration
    - AI coach and insights dashboard
-   - Social squads and weekly challenges
    - Dynamic Island integration (iOS)
 
 This architecture provides a solid foundation for building a scalable, maintainable React Native application that can grow with the product requirements.

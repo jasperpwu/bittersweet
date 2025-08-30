@@ -11,11 +11,9 @@ console.log('🔍 Validating store implementation...');
 const requiredFiles = [
   'src/store/index.ts',
   'src/store/types.ts',
-  'src/store/slices/authSlice.ts',
   'src/store/slices/focusSlice.ts',
   'src/store/slices/tasksSlice.ts',
   'src/store/slices/rewardsSlice.ts',
-  'src/store/slices/socialSlice.ts',
   'src/store/slices/settingsSlice.ts',
   'src/store/slices/uiSlice.ts',
   'src/store/utils/entityManager.ts',
@@ -48,11 +46,9 @@ const storeContent = fs.readFileSync(storeIndexPath, 'utf8');
 
 // Check for proper imports
 const requiredImports = [
-  'createAuthSlice',
   'createFocusSlice', 
   'createTasksSlice',
   'createRewardsSlice',
-  'createSocialSlice',
   'createSettingsSlice',
   'createUISlice'
 ];

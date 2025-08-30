@@ -42,8 +42,6 @@ export const REWARD_CONSTANTS = {
 
 // Storage Keys
 export const STORAGE_KEYS = {
-  authToken: 'auth_token',
-  refreshToken: 'refresh_token',
   userData: 'user_data',
   focusSettings: 'focus_settings',
   appSettings: 'app_settings',
@@ -106,7 +104,6 @@ export const VALIDATION_CONSTANTS = {
 // Error Messages
 export const ERROR_MESSAGES = {
   network: 'Network error. Please check your connection.',
-  unauthorized: 'Session expired. Please log in again.',
   forbidden: 'You do not have permission to perform this action.',
   notFound: 'The requested resource was not found.',
   serverError: 'Server error. Please try again later.',

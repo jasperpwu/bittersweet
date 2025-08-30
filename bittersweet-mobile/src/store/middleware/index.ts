@@ -125,12 +125,6 @@ export function createPersistenceConfig(): PersistConfig {
     name: 'bittersweet-store',
     storage: createJSONStorage(() => AsyncStorage),
     partialize: (state: RootStore) => ({
-      auth: {
-        user: state.auth.user,
-        authToken: state.auth.authToken,
-        refreshToken: state.auth.refreshToken,
-        isAuthenticated: state.auth.isAuthenticated,
-      } as Partial<typeof state.auth>,
       focus: {
         sessions: state.focus.sessions,
         categories: state.focus.categories,
@@ -149,12 +143,6 @@ export function createPersistenceConfig(): PersistConfig {
         transactions: state.rewards.transactions,
         unlockableApps: state.rewards.unlockableApps,
       } as Partial<typeof state.rewards>,
-      social: {
-        squads: state.social.squads,
-        challenges: state.social.challenges,
-        userSquads: state.social.userSquads,
-        activeChallenges: state.social.activeChallenges,
-      } as Partial<typeof state.social>,
       settings: state.settings,
       // UI state is not persisted
     } as Partial<RootStore>),
@@ -170,14 +158,6 @@ export function createPersistenceConfig(): PersistConfig {
         // Restore selectedDate as Date object
         if (persistedState.tasks?.selectedDate) {
           persistedState.tasks.selectedDate = new Date(persistedState.tasks.selectedDate);
-        }
-        
-        // Restore other Date fields if needed
-        if (persistedState.auth?.user?.createdAt) {
-          persistedState.auth.user.createdAt = new Date(persistedState.auth.user.createdAt);
-        }
-        if (persistedState.auth?.user?.updatedAt) {
-          persistedState.auth.user.updatedAt = new Date(persistedState.auth.user.updatedAt);
         }
         
         // Restore dates in focus sessions
@@ -237,16 +217,6 @@ export function createDevtoolsConfig(): DevtoolsConfig {
     },
     actionSanitizer: (action: any) => {
       // Sanitize sensitive data in development
-      if (action.type && action.type.includes('auth')) {
-        return {
-          ...action,
-          payload: action.payload ? {
-            ...action.payload,
-            password: action.payload.password ? '[REDACTED]' : action.payload.password,
-            token: action.payload.token ? '[REDACTED]' : action.payload.token,
-          } : action.payload,
-        };
-      }
       return action;
     },
   };
@@ -293,17 +263,6 @@ function migrateLegacyStore(persistedState: any): any {
         tasks: persistedState.tasks.tasks || { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
         selectedDate: persistedState.tasks.selectedDate || new Date(),
         viewMode: persistedState.tasks.viewMode || 'day',
-      };
-    }
-    
-    // Migrate home data to auth if it exists
-    if (persistedState.home?.user) {
-      migratedState.auth = {
-        user: persistedState.home.user,
-        isAuthenticated: true,
-        authToken: null,
-        refreshToken: null,
-        loginState: { data: null, loading: false, error: null, lastFetch: null },
       };
     }
     

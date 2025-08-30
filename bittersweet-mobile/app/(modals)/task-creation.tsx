@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Header } from '../../src/components/ui/Header';
 import { TaskForm, CreateTaskInput } from '../../src/components/forms/TaskForm';
-import { useTasksActions, useAuth } from '../../src/store';
+import { useTasksActions } from '../../src/store';
 
 // Configure screen options to hide the default header
 export const unstable_settings = {
@@ -14,11 +14,9 @@ export const unstable_settings = {
 export default function TaskCreationModal() {
   const [isLoading, setIsLoading] = useState(false);
   const { createTask } = useTasksActions();
-  const { user } = useAuth();
 
   console.log('🧪 Store status:', {
     hasCreateTask: typeof createTask === 'function',
-    hasUser: !!user,
   });
 
   const handleSubmit = async (taskData: CreateTaskInput) => {
@@ -30,12 +28,8 @@ export default function TaskCreationModal() {
     setIsLoading(true);
 
     try {
-      // Use a fallback user ID if user is not available (for development)
-      const userId = user?.id || 'dev-user-' + Date.now();
-
-      if (!user && __DEV__) {
-        console.warn('No user logged in, using fallback user ID for development');
-      }
+      // Use a fallback user ID for development
+      const userId = 'focus-user-' + Date.now();
 
       // Convert CreateTaskInput to the format expected by the store
       const taskForStore = {

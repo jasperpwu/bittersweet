@@ -324,10 +324,6 @@ export const mockRewardTransactions: RewardTransaction[] = [
   },
 ];
 
-// Social features data - will be added when types are defined
-export const mockSquads: any[] = [];
-export const mockChallenges: any[] = [];
-
 // Helper function to get all mock data organized
 export const getMockData = () => ({
   user: mockUser,
@@ -341,12 +337,6 @@ export const getMockData = () => ({
 // Helper to initialize store with mock data
 export const initializeWithMockData = (store: any) => {
   const mockData = getMockData();
-  
-  // Set auth state
-  store.auth.user = mockData.user;
-  store.auth.isAuthenticated = true;
-  store.auth.authToken = 'mock-auth-token';
-  store.auth.isLoading = false;
 
   // Initialize focus data
   mockData.focusCategories.forEach(category => {

@@ -10,7 +10,6 @@ Advanced selectors with automatic memoization to prevent unnecessary re-renders:
 
 ```typescript
 // Basic selectors
-export const selectUser = (state: RootStore) => state.auth.user;
 export const selectFocusSessions = (state: RootStore) => state.focus.sessions;
 
 // Computed selectors with memoization
@@ -41,7 +40,6 @@ Performance-optimized hooks that only subscribe to specific parts of the store:
 
 ```typescript
 // Selective subscriptions - only re-render when specific data changes
-export const useAuthUser = () => useAppStore(selectors.selectUser);
 export const useCurrentSession = () => useAppStore(selectors.selectCurrentSession);
 
 // Parameterized hooks with memoization

@@ -6,7 +6,7 @@ inclusion: always
 
 ## Project Overview
 
-bittersweet is a React Native mobile application focused on mindful screen time management, focus habit building, and meaningful time tracking. The app combines Focus Sessions, smart app locks, positive reinforcement, and social accountability features to help users take control of their digital lives.
+bittersweet is a React Native mobile application focused on mindful screen time management, focus habit building, and meaningful time tracking. The app combines Focus Sessions, smart app locks, positive reinforcement features to help users take control of their digital lives.
 
 ## Core Technology Stack
 
@@ -100,7 +100,6 @@ src/
 │   │   ├── focus.tsx      # Focus Session tab
 │   │   ├── journal.tsx    # Time Journal tab
 │   │   ├── insights.tsx   # Insights Dashboard tab
-│   │   └── squads.tsx     # Social Motivation tab
 │   ├── _layout.tsx        # Root layout
 │   └── index.tsx          # Entry point
 ├── components/
@@ -118,18 +117,13 @@ src/
 │   │   ├── UnlockModal.tsx
 │   │   └── QuoteDisplay.tsx
 │   ├── journal/           # Time tracking components
-│   │   ├── CalendarView.tsx
-│   │   ├── TimeEntry.tsx
-│   │   └── ActivityList.tsx
-│   └── social/            # Squad components
-│       ├── SquadList.tsx
-│       ├── ChallengeCard.tsx
-│       └── ProgressShare.tsx
+│       ├── CalendarView.tsx
+│       ├── TimeEntry.tsx
+│       └── ActivityList.tsx
 ├── hooks/                 # Custom React hooks
 │   ├── useFocusSession.ts
 │   ├── useScreenTime.ts
 │   ├── useRewards.ts
-│   └── useSquad.ts
 ├── services/             # API and external services
 │   ├── api/
 │   ├── notifications/
@@ -138,7 +132,6 @@ src/
 │   ├── focusStore.ts
 │   ├── rewardStore.ts
 │   ├── journalStore.ts
-│   └── squadStore.ts
 ├── types/                # TypeScript type definitions
 │   ├── models.ts
 │   ├── api.ts
@@ -267,18 +260,6 @@ const fadeStyle = useAnimatedStyle(() => ({
 - Use `react-native-svg-charts` for time distribution
 - Implement gesture-based chart interactions
 - Show category breakdowns with pie charts
-
-### Squad Features
-
-**Real-time Updates:**
-- Implement WebSocket connection for live updates
-- Use optimistic UI updates for better UX
-- Cache squad data locally for offline access
-
-**Social Components:**
-- `AvatarGroup`: Overlapping avatar display
-- `ProgressRing`: Animated circular progress for challenges
-- `LeaderboardRow`: Swipeable row with actions
 
 ## Performance Optimization
 

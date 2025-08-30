@@ -21,15 +21,11 @@ const migrations = {
     if (state.homeSlice) {
       const { user, tasks, dailyGoals, ...rest } = state.homeSlice;
       
-      // Migrate user data to auth slice
+      // Migrate user data to user slice
       if (user) {
-        state.auth = {
-          ...state.auth,
+        state.user = {
           user: {
             id: user.id || 'user-1',
-            email: user.email || '',
-            name: user.name || 'User',
-            avatar: user.avatar,
             preferences: user.preferences || {},
             stats: user.stats || {
               totalFocusTime: 0,
@@ -41,8 +37,7 @@ const migrations = {
             },
             createdAt: new Date(),
             updatedAt: new Date(),
-          },
-          isAuthenticated: true,
+          }
         };
       }
       
@@ -98,7 +93,7 @@ const migrations = {
     }
     
     // Ensure all slices have proper normalized structure
-    const slices = ['focus', 'tasks', 'rewards', 'social'];
+    const slices = ['focus', 'tasks', 'rewards'];
     slices.forEach(sliceName => {
       if (state[sliceName]) {
         Object.keys(state[sliceName]).forEach(key => {
@@ -207,12 +202,6 @@ export const persistenceConfig: PersistOptions<RootStore> = {
   
   // Selective persistence - only persist necessary data
   partialize: (state: RootStore) => ({
-    auth: {
-      user: state.auth.user,
-      authToken: state.auth.authToken,
-      refreshToken: state.auth.refreshToken,
-      isAuthenticated: state.auth.isAuthenticated,
-    },
     focus: {
       sessions: state.focus.sessions,
       categories: state.focus.categories,
@@ -231,12 +220,6 @@ export const persistenceConfig: PersistOptions<RootStore> = {
       totalSpent: state.rewards.totalSpent,
       transactions: state.rewards.transactions,
       unlockableApps: state.rewards.unlockableApps,
-    },
-    social: {
-      squads: state.social.squads,
-      challenges: state.social.challenges,
-      userSquads: state.social.userSquads,
-      activeChallenges: state.social.activeChallenges,
     },
     settings: state.settings,
     // UI state is intentionally not persisted
@@ -394,16 +377,15 @@ function validateStateIntegrity(state: any) {
   const issues: string[] = [];
   
   // Check for required fields
-  if (!state.auth) issues.push('Missing auth slice');
+  if (!state.user) issues.push('Missing user slice');
   if (!state.focus) issues.push('Missing focus slice');
   if (!state.tasks) issues.push('Missing tasks slice');
   if (!state.rewards) issues.push('Missing rewards slice');
-  if (!state.social) issues.push('Missing social slice');
   if (!state.settings) issues.push('Missing settings slice');
   if (!state.ui) issues.push('Missing ui slice');
   
   // Check normalized structures
-  const normalizedSlices = ['focus', 'tasks', 'rewards', 'social'];
+  const normalizedSlices = ['focus', 'tasks', 'rewards'];
   normalizedSlices.forEach(sliceName => {
     if (state[sliceName]) {
       Object.keys(state[sliceName]).forEach(key => {

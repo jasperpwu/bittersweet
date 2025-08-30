@@ -4,7 +4,7 @@ This setup provides a comprehensive test user with realistic data to showcase al
 
 ## Automatic Initialization
 
-In development mode (`__DEV__ === true`), the store will automatically initialize with mock data if no user is currently authenticated.
+In development mode (`__DEV__ === true`), the store will automatically initialize with mock data.
 
 ## Manual Initialization
 
@@ -56,7 +56,6 @@ if (success) {
 
 ## Features Demonstrated
 
-✅ **Authentication**: Logged in user with full profile
 ✅ **Focus Sessions**: Multiple completed sessions with analytics
 ✅ **Task Management**: Tasks in various states with progress tracking
 ✅ **Rewards System**: Earning and spending seeds
@@ -92,8 +91,7 @@ The mock data only loads in development mode (`NODE_ENV === 'development'`). For
 
 1. Modify `shouldInitializeMockData()` in `initializeMockData.ts`
 2. Use environment variables or flags
-3. Check user authentication state
-4. Add storage-based persistence flags
+3. Add storage-based persistence flags
 
 This ensures your production app starts clean while development is fully functional from day one!
 

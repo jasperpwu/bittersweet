@@ -11,7 +11,6 @@ export function isStoreReady(): boolean {
     
     console.log('🔍 Checking store readiness:', {
       hasState: !!state,
-      hasAuth: !!state?.auth,
       hasFocus: !!state?.focus,
       hasTasks: !!state?.tasks,
       hasUI: !!state?.ui,
@@ -20,7 +19,7 @@ export function isStoreReady(): boolean {
     });
     
     // Check if all essential slices are available
-    const requiredSlices = ['auth', 'focus', 'tasks', 'ui'];
+    const requiredSlices = ['focus', 'tasks', 'ui'];
     const hasAllSlices = requiredSlices.every(slice => !!state?.[slice as keyof typeof state]);
     
     // Check if tasks slice has essential methods

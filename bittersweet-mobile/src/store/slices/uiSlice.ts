@@ -12,8 +12,6 @@ export const MODAL_TYPES = {
   CATEGORY_SELECTION: 'category_selection',
   SESSION_COMPLETE: 'session_complete',
   APP_UNLOCK_CONFIRM: 'app_unlock_confirm',
-  SQUAD_JOIN: 'squad_join',
-  CHALLENGE_CREATE: 'challenge_create',
   SETTINGS: 'settings',
   PROFILE: 'profile',
   ERROR: 'error',
@@ -30,9 +28,6 @@ export const LOADING_ACTIONS = {
   TASK_CREATE: 'task_create',
   TASK_UPDATE: 'task_update',
   APP_UNLOCK: 'app_unlock',
-  SQUAD_JOIN: 'squad_join',
-  SQUAD_LEAVE: 'squad_leave',
-  CHALLENGE_JOIN: 'challenge_join',
   SETTINGS_UPDATE: 'settings_update',
 } as const;
 

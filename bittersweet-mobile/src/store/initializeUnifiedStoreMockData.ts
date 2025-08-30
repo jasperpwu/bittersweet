@@ -38,8 +38,7 @@ const createMockUnifiedUser = () => ({
       enabled: true,
       sessionReminders: true,
       breakReminders: true,
-      dailyGoals: true,
-      squadUpdates: false,
+      dailyGoals: true
     },
     privacy: {
       shareStats: true,
@@ -83,12 +82,10 @@ export const initializeUnifiedStoreWithMockData = () => {
     
     // Initialize the unified store with mock user data
     useUnifiedStore.setState({
-      user: mockUser,
-      isAuthenticated: true,
       loading: {
         ...currentState.loading,
-        auth: false,
-        profile: false,
+        app: false,
+        preferences: false,
       },
       errors: [], // Clear any existing errors
     });
@@ -118,7 +115,7 @@ export const initializeUnifiedStoreWithMockData = () => {
 export const shouldInitializeUnifiedMockData = (): boolean => {
   if (process.env.NODE_ENV === 'development') {
     const store = useUnifiedStore.getState();
-    return !store.isAuthenticated && !store.user;
+    return true;
   }
   return false;
 };

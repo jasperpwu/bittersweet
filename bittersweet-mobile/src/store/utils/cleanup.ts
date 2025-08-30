@@ -120,14 +120,6 @@ export class EntityCleanup {
       };
     }
     
-    // Clean social data
-    if (store.social) {
-      cleanedStore.social = {
-        ...store.social,
-        challenges: this.cleanupNormalizedState(store.social.challenges)
-      };
-    }
-    
     // Clean UI errors
     if (store.ui) {
       const cutoffDate = new Date(Date.now() - this.config.maxAge);

@@ -1,1 +1,0 @@
-export { ProgressShare } from './ProgressShare';

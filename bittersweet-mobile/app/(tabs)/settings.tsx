@@ -3,7 +3,7 @@ import { View, ScrollView, SafeAreaView, Pressable, Alert } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Toggle } from '../../src/components/ui/Toggle';
-import { useAuth, useSettings } from '../../src/store/unified-store';
+import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 
 interface SettingsItemProps {
@@ -59,8 +59,7 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
 };
 
 export default function SettingsScreen() {
-  const { user, logout } = useAuth();
-  const { preferences, updatePreferences, theme } = useSettings();
+  const { preferences, updatePreferences, theme } = useAppSettings();
   const { 
     hasNotifications, 
     triggerHaptic, 
@@ -68,43 +67,16 @@ export default function SettingsScreen() {
     deviceInfo 
   } = useDeviceIntegration();
 
-  const handleLogout = () => {
+  const handleAbout = () => {
     triggerHaptic('light');
     Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-          onPress: () => triggerHaptic('light'),
-        },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              triggerHaptic('success');
-              // For now, just show success - would navigate to auth in real app
-              Alert.alert('Logged Out', 'You have been successfully logged out.');
-            } catch (error) {
-              triggerHaptic('error');
-              Alert.alert('Error', 'Failed to log out. Please try again.');
-            }
-          },
-        },
-      ]
+      'About Bittersweet',
+      'Focus timer app for productive work sessions.',
+      [{ text: 'OK' }]
     );
   };
 
   const handleNotificationsToggle = async (value: boolean) => {
-    // Check if user is logged in before attempting update
-    if (!user) {
-      console.log('User not logged in yet, skipping notifications update');
-      return;
-    }
-
     try {
       // Request permissions if enabling notifications
       if (value && !hasNotifications) {
@@ -135,12 +107,6 @@ export default function SettingsScreen() {
   };
 
   const handleNightModeToggle = async (value: boolean) => {
-    // Check if user is logged in before attempting update
-    if (!user) {
-      console.log('User not logged in yet, skipping theme update');
-      return;
-    }
-
     try {
       await updatePreferences({
         theme: value ? 'dark' : 'light',
@@ -160,12 +126,6 @@ export default function SettingsScreen() {
   };
 
   const handleReminderToggle = async (value: boolean) => {
-    // Check if user is logged in before attempting update
-    if (!user) {
-      console.log('User not logged in yet, skipping reminder update');
-      return;
-    }
-
     try {
       await updatePreferences({
         notifications: {
@@ -214,9 +174,9 @@ export default function SettingsScreen() {
         <Typography variant="headline-18" color="white">
           Settings
         </Typography>
-        <Pressable onPress={handleLogout} className="active:opacity-70">
-          <Typography variant="body-14" className="text-error">
-            Log out
+        <Pressable onPress={handleAbout} className="active:opacity-70">
+          <Typography variant="body-14" className="text-primary">
+            About
           </Typography>
         </Pressable>
       </View>
@@ -226,17 +186,16 @@ export default function SettingsScreen() {
         <View className="px-5 py-4 flex-row items-center">
           <Avatar
             size="large"
-            source={user?.avatar}
-            name={user?.name}
+            name="Focus User"
             showEditButton={true}
             onEditPress={handleAvatarEdit}
           />
           <View className="ml-4 flex-1">
             <Typography variant="subtitle-16" color="white">
-              {user?.name || 'Artiom Larin'}
+              Focus User
             </Typography>
             <Typography variant="body-14" color="secondary" className="mt-1">
-              {user?.email || 'iseeyoowhen@gmail.com'}
+              Productive work sessions
             </Typography>
           </View>
         </View>

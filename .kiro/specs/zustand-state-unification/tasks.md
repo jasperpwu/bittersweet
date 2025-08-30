@@ -7,16 +7,14 @@
   - Configure root store with middleware integration in `src/store/index.ts`
   - _Requirements: 2.3, 2.4, 3.1, 3.2, 4.1, 7.1, 7.2, 7.3, 9.1_
 
-- [x] 2. Implement core domain slices (auth, focus, tasks)
-  - Create auth slice with user management, authentication tokens, and session handling
+- [x] 2. Implement core domain slices (focus, tasks)
   - Migrate and enhance focus slice with normalized structure and cross-store integration
   - Enhance tasks slice with focus session linking and improved relationship management
   - Implement async state patterns and error handling for all core slices
   - _Requirements: 2.1, 2.2, 3.3, 4.2, 4.3, 5.1, 5.2, 8.2, 9.2, 9.3, 9.4_
 
-- [x] 3. Implement feature domain slices (rewards, social, settings, UI)
+- [x] 3. Implement feature domain slices (rewards, settings, UI)
   - Create rewards slice with transaction management and app unlock functionality
-  - Implement social slice with squad and challenge management
   - Create settings slice with comprehensive user preferences and persistence
   - Add UI slice for application state, modals, and loading indicators
   - _Requirements: 2.2, 5.1, 5.2, 5.3, 6.2, 7.4, 8.2, 9.1_

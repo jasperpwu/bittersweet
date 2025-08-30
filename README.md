@@ -1,6 +1,6 @@
 # Bittersweet
 
-A comprehensive screen time management ecosystem that helps users build healthier digital habits through focus sessions, intelligent app blocking, positive reinforcement, and social accountability.
+A comprehensive screen time management ecosystem that helps users build healthier digital habits through focus sessions, intelligent app blocking, positive reinforcement.
 
 ## 📁 Project Structure
 
@@ -50,7 +50,6 @@ For detailed development instructions, see [bittersweet-app/README.md](./bitters
 - 🚧 **App Blocking**: Intelligent app blocking with seed-based unlocks
 - 🚧 **Time Journal**: Calendar-based time tracking and reflection
 - 🚧 **Insights Dashboard**: AI-powered productivity analytics
-- 🚧 **Social Squads**: Team challenges and accountability features
 - 🚧 **Reward System**: Seed-based gamification with achievements
 
 ## 🛠️ Technology Stack

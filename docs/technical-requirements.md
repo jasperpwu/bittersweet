@@ -13,7 +13,6 @@
 - **Smart App Blocking**: Native iOS ScreenTime and Android UsageStats integration
 - **Fruit Reward System**: 1 fruit per 5 minutes of focus, 1 fruit = 1 minute app access
 - **AI Coach**: Behavioral insights and personalized productivity tips
-- **Social Squads**: Accountability groups with weekly challenges and progress sharing
 - **Dynamic Island**: iOS integration for active session and unlock timer display
 
 ### Navigation & Routing
@@ -123,9 +122,6 @@ Development mode causes significant performance degradation and should never be 
 import { ScreenTime } from './native-modules/ScreenTime';
 
 class IOSScreenTimeService {
-  static async requestAuthorization(): Promise<boolean> {
-    return ScreenTime.requestAuthorization();
-  }
   
   static async getUsageData(startDate: Date, endDate: Date): Promise<UsageData> {
     return ScreenTime.getUsageData(startDate, endDate);
@@ -328,19 +324,6 @@ const scheduleSessionReminder = async (sessionTime: Date) => {
 ```typescript
 import * as SecureStore from 'expo-secure-store';
 
-class SecureStorageService {
-  static async storeToken(token: string): Promise<void> {
-    await SecureStore.setItemAsync('auth_token', token);
-  }
-  
-  static async getToken(): Promise<string | null> {
-    return SecureStore.getItemAsync('auth_token');
-  }
-  
-  static async removeToken(): Promise<void> {
-    await SecureStore.deleteItemAsync('auth_token');
-  }
-}
 ```
 
 #### App Cache (Non-sensitive Data)
@@ -513,14 +496,6 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor for authentication
-apiClient.interceptors.request.use(async (config) => {
-  const token = await SecureStorageService.getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
 
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
@@ -562,7 +537,6 @@ export class FocusAPI {
 ### Data Protection
 - **Encryption**: All sensitive data encrypted at rest
 - **Secure Storage**: Use Expo SecureStore for tokens and credentials
-- **API Security**: HTTPS only, token-based authentication
 - **Input Validation**: Zod schemas for all user inputs
 
 ### Privacy Compliance

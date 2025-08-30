@@ -15,11 +15,9 @@ src/store/
 ├── middleware/
 │   └── persistence.ts       # Optimized persistence with versioning
 ├── slices/
-│   ├── authSlice.ts        # User authentication and profile
 │   ├── focusSlice.ts       # Focus sessions and categories
 │   ├── tasksSlice.ts       # Task management
 │   ├── rewardsSlice.ts     # Seeds and app unlocking
-│   ├── socialSlice.ts      # Squads and challenges
 │   ├── settingsSlice.ts    # User preferences
 │   └── uiSlice.ts          # UI state and modals
 ├── utils/
@@ -46,7 +44,6 @@ src/store/
 import { 
   useFocus, 
   useTasks, 
-  useAuth, 
   useRewards,
   useFocusActions,
   useTasksActions 
@@ -56,7 +53,6 @@ const MyComponent = () => {
   // State access (selective subscriptions)
   const { currentSession, isRunning } = useFocus();
   const { selectedDate, tasks } = useTasks();
-  const { user, isAuthenticated } = useAuth();
   
   // Actions access (stable references)
   const { startSession, completeSession } = useFocusActions();
@@ -118,31 +114,6 @@ eventListener.on(STORE_EVENTS.FOCUS_SESSION_COMPLETED, (event) => {
 ```
 
 ## Store Slices
-
-### Auth Slice
-
-Manages user authentication, profile data, and session tokens.
-
-```typescript
-interface AuthSlice {
-  // State
-  user: User | null;
-  isAuthenticated: boolean;
-  authToken: string | null;
-  refreshToken: string | null;
-  loginState: AsyncState<User>;
-  
-  // Actions
-  login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
-  refreshAuth: () => Promise<void>;
-  updateProfile: (updates: Partial<User>) => Promise<void>;
-  
-  // Selectors
-  getUser: () => User | null;
-  isLoggedIn: () => boolean;
-}
-```
 
 ### Focus Slice
 
@@ -291,10 +262,6 @@ export const STORE_EVENTS = {
   MODAL_CLOSED: 'modal_closed',
   ERROR_OCCURRED: 'error_occurred',
   
-  // Auth Events
-  USER_LOGGED_IN: 'user_logged_in',
-  USER_LOGGED_OUT: 'user_logged_out',
-  
   // Settings Events
   THEME_CHANGED: 'theme_changed',
   SETTINGS_UPDATED: 'settings_updated',
@@ -329,7 +296,6 @@ describe('MyComponent', () => {
   
   beforeEach(() => {
     store = storeTestHelpers.createMockStore({
-      auth: { user: mockUser, isAuthenticated: true },
       focus: { currentSession: { session: null, isRunning: false } },
     });
   });
