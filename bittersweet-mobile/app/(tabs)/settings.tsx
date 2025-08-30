@@ -99,6 +99,12 @@ export default function SettingsScreen() {
   };
 
   const handleNotificationsToggle = async (value: boolean) => {
+    // Check if user is logged in before attempting update
+    if (!user) {
+      console.log('User not logged in yet, skipping notifications update');
+      return;
+    }
+
     try {
       // Request permissions if enabling notifications
       if (value && !hasNotifications) {
@@ -129,6 +135,12 @@ export default function SettingsScreen() {
   };
 
   const handleNightModeToggle = async (value: boolean) => {
+    // Check if user is logged in before attempting update
+    if (!user) {
+      console.log('User not logged in yet, skipping theme update');
+      return;
+    }
+
     try {
       await updatePreferences({
         theme: value ? 'dark' : 'light',
@@ -148,6 +160,12 @@ export default function SettingsScreen() {
   };
 
   const handleReminderToggle = async (value: boolean) => {
+    // Check if user is logged in before attempting update
+    if (!user) {
+      console.log('User not logged in yet, skipping reminder update');
+      return;
+    }
+
     try {
       await updatePreferences({
         notifications: {

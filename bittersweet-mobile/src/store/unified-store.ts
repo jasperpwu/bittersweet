@@ -511,4 +511,21 @@ export const useAppState = () => useUnifiedStore((state) => ({
 export const initializeUnifiedStore = async () => {
   const store = useUnifiedStore.getState();
   await store.initializeApp();
+  
+  // Initialize with mock data in development if no user is authenticated
+  if (process.env.NODE_ENV === 'development') {
+    const { autoInitializeUnifiedMockData } = await import('./initializeUnifiedStoreMockData');
+    autoInitializeUnifiedMockData();
+  }
+};
+
+// Export manual initialization function for the unified store
+export const loadUnifiedDemoData = async () => {
+  try {
+    const { initializeUnifiedStoreWithMockData } = await import('./initializeUnifiedStoreMockData');
+    return initializeUnifiedStoreWithMockData();
+  } catch (error) {
+    console.error('❌ Failed to load unified demo data:', error);
+    return false;
+  }
 };

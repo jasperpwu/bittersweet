@@ -687,7 +687,7 @@ export function initializeStore() {
     console.log('✅ Store initialized successfully');
     
     // Auto-login a test user in development mode
-    if (__DEV__) {
+    if (process.env.NODE_ENV === 'development') {
       setTimeout(() => {
         try {
           const currentState = getStoreState();
@@ -709,6 +709,24 @@ export function initializeStore() {
 // Initialize store on module load
 try {
   initializeStore();
+  
+  // Initialize with mock data in development if no user is authenticated
+  if (process.env.NODE_ENV === 'development') {
+    import('./initializeMockData').then(({ autoInitializeMockData }) => {
+      autoInitializeMockData();
+    });
+  }
 } catch (error) {
   console.error('❌ Failed to initialize store:', error);
 }
+
+// Export manual initialization function
+export const loadDemoData = async () => {
+  try {
+    const { initializeStoreWithMockData } = await import('./initializeMockData');
+    return initializeStoreWithMockData();
+  } catch (error) {
+    console.error('❌ Failed to load demo data:', error);
+    return false;
+  }
+};
