@@ -3,7 +3,7 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import { Typography } from '../../ui/Typography/Typography';
 
 interface EmptyStateProps {
-  onAddTask?: () => void;
+  onAddSession?: () => void;
 }
 
 const styles = StyleSheet.create({
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   },
 });
 
-export const EmptyState: FC<EmptyStateProps> = ({ onAddTask }) => {
+export const EmptyState: FC<EmptyStateProps> = ({ onAddSession }) => {
   return (
     <View style={styles.container}>
       {/* Illustration */}
@@ -211,13 +211,13 @@ export const EmptyState: FC<EmptyStateProps> = ({ onAddTask }) => {
           variant="headline-24"
           style={styles.titleText}
         >
-          No task for today
+          No sessions for today
         </Typography>
         <Typography
           variant="paragraph-14"
           style={styles.descriptionText}
         >
-          You don't have any schedule for today.{'\n'}Tap the plus button to create a new task
+          You don't have any schedule for today.{'\n'}Tap the plus button to create a new focus session
         </Typography>
       </View>
     </View>

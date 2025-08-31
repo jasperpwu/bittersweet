@@ -14,12 +14,18 @@ export default function InsightsScreen() {
 
   // Get data from focus store
   const { sessions } = useFocus();
-  const { getChartData } = useFocusSelectors();
+  const selectors = useFocusSelectors();
   
   // Placeholder functions until focus slice is fully implemented
   const getSessionsByDate = () => ({});
   const deleteSession = (sessionId: string) => {
     console.log('Deleting session:', sessionId);
+  };
+  
+  // Simple chart data placeholder
+  const getChartData = (period: TimePeriod) => {
+    // Return empty array for now - this would normally process session data
+    return [];
   };
 
   // Memoized data processing

@@ -35,25 +35,6 @@ export interface Category {
     updatedAt: Date;
 }
 
-// Simple Task Types
-export interface Task {
-    id: string;
-    title: string;
-    description?: string;
-    categoryId: string;
-    date: Date;
-    startTime: Date;
-    duration: number; // in minutes
-    status: 'scheduled' | 'active' | 'completed' | 'cancelled';
-    priority: 'low' | 'medium' | 'high';
-    focusTimeSpent: number; // in minutes
-    estimatedTime: number; // in minutes
-    completed: boolean;
-    completedAt?: Date;
-    createdAt: Date;
-    updatedAt: Date;
-}
-
 // Simple Rewards Types
 export interface RewardTransaction {
     id: string;
@@ -140,18 +121,6 @@ export interface FocusSlice {
     updateFocusSettings: (updates: Partial<FocusSettings>) => void;
 }
 
-export interface TasksSlice {
-    // State
-    tasks: Task[];
-    selectedDate: Date;
-
-    // Actions
-    createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'focusTimeSpent' | 'completed' | 'completedAt'>) => void;
-    updateTask: (id: string, updates: Partial<Task>) => void;
-    deleteTask: (id: string) => void;
-    completeTask: (id: string) => void;
-    setSelectedDate: (date: Date) => void;
-}
 
 export interface RewardsSlice {
     // State
@@ -192,7 +161,6 @@ export interface UISlice {
 // Root Store Interface
 export interface AppStore {
     focus: FocusSlice;
-    tasks: TasksSlice;
     rewards: RewardsSlice;
     settings: SettingsSlice;
     ui: UISlice;

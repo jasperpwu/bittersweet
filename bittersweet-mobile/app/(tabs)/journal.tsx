@@ -1,102 +1,90 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { View, SafeAreaView } from 'react-native';
-import { CalendarView } from '../../src/components/journal/CalendarView';
-import { ActivityList } from '../../src/components/journal/ActivityList';
-import { Typography } from '../../src/components/ui/Typography';
-
-
-// Mock data for demonstration
-const mockCalendarDays = Array.from({ length: 30 }, (_, i) => ({
-  date: new Date(2024, 0, i + 1),
-  focusMinutes: Math.floor(Math.random() * 120),
-  sessionsCompleted: Math.floor(Math.random() * 5),
-  isToday: i === 15,
-  isSelected: i === 15,
-}));
-
-const mockEntries = [
-  {
-    id: '1',
-    startTime: new Date(2024, 0, 15, 9, 0),
-    endTime: new Date(2024, 0, 15, 9, 25),
-    duration: 25,
-    category: 'Work',
-    tags: ['important', 'project'],
-    description: 'Working on quarterly report',
-    isManualEntry: false,
-  },
-  {
-    id: '2',
-    startTime: new Date(2024, 0, 15, 14, 0),
-    endTime: new Date(2024, 0, 15, 14, 30),
-    duration: 30,
-    category: 'Study',
-    tags: ['learning'],
-    description: 'Reading React Native documentation',
-    isManualEntry: true,
-  },
-];
+import { router } from 'expo-router';
+import { StatusBar } from '../../src/components/ui/StatusBar';
+import { Header } from '../../src/components/ui/Header';
+import { DateSelector, Timeline } from '../../src/components/journal';
+import { useFocus } from '../../src/store';
+import { generateExtendedWeekDates } from '../../src/utils/dateUtils';
 
 export default function JournalScreen() {
-  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const { sessions } = useFocus();
 
-  const handleDaySelect = (date: Date) => {
+  // Generate week dates for the date selector
+  const weekDates = useMemo(() => generateExtendedWeekDates(), []);
+
+  // Current time for the timeline indicator
+  const currentTime = new Date();
+
+  const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
   };
 
-  const handleViewModeChange = (mode: 'week' | 'month') => {
-    setViewMode(mode);
+  const handleAddSession = () => {
+    router.push('/(modals)/session-creation');
   };
 
-  const handleEditEntry = (entry: any) => {
-    console.log('Edit entry:', entry);
-    // TODO: Implement edit functionality
+  const handleSessionPress = (sessionId: string) => {
+    // TODO: Navigate to session details or edit session
+    console.log('Session pressed:', sessionId);
   };
 
-  const handleDeleteEntry = (entryId: string) => {
-    console.log('Delete entry:', entryId);
-    // TODO: Implement delete functionality
-  };
+  // Convert store sessions to component format and filter for selected date
+  const sessionsForSelectedDate = useMemo(() => {
+    return sessions.allIds
+      .map(id => {
+        const session = sessions.byId[id];
+        return {
+          id: session.id,
+          startTime: new Date(session.startTime),
+          endTime: new Date(session.endTime),
+          duration: Math.round((new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60)),
+          tags: session.tags || [],
+          notes: session.notes || '',
+        };
+      })
+      .filter(session => {
+        // Filter for selected date
+        const sessionDate = session.startTime.toDateString();
+        const selectedDateString = selectedDate.toDateString();
+        return sessionDate === selectedDateString;
+      })
+      .filter(Boolean);
+  }, [sessions, selectedDate]);
+
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-dark-bg">
-      {/* Header */}
-      <View className="px-4 py-4 border-b border-light-border dark:border-dark-border">
-        <Typography variant="headline-24" color="primary">
-          Time Journal
-        </Typography>
-        <Typography variant="body-14" color="secondary" className="mt-1">
-          Track your focus sessions and productivity
-        </Typography>
-      </View>
-
-      {/* Calendar View */}
-      <CalendarView
-        days={mockCalendarDays}
-        onDaySelect={handleDaySelect}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
+    <SafeAreaView className="flex-1 bg-dark-bg">
+      <StatusBar variant="dark" />
+      
+      <Header
+        title="Journal"
+        rightAction={{
+          icon: 'add',
+          onPress: handleAddSession,
+        }}
+        useSafeArea={false}
       />
 
-      {/* Activity List */}
       <View className="flex-1">
-        <View className="px-4 py-3 border-b border-light-border dark:border-dark-border">
-          <Typography variant="subtitle-16" color="primary">
-            {selectedDate.toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </Typography>
+        {/* Date Selector */}
+        <View className="border-b border-dark-border" style={{ backgroundColor: '#1B1C30' }}>
+          <DateSelector
+            selectedDate={selectedDate}
+            onDateSelect={handleDateSelect}
+            weekDates={weekDates}
+          />
         </View>
-        
-        <ActivityList
-          entries={mockEntries}
-          onEditEntry={handleEditEntry}
-          onDeleteEntry={handleDeleteEntry}
-          emptyMessage="No focus sessions recorded for this day"
-        />
+
+        {/* Timeline */}
+        <View className="flex-1 px-5 pt-4">
+          <Timeline
+            sessions={sessionsForSelectedDate}
+            currentTime={currentTime}
+            onSessionPress={handleSessionPress}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );

@@ -79,7 +79,7 @@ export interface FocusSession extends BaseEntity {
   targetDuration: number;
   categoryId: string;
   tagIds: string[];
-  description?: string;
+  notes?: string;
   status: 'active' | 'paused' | 'completed' | 'cancelled';
   seedsEarned: number;
   pauseHistory: PauseRecord[];
@@ -110,28 +110,6 @@ export interface FocusSettings {
   autoStartSessions: boolean;
 }
 
-// Task Types
-export interface TaskProgress {
-  completed: boolean;
-  completedAt?: Date;
-  focusTimeSpent: number;
-  estimatedTime: number;
-  actualTime: number;
-}
-
-export interface Task extends BaseEntity {
-  title: string;
-  description?: string;
-  categoryId: string;
-  date: Date;
-  startTime: Date;
-  duration: number;
-  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
-  progress: TaskProgress;
-  focusSessionIds: string[];
-  priority: 'low' | 'medium' | 'high';
-  userId: string;
-}
 
 // Rewards Types
 export interface RewardTransaction extends BaseEntity {
@@ -229,7 +207,7 @@ export interface FocusSlice {
   settings: FocusSettings;
   
   // Actions
-  startSession: (params: { targetDuration: number; categoryId: string; tagIds: string[]; description?: string }) => void;
+  startSession: (params: { targetDuration: number; categoryId: string; tagIds: string[]; notes?: string }) => void;
   pauseSession: () => void;
   resumeSession: () => void;
   completeSession: () => void;
@@ -251,41 +229,6 @@ export interface FocusSlice {
   getProductivityInsights: () => ProductivityInsights;
 }
 
-export interface TasksSlice {
-  // Normalized State
-  tasks: NormalizedState<Task>;
-  
-  // UI State
-  selectedDate: Date;
-  viewMode: 'day' | 'week' | 'month';
-  currentWeekStart: Date;
-  
-  // Actions
-  createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'focusSessionIds'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  startTask: (id: string) => void;
-  completeTask: (id: string) => void;
-  
-  // UI Actions
-  setSelectedDate: (date: Date) => void;
-  setViewMode: (mode: 'day' | 'week' | 'month') => void;
-  
-  // Week Navigation Actions
-  goToPreviousWeek: () => void;
-  goToNextWeek: () => void;
-  goToCurrentWeek: () => void;
-  
-  // Selectors
-  getTaskById: (id: string) => Task | undefined;
-  getTasksForDate: (date: Date) => Task[];
-  getActiveTask: () => Task | null;
-  getTasksForDateRange: (start: Date, end: Date) => Task[];
-  
-  // Integration with Focus
-  linkTaskToSession: (taskId: string, sessionId: string) => void;
-  getTaskProgress: (id: string) => TaskProgress;
-}
 
 export interface RewardsSlice {
   // State
@@ -345,7 +288,6 @@ export interface UISlice {
 // Root Store Interface
 export interface RootStore {
   focus: FocusSlice;
-  tasks: TasksSlice;
   rewards: RewardsSlice;
   settings: SettingsSlice;
   ui: UISlice;

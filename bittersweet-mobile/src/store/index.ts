@@ -1,44 +1,46 @@
 /**
- * Unified Zustand store - simplified version without auth
+ * Unified Zustand store - Focus-centric architecture
  */
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  categoryId: string;
-  date: Date;
-  startTime: Date;
-  duration: number;
-  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high';
-  progress?: {
-    completed: boolean;
-    focusTimeSpent: number;
-    estimatedTime: number;
-    actualTime: number;
-  };
-  focusSessionIds: string[];
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { FocusSession, SessionTag, CreateSessionInput } from '../types/models';
 
 interface AppStore {
-  // Focus
+  // Focus (merged with tasks functionality)
   focus: {
-    sessions: { byId: Record<string, any>; allIds: string[]; loading: boolean; error: string | null; lastUpdated: Date | null };
-    categories: { 
-      byId: Record<string, { id: string; name: string; color: string; icon: string; isDefault?: boolean; createdAt: Date; updatedAt: Date }>;
-      allIds: string[];
-      loading: boolean;
-      error: string | null;
+    // Sessions (includes both planned and active sessions)
+    sessions: { 
+      byId: Record<string, FocusSession>; 
+      allIds: string[]; 
+      loading: boolean; 
+      error: string | null; 
       lastUpdated: Date | null;
     };
-    tags: { byId: Record<string, any>; allIds: string[]; loading: boolean; error: string | null; lastUpdated: Date | null };
-    currentSession: { session: any; isRunning: boolean; remainingTime: number; startedAt: Date | null };
+    
+    // Tags (merged categories and tags)
+    tags: { 
+      byId: Record<string, SessionTag>; 
+      allIds: string[]; 
+      loading: boolean; 
+      error: string | null; 
+      lastUpdated: Date | null;
+    };
+    
+    // Current active session
+    currentSession: { 
+      session: FocusSession | null; 
+      isRunning: boolean; 
+      remainingTime: number; 
+      startedAt: Date | null;
+    };
+    
+    // View state (for calendar/list views)
+    selectedDate: Date;
+    viewMode: 'day' | 'week' | 'month';
+    currentWeekStart: Date;
+    
+    // Settings
     settings: {
       defaultDuration: number;
       breakDuration: number;
@@ -49,24 +51,27 @@ interface AppStore {
       autoStartBreaks: boolean;
       autoStartSessions: boolean;
     };
-  };
-  
-  // Tasks
-  tasks: {
-    tasks: { byId: Record<string, Task>; allIds: string[]; loading: boolean; error: string | null; lastUpdated: Date | null };
-    selectedDate: Date;
-    viewMode: 'day' | 'week' | 'month';
-    currentWeekStart: Date;
-    createTask: (taskData: any) => void;
-    updateTask: (id: string, updates: any) => void;
-    deleteTask: (id: string) => void;
-    startTask: (id: string) => void;
-    completeTask: (id: string) => void;
+    
+    // Actions
+    createSession: (sessionData: CreateSessionInput) => void;
+    updateSession: (id: string, updates: Partial<FocusSession>) => void;
+    deleteSession: (id: string) => void;
+    startSession: (id: string) => void;
+    pauseSession: () => void;
+    resumeSession: () => void;
+    completeSession: (id?: string) => void;
+    
+    // View actions
     setSelectedDate: (date: Date) => void;
     setViewMode: (mode: 'day' | 'week' | 'month') => void;
     goToPreviousWeek: () => void;
     goToNextWeek: () => void;
     goToCurrentWeek: () => void;
+    
+    // Tag management
+    createTag: (tag: Omit<SessionTag, 'id' | 'usageCount'>) => void;
+    updateTag: (id: string, updates: Partial<SessionTag>) => void;
+    deleteTag: (id: string) => void;
   };
   
   // UI
@@ -108,26 +113,35 @@ const getWeekStart = () => {
   return weekStart;
 };
 
+const generateId = () => {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${randomStr}`;
+};
+
 export const useAppStore = create<AppStore>()(
   devtools(
     (set, get) => ({
-      // Focus state
+      // Focus state (merged with tasks)
       focus: {
         sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        categories: { 
+        tags: { 
           byId: {
-            'work': { id: 'work', name: 'Work', color: '#6592E9', icon: '💼', isDefault: true, createdAt: new Date(), updatedAt: new Date() },
-            'study': { id: 'study', name: 'Study', color: '#51BC6F', icon: '📚', isDefault: true, createdAt: new Date(), updatedAt: new Date() },
-            'personal': { id: 'personal', name: 'Personal', color: '#EF786C', icon: '🏠', isDefault: true, createdAt: new Date(), updatedAt: new Date() },
-            'exercise': { id: 'exercise', name: 'Exercise', color: '#FF9800', icon: '💪', isDefault: true, createdAt: new Date(), updatedAt: new Date() },
+            'work': { id: 'work', name: 'Work', color: '#6592E9', icon: '💼', isDefault: true, usageCount: 0 },
+            'study': { id: 'study', name: 'Study', color: '#51BC6F', icon: '📚', isDefault: true, usageCount: 0 },
+            'personal': { id: 'personal', name: 'Personal', color: '#EF786C', icon: '🏠', isDefault: true, usageCount: 0 },
+            'exercise': { id: 'exercise', name: 'Exercise', color: '#FF9800', icon: '💪', isDefault: true, usageCount: 0 },
+            'creative': { id: 'creative', name: 'Creative', color: '#9C27B0', icon: '🎨', isDefault: true, usageCount: 0 },
           }, 
-          allIds: ['work', 'study', 'personal', 'exercise'], 
+          allIds: ['work', 'study', 'personal', 'exercise', 'creative'], 
           loading: false, 
           error: null, 
           lastUpdated: null 
         },
-        tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
         currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },
+        selectedDate: new Date(),
+        viewMode: 'day',
+        currentWeekStart: getWeekStart(),
         settings: {
           defaultDuration: 25,
           breakDuration: 5,
@@ -138,67 +152,79 @@ export const useAppStore = create<AppStore>()(
           autoStartBreaks: false,
           autoStartSessions: false,
         },
-      },
-      
-      // Tasks state and actions
-      tasks: {
-        tasks: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        selectedDate: new Date(),
-        viewMode: 'day',
-        currentWeekStart: getWeekStart(),
         
-        createTask: (taskData) => {
-          console.log('📝 Creating task:', taskData);
-          const taskId = 'task-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-          const task: Task = {
-            id: taskId,
-            title: taskData.title,
-            description: taskData.description || '',
-            categoryId: taskData.categoryId,
-            date: new Date(taskData.date),
-            startTime: new Date(taskData.startTime),
-            duration: taskData.duration,
-            status: taskData.status || 'scheduled',
-            priority: taskData.priority || 'medium',
-            progress: {
-              completed: false,
-              focusTimeSpent: 0,
-              estimatedTime: taskData.duration || 0,
-              actualTime: 0,
-            },
-            focusSessionIds: [],
+        // Session actions
+        createSession: (sessionData) => {
+          console.log('📝 Creating focus session:', sessionData);
+          const sessionId = generateId();
+          
+          // Calculate target duration from startTime and endTime
+          const targetDuration = Math.round(
+            (sessionData.endTime.getTime() - sessionData.startTime.getTime()) / (1000 * 60)
+          );
+          
+          const session: FocusSession = {
+            id: sessionId,
+            startTime: sessionData.startTime,
+            endTime: sessionData.endTime,
+            targetDuration: targetDuration,
+            duration: 0,
+            status: 'scheduled',
+            isPaused: false,
+            totalPauseTime: 0,
+            tags: sessionData.tags,
+            notes: sessionData.notes,
             createdAt: new Date(),
             updatedAt: new Date(),
           };
           
           set((state) => ({
-            tasks: {
-              ...state.tasks,
-              tasks: {
-                ...state.tasks.tasks,
-                byId: { ...state.tasks.tasks.byId, [taskId]: task },
-                allIds: [...state.tasks.tasks.allIds, taskId],
+            focus: {
+              ...state.focus,
+              sessions: {
+                ...state.focus.sessions,
+                byId: { ...state.focus.sessions.byId, [sessionId]: session },
+                allIds: [...state.focus.sessions.allIds, sessionId],
               }
             }
           }));
           
-          console.log('✅ Task created and added to store:', task);
+          // Update tag usage counts
+          sessionData.tags.forEach(tagName => {
+            const tag = get().focus.tags.byId[tagName];
+            if (tag) {
+              set((state) => ({
+                focus: {
+                  ...state.focus,
+                  tags: {
+                    ...state.focus.tags,
+                    byId: {
+                      ...state.focus.tags.byId,
+                      [tagName]: { ...tag, usageCount: tag.usageCount + 1 }
+                    }
+                  }
+                }
+              }));
+            }
+          });
+          
+          console.log('✅ Focus session created:', session);
         },
         
-        updateTask: (taskId, updates) => {
-          console.log('📝 Updating task:', taskId, updates);
+        updateSession: (sessionId, updates) => {
+          console.log('📝 Updating session:', sessionId, updates);
           set((state) => {
-            const existingTask = state.tasks.tasks.byId[taskId];
-            if (existingTask) {
+            const existingSession = state.focus.sessions.byId[sessionId];
+            if (existingSession) {
               return {
-                tasks: {
-                  ...state.tasks,
-                  tasks: {
-                    ...state.tasks.tasks,
+                focus: {
+                  ...state.focus,
+                  sessions: {
+                    ...state.focus.sessions,
                     byId: {
-                      ...state.tasks.tasks.byId,
-                      [taskId]: {
-                        ...existingTask,
+                      ...state.focus.sessions.byId,
+                      [sessionId]: {
+                        ...existingSession,
                         ...updates,
                         updatedAt: new Date(),
                       }
@@ -211,60 +237,138 @@ export const useAppStore = create<AppStore>()(
           });
         },
         
-        deleteTask: (taskId) => {
-          console.log('🗑️ Deleting task:', taskId);
+        deleteSession: (sessionId) => {
+          console.log('🗑️ Deleting session:', sessionId);
           set((state) => {
-            const { [taskId]: removed, ...remainingTasks } = state.tasks.tasks.byId;
+            const { [sessionId]: removed, ...remainingSessions } = state.focus.sessions.byId;
             return {
-              tasks: {
-                ...state.tasks,
-                tasks: {
-                  ...state.tasks.tasks,
-                  byId: remainingTasks,
-                  allIds: state.tasks.tasks.allIds.filter(id => id !== taskId),
+              focus: {
+                ...state.focus,
+                sessions: {
+                  ...state.focus.sessions,
+                  byId: remainingSessions,
+                  allIds: state.focus.sessions.allIds.filter(id => id !== sessionId),
                 }
               }
             };
           });
         },
         
-        startTask: (taskId) => {
-          console.log('▶️ Starting task:', taskId);
-          get().tasks.updateTask(taskId, { status: 'active' });
+        startSession: (sessionId) => {
+          console.log('▶️ Starting session:', sessionId);
+          const session = get().focus.sessions.byId[sessionId];
+          if (session) {
+            get().focus.updateSession(sessionId, { status: 'active' });
+            set((state) => ({
+              focus: {
+                ...state.focus,
+                currentSession: {
+                  session: { ...session, status: 'active' },
+                  isRunning: true,
+                  remainingTime: session.targetDuration * 60, // Convert to seconds
+                  startedAt: new Date(),
+                }
+              }
+            }));
+          }
         },
         
-        completeTask: (taskId) => {
-          console.log('✅ Completing task:', taskId);
-          get().tasks.updateTask(taskId, { 
-            status: 'completed',
-            progress: {
-              ...get().tasks.tasks.byId[taskId]?.progress,
-              completed: true,
+        pauseSession: () => {
+          console.log('⏸️ Pausing session');
+          const { currentSession } = get().focus;
+          if (currentSession.session && currentSession.isRunning) {
+            set((state) => ({
+              focus: {
+                ...state.focus,
+                currentSession: {
+                  ...state.focus.currentSession,
+                  isRunning: false,
+                }
+              }
+            }));
+            
+            get().focus.updateSession(currentSession.session.id, {
+              status: 'paused',
+              isPaused: true,
+              pausedAt: new Date(),
+            });
+          }
+        },
+        
+        resumeSession: () => {
+          console.log('▶️ Resuming session');
+          const { currentSession } = get().focus;
+          if (currentSession.session && !currentSession.isRunning) {
+            set((state) => ({
+              focus: {
+                ...state.focus,
+                currentSession: {
+                  ...state.focus.currentSession,
+                  isRunning: true,
+                }
+              }
+            }));
+            
+            get().focus.updateSession(currentSession.session.id, {
+              status: 'active',
+              isPaused: false,
+              resumedAt: new Date(),
+            });
+          }
+        },
+        
+        completeSession: (sessionId) => {
+          const id = sessionId || get().focus.currentSession.session?.id;
+          if (id) {
+            console.log('✅ Completing session:', id);
+            const session = get().focus.sessions.byId[id];
+            if (session) {
+              const actualDuration = session.targetDuration; // Could calculate actual time
+              get().focus.updateSession(id, {
+                status: 'completed',
+                duration: actualDuration,
+              });
+              
+              // Clear current session if it's the one being completed
+              if (get().focus.currentSession.session?.id === id) {
+                set((state) => ({
+                  focus: {
+                    ...state.focus,
+                    currentSession: {
+                      session: null,
+                      isRunning: false,
+                      remainingTime: 0,
+                      startedAt: null,
+                    }
+                  }
+                }));
+              }
             }
-          });
+          }
         },
         
+        // View actions
         setSelectedDate: (date) => {
           console.log('📅 Setting selected date:', date);
           set((state) => ({
-            tasks: { ...state.tasks, selectedDate: date }
+            focus: { ...state.focus, selectedDate: date }
           }));
         },
         
         setViewMode: (mode) => {
           console.log('👁️ Setting view mode:', mode);
           set((state) => ({
-            tasks: { ...state.tasks, viewMode: mode }
+            focus: { ...state.focus, viewMode: mode }
           }));
         },
         
         goToPreviousWeek: () => {
           console.log('⬅️ Going to previous week');
           set((state) => {
-            const newWeekStart = new Date(state.tasks.currentWeekStart);
+            const newWeekStart = new Date(state.focus.currentWeekStart);
             newWeekStart.setDate(newWeekStart.getDate() - 7);
             return {
-              tasks: { ...state.tasks, currentWeekStart: newWeekStart }
+              focus: { ...state.focus, currentWeekStart: newWeekStart }
             };
           });
         },
@@ -272,10 +376,10 @@ export const useAppStore = create<AppStore>()(
         goToNextWeek: () => {
           console.log('➡️ Going to next week');
           set((state) => {
-            const newWeekStart = new Date(state.tasks.currentWeekStart);
+            const newWeekStart = new Date(state.focus.currentWeekStart);
             newWeekStart.setDate(newWeekStart.getDate() + 7);
             return {
-              tasks: { ...state.tasks, currentWeekStart: newWeekStart }
+              focus: { ...state.focus, currentWeekStart: newWeekStart }
             };
           });
         },
@@ -283,8 +387,72 @@ export const useAppStore = create<AppStore>()(
         goToCurrentWeek: () => {
           console.log('📍 Going to current week');
           set((state) => ({
-            tasks: { ...state.tasks, currentWeekStart: getWeekStart() }
+            focus: { ...state.focus, currentWeekStart: getWeekStart() }
           }));
+        },
+        
+        // Tag management
+        createTag: (tagData) => {
+          console.log('🏷️ Creating tag:', tagData);
+          const tagId = generateId();
+          const tag: SessionTag = {
+            ...tagData,
+            id: tagId,
+            usageCount: 0,
+          };
+          
+          set((state) => ({
+            focus: {
+              ...state.focus,
+              tags: {
+                ...state.focus.tags,
+                byId: { ...state.focus.tags.byId, [tagId]: tag },
+                allIds: [...state.focus.tags.allIds, tagId],
+              }
+            }
+          }));
+        },
+        
+        updateTag: (tagId, updates) => {
+          console.log('🏷️ Updating tag:', tagId, updates);
+          set((state) => {
+            const existingTag = state.focus.tags.byId[tagId];
+            if (existingTag) {
+              return {
+                focus: {
+                  ...state.focus,
+                  tags: {
+                    ...state.focus.tags,
+                    byId: {
+                      ...state.focus.tags.byId,
+                      [tagId]: { ...existingTag, ...updates }
+                    }
+                  }
+                }
+              };
+            }
+            return state;
+          });
+        },
+        
+        deleteTag: (tagId) => {
+          console.log('🗑️ Deleting tag:', tagId);
+          const tag = get().focus.tags.byId[tagId];
+          if (tag && !tag.isDefault) { // Don't delete default tags
+            set((state) => {
+              const { [tagId]: removed, ...remainingTags } = state.focus.tags.byId;
+              return {
+                focus: {
+                  ...state.focus,
+                  tags: {
+                    ...state.focus.tags,
+                    byId: remainingTags,
+                    allIds: state.focus.tags.allIds.filter(id => id !== tagId),
+                  }
+                }
+              };
+            });
+          }
         },
       },
       
@@ -387,24 +555,28 @@ export const useAppStore = create<AppStore>()(
  * Typed hooks for accessing store slices
  */
 export const useFocus = () => useAppStore((state) => state.focus);
-export const useTasks = () => useAppStore((state) => state.tasks);
 export const useSettings = () => useAppStore((state) => state.settings);
 export const useUI = () => useAppStore((state) => state.ui);
 
 /**
  * Store actions hooks
  */
-export const useTasksActions = () => useAppStore((state) => ({
-  createTask: state.tasks.createTask,
-  updateTask: state.tasks.updateTask,
-  deleteTask: state.tasks.deleteTask,
-  startTask: state.tasks.startTask,
-  completeTask: state.tasks.completeTask,
-  setSelectedDate: state.tasks.setSelectedDate,
-  setViewMode: state.tasks.setViewMode,
-  goToPreviousWeek: state.tasks.goToPreviousWeek,
-  goToNextWeek: state.tasks.goToNextWeek,
-  goToCurrentWeek: state.tasks.goToCurrentWeek,
+export const useFocusActions = () => useAppStore((state) => ({
+  createSession: state.focus.createSession,
+  updateSession: state.focus.updateSession,
+  deleteSession: state.focus.deleteSession,
+  startSession: state.focus.startSession,
+  pauseSession: state.focus.pauseSession,
+  resumeSession: state.focus.resumeSession,
+  completeSession: state.focus.completeSession,
+  setSelectedDate: state.focus.setSelectedDate,
+  setViewMode: state.focus.setViewMode,
+  goToPreviousWeek: state.focus.goToPreviousWeek,
+  goToNextWeek: state.focus.goToNextWeek,
+  goToCurrentWeek: state.focus.goToCurrentWeek,
+  createTag: state.focus.createTag,
+  updateTag: state.focus.updateTag,
+  deleteTag: state.focus.deleteTag,
 }));
 
 export const useUIActions = () => useAppStore((state) => ({
@@ -440,135 +612,8 @@ export const useFocusSelectors = () => useAppStore((state) => ({
         return sessionDate >= start && sessionDate <= end;
       });
   },
-  getCategoryById: (id: string) => {
-    const categories = state.focus.categories;
-    return categories.byId[id];
-  },
-  getActiveSession: () => {
-    return state.focus.currentSession.session;
-  },
-  getChartData: (period: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
+  getSessionsForDate: (date: Date) => {
     const sessions = state.focus.sessions;
-    const completedSessions = sessions.allIds
-      .map(id => sessions.byId[id])
-      .filter(Boolean)
-      .filter(session => session.status === 'completed');
-    
-    // Group sessions by date based on period
-    const groupedData: Record<string, number> = {};
-    
-    completedSessions.forEach(session => {
-      let key: string;
-      const date = new Date(session.startTime);
-      
-      switch (period) {
-        case 'daily':
-          key = date.toISOString().split('T')[0];
-          break;
-        case 'weekly':
-          const weekStart = new Date(date);
-          weekStart.setDate(date.getDate() - date.getDay());
-          key = weekStart.toISOString().split('T')[0];
-          break;
-        case 'monthly':
-          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          break;
-        case 'yearly':
-          key = String(date.getFullYear());
-          break;
-      }
-      
-      groupedData[key] = (groupedData[key] || 0) + (session.duration || 0);
-    });
-    
-    return Object.entries(groupedData).map(([dateStr, value]) => ({
-      date: new Date(dateStr),
-      value,
-      label: dateStr,
-    }));
-  },
-  getProductivityInsights: () => {
-    const sessions = state.focus.sessions;
-    const completedSessions = sessions.allIds
-      .map(id => sessions.byId[id])
-      .filter(Boolean)
-      .filter(session => session.status === 'completed');
-    
-    if (completedSessions.length === 0) {
-      return {
-        bestTimeOfDay: 'No data',
-        mostProductiveDay: 'No data',
-        averageSessionLength: 0,
-        completionRate: 0,
-        weeklyTrend: 'stable' as const,
-        suggestions: ['Start your first focus session to see insights!'],
-      };
-    }
-    
-    // Calculate insights
-    const totalSessions = sessions.allIds.length;
-    const completionRate = (completedSessions.length / Math.max(totalSessions, 1)) * 100;
-    const averageSessionLength = completedSessions.reduce((sum, session) => sum + (session.duration || 0), 0) / completedSessions.length;
-    
-    // Find best time of day
-    const hourCounts: Record<number, number> = {};
-    completedSessions.forEach(session => {
-      const hour = new Date(session.startTime).getHours();
-      hourCounts[hour] = (hourCounts[hour] || 0) + (session.duration || 0);
-    });
-    
-    const bestHour = Object.entries(hourCounts).reduce((best, [hour, duration]) => 
-      duration > best.duration ? { hour: parseInt(hour), duration } : best,
-      { hour: 0, duration: 0 }
-    );
-    
-    const bestTimeOfDay = `${bestHour.hour}:00 - ${bestHour.hour + 1}:00`;
-    
-    // Find most productive day
-    const dayCounts: Record<number, number> = {};
-    completedSessions.forEach(session => {
-      const day = new Date(session.startTime).getDay();
-      dayCounts[day] = (dayCounts[day] || 0) + (session.duration || 0);
-    });
-    
-    const bestDay = Object.entries(dayCounts).reduce((best, [day, duration]) => 
-      duration > best.duration ? { day: parseInt(day), duration } : best,
-      { day: 0, duration: 0 }
-    );
-    
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const mostProductiveDay = dayNames[bestDay.day];
-    
-    // Generate suggestions
-    const suggestions: string[] = [];
-    if (completionRate < 70) {
-      suggestions.push('Try shorter sessions to improve completion rate');
-    }
-    if (averageSessionLength < 15) {
-      suggestions.push('Consider longer sessions for deeper focus');
-    }
-    if (completedSessions.length < 5) {
-      suggestions.push('Build consistency with daily focus sessions');
-    }
-    
-    return {
-      bestTimeOfDay,
-      mostProductiveDay,
-      averageSessionLength: Math.round(averageSessionLength),
-      completionRate: Math.round(completionRate),
-      weeklyTrend: 'stable' as const,
-      suggestions,
-    };
-  },
-}));
-
-export const useTasksSelectors = () => useAppStore((state) => ({
-  getTaskById: (id: string) => {
-    const tasks = state.tasks.tasks;
-    return tasks.byId[id];
-  },
-  getTasksForDate: (date: Date) => {
-    const tasks = state.tasks.tasks;
     
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
@@ -576,51 +621,104 @@ export const useTasksSelectors = () => useAppStore((state) => ({
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
     
-    return tasks.allIds
-      .map(id => tasks.byId[id])
+    return sessions.allIds
+      .map(id => sessions.byId[id])
       .filter(Boolean)
-      .filter(task => {
-        const taskDate = new Date(task.date);
-        return taskDate >= startOfDay && taskDate <= endOfDay;
+      .filter(session => {
+        const sessionDate = new Date(session.startTime);
+        return sessionDate >= startOfDay && sessionDate <= endOfDay;
       }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
   },
-  getActiveTask: () => {
-    const tasks = state.tasks.tasks;
-    return tasks.allIds
-      .map(id => tasks.byId[id])
-      .filter(Boolean)
-      .find(task => task.status === 'active') || null;
+  getTagById: (id: string) => {
+    const tags = state.focus.tags;
+    return tags.byId[id];
   },
-  getTasksForDateRange: (start: Date, end: Date) => {
-    const tasks = state.tasks.tasks;
-    
-    return tasks.allIds
-      .map(id => tasks.byId[id])
-      .filter(Boolean)
-      .filter(task => {
-        const taskDate = new Date(task.date);
-        return taskDate >= start && taskDate <= end;
-      }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  getActiveSession: () => {
+    return state.focus.currentSession.session;
   },
-  getTaskProgress: (id: string) => {
-    const task = state.tasks.tasks.byId[id];
-    if (!task) {
-      return {
-        completed: false,
-        focusTimeSpent: 0,
-        estimatedTime: 0,
-        actualTime: 0,
-      };
-    }
-    
-    return task.progress || {
-      completed: false,
-      focusTimeSpent: 0,
-      estimatedTime: 0,
-      actualTime: 0,
-    };
+  getScheduledSessions: () => {
+    const sessions = state.focus.sessions;
+    return sessions.allIds
+      .map(id => sessions.byId[id])
+      .filter(Boolean)
+      .filter(session => session.status === 'scheduled');
+  },
+  getCompletedSessions: () => {
+    const sessions = state.focus.sessions;
+    return sessions.allIds
+      .map(id => sessions.byId[id])
+      .filter(Boolean)
+      .filter(session => session.status === 'completed');
   },
 }));
+
+// Legacy task hooks for backward compatibility
+export const useTasks = () => {
+  const focus = useFocus();
+  return {
+    tasks: focus.sessions, // Sessions are now tasks
+    selectedDate: focus.selectedDate,
+    viewMode: focus.viewMode,
+    currentWeekStart: focus.currentWeekStart,
+  };
+};
+
+export const useTasksActions = () => {
+  const focusActions = useFocusActions();
+  return {
+    createTask: (taskData: any) => {
+      // Convert legacy task format to session format
+      const now = new Date();
+      const duration = taskData.duration || 25;
+      const endTime = new Date(now.getTime() + duration * 60 * 1000);
+      
+      const sessionData: CreateSessionInput = {
+        tags: taskData.categoryId ? [taskData.categoryId] : ['work'],
+        startTime: now,
+        endTime: endTime,
+        notes: taskData.description || '',
+      };
+      focusActions.createSession(sessionData);
+    },
+    updateTask: focusActions.updateSession,
+    deleteTask: focusActions.deleteSession,
+    startTask: focusActions.startSession,
+    completeTask: focusActions.completeSession,
+    setSelectedDate: focusActions.setSelectedDate,
+    setViewMode: focusActions.setViewMode,
+    goToPreviousWeek: focusActions.goToPreviousWeek,
+    goToNextWeek: focusActions.goToNextWeek,
+    goToCurrentWeek: focusActions.goToCurrentWeek,
+  };
+};
+
+export const useTasksSelectors = () => {
+  const focusSelectors = useFocusSelectors();
+  return {
+    getTaskById: focusSelectors.getSessionById,
+    getTasksForDate: focusSelectors.getSessionsForDate,
+    getTasksForDateRange: focusSelectors.getSessionsForDateRange,
+    getActiveTask: focusSelectors.getActiveSession,
+    getTaskProgress: (id: string) => {
+      const session = focusSelectors.getSessionById(id);
+      if (!session) {
+        return {
+          completed: false,
+          focusTimeSpent: 0,
+          estimatedTime: 0,
+          actualTime: 0,
+        };
+      }
+      
+      return {
+        completed: session.status === 'completed',
+        focusTimeSpent: session.duration || 0,
+        estimatedTime: session.targetDuration,
+        actualTime: session.duration || 0,
+      };
+    },
+  };
+};
 
 /**
  * Store utilities
@@ -634,7 +732,7 @@ export const subscribeToStore = useAppStore.subscribe;
 export function initializeStore() {
   try {
     console.log('🔧 Initializing store...');
-    const state = getStoreState();
+    getStoreState();
     console.log('✅ Store initialized successfully');
   } catch (error) {
     console.error('❌ Error initializing store:', error);

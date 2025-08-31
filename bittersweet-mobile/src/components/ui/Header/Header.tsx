@@ -21,6 +21,7 @@ interface HeaderProps {
   rightAction?: HeaderAction;
   variant?: 'default' | 'settings';
   backgroundColor?: string;
+  useSafeArea?: boolean;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -68,6 +69,7 @@ export const Header: FC<HeaderProps> = ({
   rightAction,
   variant = 'default',
   backgroundColor = '#1B1C30',
+  useSafeArea = true,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -75,7 +77,7 @@ export const Header: FC<HeaderProps> = ({
     <View 
       className="bg-dark-bg border-b border-dark-border"
       style={{ 
-        paddingTop: insets.top,
+        paddingTop: useSafeArea ? insets.top : 0,
         backgroundColor,
       }}
     >

@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { View } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { Card } from '../../ui/Card';

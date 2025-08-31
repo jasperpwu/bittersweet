@@ -21,70 +21,39 @@ export interface FocusSettings {
   strictMode: boolean;
 }
 
-// Task Types
-export interface Task {
-  id: string;
-  title: string;
-  category: TaskCategory;
-  date: Date;
-  startTime: Date;
-  duration: number; // in minutes
-  workingSessions: number;
-  shortBreakDuration: number;
-  longBreakDuration: number;
-  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
-  progress: TaskProgress;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TaskCategory {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-}
-
-export interface TaskProgress {
-  completedSessions: number;
-  totalSessions: number;
-  timeSpent: number; // in seconds
-  isActive: boolean;
-  currentSessionType: 'focus' | 'shortBreak' | 'longBreak';
-}
-
-// Focus Session Types
+// Focus Session Types (merged with Task functionality)
 export interface FocusSession {
   id: string;
+  notes?: string;
+  
+  // Timing
   startTime: Date;
-  endTime?: Date;
-  duration: number; // in minutes
-  targetDuration: number;
-  category: string;
-  tags: string[];
-  description?: string;
-  isCompleted: boolean;
+  endTime: Date; // Now required - end time of the session
+  targetDuration: number; // in minutes (calculated from startTime to endTime)
+  duration: number; // actual duration in minutes (for completed sessions)
+  
+  // Session state
+  status: 'scheduled' | 'active' | 'paused' | 'completed' | 'cancelled';
   isPaused: boolean;
   pausedAt?: Date;
   resumedAt?: Date;
-  totalPauseTime: number;
+  totalPauseTime: number; // in seconds
+  
+  // Tags (merged category system)
+  tags: string[]; // Now includes both categories and tags
+  
+  // Metadata
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface SessionCategory {
-  id: string;
-  name: string;
-  color: string;
-  icon?: string;
-  isDefault: boolean;
 }
 
 export interface SessionTag {
   id: string;
   name: string;
   color: string;
+  icon?: string;
   usageCount: number;
+  isDefault?: boolean; // For built-in tags like 'work', 'study', etc.
 }
 
 // Analytics Types
@@ -97,12 +66,12 @@ export interface FocusStats {
   longestStreak: number;
   mostProductiveHour: number;
   mostProductiveDay: string;
-  categoryBreakdown: CategoryStats[];
+  tagBreakdown: TagStats[]; // Changed from categoryBreakdown
   weeklyProgress: WeeklyStats[];
 }
 
-export interface CategoryStats {
-  category: string;
+export interface TagStats {
+  tag: string;
   sessions: number;
   totalTime: number;
   percentage: number;
@@ -153,3 +122,12 @@ export interface ApiError {
   message: string;
   details?: Record<string, any>;
 }
+
+// Input types for creating sessions
+export interface CreateSessionInput {
+  tags: string[];
+  startTime: Date;
+  endTime: Date;
+  notes?: string;
+}
+

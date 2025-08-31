@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal } from '../../src/components/ui/EmojiPicker/EmojiPicker';
 import { TimeScroller } from '../../src/components/focus';
+import { NotesModal } from '../../src/components/modals/NotesModal';
 
 // Initial mock data for tags
 const initialTags = [
@@ -26,6 +27,10 @@ export default function FocusScreen() {
   const [newTagName, setNewTagName] = useState('');
   const [newTagEmoji, setNewTagEmoji] = useState('');
   const [emojiPickerMode, setEmojiPickerMode] = useState<'edit' | 'new'>('edit');
+  
+  // Notes modal state
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [sessionNotes, setSessionNotes] = useState('');
 
   // Session + timer state
   const [isSessionActive, setIsSessionActive] = useState(false); // true during transition or running
@@ -140,7 +145,10 @@ export default function FocusScreen() {
               Animated.parallel([
                 Animated.timing(scrollerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
                 Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-              ]).start();
+              ]).start(() => {
+                // Show notes modal after session completes
+                setShowNotesModal(true);
+              });
             });
             return 0;
           }
@@ -172,6 +180,8 @@ export default function FocusScreen() {
         Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]).start(() => {
         setIsSessionActive(false);
+        // Show notes modal after stopping
+        setShowNotesModal(true);
       });
     });
   };
@@ -183,12 +193,9 @@ export default function FocusScreen() {
   }, []);
 
   const handleStartFocus = () => {
-    // If running or transitioning, treat as Stop/Cancel immediately
+    // If running or transitioning, treat as Stop/Cancel with animation
     if (isRunning || isSessionActive) {
-      transitionCancelledRef.current = true;
-      // Cancel any in-flight animations and reset visuals
-      resetToIdleVisuals();
-      stopCompletely();
+      stopWithAnimation();
       return;
     }
 
@@ -233,15 +240,18 @@ export default function FocusScreen() {
 
   const selectedTagName = selectedTags.length > 0 ? tags.find(tag => tag.id === selectedTags[0])?.name : null;
 
+  const handleNotesSave = (notes: string) => {
+    setSessionNotes(notes);
+    console.log('Session completed with notes:', notes);
+    // Here you would typically save to the store/backend
+  };
+
+  const handleNotesClose = () => {
+    setShowNotesModal(false);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
-      {/* Header */}
-      <View className="px-4 py-4 flex-row items-center justify-between">
-        <Pressable className="w-10 h-10 rounded-full bg-gray-700 items-center justify-center">
-          <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
-        </Pressable>
-      </View>
-
       <View className="flex-1 items-center justify-center px-4">
         {/* Time Selector or Running Timer - stacked and crossfaded */}
         <View style={{ height: 240, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
@@ -511,6 +521,14 @@ export default function FocusScreen() {
         }}
         onEmojiSelect={handleEmojiSelect}
         title={emojiPickerMode === 'edit' ? 'Change Emoji' : 'Choose Emoji for New Tag'}
+      />
+
+      {/* Notes Modal */}
+      <NotesModal
+        visible={showNotesModal}
+        onClose={handleNotesClose}
+        onSave={handleNotesSave}
+        initialNotes={sessionNotes}
       />
     </SafeAreaView>
   );

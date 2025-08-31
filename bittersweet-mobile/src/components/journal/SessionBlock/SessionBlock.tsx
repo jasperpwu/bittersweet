@@ -5,12 +5,19 @@ import Animated, {
   withSpring,
   useSharedValue,
 } from 'react-native-reanimated';
-import { Typography } from '../../ui/Typography/Typography';
-import { Task } from '../../../store/types';
-import { useFocus } from '../../../store';
+import { Typography } from '../../ui/Typography';
 
-interface TaskBlockProps {
-  task: Task;
+interface FocusSession {
+  id: string;
+  startTime: Date;
+  endTime: Date;
+  duration: number; // in minutes
+  tags: string[];
+  notes?: string;
+}
+
+interface SessionBlockProps {
+  session: FocusSession;
   onPress: () => void;
   style?: ViewStyle;
   timeSlotHeight: number;
@@ -19,8 +26,8 @@ interface TaskBlockProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-// Category colors mapping
-const categoryColors = {
+// Tag colors mapping
+const tagColors = {
   Reading: '#51BC6F',
   Sport: '#FF9800',
   Music: '#9C27B0',
@@ -31,20 +38,8 @@ const categoryColors = {
   Study: '#FFC107',
   Exercise: '#FF9800',
   Personal: '#9E9E9E',
+  Focus: '#6592E9',
 } as const;
-
-const getStatusColor = (status: Task['status']) => {
-  switch (status) {
-    case 'completed':
-      return '#51BC6F';
-    case 'active':
-      return '#6592E9';
-    case 'cancelled':
-      return '#EF786C';
-    default:
-      return '#CACACA';
-  }
-};
 
 const formatTime = (date: Date) => {
   return date.toLocaleTimeString('en-US', {
@@ -54,18 +49,16 @@ const formatTime = (date: Date) => {
   });
 };
 
-const formatTimeRange = (startTime: Date, duration: number) => {
-  const endTime = new Date(startTime.getTime() + duration * 60000);
+const formatTimeRange = (startTime: Date, endTime: Date) => {
   return `${formatTime(startTime)} - ${formatTime(endTime)}`;
 };
 
-export const TaskBlock: FC<TaskBlockProps> = ({
-  task,
+export const SessionBlock: FC<SessionBlockProps> = ({
+  session,
   onPress,
   style,
   pixelsPerMinute,
 }) => {
-  const { categories } = useFocus();
   const scale = useSharedValue(1);
   
   const animatedStyle = useAnimatedStyle(() => ({
@@ -81,24 +74,18 @@ export const TaskBlock: FC<TaskBlockProps> = ({
   };
 
   // Calculate block height based on duration
-  const blockHeight = Math.max(task.duration * pixelsPerMinute, 50);
+  const blockHeight = Math.max(session.duration * pixelsPerMinute, 50);
   
-  // Get category from store
-  const category = categories.byId[task.categoryId];
-  const categoryName = category?.name || 'Unknown';
-  
-  // Get category color
-  const categoryColor = category?.color || categoryColors[categoryName as keyof typeof categoryColors] || '#6592E9';
-  
-  // Get status color for the indicator
-  const statusColor = getStatusColor(task.status);
+  // Get tag color (use first tag or default)
+  const primaryTag = session.tags[0] || 'Focus';
+  const sessionColor = tagColors[primaryTag as keyof typeof tagColors] || '#6592E9';
 
   return (
     <AnimatedPressable
       style={[
         {
           height: blockHeight,
-          backgroundColor: categoryColor,
+          backgroundColor: sessionColor,
           borderRadius: 12,
           paddingHorizontal: 12,
           paddingVertical: 8,
@@ -119,28 +106,38 @@ export const TaskBlock: FC<TaskBlockProps> = ({
       onPress={onPress}
     >
       <View style={{ flex: 1, justifyContent: 'space-between' }}>
-        {/* Task title and time */}
+        {/* Session info */}
         <View style={{ flex: 1, justifyContent: 'flex-start' }}>
           <Typography
             variant="subtitle-14-semibold"
-            className="text-white"
+            color="white"
             numberOfLines={blockHeight > 70 ? 2 : 1}
             style={{ marginBottom: blockHeight > 60 ? 4 : 2 }}
           >
-            {task.title}
+            {session.tags.join(', ') || 'Focus Session'}
           </Typography>
           {blockHeight > 60 && (
             <Typography
               variant="body-12"
-              className="text-white"
+              color="white"
               style={{ opacity: 0.9 }}
             >
-              {formatTimeRange(task.startTime, task.duration)}
+              {formatTimeRange(session.startTime, session.endTime)}
+            </Typography>
+          )}
+          {blockHeight > 80 && session.notes && (
+            <Typography
+              variant="tiny-10"
+              color="white"
+              style={{ opacity: 0.8, marginTop: 2 }}
+              numberOfLines={2}
+            >
+              {session.notes}
             </Typography>
           )}
         </View>
 
-        {/* Status indicator and progress */}
+        {/* Duration indicator */}
         {blockHeight > 50 && (
           <View style={{ 
             flexDirection: 'row', 
@@ -148,28 +145,25 @@ export const TaskBlock: FC<TaskBlockProps> = ({
             justifyContent: 'space-between',
             marginTop: blockHeight > 70 ? 8 : 4,
           }}>
-            {/* Circular status indicator */}
+            {/* Focus indicator dot */}
             <View
               style={{
                 width: 10,
                 height: 10,
                 borderRadius: 5,
-                backgroundColor: statusColor,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.3)',
+                backgroundColor: 'white',
+                opacity: 0.8,
               }}
             />
             
-            {/* Progress indicator */}
-            {task.progress.estimatedTime > 0 && (
-              <Typography
-                variant="tiny-10"
-                className="text-white"
-                style={{ opacity: 0.9 }}
-              >
-                {Math.round(task.progress.focusTimeSpent)}m/{Math.round(task.progress.estimatedTime)}m
-              </Typography>
-            )}
+            {/* Duration */}
+            <Typography
+              variant="tiny-10"
+              color="white"
+              style={{ opacity: 0.9 }}
+            >
+              {session.duration}min
+            </Typography>
           </View>
         )}
       </View>

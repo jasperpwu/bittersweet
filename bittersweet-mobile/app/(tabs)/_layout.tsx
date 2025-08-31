@@ -44,12 +44,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="tasks"
+        name="journal"
         options={{
-          title: 'Tasks',
+          title: 'Journal',
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <Ionicons name="list-outline" size={24} color={color} />
+              <Ionicons name="book-outline" size={24} color={color} />
               {focused && (
                 <View 
                   style={{
@@ -129,19 +129,6 @@ export default function TabLayout() {
               )}
             </View>
           ),
-        }}
-      />
-      {/* Hide unused tabs */}
-      <Tabs.Screen
-        name="add-task"
-        options={{
-          href: null, // This hides the tab
-        }}
-      />
-      <Tabs.Screen
-        name="journal"
-        options={{
-          href: null, // This hides the tab
         }}
       />
     </Tabs>

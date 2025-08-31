@@ -43,7 +43,23 @@ export default function RootLayout() {
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen 
-                name="(modals)/task-creation" 
+                name="(modals)/session-creation" 
+                options={{ 
+                  headerShown: false,
+                  presentation: 'modal',
+                  gestureEnabled: true,
+                }} 
+              />
+              <Stack.Screen 
+                name="(modals)/category-selection" 
+                options={{ 
+                  headerShown: false,
+                  presentation: 'modal',
+                  gestureEnabled: true,
+                }} 
+              />
+              <Stack.Screen 
+                name="(modals)/session-complete" 
                 options={{ 
                   headerShown: false,
                   presentation: 'modal',

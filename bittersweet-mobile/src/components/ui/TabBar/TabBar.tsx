@@ -14,10 +14,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const TabIcon: FC<{ name: string; focused: boolean }> = ({ name, focused }) => {
   const iconMap: Record<string, string> = {
     index: '🏠', // Time/Homepage
-    tasks: '📋', // Tasks
-    'task-creation': '➕', // Add new task
+    journal: '📔', // Journal
+    focus: '🎯', // Focus
     insights: '📊', // Statistics
     settings: '⚙️', // Settings
+    'session-creation': '➕', // Add new session
   };
 
   return (

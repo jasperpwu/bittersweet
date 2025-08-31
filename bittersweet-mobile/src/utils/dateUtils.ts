@@ -22,6 +22,26 @@ export const generateWeekDates = (): Date[] => {
 };
 
 /**
+ * Generate extended week dates (14 days) for better scrolling experience
+ */
+export const generateExtendedWeekDates = (startDate: Date = new Date()): Date[] => {
+  const dates = [];
+  const start = new Date(startDate);
+  
+  // Start from 3 days ago to show more context
+  start.setDate(start.getDate() - 3);
+  
+  // Generate 14 days (2 weeks) for better scrolling
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    dates.push(date);
+  }
+  
+  return dates;
+};
+
+/**
  * Generate an array of dates for a specific week starting from the given date
  */
 export const generateWeekDatesFromStart = (weekStart: Date): Date[] => {

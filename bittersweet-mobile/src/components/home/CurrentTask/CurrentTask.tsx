@@ -8,25 +8,17 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../ui/Card';
 import { Typography } from '../../ui/Typography';
-
-interface Task {
-  id: string;
-  title: string;
-  category: string;
-  duration: number; // in minutes
-  isActive: boolean;
-  progress?: number; // 0-1
-}
+import { FocusSession } from '../../../types/models';
 
 interface CurrentTaskProps {
-  task: Task | null;
+  session: FocusSession | null;
   onPlayPress: () => void;
   onPausePress: () => void;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
+const getTagIcon = (tag: string): keyof typeof Ionicons.glyphMap => {
   const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
     'Work': 'briefcase-outline',
     'Study': 'book-outline',
@@ -38,10 +30,10 @@ const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
     'Sport': 'basketball-outline',
     'Music': 'musical-notes-outline',
   };
-  return iconMap[category] || 'time-outline';
+  return iconMap[tag] || 'time-outline';
 };
 
-const getCategoryColor = (category: string): string => {
+const getTagColor = (tag: string): string => {
   const colorMap: Record<string, string> = {
     'Work': '#6592E9',
     'Study': '#51BC6F',
@@ -53,11 +45,11 @@ const getCategoryColor = (category: string): string => {
     'Sport': '#FFA556', // Orange like in Figma
     'Music': '#E91E63',
   };
-  return colorMap[category] || '#6592E9';
+  return colorMap[tag] || '#6592E9';
 };
 
 export const CurrentTask: FC<CurrentTaskProps> = ({
-  task,
+  session,
   onPlayPress,
   onPausePress,
 }) => {
@@ -68,7 +60,7 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
       playButtonScale.value = withSpring(1);
     });
     
-    if (task?.isActive) {
+    if (session?.status === 'active') {
       onPausePress();
     } else {
       onPlayPress();
@@ -81,7 +73,7 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
 
 
 
-  if (!task) {
+  if (!session) {
     return (
       <Card variant="default" className="mx-5 mb-6 bg-dark-bg border border-dark-border">
         <View className="p-4">
@@ -101,13 +93,13 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
               variant="subtitle-16" 
               className="text-dark-text-primary mb-2"
             >
-              No active task
+              No active session
             </Typography>
             <Typography 
               variant="body-14" 
               className="text-dark-text-secondary text-center"
             >
-              Select a task from your list to start focusing
+              Create a focus session to start
             </Typography>
           </View>
         </View>
@@ -115,9 +107,9 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
     );
   }
 
-  const categoryColor = getCategoryColor(task.category);
-  const categoryIcon = getCategoryIcon(task.category);
-  const progress = task.progress || 0;
+  const primaryTag = session.tags[0] || '';
+  const tagColor = getTagColor(primaryTag);
+  const tagIcon = getTagIcon(primaryTag);
 
   return (
     <Card variant="default" className="mx-5 mb-6 bg-dark-bg border border-dark-border">
@@ -128,18 +120,18 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
             variant="subtitle-14-medium" 
             className="text-dark-text-secondary"
           >
-            Current task
+            Current session
           </Typography>
           <View className="flex-row items-center">
             <View 
               className="w-2 h-2 rounded-full mr-2"
-              style={{ backgroundColor: task.isActive ? '#51BC6F' : '#CACACA' }}
+              style={{ backgroundColor: session.status === 'active' ? '#51BC6F' : '#CACACA' }}
             />
             <Typography 
               variant="body-12" 
               className="text-dark-text-secondary"
             >
-              {task.isActive ? 'Active' : 'Paused'}
+              {session.status === 'active' ? 'Active' : session.status === 'paused' ? 'Paused' : 'Scheduled'}
             </Typography>
           </View>
         </View>
@@ -147,32 +139,32 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
         {/* Task Content */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1">
-            {/* Category Icon */}
+            {/* Tag Icon */}
             <View 
               className="w-12 h-12 rounded-xl items-center justify-center mr-4"
-              style={{ backgroundColor: `${categoryColor}20` }}
+              style={{ backgroundColor: `${tagColor}20` }}
             >
               <Ionicons 
-                name={categoryIcon} 
+                name={tagIcon} 
                 size={24} 
-                color={categoryColor} 
+                color={tagColor} 
               />
             </View>
 
-            {/* Task Info */}
+            {/* Session Info */}
             <View className="flex-1">
               <Typography 
                 variant="subtitle-16" 
                 className="text-dark-text-primary mb-1"
                 numberOfLines={1}
               >
-                {task.title}
+                {session.notes || 'Focus Session'}
               </Typography>
               <Typography 
                 variant="body-12" 
                 className="text-dark-text-secondary"
               >
-                {task.duration} min • {task.category}
+                {session.targetDuration} min • {session.tags[0] || 'No tag'}
               </Typography>
             </View>
           </View>
@@ -182,16 +174,16 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
             style={[
               playButtonAnimatedStyle,
               {
-                backgroundColor: task.isActive ? '#EF786C' : '#6592E9',
+                backgroundColor: session.status === 'active' ? '#EF786C' : '#6592E9',
               }
             ]}
             onPress={handlePlayPress}
             className="w-12 h-12 rounded-full items-center justify-center"
             accessibilityRole="button"
-            accessibilityLabel={task.isActive ? 'Pause task' : 'Start task'}
+            accessibilityLabel={session.status === 'active' ? 'Pause session' : 'Start session'}
           >
             <Ionicons 
-              name={task.isActive ? 'pause' : 'play'} 
+              name={session.status === 'active' ? 'pause' : 'play'} 
               size={20} 
               color="#FFFFFF" 
             />
@@ -199,19 +191,19 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
         </View>
 
         {/* Progress Bar */}
-        {progress > 0 && (
+        {session.completedSessions > 0 && session.totalSessions > 0 && (
           <View className="mt-4">
             <View className="h-2 bg-dark-border rounded-full overflow-hidden">
               <Animated.View 
                 className="h-full bg-primary rounded-full"
-                style={{ width: `${progress * 100}%` }}
+                style={{ width: `${(session.completedSessions / session.totalSessions) * 100}%` }}
               />
             </View>
             <Typography 
               variant="body-12" 
               className="text-dark-text-secondary mt-2 text-center"
             >
-              {Math.round(progress * 100)}% complete
+              {session.completedSessions}/{session.totalSessions} sessions complete
             </Typography>
           </View>
         )}

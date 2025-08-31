@@ -3,13 +3,13 @@ import { View, ScrollView, Dimensions } from 'react-native';
 import { Typography } from '../../ui/Typography/Typography';
 import { TaskBlock } from '../TaskBlock';
 import { EmptyState } from '../EmptyState';
-import { Task } from '../../../store/types';
+import { FocusSession } from '../../../types/models';
 
 interface TimelineProps {
-  tasks: Task[];
+  sessions: FocusSession[];
   currentTime: Date;
-  onTaskPress: (taskId: string) => void;
-  onAddTask?: () => void;
+  onSessionPress: (sessionId: string) => void;
+  onAddSession?: () => void;
 }
 
 const TIME_COLUMN_WIDTH = 70;
@@ -51,24 +51,24 @@ const getCurrentTimePosition = (currentTime: Date) => {
 };
 
 export const Timeline: FC<TimelineProps> = ({
-  tasks,
+  sessions,
   currentTime,
-  onTaskPress,
-  onAddTask,
+  onSessionPress,
+  onAddSession,
 }) => {
-  // Filter tasks for the selected date and sort by start time
-  const sortedTasks = useMemo(() => {
-    return tasks
-      .filter(task => {
-        const taskHour = task.startTime.getHours();
-        return taskHour >= START_HOUR && taskHour <= END_HOUR;
+  // Filter sessions for the selected date and sort by start time
+  const sortedSessions = useMemo(() => {
+    return sessions
+      .filter(session => {
+        const sessionHour = session.startTime.getHours();
+        return sessionHour >= START_HOUR && sessionHour <= END_HOUR;
       })
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
-  }, [tasks]);
+  }, [sessions]);
 
-  // Show empty state if no tasks
-  if (tasks.length === 0) {
-    return <EmptyState onAddTask={onAddTask} />;
+  // Show empty state if no sessions
+  if (sessions.length === 0) {
+    return <EmptyState onAddSession={onAddSession} />;
   }
 
   // Generate hour slots
@@ -179,15 +179,15 @@ export const Timeline: FC<TimelineProps> = ({
               </View>
             )}
 
-            {/* Task blocks */}
-            {sortedTasks.map((task) => {
-              const topPosition = getTopPosition(task.startTime);
+            {/* Session blocks */}
+            {sortedSessions.map((session) => {
+              const topPosition = getTopPosition(session.startTime);
               
               return (
                 <TaskBlock
-                  key={task.id}
-                  task={task}
-                  onPress={() => onTaskPress(task.id)}
+                  key={session.id}
+                  session={session}
+                  onPress={() => onSessionPress(session.id)}
                   timeSlotHeight={HOUR_HEIGHT}
                   pixelsPerMinute={PIXELS_PER_MINUTE}
                   style={{
