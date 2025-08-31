@@ -77,7 +77,6 @@ export interface FocusSession extends BaseEntity {
   endTime?: Date;
   duration: number;
   targetDuration: number;
-  categoryId: string;
   tagIds: string[];
   notes?: string;
   status: 'active' | 'paused' | 'completed' | 'cancelled';
@@ -85,17 +84,10 @@ export interface FocusSession extends BaseEntity {
   pauseHistory: PauseRecord[];
 }
 
-export interface Category extends BaseEntity {
-  name: string;
-  color: string;
-  icon: string;
-  isDefault: boolean;
-  userId: string;
-}
 
 export interface Tag extends BaseEntity {
   name: string;
-  color: string;
+  icon: string;
   userId: string;
 }
 
@@ -127,7 +119,7 @@ export interface UnlockableApp extends BaseEntity {
   icon: string;
   cost: number;
   isUnlocked: boolean;
-  category: string;
+  tagId: string;
   description?: string;
 }
 
@@ -192,7 +184,6 @@ export type TimePeriod = 'daily' | 'weekly' | 'monthly' | 'yearly';
 export interface FocusSlice {
   // Normalized State
   sessions: NormalizedState<FocusSession>;
-  categories: NormalizedState<Category>;
   tags: NormalizedState<Tag>;
   
   // Current Session State
@@ -207,21 +198,21 @@ export interface FocusSlice {
   settings: FocusSettings;
   
   // Actions
-  startSession: (params: { targetDuration: number; categoryId: string; tagIds: string[]; notes?: string }) => void;
+  startSession: (params: { targetDuration: number; tagIds: string[]; notes?: string }) => void;
   pauseSession: () => void;
   resumeSession: () => void;
   completeSession: () => void;
   cancelSession: () => void;
   
-  // Category/Tag Management
-  addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateCategory: (id: string, updates: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
+  // Tag Management
+  addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateTag: (id: string, updates: Partial<Tag>) => void;
+  deleteTag: (id: string) => void;
   
   // Selectors
   getSessionById: (id: string) => FocusSession | undefined;
   getSessionsForDateRange: (start: Date, end: Date) => FocusSession[];
-  getCategoryById: (id: string) => Category | undefined;
+  getTagById: (id: string) => Tag | undefined;
   getActiveSession: () => FocusSession | null;
   
   // Analytics

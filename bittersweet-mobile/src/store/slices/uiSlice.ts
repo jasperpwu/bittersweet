@@ -9,7 +9,7 @@ import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/
 // Common modal types
 export const MODAL_TYPES = {
   TASK_CREATION: 'task_creation',
-  CATEGORY_SELECTION: 'category_selection',
+  TAG_SELECTION: 'tag_selection',
   SESSION_COMPLETE: 'session_complete',
   APP_UNLOCK_CONFIRM: 'app_unlock_confirm',
   SETTINGS: 'settings',

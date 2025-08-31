@@ -19,18 +19,14 @@ interface TaskBlockProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-// Category colors mapping
-const categoryColors = {
-  Reading: '#51BC6F',
-  Sport: '#FF9800',
-  Music: '#9C27B0',
-  Meditation: '#4CAF50',
-  Code: '#EF786C',
-  IT: '#6592E9',
+// Tag-based colors mapping - fallback colors for tags
+const tagColors = {
   Work: '#6592E9',
   Study: '#FFC107',
-  Exercise: '#FF9800',
   Personal: '#9E9E9E',
+  Exercise: '#FF9800',
+  Creative: '#9C27B0',
+  Reading: '#51BC6F',
 } as const;
 
 const getStatusColor = (status: FocusSession['status']) => {
@@ -86,7 +82,7 @@ export const TaskBlock: FC<TaskBlockProps> = ({
   // Get primary tag color (use first tag or default)
   const primaryTag = session.tags[0];
   const tag = primaryTag ? tags.byId[primaryTag] : null;
-  const categoryColor = tag?.color || categoryColors[primaryTag as keyof typeof categoryColors] || '#6592E9';
+  const tagColor = tag?.name ? tagColors[tag.name as keyof typeof tagColors] || '#6592E9' : '#6592E9';
   
   // Get status color for the indicator
   const statusColor = getStatusColor(session.status);
@@ -96,7 +92,7 @@ export const TaskBlock: FC<TaskBlockProps> = ({
       style={[
         {
           height: blockHeight,
-          backgroundColor: categoryColor,
+          backgroundColor: tagColor,
           borderRadius: 12,
           paddingHorizontal: 12,
           paddingVertical: 8,
@@ -158,14 +154,14 @@ export const TaskBlock: FC<TaskBlockProps> = ({
               }}
             />
             
-            {/* Progress indicator */}
-            {session.completedSessions > 0 && session.totalSessions > 0 && (
+            {/* Duration indicator */}
+            {session.duration > 0 && (
               <Typography
                 variant="tiny-10"
                 className="text-white"
                 style={{ opacity: 0.9 }}
               >
-                {session.completedSessions}/{session.totalSessions} sessions
+                {session.duration}min
               </Typography>
             )}
           </View>

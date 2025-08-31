@@ -21,10 +21,9 @@ export function StoreDebugComponent() {
 
   const testStore = () => {
     console.log('Store state:', {
-      auth: store.auth ? 'exists' : 'missing',
-      tasks: store.tasks ? 'exists' : 'missing',
       focus: store.focus ? 'exists' : 'missing',
       ui: store.ui ? 'exists' : 'missing',
+      settings: store.settings ? 'exists' : 'missing',
     });
     
     console.log('Tasks slice:', {

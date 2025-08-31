@@ -11,7 +11,6 @@ import { getMockData } from './mockData';
  */
 export const initializeStoreWithMockData = () => {
   const mockData = getMockData();
-  const store = useAppStore.getState();
 
   try {
     console.log('🎭 Initializing store with mock data...');
@@ -21,7 +20,6 @@ export const initializeStoreWithMockData = () => {
     // Initialize focus data
     const focusUpdates: any = {
       sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: new Date() },
-      categories: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: new Date() },
       tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: new Date() },
       currentSession: {
         isRunning: false,
@@ -32,15 +30,6 @@ export const initializeStoreWithMockData = () => {
         isPaused: false,
       },
     };
-
-    // Add categories
-    console.log('🏷️  Adding categories:', mockData.focusCategories?.length || 0);
-    if (mockData.focusCategories) {
-      mockData.focusCategories.forEach(category => {
-        focusUpdates.categories.byId[category.id] = category;
-        focusUpdates.categories.allIds.push(category.id);
-      });
-    }
 
     // Add tags
     console.log('🔖 Adding tags:', mockData.focusTags?.length || 0);
@@ -67,66 +56,17 @@ export const initializeStoreWithMockData = () => {
       },
     }));
 
-    // Initialize tasks data
-    const tasksUpdates: any = {
-      tasks: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: new Date() },
-      selectedDate: new Date(),
-      viewMode: 'day' as const,
-    };
+    // Tasks are now managed through focus sessions
 
-    console.log('📋 Adding tasks:', mockData.tasks?.length || 0);
-    if (mockData.tasks) {
-      mockData.tasks.forEach(task => {
-        tasksUpdates.tasks.byId[task.id] = task;
-        tasksUpdates.tasks.allIds.push(task.id);
-      });
-    }
-
-    useAppStore.setState((state) => ({
-      tasks: {
-        ...state.tasks,
-        ...tasksUpdates,
-      },
-    }));
-
-    // Initialize rewards data
-    const rewardsUpdates: any = {
-      balance: mockData.user.stats.seedsEarned,
-      totalEarned: mockData.user.stats.seedsEarned + 500, // Add some spent amount
-      totalSpent: 500,
-      transactions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: new Date() },
-      unlockedApps: [
-        { id: 'instagram', name: 'Instagram', icon: 'logo-instagram', unlockedAt: new Date() },
-        { id: 'twitter', name: 'Twitter', icon: 'logo-twitter', unlockedAt: new Date() },
-      ],
-    };
-
-    console.log('🎁 Adding reward transactions:', mockData.rewardTransactions?.length || 0);
-    if (mockData.rewardTransactions) {
-      mockData.rewardTransactions.forEach(transaction => {
-        rewardsUpdates.transactions.byId[transaction.id] = transaction;
-        rewardsUpdates.transactions.allIds.push(transaction.id);
-      });
-    }
-
-    useAppStore.setState((state) => ({
-      rewards: {
-        ...state.rewards,
-        ...rewardsUpdates,
-      },
-    }));
+    // Rewards are not part of the current store structure
 
     // Settings and UI state will be handled by the store's natural initialization
 
     console.log('✅ Mock data initialization completed!');
     console.log('🎭 Demo user:', mockData.user.name, `(${mockData.user.email})`);
     console.log('📊 Sample data loaded:');
-    console.log(`  - ${mockData.focusCategories.length} focus categories`);
     console.log(`  - ${mockData.focusTags.length} focus tags`);
     console.log(`  - ${mockData.focusSessions.length} focus sessions`);
-    console.log(`  - ${mockData.tasks.length} tasks`);
-    console.log(`  - ${mockData.rewardTransactions.length} reward transactions`);
-    console.log('🌱 Current balance:', rewardsUpdates.balance, 'seeds');
 
     return true;
   } catch (error) {
@@ -144,9 +84,8 @@ export const shouldInitializeMockData = (): boolean => {
   if (process.env.NODE_ENV === 'development') {
     // You can add more sophisticated logic here, e.g.:
     // - Check AsyncStorage for a flag
-    // - Check environment variables
+    // - Check environment variables  
     // - Check if user is already logged in
-    const store = useAppStore.getState();
     return true;
   }
   

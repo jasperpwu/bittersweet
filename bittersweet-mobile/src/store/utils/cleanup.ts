@@ -104,13 +104,7 @@ export class EntityCleanup {
       };
     }
     
-    // Clean tasks (keep recent ones)
-    if (store.tasks) {
-      cleanedStore.tasks = {
-        ...store.tasks,
-        tasks: this.cleanupNormalizedState(store.tasks.tasks)
-      };
-    }
+    // Tasks are now managed through focus sessions
     
     // Clean reward transactions
     if (store.rewards) {
@@ -198,33 +192,7 @@ export class MemoryOptimizer {
       };
     }
     
-    // Reduce tasks to current month
-    if (optimized.tasks?.tasks) {
-      const currentMonth = new Date();
-      currentMonth.setDate(1);
-      currentMonth.setHours(0, 0, 0, 0);
-      
-      const tasks = optimized.tasks.tasks.allIds
-        .map(id => optimized.tasks!.tasks.byId[id])
-        .filter(task => task && new Date(task.date) >= currentMonth);
-      
-      const newById: Record<string, any> = {};
-      const newAllIds: string[] = [];
-      
-      tasks.forEach(task => {
-        newById[task.id] = task;
-        newAllIds.push(task.id);
-      });
-      
-      optimized.tasks = {
-        ...optimized.tasks,
-        tasks: {
-          ...optimized.tasks.tasks,
-          byId: newById,
-          allIds: newAllIds
-        }
-      };
-    }
+    // Tasks optimization removed - tasks are now managed through focus sessions
     
     // Clear UI errors
     if (optimized.ui) {
@@ -391,9 +359,7 @@ export const initializeCleanupSystems = (): void => {
     return EntityCleanup.cleanupNormalizedState(focusState.sessions);
   });
   
-  StateCleanup.registerCleanupRule('tasks', (tasksState) => {
-    return EntityCleanup.cleanupNormalizedState(tasksState.tasks);
-  });
+  // Tasks cleanup rule removed - tasks are now managed through focus sessions
   
   StateCleanup.registerCleanupRule('rewards', (rewardsState) => {
     return EntityCleanup.cleanupNormalizedState(rewardsState.transactions);
@@ -422,10 +388,4 @@ export const handleAppStateChange = (nextAppState: string): void => {
   }
 };
 
-// Export cleanup utilities
-export {
-  EntityCleanup,
-  MemoryOptimizer,
-  CacheManager,
-  BatchProcessor
-};
+// Classes are already exported individually above

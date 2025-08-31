@@ -8,7 +8,6 @@ interface ActivityEntry {
   startTime: Date;
   endTime: Date;
   duration: number;
-  category: string;
   tags: string[];
   description?: string;
   isManualEntry: boolean;
@@ -66,7 +65,7 @@ export const ActivityList: FC<ActivityListProps> = ({
             <View className="flex-1">
               <View className="flex-row items-center mb-1">
                 <Typography variant="subtitle-14-semibold" color="primary">
-                  {entry.category}
+                  {entry.tags[0]}
                 </Typography>
                 {entry.isManualEntry && (
                   <View className="ml-2 px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded-full">

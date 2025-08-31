@@ -4,7 +4,6 @@ export * from './Avatar';
 export * from './Button';
 export * from './CalendarModal';
 export * from './Card';
-export * from './CategoryPicker';
 export * from './DatePicker';
 export * from './EmojiPicker';
 export * from './Header';

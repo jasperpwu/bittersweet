@@ -3,6 +3,7 @@ import { View, Pressable } from 'react-native';
 import { Card } from '../../ui/Card';
 import { Typography } from '../../ui/Typography';
 import { FocusSession } from '../../../store/types';
+import { useFocus } from '../../../store';
 
 export interface SessionItemProps {
   session: FocusSession;
@@ -10,16 +11,14 @@ export interface SessionItemProps {
   variant?: 'compact' | 'detailed';
 }
 
-// Category display mapping with colors and icons
-const categoryMap = {
-  'Education': { name: 'Education', icon: '📚', color: '#51BC6F', gradient: 'from-green-400 to-green-500' },
-  'Music': { name: 'Music', icon: '🎵', color: '#6592E9', gradient: 'from-blue-400 to-blue-500' },
-  'Work': { name: 'Work', icon: '💼', color: '#8B5CF6', gradient: 'from-purple-400 to-purple-500' },
-  'Meditation': { name: 'Meditation', icon: '🧘', color: '#FAC438', gradient: 'from-yellow-400 to-yellow-500' },
-  'Code': { name: 'Code', icon: '💻', color: '#FD5B71', gradient: 'from-red-400 to-red-500' },
-  'Study': { name: 'Study', icon: '📖', color: '#51BC6F', gradient: 'from-green-400 to-green-500' },
-  'Reading': { name: 'Reading', icon: '📚', color: '#51BC6F', gradient: 'from-green-400 to-green-500' },
-  'Exercise': { name: 'Exercise', icon: '💪', color: '#FD5B71', gradient: 'from-red-400 to-red-500' },
+// Tag color mapping - fallback colors for tags
+const tagColorMap = {
+  'Work': '#8B5CF6',
+  'Study': '#51BC6F', 
+  'Personal': '#6592E9',
+  'Exercise': '#FD5B71',
+  'Creative': '#FAC438',
+  'Reading': '#51BC6F',
 } as const;
 
 const formatDuration = (minutes: number): string => {
@@ -58,11 +57,15 @@ export const SessionItem: FC<SessionItemProps> = ({
   onPress,
   variant = 'detailed'
 }) => {
-  const categoryInfo = categoryMap[session.categoryId as keyof typeof categoryMap] || {
-    name: session.categoryId,
-    icon: '⏱️',
-    color: '#6592E9',
-    gradient: 'from-blue-400 to-blue-500'
+  const { tags } = useFocus();
+  
+  // Get primary tag info (use first tag or default)
+  const primaryTagId = session.tagIds[0];
+  const primaryTag = primaryTagId ? tags.byId[primaryTagId] : null;
+  const tagInfo = {
+    name: primaryTag?.name || 'Focus Session',
+    icon: primaryTag?.icon || '⏱️',
+    color: primaryTag?.name ? tagColorMap[primaryTag.name as keyof typeof tagColorMap] || '#6592E9' : '#6592E9'
   };
 
   const Component = onPress ? Pressable : View;
@@ -71,15 +74,15 @@ export const SessionItem: FC<SessionItemProps> = ({
     <Component onPress={onPress} className={onPress ? 'active:opacity-80' : ''}>
       <Card variant="outlined" padding="medium" borderRadius="medium">
         <View className="flex-row items-center justify-between">
-          {/* Left side - Category icon and session info */}
+          {/* Left side - Tag icon and session info */}
           <View className="flex-row items-center flex-1">
-            {/* Category icon with colored background */}
+            {/* Tag icon with colored background */}
             <View 
               className="w-10 h-10 rounded-xl items-center justify-center mr-3"
-              style={{ backgroundColor: `${categoryInfo.color}20` }}
+              style={{ backgroundColor: `${tagInfo.color}20` }}
             >
               <Typography variant="subtitle-16" className="text-lg">
-                {categoryInfo.icon}
+                {tagInfo.icon}
               </Typography>
             </View>
             
@@ -91,14 +94,14 @@ export const SessionItem: FC<SessionItemProps> = ({
                 numberOfLines={1}
                 className="mb-1"
               >
-                {session.categoryId} Session
+                {tagInfo.name} Session
               </Typography>
               <Typography 
                 variant="body-14" 
                 color="secondary"
                 numberOfLines={1}
               >
-                {categoryInfo.name}
+                {session.notes || `${formatDuration(session.duration)} session`}
               </Typography>
             </View>
           </View>

@@ -5,21 +5,16 @@ import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal } from '../../src/components/ui/EmojiPicker/EmojiPicker';
 import { TimeScroller } from '../../src/components/focus';
 import { NotesModal } from '../../src/components/modals/NotesModal';
-
-// Initial mock data for tags
-const initialTags = [
-  { id: '1', name: 'Work', emoji: '💼' },
-  { id: '2', name: 'Study', emoji: '📚' },
-  { id: '3', name: 'Personal', emoji: '👤' },
-  { id: '4', name: 'Exercise', emoji: '💪' },
-  { id: '5', name: 'Reading', emoji: '📖' },
-  { id: '6', name: 'Creative', emoji: '🎨' },
-];
+import { useFocus, useFocusActions } from '../../src/store';
 
 export default function FocusScreen() {
+  // Get tags from store
+  const { tags } = useFocus();
+  const { createTag, updateTag } = useFocusActions();
+  const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean);
+  
   const [selectedTime, setSelectedTime] = useState(10); // minutes; 0 => ∞
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [tags, setTags] = useState(initialTags);
   const [showTagModal, setShowTagModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showNewTagModal, setShowNewTagModal] = useState(false);
@@ -71,14 +66,8 @@ export default function FocusScreen() {
 
   const handleEmojiSelect = (emoji: string) => {
     if (emojiPickerMode === 'edit' && editingTagId) {
-      // Update existing tag emoji
-      setTags(prevTags =>
-        prevTags.map(tag =>
-          tag.id === editingTagId
-            ? { ...tag, emoji }
-            : tag
-        )
-      );
+      // Update existing tag
+      updateTag(editingTagId, { icon: emoji });
       setEditingTagId(null);
       // Close emoji picker and reopen tag modal
       setShowEmojiPicker(false);
@@ -93,13 +82,12 @@ export default function FocusScreen() {
 
   const handleCreateNewTag = () => {
     if (newTagName.trim() && newTagEmoji) {
-      const newTag = {
-        id: Date.now().toString(),
+      // Create tag using store action
+      createTag({
         name: newTagName.trim(),
-        emoji: newTagEmoji,
-      };
-
-      setTags(prevTags => [...prevTags, newTag]);
+        icon: newTagEmoji,
+      });
+      
       setShowNewTagModal(false);
       setNewTagName('');
       setNewTagEmoji('');
@@ -238,7 +226,7 @@ export default function FocusScreen() {
 
   const displayTime = isInfinite ? formatTime(elapsedSeconds) : formatTime(remainingSeconds);
 
-  const selectedTagName = selectedTags.length > 0 ? tags.find(tag => tag.id === selectedTags[0])?.name : null;
+  const selectedTagName = selectedTags.length > 0 ? availableTags.find(tag => tag.id === selectedTags[0])?.name : null;
 
   const handleNotesSave = (notes: string) => {
     setSessionNotes(notes);
@@ -335,7 +323,7 @@ export default function FocusScreen() {
 
             {/* Tags List */}
             <View className="p-4">
-              {tags.map((tag) => (
+              {availableTags.map((tag) => (
                 <Pressable
                   key={tag.id}
                   onPress={() => handleTagSelect(tag.id)}
@@ -350,7 +338,7 @@ export default function FocusScreen() {
                     className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 active:bg-gray-500 border border-gray-500"
                   >
                     <Text className="text-xl">
-                      {tag.emoji}
+                      {tag.icon || '🏷️'}
                     </Text>
                   </Pressable>
                   <View className="flex-1">

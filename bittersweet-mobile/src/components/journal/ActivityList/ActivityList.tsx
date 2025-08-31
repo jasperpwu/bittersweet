@@ -8,7 +8,6 @@ interface TimeEntryData {
   startTime: Date;
   endTime: Date;
   duration: number;
-  category: string;
   tags: string[];
   description?: string;
   isManualEntry: boolean;

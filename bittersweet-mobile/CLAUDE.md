@@ -51,7 +51,6 @@ src/
   components/          # Reusable components organized by domain
     ui/                # Core UI components (Button, Input, Modal, etc.)
     focus/             # Focus session related components
-    tasks/             # Task management components
     analytics/         # Charts and statistics components
   store/               # Unified Zustand store
     index.ts           # Main store with all slices
@@ -70,7 +69,7 @@ ios/DynamicIslandModule/ # iOS Dynamic Island integration
 The app uses a simplified Zustand-based store with:
 
 1. **unified-store.ts**: App preferences and settings with device integration
-2. **index.ts**: Domain-separated slices (focus, tasks, settings, ui)
+2. **index.ts**: Domain-separated slices (focus, settings, ui)
 
 ### Key Store Patterns
 ```typescript
@@ -79,7 +78,7 @@ const { sessions, currentSession } = useFocus();
 const { preferences, theme } = useAppSettings();
 
 // Use action hooks for stable references
-const { createTask, updateTask } = useTasksActions();
+const { createSession, updateSession } = useFocusActions();
 const { updatePreferences } = useAppSettings();
 ```
 
@@ -103,7 +102,6 @@ Located in `src/components/ui/`, follows consistent patterns:
 components/
   ui/           # Core reusable components
   focus/        # Focus timer specific components
-  tasks/        # Task management components
   analytics/    # Data visualization components
   journal/      # Activity tracking components
   rewards/      # Gamification components

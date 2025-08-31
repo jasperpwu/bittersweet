@@ -46,7 +46,7 @@ export const NotesModal: FC<NotesModalProps> = ({
           <View className="bg-dark-bg rounded-xl p-6 border border-dark-border">
             {/* Header */}
             <Typography 
-              variant="subtitle-18" 
+              variant="headline-18" 
               className="text-dark-text-primary mb-4 text-center"
             >
               Add Session Notes

@@ -4,27 +4,69 @@
  */
 
 import { 
-  FocusSlice, 
   FocusSettings, 
-  FocusSession, 
-  Category, 
   Tag,
   ChartDataPoint, 
   TimePeriod,
   ProductivityInsights 
 } from '../types';
+import { FocusSession } from '../../types/models';
 import { createNormalizedState, updateNormalizedState, EntityManager } from '../utils/entityManager';
 import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/eventBus';
 
 // Re-export types for backward compatibility
-export type { FocusSession, ChartDataPoint, TimePeriod } from '../types';
+export type { FocusSession } from '../../types/models';
+export type { ChartDataPoint, TimePeriod } from '../types';
 
-// Default categories
-const defaultCategories: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>[] = [
-  { name: 'Work', color: '#6592E9', icon: '💼', isDefault: true, userId: '' },
-  { name: 'Study', color: '#51BC6F', icon: '📚', isDefault: true, userId: '' },
-  { name: 'Personal', color: '#EF786C', icon: '🏠', isDefault: true, userId: '' },
-  { name: 'Exercise', color: '#FF9800', icon: '💪', isDefault: true, userId: '' },
+// Focus slice interface
+interface FocusSlice {
+  // Normalized State
+  sessions: any;
+  tags: any;
+  
+  // Current Session State
+  currentSession: {
+    session: FocusSession | null;
+    isRunning: boolean;
+    remainingTime: number;
+    startedAt: Date | null;
+  };
+  
+  // Settings
+  settings: FocusSettings;
+  
+  // Actions
+  startSession: (params: { targetDuration: number; tagIds: string[]; description?: string }) => void;
+  pauseSession: () => void;
+  resumeSession: () => void;
+  completeSession: () => void;
+  cancelSession: () => void;
+  
+  // Tag Management
+  addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => Tag;
+  updateTag: (id: string, updates: Partial<Tag>) => void;
+  deleteTag: (id: string) => void;
+  
+  // Selectors
+  getSessionById: (id: string) => FocusSession | undefined;
+  getSessionsForDateRange: (start: Date, end: Date) => FocusSession[];
+  getTagById: (id: string) => Tag | undefined;
+  getAllTags: () => Tag[];
+  getActiveSession: () => FocusSession | null;
+  
+  // Analytics
+  getChartData: (period: TimePeriod) => any[];
+  getProductivityInsights: () => any;
+}
+
+// Default tags (matching the Focus tab initial tags)
+const defaultTags: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>[] = [
+  { name: 'Work', icon: '💼', userId: '' },
+  { name: 'Study', icon: '📚', userId: '' },
+  { name: 'Personal', icon: '👤', userId: '' },
+  { name: 'Exercise', icon: '💪', userId: '' },
+  { name: 'Reading', icon: '📖', userId: '' },
+  { name: 'Creative', icon: '🎨', userId: '' },
 ];
 
 // Timer management
@@ -34,38 +76,36 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
   const eventEmitter = createEventEmitter('focus');
   const eventListener = createEventListener();
   
-  // Initialize default categories when user logs in
-  eventListener.on(STORE_EVENTS.USER_LOGGED_IN, (event) => {
-    const { user } = event.payload;
-    initializeDefaultCategories(user.id);
-  });
-  
-  // Initialize default categories if none exist
-  const initializeDefaultCategories = (userId: string) => {
-    const existingCategories = get().focus.categories;
-    if (existingCategories.allIds.length === 0) {
-      const categoriesWithIds = defaultCategories.map(cat => ({
-        ...cat,
-        id: `category-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        userId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
-      
-      set((state: any) => {
-        const manager = new EntityManager(state.focus.categories);
-        categoriesWithIds.forEach(category => manager.add(category));
-        state.focus.categories = {
-          ...manager.getState(),
-          loading: false,
-          error: null,
-          lastUpdated: new Date(),
-        };
-      });
-      
-      if (__DEV__) {
-        console.log('✅ Default categories initialized for user:', userId);
-      }
+  // Force initialize tags with emojis (no backward compatibility)
+  const initializeDefaultTags = (userId: string) => {
+    if (__DEV__) {
+      console.log('🏷️ Force initializing tags with emojis');
+    }
+    
+    // Always reinitialize in development to ensure emojis
+    const tagsWithIds = defaultTags.map(tag => ({
+      ...tag,
+      id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+    
+    set((state: any) => {
+      // Clear existing tags and add new emoji tags
+      const emptyState = createNormalizedState();
+      const manager = new EntityManager(emptyState);
+      tagsWithIds.forEach(tag => manager.add(tag));
+      state.focus.tags = {
+        ...manager.getState(),
+        loading: false,
+        error: null,
+        lastUpdated: new Date(),
+      };
+    });
+    
+    if (__DEV__) {
+      console.log('✅ Default tags initialized for user:', userId);
     }
   };
 
@@ -74,17 +114,16 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
   setTimeout(() => {
     try {
       const state = get();
-      const categories = state?.focus?.categories;
+      const tags = state?.focus?.tags;
       
-      if (categories && categories.allIds.length === 0) {
-        const userId = (__DEV__ ? 'dev-user' : null);
-        if (userId) {
-          initializeDefaultCategories(userId);
-        }
+      const userId = (__DEV__ ? 'dev-user' : null);
+      if (userId) {
+        // Always reinitialize tags in development to ensure emojis
+        initializeDefaultTags(userId);
       }
     } catch (error) {
       if (__DEV__) {
-        console.warn('Could not initialize default categories:', error);
+        console.warn('Could not initialize default data:', error);
       }
     }
   }, 500); // Give more time for store initialization
@@ -147,7 +186,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
   return {
     // Normalized State
     sessions: createNormalizedState(),
-    categories: createNormalizedState(),
     tags: createNormalizedState(),
     
     // Current Session State
@@ -171,7 +209,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     },
     
     // Actions
-    startSession: (params: { targetDuration: number; categoryId: string; tagIds: string[]; description?: string }) => {
+    startSession: (params: { targetDuration: number; tagIds: string[]; description?: string }) => {
       const state = get();
       
       // Validate parameters
@@ -183,16 +221,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         throw new Error('Target duration cannot exceed 180 minutes');
       }
       
-      if (!params.categoryId) {
-        throw new Error('Category is required');
-      }
-      
-      // Check if category exists
-      const category = get().focus.getCategoryById(params.categoryId);
-      if (!category) {
-        throw new Error('Selected category does not exist');
-      }
-      
       // Check if there's already an active session
       const currentSession = get().focus.currentSession;
       if (currentSession.session && currentSession.isRunning) {
@@ -201,16 +229,14 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       
       const newSession: FocusSession = {
         id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        userId: 'dev-user',
         startTime: new Date(),
-        duration: 0,
+        endTime: new Date(Date.now() + params.targetDuration * 60 * 1000),
         targetDuration: params.targetDuration,
-        categoryId: params.categoryId,
-        tagIds: params.tagIds,
-        description: params.description,
+        duration: 0,
         status: 'active',
-        seedsEarned: 0,
-        pauseHistory: [],
+        isPaused: false,
+        totalPauseTime: 0,
+        tags: params.tagIds,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -242,7 +268,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       eventEmitter.emit(STORE_EVENTS.FOCUS_SESSION_STARTED, {
         sessionId: newSession.id,
         targetDuration: params.targetDuration,
-        categoryId: params.categoryId,
+        tagIds: params.tagIds,
       });
       
       if (__DEV__) {
@@ -447,22 +473,24 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       }
     },
     
-    // Category/Tag Management
-    addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => {
+    // Tag Management
+
+    // Tag Management
+    addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => {
       const state = get();
       
-      const newCategory: Category = {
-        ...category,
-        id: `category-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      const newTag: Tag = {
+        ...tag,
+        id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         userId: 'dev-user',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
       
       set((state: any) => {
-        const manager = new EntityManager(state.focus.categories);
-        manager.add(newCategory);
-        state.focus.categories = {
+        const manager = new EntityManager(state.focus.tags);
+        manager.add(newTag);
+        state.focus.tags = {
           ...manager.getState(),
           loading: false,
           error: null,
@@ -471,15 +499,17 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       });
       
       if (__DEV__) {
-        console.log('✅ Category added:', newCategory.name);
+        console.log('✅ Tag added:', newTag.name);
       }
+      
+      return newTag;
     },
     
-    updateCategory: (id: string, updates: Partial<Category>) => {
+    updateTag: (id: string, updates: Partial<Tag>) => {
       set((state: any) => {
-        const manager = new EntityManager(state.focus.categories);
-        manager.update(id, updates);
-        state.focus.categories = {
+        const manager = new EntityManager(state.focus.tags);
+        manager.update(id, { ...updates, updatedAt: new Date() });
+        state.focus.tags = {
           ...manager.getState(),
           loading: false,
           error: null,
@@ -488,26 +518,26 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       });
       
       if (__DEV__) {
-        console.log('✅ Category updated:', id);
+        console.log('✅ Tag updated:', id);
       }
     },
     
-    deleteCategory: (id: string) => {
-      // Check if category is being used by any sessions
+    deleteTag: (id: string) => {
+      // Check if tag is being used by any sessions
       const sessions = get().focus.sessions;
-      const sessionsUsingCategory = sessions.allIds
+      const sessionsUsingTag = sessions.allIds
         .map(id => sessions.byId[id])
         .filter(Boolean)
-        .filter(session => session.categoryId === id);
+        .filter(session => session.tagIds && session.tagIds.includes(id));
       
-      if (sessionsUsingCategory.length > 0) {
-        throw new Error('Cannot delete category that is being used by sessions');
+      if (sessionsUsingTag.length > 0) {
+        throw new Error('Cannot delete tag that is being used by sessions');
       }
       
       set((state: any) => {
-        const manager = new EntityManager(state.focus.categories);
+        const manager = new EntityManager(state.focus.tags);
         manager.remove(id);
-        state.focus.categories = {
+        state.focus.tags = {
           ...manager.getState(),
           loading: false,
           error: null,
@@ -516,7 +546,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       });
       
       if (__DEV__) {
-        console.log('✅ Category deleted:', id);
+        console.log('✅ Tag deleted:', id);
       }
     },
     
@@ -537,9 +567,14 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         });
     },
     
-    getCategoryById: (id: string) => {
-      const categories = get().focus.categories;
-      return categories.byId[id];
+    getTagById: (id: string) => {
+      const tags = get().focus.tags;
+      return tags.byId[id];
+    },
+    
+    getAllTags: () => {
+      const tags = get().focus.tags;
+      return tags.allIds.map(id => tags.byId[id]).filter(Boolean);
     },
     
     getActiveSession: () => {

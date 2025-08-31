@@ -39,8 +39,7 @@ export interface FocusSession {
   resumedAt?: Date;
   totalPauseTime: number; // in seconds
   
-  // Tags (merged category system)
-  tags: string[]; // Now includes both categories and tags
+  tagIds: string[];
   
   // Metadata
   createdAt: Date;
@@ -50,8 +49,7 @@ export interface FocusSession {
 export interface SessionTag {
   id: string;
   name: string;
-  color: string;
-  icon?: string;
+  icon: string;
   usageCount: number;
   isDefault?: boolean; // For built-in tags like 'work', 'study', etc.
 }
@@ -66,7 +64,7 @@ export interface FocusStats {
   longestStreak: number;
   mostProductiveHour: number;
   mostProductiveDay: string;
-  tagBreakdown: TagStats[]; // Changed from categoryBreakdown
+  tagBreakdown: TagStats[];
   weeklyProgress: WeeklyStats[];
 }
 
@@ -98,7 +96,7 @@ export interface ScreenTimeData {
 export interface AppUsageData {
   bundleId: string;
   name: string;
-  category: string;
+  tagIds: string[];
   timeSpent: number; // in minutes
   opens: number;
   notifications: number;

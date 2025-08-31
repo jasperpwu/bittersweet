@@ -83,7 +83,7 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
               variant="subtitle-14-medium" 
               className="text-dark-text-secondary"
             >
-              Current task
+              Current session
             </Typography>
           </View>
 
@@ -136,7 +136,7 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
           </View>
         </View>
 
-        {/* Task Content */}
+        {/* Session Content */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1">
             {/* Tag Icon */}
@@ -190,20 +190,14 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
           </AnimatedPressable>
         </View>
 
-        {/* Progress Bar */}
-        {session.completedSessions > 0 && session.totalSessions > 0 && (
+        {/* Session status */}
+        {session.status && (
           <View className="mt-4">
-            <View className="h-2 bg-dark-border rounded-full overflow-hidden">
-              <Animated.View 
-                className="h-full bg-primary rounded-full"
-                style={{ width: `${(session.completedSessions / session.totalSessions) * 100}%` }}
-              />
-            </View>
             <Typography 
               variant="body-12" 
-              className="text-dark-text-secondary mt-2 text-center"
+              className="text-dark-text-secondary text-center"
             >
-              {session.completedSessions}/{session.totalSessions} sessions complete
+              Status: {session.status}
             </Typography>
           </View>
         )}

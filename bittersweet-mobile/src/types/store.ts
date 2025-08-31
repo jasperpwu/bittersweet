@@ -11,7 +11,7 @@ export interface FocusSession {
     endTime?: Date;
     duration: number; // actual duration in minutes
     targetDuration: number; // planned duration in minutes
-    categoryId: string;
+    tagIds: string[];
     description?: string;
     status: 'active' | 'paused' | 'completed' | 'cancelled';
     seedsEarned: number;
@@ -25,10 +25,9 @@ export interface PauseRecord {
     endTime: Date;
 }
 
-export interface Category {
+export interface Tag {
     id: string;
     name: string;
-    color: string;
     icon: string;
     isDefault: boolean;
     createdAt: Date;
@@ -51,7 +50,7 @@ export interface UnlockableApp {
     name: string;
     bundleId: string;
     icon?: string;
-    category: string;
+    tagIds: string[];
     baseCost: number;
     currentCost: number;
     unlockCount: number;
@@ -100,7 +99,6 @@ export interface FocusSlice {
     // State
     currentSession: FocusSession | null;
     sessions: FocusSession[];
-    categories: Category[];
     settings: FocusSettings;
     isRunning: boolean;
     timeRemaining: number; // in seconds
@@ -111,11 +109,6 @@ export interface FocusSlice {
     resumeSession: () => void;
     completeSession: () => void;
     cancelSession: () => void;
-
-    // Category Management
-    addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => void;
-    updateCategory: (id: string, updates: Partial<Category>) => void;
-    deleteCategory: (id: string) => void;
 
     // Settings
     updateFocusSettings: (updates: Partial<FocusSettings>) => void;
@@ -169,7 +162,7 @@ export interface AppStore {
 // Action Parameter Types
 export interface StartSessionParams {
     targetDuration: number;
-    categoryId: string;
+    tagIds: string[];
     description?: string;
 }
 
@@ -194,9 +187,9 @@ export interface FocusStats {
     mostProductiveDay: string;
 }
 
-export interface CategoryStats {
-    categoryId: string;
-    categoryName: string;
+export interface TagStats {
+    tagIds: string[];
+    tagName: string;
     sessions: number;
     totalTime: number;
     percentage: number;

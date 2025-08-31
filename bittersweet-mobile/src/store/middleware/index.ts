@@ -127,15 +127,11 @@ export function createPersistenceConfig(): PersistConfig {
     partialize: (state: RootStore) => ({
       focus: {
         sessions: state.focus.sessions,
-        categories: state.focus.categories,
         tags: state.focus.tags,
         settings: state.focus.settings,
+        selectedDate: state.focus.selectedDate,
+        viewMode: state.focus.viewMode,
       } as Partial<typeof state.focus>,
-      tasks: {
-        tasks: state.tasks.tasks,
-        selectedDate: state.tasks.selectedDate,
-        viewMode: state.tasks.viewMode,
-      } as Partial<typeof state.tasks>,
       rewards: {
         balance: state.rewards.balance,
         totalEarned: state.rewards.totalEarned,
@@ -190,8 +186,8 @@ export function createPersistenceConfig(): PersistConfig {
         state.ui.isHydrated = true;
         
         // Ensure selectedDate is always a Date object
-        if (state.tasks && (!state.tasks.selectedDate || !(state.tasks.selectedDate instanceof Date))) {
-          state.tasks.selectedDate = new Date();
+        if (state.focus && (!state.focus.selectedDate || !(state.focus.selectedDate instanceof Date))) {
+          state.focus.selectedDate = new Date();
           console.log('🔧 Fixed selectedDate to be a Date object');
         }
         

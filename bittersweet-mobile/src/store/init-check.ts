@@ -10,8 +10,6 @@ export function checkStoreInitialization() {
     
     const checks = {
       focus: !!store.focus,
-      tasks: !!store.tasks,
-      rewards: !!store.rewards,
       settings: !!store.settings,
       ui: !!store.ui,
     };
@@ -24,11 +22,11 @@ export function checkStoreInitialization() {
         allInitialized,
       });
       
-      if (store.tasks) {
-        console.log('Tasks slice methods:', {
-          getTasksForDate: typeof store.tasks.getTasksForDate,
-          getTaskById: typeof store.tasks.getTaskById,
-          createTask: typeof store.tasks.createTask,
+      if (store.focus) {
+        console.log('Focus slice methods:', {
+          createSession: typeof store.focus.createSession,
+          updateSession: typeof store.focus.updateSession,
+          deleteSession: typeof store.focus.deleteSession,
         });
       }
     }

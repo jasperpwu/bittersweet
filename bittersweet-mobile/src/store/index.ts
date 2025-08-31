@@ -127,11 +127,11 @@ export const useAppStore = create<AppStore>()(
         sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
         tags: { 
           byId: {
-            'work': { id: 'work', name: 'Work', color: '#6592E9', icon: '💼', isDefault: true, usageCount: 0 },
-            'study': { id: 'study', name: 'Study', color: '#51BC6F', icon: '📚', isDefault: true, usageCount: 0 },
-            'personal': { id: 'personal', name: 'Personal', color: '#EF786C', icon: '🏠', isDefault: true, usageCount: 0 },
-            'exercise': { id: 'exercise', name: 'Exercise', color: '#FF9800', icon: '💪', isDefault: true, usageCount: 0 },
-            'creative': { id: 'creative', name: 'Creative', color: '#9C27B0', icon: '🎨', isDefault: true, usageCount: 0 },
+            'work': { id: 'work', name: 'Work', icon: '💼', isDefault: true, usageCount: 0 },
+            'study': { id: 'study', name: 'Study', icon: '📚', isDefault: true, usageCount: 0 },
+            'personal': { id: 'personal', name: 'Personal', icon: '🏠', isDefault: true, usageCount: 0 },
+            'exercise': { id: 'exercise', name: 'Exercise', icon: '💪', isDefault: true, usageCount: 0 },
+            'creative': { id: 'creative', name: 'Creative', icon: '🎨', isDefault: true, usageCount: 0 },
           }, 
           allIds: ['work', 'study', 'personal', 'exercise', 'creative'], 
           loading: false, 
@@ -673,7 +673,7 @@ export const useTasksActions = () => {
       const endTime = new Date(now.getTime() + duration * 60 * 1000);
       
       const sessionData: CreateSessionInput = {
-        tags: taskData.categoryId ? [taskData.categoryId] : ['work'],
+        tags: taskData.tags || ['work'],
         startTime: now,
         endTime: endTime,
         notes: taskData.description || '',

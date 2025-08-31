@@ -8,7 +8,6 @@ interface TimeEntryData {
   startTime: Date;
   endTime: Date;
   duration: number; // in minutes
-  category: string;
   tags: string[];
   description?: string;
   isManualEntry: boolean;
@@ -51,7 +50,7 @@ export const TimeEntry: FC<TimeEntryProps> = ({
         <View className="flex-1">
           <View className="flex-row items-center mb-2">
             <Typography variant="subtitle-14-semibold" color="primary">
-              {entry.category}
+              {entry.tags[0]}
             </Typography>
             {entry.isManualEntry && (
               <View className="ml-2 px-2 py-1 bg-primary/10 rounded">

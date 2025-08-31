@@ -12,29 +12,26 @@ export function isStoreReady(): boolean {
     console.log('🔍 Checking store readiness:', {
       hasState: !!state,
       hasFocus: !!state?.focus,
-      hasTasks: !!state?.tasks,
       hasUI: !!state?.ui,
-      hasCreateTask: !!state?.tasks?.createTask,
-      createTaskType: typeof state?.tasks?.createTask,
+      hasSettings: !!state?.settings,
     });
     
     // Check if all essential slices are available
-    const requiredSlices = ['focus', 'tasks', 'ui'];
+    const requiredSlices = ['focus', 'ui', 'settings'];
     const hasAllSlices = requiredSlices.every(slice => !!state?.[slice as keyof typeof state]);
     
-    // Check if tasks slice has essential methods
-    const hasTaskMethods = !!(
-      state?.tasks?.createTask &&
-      state?.tasks?.updateTask &&
-      state?.tasks?.deleteTask &&
-      state?.tasks?.setSelectedDate
+    // Check if focus slice has essential methods (sessions are now tasks)
+    const hasFocusMethods = !!(
+      typeof state?.focus?.createSession === 'function' &&
+      typeof state?.focus?.updateSession === 'function' &&
+      typeof state?.focus?.deleteSession === 'function'
     );
     
-    const isReady = hasAllSlices && hasTaskMethods;
+    const isReady = hasAllSlices && hasFocusMethods;
     
     console.log('🔍 Store readiness result:', {
       hasAllSlices,
-      hasTaskMethods,
+      hasFocusMethods,
       isReady,
       missingSlices: requiredSlices.filter(slice => !state?.[slice as keyof typeof state]),
     });

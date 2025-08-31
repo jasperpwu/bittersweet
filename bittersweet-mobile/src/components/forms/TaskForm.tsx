@@ -140,7 +140,7 @@ export const SessionForm: FC<SessionFormProps> = ({
                   }}
                   className="mr-2 mb-2"
                 >
-                  {tag.icon} {tag.name}
+                  {tag.icon || '🏷️'} {tag.name}
                 </Button>
               ))}
             </View>
