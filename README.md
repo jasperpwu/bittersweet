@@ -1,12 +1,12 @@
 # Bittersweet
 
-A comprehensive screen time management ecosystem that helps users build healthier digital habits through focus sessions, intelligent app blocking, positive reinforcement.
+A comprehensive screen time management ecosystem that helps users build healthier digital habits through focus sessions, intelligent app blocking, and positive reinforcement.
 
 ## 📁 Project Structure
 
 ```
 bittersweet/
-├── bittersweet-app/           # React Native mobile application
+├── bittersweet-mobile/        # React Native mobile application
 │   ├── src/                   # Application source code
 │   │   ├── app/              # Expo Router screens
 │   │   ├── components/       # Reusable UI components
@@ -28,12 +28,12 @@ bittersweet/
 Navigate to the mobile app directory and follow the setup instructions:
 
 ```bash
-cd bittersweet-app
+cd bittersweet-mobile
 npm install
 npm start
 ```
 
-For detailed development instructions, see [bittersweet-app/README.md](./bittersweet-app/README.md).
+For detailed development instructions, see [bittersweet-mobile/README.md](./bittersweet-mobile/README.md).
 
 ## 📱 Mobile App Features
 
@@ -46,7 +46,7 @@ For detailed development instructions, see [bittersweet-app/README.md](./bitters
 - ✅ **Utilities**: Time formatting and validation functions
 
 ### Planned Features
-- 🚧 **Focus Timer**: Customizable focus sessions with progress tracking
+- 🚧 **Focus Timer**: Customizable focus sessions with tag-based organization
 - 🚧 **App Blocking**: Intelligent app blocking with seed-based unlocks
 - 🚧 **Time Journal**: Calendar-based time tracking and reflection
 - 🚧 **Insights Dashboard**: AI-powered productivity analytics
@@ -85,8 +85,8 @@ The project is currently in **Phase 1: Foundation** with the core architecture, 
 
 ## 📖 Documentation
 
-- **[Mobile App README](./bittersweet-app/README.md)**: Comprehensive development guide
-- **[Mobile App Changelog](./bittersweet-app/CHANGELOG.md)**: Version history and features
+- **[Mobile App README](./bittersweet-mobile/README.md)**: Comprehensive development guide
+- **[Mobile App Changelog](./bittersweet-mobile/CHANGELOG.md)**: Version history and features
 - **[Project Specifications](./.kiro/specs/bittersweet-mobile-app/)**: Detailed requirements and design
 - **[Development Guidelines](./.kiro/steering/)**: Code standards and best practices
 

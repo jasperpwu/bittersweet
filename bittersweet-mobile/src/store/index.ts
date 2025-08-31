@@ -7,7 +7,7 @@ import { devtools } from 'zustand/middleware';
 import { FocusSession, SessionTag, CreateSessionInput } from '../types/models';
 
 interface AppStore {
-  // Focus (merged with tasks functionality)
+  // Focus sessions and tags
   focus: {
     // Sessions (includes both planned and active sessions)
     sessions: { 
@@ -18,7 +18,7 @@ interface AppStore {
       lastUpdated: Date | null;
     };
     
-    // Tags (merged categories and tags)
+    // Tags for organizing sessions
     tags: { 
       byId: Record<string, SessionTag>; 
       allIds: string[]; 
@@ -99,7 +99,19 @@ interface AppStore {
     notifications: { enabled: boolean; sound: boolean; vibration: boolean };
     updateTheme: (theme: 'dark' | 'light') => void;
     updateLanguage: (language: string) => void;
-    updateNotifications: (notifications: { enabled: boolean; sound: boolean; vibration: boolean }) => void;
+    updateNotifications: (settings: { enabled: boolean; sound: boolean; vibration: boolean }) => void;
+  };
+  
+  // Rewards
+  rewards: {
+    balance: number;
+    totalEarned: number;
+    totalSpent: number;
+    transactions: any[];
+    unlockableApps: any[];
+    earnSeeds: (amount: number, source: string, metadata?: any) => void;
+    spendSeeds: (amount: number, purpose: string, metadata?: any) => void;
+    unlockApp: (appId: string) => Promise<boolean>;
   };
 }
 
@@ -546,6 +558,51 @@ export const useAppStore = create<AppStore>()(
           }));
         },
       },
+      
+      // Rewards state
+      rewards: {
+        balance: 0,
+        totalEarned: 0,
+        totalSpent: 0,
+        transactions: [],
+        unlockableApps: [],
+        earnSeeds: (amount, source, metadata) => {
+          set((state) => ({
+            rewards: {
+              ...state.rewards,
+              balance: state.rewards.balance + amount,
+              totalEarned: state.rewards.totalEarned + amount,
+              transactions: [...state.rewards.transactions, { id: generateId(), amount, source, metadata, type: 'earn', timestamp: new Date() }]
+            }
+          }));
+        },
+        spendSeeds: (amount, purpose, metadata) => {
+          set((state) => ({
+            rewards: {
+              ...state.rewards,
+              balance: state.rewards.balance - amount,
+              totalSpent: state.rewards.totalSpent + amount,
+              transactions: [...state.rewards.transactions, { id: generateId(), amount, purpose, metadata, type: 'spend', timestamp: new Date() }]
+            }
+          }));
+        },
+        unlockApp: async (appId) => {
+          const app = get().rewards.unlockableApps.find(app => app.id === appId);
+          if (app) {
+            set((state) => ({
+              rewards: {
+                ...state.rewards,
+                balance: state.rewards.balance - app.price,
+                totalSpent: state.rewards.totalSpent + app.price,
+                transactions: [...state.rewards.transactions, { id: generateId(), amount: app.price, purpose: 'unlock', metadata: { appId }, type: 'spend', timestamp: new Date() }],
+                unlockableApps: state.rewards.unlockableApps.filter(a => a.id !== appId)
+              }
+            }));
+            return true;
+          }
+          return false;
+        }
+      }
     }),
     { name: 'bittersweet-store' }
   )
@@ -557,6 +614,7 @@ export const useAppStore = create<AppStore>()(
 export const useFocus = () => useAppStore((state) => state.focus);
 export const useSettings = () => useAppStore((state) => state.settings);
 export const useUI = () => useAppStore((state) => state.ui);
+export const useRewards = () => useAppStore((state) => state.rewards);
 
 /**
  * Store actions hooks
@@ -594,131 +652,38 @@ export const useSettingsActions = () => useAppStore((state) => ({
   updateNotifications: state.settings.updateNotifications,
 }));
 
+export const useRewardsActions = () => useAppStore((state) => ({
+  earnSeeds: state.rewards.earnSeeds,
+  spendSeeds: state.rewards.spendSeeds,
+  unlockApp: state.rewards.unlockApp,
+}));
+
 /**
  * Store selectors hooks
  */
 export const useFocusSelectors = () => useAppStore((state) => ({
-  getSessionById: (id: string) => {
-    const sessions = state.focus.sessions;
-    return sessions.byId[id];
-  },
-  getSessionsForDateRange: (start: Date, end: Date) => {
-    const sessions = state.focus.sessions;
-    return sessions.allIds
-      .map(id => sessions.byId[id])
-      .filter(Boolean)
-      .filter(session => {
-        const sessionDate = new Date(session.startTime);
-        return sessionDate >= start && sessionDate <= end;
-      });
-  },
+  getSessionById: (id: string) => state.focus.sessions.byId[id],
   getSessionsForDate: (date: Date) => {
-    const sessions = state.focus.sessions;
-    
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    return sessions.allIds
-      .map(id => sessions.byId[id])
+    const sessions = Object.values(state.focus.sessions.byId);
+    return sessions.filter(session => {
+      const sessionDate = new Date(session.startTime);
+      return sessionDate.toDateString() === date.toDateString();
+    });
+  },
+  getSessionsForDateRange: (startDate: Date, endDate: Date) => {
+    const sessions = Object.values(state.focus.sessions.byId);
+    return sessions.filter(session => {
+      const sessionDate = new Date(session.startTime);
+      return sessionDate >= startDate && sessionDate <= endDate;
+    });
+  },
+  getActiveSession: () => state.focus.currentSession.session,
+  getTagById: (id: string) => state.focus.tags.byId[id],
+  getAllTags: () => Object.values(state.focus.tags.byId),
+  getCompletedSessions: () => Object.values(state.focus.sessions.byId)
       .filter(Boolean)
-      .filter(session => {
-        const sessionDate = new Date(session.startTime);
-        return sessionDate >= startOfDay && sessionDate <= endOfDay;
-      }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-  },
-  getTagById: (id: string) => {
-    const tags = state.focus.tags;
-    return tags.byId[id];
-  },
-  getActiveSession: () => {
-    return state.focus.currentSession.session;
-  },
-  getScheduledSessions: () => {
-    const sessions = state.focus.sessions;
-    return sessions.allIds
-      .map(id => sessions.byId[id])
-      .filter(Boolean)
-      .filter(session => session.status === 'scheduled');
-  },
-  getCompletedSessions: () => {
-    const sessions = state.focus.sessions;
-    return sessions.allIds
-      .map(id => sessions.byId[id])
-      .filter(Boolean)
-      .filter(session => session.status === 'completed');
-  },
+      .filter(session => session.status === 'completed'),
 }));
-
-// Legacy task hooks for backward compatibility
-export const useTasks = () => {
-  const focus = useFocus();
-  return {
-    tasks: focus.sessions, // Sessions are now tasks
-    selectedDate: focus.selectedDate,
-    viewMode: focus.viewMode,
-    currentWeekStart: focus.currentWeekStart,
-  };
-};
-
-export const useTasksActions = () => {
-  const focusActions = useFocusActions();
-  return {
-    createTask: (taskData: any) => {
-      // Convert legacy task format to session format
-      const now = new Date();
-      const duration = taskData.duration || 25;
-      const endTime = new Date(now.getTime() + duration * 60 * 1000);
-      
-      const sessionData: CreateSessionInput = {
-        tags: taskData.tags || ['work'],
-        startTime: now,
-        endTime: endTime,
-        notes: taskData.description || '',
-      };
-      focusActions.createSession(sessionData);
-    },
-    updateTask: focusActions.updateSession,
-    deleteTask: focusActions.deleteSession,
-    startTask: focusActions.startSession,
-    completeTask: focusActions.completeSession,
-    setSelectedDate: focusActions.setSelectedDate,
-    setViewMode: focusActions.setViewMode,
-    goToPreviousWeek: focusActions.goToPreviousWeek,
-    goToNextWeek: focusActions.goToNextWeek,
-    goToCurrentWeek: focusActions.goToCurrentWeek,
-  };
-};
-
-export const useTasksSelectors = () => {
-  const focusSelectors = useFocusSelectors();
-  return {
-    getTaskById: focusSelectors.getSessionById,
-    getTasksForDate: focusSelectors.getSessionsForDate,
-    getTasksForDateRange: focusSelectors.getSessionsForDateRange,
-    getActiveTask: focusSelectors.getActiveSession,
-    getTaskProgress: (id: string) => {
-      const session = focusSelectors.getSessionById(id);
-      if (!session) {
-        return {
-          completed: false,
-          focusTimeSpent: 0,
-          estimatedTime: 0,
-          actualTime: 0,
-        };
-      }
-      
-      return {
-        completed: session.status === 'completed',
-        focusTimeSpent: session.duration || 0,
-        estimatedTime: session.targetDuration,
-        actualTime: session.duration || 0,
-      };
-    },
-  };
-};
 
 /**
  * Store utilities

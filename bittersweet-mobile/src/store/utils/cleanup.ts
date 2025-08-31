@@ -104,7 +104,7 @@ export class EntityCleanup {
       };
     }
     
-    // Tasks are now managed through focus sessions
+    // Focus sessions are the primary entity for time tracking
     
     // Clean reward transactions
     if (store.rewards) {
@@ -166,33 +166,7 @@ export class MemoryOptimizer {
   private static aggressiveOptimization(store: Partial<RootStore>): Partial<RootStore> {
     const optimized = { ...store };
     
-    // Reduce focus sessions to last 100
-    if (optimized.focus?.sessions) {
-      const sessions = optimized.focus.sessions.allIds
-        .map(id => optimized.focus!.sessions.byId[id])
-        .filter(Boolean)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 100);
-      
-      const newById: Record<string, any> = {};
-      const newAllIds: string[] = [];
-      
-      sessions.forEach(session => {
-        newById[session.id] = session;
-        newAllIds.push(session.id);
-      });
-      
-      optimized.focus = {
-        ...optimized.focus,
-        sessions: {
-          ...optimized.focus.sessions,
-          byId: newById,
-          allIds: newAllIds
-        }
-      };
-    }
-    
-    // Tasks optimization removed - tasks are now managed through focus sessions
+    // Focus sessions optimization removed - sessions are now the primary entity
     
     // Clear UI errors
     if (optimized.ui) {
@@ -359,7 +333,7 @@ export const initializeCleanupSystems = (): void => {
     return EntityCleanup.cleanupNormalizedState(focusState.sessions);
   });
   
-  // Tasks cleanup rule removed - tasks are now managed through focus sessions
+  // Focus sessions cleanup rule removed - sessions are now the primary entity
   
   StateCleanup.registerCleanupRule('rewards', (rewardsState) => {
     return EntityCleanup.cleanupNormalizedState(rewardsState.transactions);

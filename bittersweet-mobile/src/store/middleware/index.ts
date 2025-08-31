@@ -152,8 +152,13 @@ export function createPersistenceConfig(): PersistConfig {
       // Restore Date objects from strings
       if (persistedState) {
         // Restore selectedDate as Date object
-        if (persistedState.tasks?.selectedDate) {
-          persistedState.tasks.selectedDate = new Date(persistedState.tasks.selectedDate);
+        if (persistedState.focus?.selectedDate) {
+          persistedState.focus.selectedDate = new Date(persistedState.focus.selectedDate);
+        }
+        
+        // Restore dates in focus
+        if (persistedState.focus?.currentWeekStart) {
+          persistedState.focus.currentWeekStart = new Date(persistedState.focus.currentWeekStart);
         }
         
         // Restore dates in focus sessions
@@ -232,8 +237,11 @@ function migrateLegacyStore(persistedState: any): any {
     if (persistedState.focus) {
       migratedState.focus = {
         sessions: persistedState.focus.sessions || { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        categories: persistedState.focus.categories || { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
         tags: persistedState.focus.tags || { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+        currentSession: persistedState.focus.currentSession || { session: null, isRunning: false, remainingTime: 0, startedAt: null },
+        selectedDate: persistedState.focus.selectedDate || new Date(),
+        viewMode: persistedState.focus.viewMode || 'day',
+        currentWeekStart: persistedState.focus.currentWeekStart || new Date(),
         settings: persistedState.focus.settings || {
           defaultDuration: 25,
           breakDuration: 5,
@@ -243,12 +251,6 @@ function migrateLegacyStore(persistedState: any): any {
           vibrationEnabled: true,
           autoStartBreaks: false,
           autoStartSessions: false,
-        },
-        currentSession: {
-          session: null,
-          isRunning: false,
-          remainingTime: 0,
-          startedAt: null,
         },
       };
     }

@@ -11,6 +11,13 @@ import { RootStore } from '../types';
 export const STORAGE_VERSION = 2;
 export const STORAGE_KEY = 'bittersweet-store';
 
+// Helper function to ensure dates are properly converted
+const ensureDate = (date: any): Date => {
+  if (date instanceof Date) return date;
+  if (typeof date === 'string' || typeof date === 'number') return new Date(date);
+  return new Date();
+};
+
 // Migration functions for different versions
 const migrations = {
   1: (state: any) => {
@@ -19,57 +26,33 @@ const migrations = {
     
     // Handle legacy homeSlice data
     if (state.homeSlice) {
-      const { user, tasks, dailyGoals, ...rest } = state.homeSlice;
+      const { user, dailyGoals, ...rest } = state.homeSlice;
       
-      // Migrate user data to user slice
+      // Migrate user data to settings
       if (user) {
-        state.user = {
+        state.settings = {
+          ...state.settings,
           user: {
-            id: user.id || 'user-1',
-            preferences: user.preferences || {},
-            stats: user.stats || {
-              totalFocusTime: 0,
-              totalSessions: 0,
-              currentStreak: 0,
-              longestStreak: 0,
-              seedsEarned: 0,
-              level: 1,
-            },
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            ...user,
+            createdAt: ensureDate(user.createdAt),
+            updatedAt: ensureDate(user.updatedAt),
           }
         };
       }
       
-      // Migrate tasks data to tasks slice
-      if (tasks && Array.isArray(tasks)) {
-        const tasksById: Record<string, any> = {};
-        const taskIds: string[] = [];
-        
-        tasks.forEach((task: any) => {
-          const taskId = task.id || `task-${Date.now()}-${Math.random()}`;
-          tasksById[taskId] = {
-            ...task,
-            id: taskId,
-            createdAt: task.createdAt || new Date(),
-            updatedAt: task.updatedAt || new Date(),
-          };
-          taskIds.push(taskId);
-        });
-        
-        state.tasks = {
-          ...state.tasks,
-          tasks: {
-            byId: tasksById,
-            allIds: taskIds,
-            loading: false,
-            error: null,
-            lastUpdated: new Date(),
-          },
+      // Migrate daily goals to focus settings
+      if (dailyGoals) {
+        state.focus.settings = {
+          ...state.focus.settings,
+          dailyGoals: dailyGoals.map((goal: any) => ({
+            ...goal,
+            createdAt: ensureDate(goal.createdAt),
+            updatedAt: ensureDate(goal.updatedAt),
+          }))
         };
       }
       
-      // Remove legacy homeSlice
+      // Remove old homeSlice
       delete state.homeSlice;
     }
     
@@ -93,7 +76,7 @@ const migrations = {
     }
     
     // Ensure all slices have proper normalized structure
-    const slices = ['focus', 'tasks', 'rewards'];
+    const slices = ['focus', 'rewards'];
     slices.forEach(sliceName => {
       if (state[sliceName]) {
         Object.keys(state[sliceName]).forEach(key => {
@@ -204,15 +187,12 @@ export const persistenceConfig: PersistOptions<RootStore> = {
   partialize: (state: RootStore) => ({
     focus: {
       sessions: state.focus.sessions,
-      categories: state.focus.categories,
       tags: state.focus.tags,
+      currentSession: state.focus.currentSession,
+      selectedDate: state.focus.selectedDate,
+      viewMode: state.focus.viewMode,
+      currentWeekStart: state.focus.currentWeekStart,
       settings: state.focus.settings,
-      stats: state.focus.stats,
-    },
-    tasks: {
-      tasks: state.tasks.tasks,
-      selectedDate: state.tasks.selectedDate,
-      viewMode: state.tasks.viewMode,
     },
     rewards: {
       balance: state.rewards.balance,
@@ -222,7 +202,7 @@ export const persistenceConfig: PersistOptions<RootStore> = {
       unlockableApps: state.rewards.unlockableApps,
     },
     settings: state.settings,
-    // UI state is intentionally not persisted
+    ui: state.ui,
   }),
   
   // Migration function
@@ -253,13 +233,15 @@ export const persistenceConfig: PersistOptions<RootStore> = {
     if (state) {
       console.log('✅ Store rehydrated successfully');
       
-      // Ensure all required fields are present and valid
-      if (!state.tasks) {
-        console.warn('Tasks slice missing after rehydration, initializing...');
-        state.tasks = {
-          tasks: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+      // Restore focus slice
+      if (!state.focus) {
+        console.warn('Focus slice missing after rehydration, initializing...');
+        state.focus = {
+          sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+          tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+          currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },
           selectedDate: new Date(),
-          viewMode: 'day' as const,
+          viewMode: 'day',
           currentWeekStart: (() => {
             const today = new Date();
             const currentDay = today.getDay();
@@ -269,17 +251,26 @@ export const persistenceConfig: PersistOptions<RootStore> = {
             weekStart.setHours(0, 0, 0, 0);
             return weekStart;
           })(),
+          settings: {
+            defaultDuration: 25,
+            breakDuration: 5,
+            longBreakDuration: 15,
+            sessionsUntilLongBreak: 4,
+            soundEnabled: true,
+            vibrationEnabled: true,
+            autoStartBreaks: false,
+            autoStartSessions: false,
+          },
         };
       }
       
-      // Ensure selectedDate is a valid Date object
-      if (state.tasks.selectedDate && !(state.tasks.selectedDate instanceof Date)) {
-        state.tasks.selectedDate = new Date(state.tasks.selectedDate);
+      // Restore dates in focus
+      if (state.focus.selectedDate && !(state.focus.selectedDate instanceof Date)) {
+        state.focus.selectedDate = new Date(state.focus.selectedDate);
       }
       
-      // Ensure currentWeekStart is a valid Date object
-      if (state.tasks.currentWeekStart && !(state.tasks.currentWeekStart instanceof Date)) {
-        state.tasks.currentWeekStart = new Date(state.tasks.currentWeekStart);
+      if (state.focus.currentWeekStart && !(state.focus.currentWeekStart instanceof Date)) {
+        state.focus.currentWeekStart = new Date(state.focus.currentWeekStart);
       }
       
       // Verify that all action functions are still available after rehydration
@@ -379,13 +370,12 @@ function validateStateIntegrity(state: any) {
   // Check for required fields
   if (!state.user) issues.push('Missing user slice');
   if (!state.focus) issues.push('Missing focus slice');
-  if (!state.tasks) issues.push('Missing tasks slice');
   if (!state.rewards) issues.push('Missing rewards slice');
   if (!state.settings) issues.push('Missing settings slice');
   if (!state.ui) issues.push('Missing ui slice');
   
   // Check normalized structures
-  const normalizedSlices = ['focus', 'tasks', 'rewards'];
+  const normalizedSlices = ['focus', 'rewards'];
   normalizedSlices.forEach(sliceName => {
     if (state[sliceName]) {
       Object.keys(state[sliceName]).forEach(key => {

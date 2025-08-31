@@ -20,7 +20,7 @@ export function isStoreReady(): boolean {
     const requiredSlices = ['focus', 'ui', 'settings'];
     const hasAllSlices = requiredSlices.every(slice => !!state?.[slice as keyof typeof state]);
     
-    // Check if focus slice has essential methods (sessions are now tasks)
+    // Check if focus slice has essential methods (sessions are the primary focus entity)
     const hasFocusMethods = !!(
       typeof state?.focus?.createSession === 'function' &&
       typeof state?.focus?.updateSession === 'function' &&
