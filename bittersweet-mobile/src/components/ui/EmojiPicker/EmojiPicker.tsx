@@ -31,8 +31,8 @@ export const EmojiPickerModal: FC<EmojiPickerModalProps> = ({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black bg-opacity-50 justify-end">
-        <View className="bg-dark-bg rounded-t-3xl max-h-96">
+      <View className="flex-1 bg-black bg-opacity-50 justify-center items-center">
+        <View className="bg-dark-bg rounded-3xl w-11/12 h-3/5">
           {/* Header */}
           <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
             <Typography variant="headline-20" color="white">
