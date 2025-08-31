@@ -32,25 +32,35 @@ export default function JournalScreen() {
 
   // Convert store sessions to component format and filter for selected date
   const sessionsForSelectedDate = useMemo(() => {
+    // Safety check to handle undefined sessions
+    if (!sessions || !sessions.allIds || !sessions.byId) {
+      console.warn('Sessions data is not properly initialized:', sessions);
+      return [];
+    }
+    
     return sessions.allIds
       .map(id => {
         const session = sessions.byId[id];
+        if (!session) return null;
+        
         return {
           id: session.id,
           startTime: new Date(session.startTime),
           endTime: new Date(session.endTime),
           duration: Math.round((new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60)),
-          tags: session.tags || [],
+          tags: session.tagIds || [], // Changed from session.tags to session.tagIds to match the store structure
           notes: session.notes || '',
         };
       })
       .filter(session => {
+        if (!session) return false;
+        
         // Filter for selected date
         const sessionDate = session.startTime.toDateString();
         const selectedDateString = selectedDate.toDateString();
         return sessionDate === selectedDateString;
       })
-      .filter(Boolean);
+      .filter((session): session is NonNullable<typeof session> => session !== null);
   }, [sessions, selectedDate]);
 
 

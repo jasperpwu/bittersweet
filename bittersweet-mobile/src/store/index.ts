@@ -3,8 +3,9 @@
  */
 
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
 import { FocusSession, SessionTag, CreateSessionInput } from '../types/models';
+import { persistenceConfig } from './middleware/persistence';
 
 interface AppStore {
   // Focus sessions and tags
@@ -132,20 +133,15 @@ const generateId = () => {
 };
 
 export const useAppStore = create<AppStore>()(
-  devtools(
-    (set, get) => ({
+  persist(
+    devtools(
+      (set, get) => ({
       // Focus state (merged with tasks)
       focus: {
         sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
         tags: { 
-          byId: {
-            'work': { id: 'work', name: 'Work', icon: '💼', isDefault: true, usageCount: 0 },
-            'study': { id: 'study', name: 'Study', icon: '📚', isDefault: true, usageCount: 0 },
-            'personal': { id: 'personal', name: 'Personal', icon: '🏠', isDefault: true, usageCount: 0 },
-            'exercise': { id: 'exercise', name: 'Exercise', icon: '💪', isDefault: true, usageCount: 0 },
-            'creative': { id: 'creative', name: 'Creative', icon: '🎨', isDefault: true, usageCount: 0 },
-          }, 
-          allIds: ['work', 'study', 'personal', 'exercise', 'creative'], 
+          byId: {}, 
+          allIds: [], 
           loading: false, 
           error: null, 
           lastUpdated: null 
@@ -184,7 +180,7 @@ export const useAppStore = create<AppStore>()(
             status: 'scheduled',
             isPaused: false,
             totalPauseTime: 0,
-            tags: sessionData.tags,
+            tagIds: sessionData.tags,
             notes: sessionData.notes,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -604,7 +600,9 @@ export const useAppStore = create<AppStore>()(
         }
       }
     }),
-    { name: 'bittersweet-store' }
+      { name: 'bittersweet-store' }
+    ),
+    persistenceConfig
   )
 );
 

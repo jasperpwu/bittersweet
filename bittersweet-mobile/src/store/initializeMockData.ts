@@ -7,13 +7,27 @@ import { getMockData } from './mockData';
 
 /**
  * Initializes the store with comprehensive mock data
- * Call this function to populate the store with a test user and sample data
+ * Only adds mock data if the store is empty (preserves existing data)
  */
 export const initializeStoreWithMockData = () => {
   const mockData = getMockData();
+  const currentState = useAppStore.getState();
 
   try {
-    console.log('🎭 Initializing store with mock data...');
+    console.log('🎭 Checking if store needs mock data initialization...');
+    
+    // Check if we already have data (tags or sessions)
+    const hasExistingTags = currentState.focus.tags.allIds.length > 0;
+    const hasExistingSessions = currentState.focus.sessions.allIds.length > 0;
+    
+    if (hasExistingTags || hasExistingSessions) {
+      console.log('✅ Store already has data, skipping mock data initialization');
+      console.log(`  - Existing tags: ${hasExistingTags ? currentState.focus.tags.allIds.length : 0}`);
+      console.log(`  - Existing sessions: ${hasExistingSessions ? currentState.focus.sessions.allIds.length : 0}`);
+      return true;
+    }
+    
+    console.log('📊 Store is empty, initializing with mock data...');
     console.log('👤 Mock user:', mockData.user?.name || 'UNDEFINED');
     console.log('📊 Mock data keys:', Object.keys(mockData));
 
@@ -56,12 +70,6 @@ export const initializeStoreWithMockData = () => {
       },
     }));
 
-    // Tasks are now managed through focus sessions
-
-    // Rewards are not part of the current store structure
-
-    // Settings and UI state will be handled by the store's natural initialization
-
     console.log('✅ Mock data initialization completed!');
     console.log('🎭 Demo user:', mockData.user.name, `(${mockData.user.email})`);
     console.log('📊 Sample data loaded:');
@@ -94,11 +102,25 @@ export const shouldInitializeMockData = (): boolean => {
 
 /**
  * Auto-initialize mock data if conditions are met
+ * Waits for store to be properly hydrated before checking
  */
 export const autoInitializeMockData = () => {
   if (shouldInitializeMockData()) {
-    setTimeout(() => {
-      initializeStoreWithMockData();
-    }, 1000); // Small delay to ensure store is fully initialized
+    // Wait for store hydration before initializing
+    const checkAndInit = () => {
+      const state = useAppStore.getState();
+      
+      // Check if store is hydrated (persistence middleware loaded)
+      if (state.ui?.isHydrated !== false) {
+        console.log('🔧 Store is hydrated, checking for mock data initialization...');
+        initializeStoreWithMockData();
+      } else {
+        console.log('⏳ Store not yet hydrated, waiting...');
+        setTimeout(checkAndInit, 500);
+      }
+    };
+    
+    // Small initial delay to ensure persistence middleware is set up
+    setTimeout(checkAndInit, 1000);
   }
 };

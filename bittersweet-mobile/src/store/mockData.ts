@@ -19,11 +19,11 @@ export function getMockData() {
     },
     
     focusTags: [
-      { id: 'tag-1', name: 'Work', icon: '💼', userId: 'demo-user-123', usageCount: 5 },
-      { id: 'tag-2', name: 'Study', icon: '📚', userId: 'demo-user-123', usageCount: 3 },
-      { id: 'tag-3', name: 'Personal', icon: '🏠', userId: 'demo-user-123', usageCount: 2 },
-      { id: 'tag-4', name: 'Exercise', icon: '💪', userId: 'demo-user-123', usageCount: 4 },
-      { id: 'tag-5', name: 'Creative', icon: '🎨', userId: 'demo-user-123', usageCount: 1 },
+      { id: 'work', name: 'Work', icon: '💼', isDefault: true, usageCount: 0 },
+      { id: 'study', name: 'Study', icon: '📚', isDefault: true, usageCount: 0 },
+      { id: 'personal', name: 'Personal', icon: '🏠', isDefault: true, usageCount: 0 },
+      { id: 'exercise', name: 'Exercise', icon: '💪', isDefault: true, usageCount: 0 },
+      { id: 'creative', name: 'Creative', icon: '🎨', isDefault: true, usageCount: 0 },
     ],
     
     focusSessions: [
@@ -34,7 +34,7 @@ export function getMockData() {
         endTime: daysAgo(1),
         duration: 25,
         targetDuration: 25,
-        tagIds: ['tag-1'],
+        tagIds: ['work'],
         notes: 'Morning focus session',
         status: 'completed',
         seedsEarned: 25,
@@ -47,7 +47,7 @@ export function getMockData() {
         endTime: daysAgo(0),
         duration: 50,
         targetDuration: 50,
-        tagIds: ['tag-2'],
+        tagIds: ['study'],
         notes: 'Study session',
         status: 'completed',
         seedsEarned: 50,

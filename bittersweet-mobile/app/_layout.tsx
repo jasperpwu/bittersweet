@@ -7,6 +7,7 @@ import { View, Text } from 'react-native';
 import { AnimatedSplashScreen } from '../src/components/ui/AnimatedSplashScreen';
 import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
 import { useAppState, initializeUnifiedStore } from '../src/store/unified-store';
+import { autoInitializeMockData } from '../src/store/initializeMockData';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -22,9 +23,10 @@ export default function RootLayout() {
   const { fontsLoaded } = useFonts();
   const { isHydrated, initializeApp } = useAppState();
 
-  // Initialize the unified store
+  // Initialize stores
   useEffect(() => {
     initializeUnifiedStore();
+    autoInitializeMockData(); // Initialize main store with mock data
   }, []);
 
   // Debug logging

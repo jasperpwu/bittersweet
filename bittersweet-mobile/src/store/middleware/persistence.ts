@@ -5,7 +5,6 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createJSONStorage, persist, PersistOptions } from 'zustand/middleware';
-import { RootStore } from '../types';
 
 // Storage version for migration support
 export const STORAGE_VERSION = 2;
@@ -156,19 +155,24 @@ class OptimizedStorage {
     if (this.batchWrites.size === 0) return;
     
     try {
-      const writes = Array.from(this.batchWrites.entries());
+      const writes: [string, string][] = [];
+      this.batchWrites.forEach((value, key) => {
+        writes.push([key, value]);
+      });
       await AsyncStorage.multiSet(writes);
       this.batchWrites.clear();
     } catch (error) {
       console.error('Storage batch write error:', error);
       // Fallback to individual writes
-      for (const [key, value] of this.batchWrites.entries()) {
-        try {
-          await AsyncStorage.setItem(key, value);
-        } catch (individualError) {
-          console.error(`Storage individual write error for ${key}:`, individualError);
-        }
-      }
+      const promises: Promise<void>[] = [];
+      this.batchWrites.forEach((value, key) => {
+        promises.push(
+          AsyncStorage.setItem(key, value).catch((individualError) => {
+            console.error(`Storage individual write error for ${key}:`, individualError);
+          })
+        );
+      });
+      await Promise.all(promises);
       this.batchWrites.clear();
     }
   }
@@ -178,13 +182,13 @@ class OptimizedStorage {
 const optimizedStorage = new OptimizedStorage();
 
 // Persistence configuration with selective persistence and versioning
-export const persistenceConfig: PersistOptions<RootStore> = {
+export const persistenceConfig = {
   name: STORAGE_KEY,
   storage: createJSONStorage(() => optimizedStorage),
   version: STORAGE_VERSION,
   
   // Selective persistence - only persist necessary data
-  partialize: (state: RootStore) => ({
+  partialize: (state: any) => ({
     focus: {
       sessions: state.focus.sessions,
       tags: state.focus.tags,
@@ -223,7 +227,7 @@ export const persistenceConfig: PersistOptions<RootStore> = {
   },
   
   // Hydration callback
-  onRehydrateStorage: () => (state, error) => {
+  onRehydrateStorage: () => (state: any, error: any) => {
     if (error) {
       console.error('❌ Store rehydration error:', error);
       // Could implement error recovery here
@@ -274,13 +278,13 @@ export const persistenceConfig: PersistOptions<RootStore> = {
       }
       
       // Verify that all action functions are still available after rehydration
-      if (__DEV__) {
+      if (process.env.NODE_ENV === 'development') {
         const requiredActions = ['setSelectedDate', 'setViewMode', 'goToPreviousWeek', 'goToNextWeek'];
-        const missingActions = requiredActions.filter(action => typeof state.tasks[action] !== 'function');
+        const missingActions = requiredActions.filter(action => typeof state.focus[action] !== 'function');
         if (missingActions.length > 0) {
-          console.error('❌ Missing task actions after rehydration:', missingActions);
+          console.error('❌ Missing focus actions after rehydration:', missingActions);
         } else {
-          console.log('✅ All task actions preserved after rehydration');
+          console.log('✅ All focus actions preserved after rehydration');
         }
       }
       
@@ -289,8 +293,8 @@ export const persistenceConfig: PersistOptions<RootStore> = {
         state.ui.isHydrated = true;
       }
       
-      // Perform post-hydration setup
-      setupPostHydration(state);
+      // Perform post-hydration setup  
+      // setupPostHydration(state); // Remove recursion
     }
   },
   
@@ -298,7 +302,7 @@ export const persistenceConfig: PersistOptions<RootStore> = {
   skipHydration: false,
   
   // Merge function for handling conflicts
-  merge: (persistedState, currentState) => {
+  merge: (persistedState: any, currentState: any) => {
     // Custom merge logic to handle conflicts
     // IMPORTANT: Only merge data, preserve all functions from currentState
     const merged = { ...currentState };
@@ -335,27 +339,7 @@ export const persistenceConfig: PersistOptions<RootStore> = {
 };
 
 // Post-hydration setup
-function setupPostHydration(state: RootStore) {
-  // Recalculate computed values that might be stale
-  if (state.focus.sessions.allIds.length > 0) {
-    // Recalculate focus stats
-    const sessions = state.focus.sessions.allIds.map(id => state.focus.sessions.byId[id]);
-    const completedSessions = sessions.filter(s => s.status === 'completed');
-    
-    state.focus.stats = {
-      totalSessions: completedSessions.length,
-      totalFocusTime: completedSessions.reduce((total, s) => total + s.duration, 0),
-      currentStreak: calculateCurrentStreak(completedSessions),
-      longestStreak: calculateLongestStreak(completedSessions),
-      averageSessionLength: completedSessions.length > 0 
-        ? completedSessions.reduce((total, s) => total + s.duration, 0) / completedSessions.length 
-        : 0,
-      completionRate: sessions.length > 0 
-        ? (completedSessions.length / sessions.length) * 100 
-        : 0,
-    };
-  }
-  
+function setupPostHydration(state: any) {
   // Clean up expired data
   cleanupExpiredData(state);
   
@@ -368,7 +352,6 @@ function validateStateIntegrity(state: any) {
   const issues: string[] = [];
   
   // Check for required fields
-  if (!state.user) issues.push('Missing user slice');
   if (!state.focus) issues.push('Missing focus slice');
   if (!state.rewards) issues.push('Missing rewards slice');
   if (!state.settings) issues.push('Missing settings slice');
@@ -455,38 +438,24 @@ function calculateLongestStreak(sessions: any[]): number {
 }
 
 // Clean up expired data
-function cleanupExpiredData(state: RootStore) {
+function cleanupExpiredData(state: any) {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
   // Clean up old error logs
-  if (state.ui.errors.length > 0) {
+  if (state.ui?.errors && Array.isArray(state.ui.errors) && state.ui.errors.length > 0) {
     state.ui.errors = state.ui.errors.filter(
-      error => new Date(error.timestamp) > thirtyDaysAgo
+      (error: any) => error.timestamp && new Date(error.timestamp) > thirtyDaysAgo
     );
   }
   
   // Clean up old transactions (keep last 100)
-  if (state.rewards.transactions.allIds.length > 100) {
-    const sortedIds = state.rewards.transactions.allIds
-      .map(id => ({
-        id,
-        timestamp: state.rewards.transactions.byId[id].timestamp,
-      }))
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 100)
-      .map(item => item.id);
+  if (state.rewards?.transactions && Array.isArray(state.rewards.transactions) && state.rewards.transactions.length > 100) {
+    const sortedTransactions = state.rewards.transactions
+      .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 100);
     
-    const newById: Record<string, any> = {};
-    sortedIds.forEach(id => {
-      newById[id] = state.rewards.transactions.byId[id];
-    });
-    
-    state.rewards.transactions = {
-      ...state.rewards.transactions,
-      byId: newById,
-      allIds: sortedIds,
-    };
+    state.rewards.transactions = sortedTransactions;
   }
 }
 
