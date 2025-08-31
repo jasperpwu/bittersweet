@@ -110,8 +110,8 @@ interface AppStore {
     totalSpent: number;
     transactions: any[];
     unlockableApps: any[];
-    earnSeeds: (amount: number, source: string, metadata?: any) => void;
-    spendSeeds: (amount: number, purpose: string, metadata?: any) => void;
+    earnFruits: (amount: number, source: string, metadata?: any) => void;
+    spendFruits: (amount: number, purpose: string, metadata?: any) => void;
     unlockApp: (appId: string) => Promise<boolean>;
   };
 }
@@ -166,8 +166,8 @@ export const useAppStore = create<AppStore>()(
           console.log('📝 Creating focus session:', sessionData);
           const sessionId = generateId();
           
-          // Calculate target duration from startTime and endTime
-          const targetDuration = Math.round(
+          // Calculate duration from startTime and endTime
+          const duration = Math.round(
             (sessionData.endTime.getTime() - sessionData.startTime.getTime()) / (1000 * 60)
           );
           
@@ -175,9 +175,7 @@ export const useAppStore = create<AppStore>()(
             id: sessionId,
             startTime: sessionData.startTime,
             endTime: sessionData.endTime,
-            targetDuration: targetDuration,
-            duration: 0,
-            status: 'scheduled',
+            duration: duration,
             isPaused: false,
             totalPauseTime: 0,
             tagIds: sessionData.tags,
@@ -215,6 +213,16 @@ export const useAppStore = create<AppStore>()(
               }));
             }
           });
+          
+          // Calculate and award fruits (1 fruit per 5 minutes)
+          const fruitsEarned = Math.floor(duration / 5);
+          if (fruitsEarned > 0) {
+            get().rewards.earnFruits(fruitsEarned, 'focus_session', {
+              sessionId: sessionId,
+              duration: duration,
+            });
+            console.log('🍎 Fruits earned:', fruitsEarned, 'for session:', sessionId);
+          }
           
           console.log('✅ Focus session created:', session);
         },
@@ -266,14 +274,13 @@ export const useAppStore = create<AppStore>()(
           console.log('▶️ Starting session:', sessionId);
           const session = get().focus.sessions.byId[sessionId];
           if (session) {
-            get().focus.updateSession(sessionId, { status: 'active' });
             set((state) => ({
               focus: {
                 ...state.focus,
                 currentSession: {
-                  session: { ...session, status: 'active' },
+                  session: session,
                   isRunning: true,
-                  remainingTime: session.targetDuration * 60, // Convert to seconds
+                  remainingTime: session.duration * 60, // Convert to seconds
                   startedAt: new Date(),
                 }
               }
@@ -296,7 +303,6 @@ export const useAppStore = create<AppStore>()(
             }));
             
             get().focus.updateSession(currentSession.session.id, {
-              status: 'paused',
               isPaused: true,
               pausedAt: new Date(),
             });
@@ -318,7 +324,6 @@ export const useAppStore = create<AppStore>()(
             }));
             
             get().focus.updateSession(currentSession.session.id, {
-              status: 'active',
               isPaused: false,
               resumedAt: new Date(),
             });
@@ -331,11 +336,20 @@ export const useAppStore = create<AppStore>()(
             console.log('✅ Completing session:', id);
             const session = get().focus.sessions.byId[id];
             if (session) {
-              const actualDuration = session.targetDuration; // Could calculate actual time
-              get().focus.updateSession(id, {
-                status: 'completed',
-                duration: actualDuration,
-              });
+              const actualDuration = session.duration; // Use the actual duration
+              
+              // Session is already completed, no need to update status
+              // Duration is already set when creating the session
+              
+              // Calculate and award fruits (1 fruit per 5 minutes)
+              const fruitsEarned = Math.floor(actualDuration / 5);
+              if (fruitsEarned > 0) {
+                get().rewards.earnFruits(fruitsEarned, 'focus_session', {
+                  sessionId: id,
+                  duration: actualDuration,
+                });
+                console.log('🍎 Fruits earned:', fruitsEarned, 'for session:', id);
+              }
               
               // Clear current session if it's the one being completed
               if (get().focus.currentSession.session?.id === id) {
@@ -562,7 +576,7 @@ export const useAppStore = create<AppStore>()(
         totalSpent: 0,
         transactions: [],
         unlockableApps: [],
-        earnSeeds: (amount, source, metadata) => {
+        earnFruits: (amount, source, metadata) => {
           set((state) => ({
             rewards: {
               ...state.rewards,
@@ -572,7 +586,7 @@ export const useAppStore = create<AppStore>()(
             }
           }));
         },
-        spendSeeds: (amount, purpose, metadata) => {
+        spendFruits: (amount, purpose, metadata) => {
           set((state) => ({
             rewards: {
               ...state.rewards,
@@ -651,8 +665,8 @@ export const useSettingsActions = () => useAppStore((state) => ({
 }));
 
 export const useRewardsActions = () => useAppStore((state) => ({
-  earnSeeds: state.rewards.earnSeeds,
-  spendSeeds: state.rewards.spendSeeds,
+  earnFruits: state.rewards.earnFruits,
+  spendFruits: state.rewards.spendFruits,
   unlockApp: state.rewards.unlockApp,
 }));
 
@@ -679,8 +693,7 @@ export const useFocusSelectors = () => useAppStore((state) => ({
   getTagById: (id: string) => state.focus.tags.byId[id],
   getAllTags: () => Object.values(state.focus.tags.byId),
   getCompletedSessions: () => Object.values(state.focus.sessions.byId)
-      .filter(Boolean)
-      .filter(session => session.status === 'completed'),
+      .filter(Boolean),
 }));
 
 /**

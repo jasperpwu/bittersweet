@@ -51,7 +51,7 @@ export interface UserStats {
   totalSessions: number;
   currentStreak: number;
   longestStreak: number;
-  seedsEarned: number;
+  fruitsEarned: number;
   level: number;
   experience: number;
 }
@@ -80,7 +80,7 @@ export interface FocusSession extends BaseEntity {
   tagIds: string[];
   notes?: string;
   status: 'active' | 'paused' | 'completed' | 'cancelled';
-  seedsEarned: number;
+  fruitsEarned: number;
   pauseHistory: PauseRecord[];
 }
 
@@ -230,8 +230,8 @@ export interface RewardsSlice {
   unlockableApps: NormalizedState<UnlockableApp>;
   
   // Actions
-  earnSeeds: (amount: number, source: string, metadata?: any) => void;
-  spendSeeds: (amount: number, purpose: string, metadata?: any) => void;
+  earnFruits: (amount: number, source: string, metadata?: any) => void;
+  spendFruits: (amount: number, purpose: string, metadata?: any) => void;
   unlockApp: (appId: string) => Promise<boolean>;
   
   // Selectors

@@ -41,6 +41,7 @@ interface FocusSlice {
   resumeSession: () => void;
   completeSession: () => void;
   cancelSession: () => void;
+  createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagIds: string[]; notes?: string }) => void;
   
   // Tag Management
   addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => Tag;
@@ -128,15 +129,12 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     }
   }, 500); // Give more time for store initialization
   
-  // Calculate seeds earned based on session duration and completion
-  const calculateSeedsEarned = (session: FocusSession): number => {
+  // Calculate fruits earned based on session duration and completion
+  const calculateFruitsEarned = (session: FocusSession): number => {
     if (session.status !== 'completed') return 0;
     
-    const completionRate = session.duration / session.targetDuration;
-    const baseSeeds = Math.floor(session.duration / 60); // 1 seed per minute
-    const bonusMultiplier = completionRate >= 0.9 ? 1.5 : completionRate >= 0.7 ? 1.2 : 1;
-    
-    return Math.floor(baseSeeds * bonusMultiplier);
+    // Award 1 fruit for every complete 5-minute interval
+    return Math.floor(session.duration / 5);
   };
   
   // Start timer for current session
@@ -236,7 +234,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         status: 'active',
         isPaused: false,
         totalPauseTime: 0,
-        tags: params.tagIds,
+        tagIds: params.tagIds,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -390,9 +388,9 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         updatedAt: new Date(),
       };
       
-      // Calculate seeds earned
-      const seedsEarned = calculateSeedsEarned(completedSession);
-      completedSession.seedsEarned = seedsEarned;
+      // Calculate fruits earned
+      const fruitsEarned = calculateFruitsEarned(completedSession);
+      completedSession.fruitsEarned = fruitsEarned;
       
       set((state: any) => {
         // Update in normalized state
@@ -420,12 +418,12 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       // Emit session completed event for cross-store communication
       eventEmitter.emitFocusSessionCompleted(
         completedSession.id,
-        seedsEarned,
+        fruitsEarned,
         completedSession.duration
       );
       
       if (__DEV__) {
-        console.log('✅ Focus session completed:', completedSession.id, `Seeds earned: ${seedsEarned}`);
+        console.log('✅ Focus session completed:', completedSession.id, `Fruits earned: ${fruitsEarned}`);
       }
     },
     
@@ -471,6 +469,52 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       if (__DEV__) {
         console.log('❌ Focus session cancelled:', currentSession.session.id);
       }
+    },
+
+    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagIds: string[]; notes?: string }) => {
+      const completedSession: FocusSession = {
+        id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        startTime: params.startTime,
+        endTime: params.endTime,
+        targetDuration: params.targetDuration,
+        duration: params.duration,
+        status: 'completed',
+        isPaused: false,
+        totalPauseTime: 0,
+        tagIds: params.tagIds,
+        notes: params.notes,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Calculate fruits earned
+      const fruitsEarned = calculateFruitsEarned(completedSession);
+      completedSession.fruitsEarned = fruitsEarned;
+
+      set((state: any) => {
+        // Add session to normalized state
+        const manager = new EntityManager(state.focus.sessions);
+        manager.add(completedSession);
+        state.focus.sessions = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+      });
+
+      // Emit session completed event for cross-store communication
+      eventEmitter.emitFocusSessionCompleted(
+        completedSession.id,
+        fruitsEarned,
+        completedSession.duration
+      );
+
+      if (__DEV__) {
+        console.log('✅ Completed focus session created:', completedSession.id, `Duration: ${completedSession.duration}min, Fruits earned: ${fruitsEarned}`);
+      }
+
+      return completedSession;
     },
     
     // Tag Management

@@ -126,8 +126,8 @@ export const STORE_EVENTS = {
   // Session events (tasks merged into focus sessions)
 
   // Reward events
-  SEEDS_EARNED: 'SEEDS_EARNED',
-  SEEDS_SPENT: 'SEEDS_SPENT',
+  FRUITS_EARNED: 'FRUITS_EARNED',
+  FRUITS_SPENT: 'FRUITS_SPENT',
   APP_UNLOCKED: 'APP_UNLOCKED',
 
   // Settings events
@@ -173,10 +173,10 @@ export function createEventEmitter(source: keyof RootStore) {
       storeEventBus.emit(createStoreEvent(STORE_EVENTS.USER_LOGGED_OUT, {}, source));
     },
     
-    emitFocusSessionCompleted: (sessionId: string, seedsEarned: number, duration: number) => {
+    emitFocusSessionCompleted: (sessionId: string, fruitsEarned: number, duration: number) => {
       storeEventBus.emit(createStoreEvent(STORE_EVENTS.FOCUS_SESSION_COMPLETED, {
         sessionId,
-        seedsEarned,
+        fruitsEarned,
         duration
       }, source));
     },
@@ -188,10 +188,10 @@ export function createEventEmitter(source: keyof RootStore) {
       }, source));
     },
     
-    emitSeedsEarned: (amount: number, seedSource: string, metadata?: any) => {
-      storeEventBus.emit(createStoreEvent(STORE_EVENTS.SEEDS_EARNED, {
+    emitFruitsEarned: (amount: number, fruitSource: string, metadata?: any) => {
+      storeEventBus.emit(createStoreEvent(STORE_EVENTS.FRUITS_EARNED, {
         amount,
-        source: seedSource,
+        source: fruitSource,
         metadata
       }, source));
     }

@@ -5,12 +5,14 @@ import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal } from '../../src/components/ui/EmojiPicker/EmojiPicker';
 import { TimeScroller } from '../../src/components/focus';
 import { NotesModal } from '../../src/components/modals/NotesModal';
-import { useFocus, useFocusActions } from '../../src/store';
+import { useFocus, useFocusActions, useRewards } from '../../src/store';
+import { FruitCounter } from '../../src/components/rewards';
 
 export default function FocusScreen() {
   // Get tags from store
   const { tags } = useFocus();
-  const { createTag, updateTag } = useFocusActions();
+  const { createTag, updateTag, startSession, completeSession, createCompletedSession } = useFocusActions();
+  const rewards = useRewards();
   const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean);
   
   const [selectedTime, setSelectedTime] = useState(10); // minutes; 0 => ∞
@@ -231,7 +233,24 @@ export default function FocusScreen() {
   const handleNotesSave = (notes: string) => {
     setSessionNotes(notes);
     console.log('Session completed with notes:', notes);
-    // Here you would typically save to the store/backend
+    
+    const actualDuration = isInfinite ? Math.floor(elapsedSeconds / 60) : selectedTime - Math.floor(remainingSeconds / 60);
+    
+    // Only create session if duration is meaningful (1+ minutes)
+    if (actualDuration >= 1) {
+      const startTime = new Date(Date.now() - (isInfinite ? elapsedSeconds * 1000 : (selectedTime * 60 * 1000 - remainingSeconds * 1000)));
+      const endTime = new Date();
+      
+      // Use the store action to create and save the completed session
+      createCompletedSession({
+        startTime,
+        endTime,
+        duration: actualDuration,
+        targetDuration: isInfinite ? actualDuration : selectedTime,
+        tagIds: selectedTags,
+        notes: notes,
+      });
+    }
   };
 
   const handleNotesClose = () => {
@@ -240,6 +259,11 @@ export default function FocusScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
+      {/* Fruit Counter - Top Left */}
+      <View className="absolute top-12 left-4 z-50">
+        <FruitCounter fruitCount={rewards.balance} size="small" />
+      </View>
+
       <View className="flex-1 items-center justify-center px-4">
         {/* Time Selector or Running Timer - stacked and crossfaded */}
         <View style={{ height: 240, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>

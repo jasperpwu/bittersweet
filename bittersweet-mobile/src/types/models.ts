@@ -29,11 +29,8 @@ export interface FocusSession {
   // Timing
   startTime: Date;
   endTime: Date; // Now required - end time of the session
-  targetDuration: number; // in minutes (calculated from startTime to endTime)
-  duration: number; // actual duration in minutes (for completed sessions)
+  duration: number; // duration in minutes
   
-  // Session state
-  status: 'scheduled' | 'active' | 'paused' | 'completed' | 'cancelled';
   isPaused: boolean;
   pausedAt?: Date;
   resumedAt?: Date;

@@ -70,24 +70,24 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
   const eventEmitter = createEventEmitter('rewards');
   const eventListener = createEventListener();
 
-  // Listen for focus session completions to award seeds
+  // Listen for focus session completions to award fruits
   eventListener.on(STORE_EVENTS.FOCUS_SESSION_COMPLETED, (event) => {
-    const { seedsEarned, sessionId, duration } = event.payload;
-    if (seedsEarned > 0) {
-      get().rewards.earnSeeds(seedsEarned, 'focus_session', {
+    const { fruitsEarned, sessionId, duration } = event.payload;
+    if (fruitsEarned > 0) {
+      get().rewards.earnFruits(fruitsEarned, 'focus_session', {
         sessionId,
         duration,
       });
     }
   });
 
-  // Listen for task completions to award seeds
+  // Listen for task completions to award fruits
   eventListener.on(STORE_EVENTS.TASK_COMPLETED, (event) => {
     const { taskId, focusTime } = event.payload;
-    // Award seeds based on focus time (1 seed per minute)
-    const seedsToAward = Math.floor(focusTime / 60);
-    if (seedsToAward > 0) {
-      get().rewards.earnSeeds(seedsToAward, 'task_completion', {
+    // Award fruits based on focus time (1 fruit per 5 minutes)
+    const fruitsToAward = Math.floor(focusTime / 300); // 300 seconds = 5 minutes
+    if (fruitsToAward > 0) {
+      get().rewards.earnFruits(fruitsToAward, 'task_completion', {
         taskId,
         focusTime,
       });
@@ -103,7 +103,7 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
     unlockableApps: createNormalizedState<UnlockableApp>(mockUnlockableApps),
     
     // Actions
-    earnSeeds: (amount: number, source: string, metadata?: any) => {
+    earnFruits: (amount: number, source: string, metadata?: any) => {
       set((state: any) => {
         // Create transaction record
         const transaction: RewardTransaction = {
@@ -112,7 +112,7 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
           amount,
           type: 'earned',
           source,
-          description: `Earned ${amount} seeds from ${source}`,
+          description: `Earned ${amount} fruits from ${source}`,
           metadata,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -130,14 +130,14 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
       });
 
       // Emit event for other stores
-      eventEmitter.emitSeedsEarned(amount, source, metadata);
+      eventEmitter.emitFruitsEarned(amount, source, metadata);
     },
 
-    spendSeeds: (amount: number, purpose: string, metadata?: any) => {
+    spendFruits: (amount: number, purpose: string, metadata?: any) => {
       const currentBalance = get().rewards.balance;
       
       if (currentBalance < amount) {
-        throw new Error(`Insufficient seeds. Required: ${amount}, Available: ${currentBalance}`);
+        throw new Error(`Insufficient fruits. Required: ${amount}, Available: ${currentBalance}`);
       }
 
       set((state: any) => {
@@ -148,7 +148,7 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
           amount,
           type: 'spent',
           source: purpose,
-          description: `Spent ${amount} seeds on ${purpose}`,
+          description: `Spent ${amount} fruits on ${purpose}`,
           metadata,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -166,7 +166,7 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
       });
 
       // Emit event
-      eventEmitter.emit(STORE_EVENTS.SEEDS_SPENT, {
+      eventEmitter.emit(STORE_EVENTS.FRUITS_SPENT, {
         amount,
         purpose,
         metadata,
@@ -186,12 +186,12 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
 
       const currentBalance = get().rewards.balance;
       if (currentBalance < app.cost) {
-        throw new Error(`Insufficient seeds to unlock ${app.name}. Required: ${app.cost}, Available: ${currentBalance}`);
+        throw new Error(`Insufficient fruits to unlock ${app.name}. Required: ${app.cost}, Available: ${currentBalance}`);
       }
 
       try {
-        // Spend seeds for app unlock
-        get().rewards.spendSeeds(app.cost, 'app_unlock', {
+        // Spend fruits for app unlock
+        get().rewards.spendFruits(app.cost, 'app_unlock', {
           appId,
           appName: app.name,
           bundleId: app.bundleId,

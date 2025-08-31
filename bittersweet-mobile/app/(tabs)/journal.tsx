@@ -1,15 +1,18 @@
 import { useState, useMemo } from 'react';
-import { View, SafeAreaView } from 'react-native';
+import { View, SafeAreaView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from '../../src/components/ui/StatusBar';
 import { Header } from '../../src/components/ui/Header';
 import { DateSelector, Timeline } from '../../src/components/journal';
-import { useFocus } from '../../src/store';
+import { useFocus, useRewards, useFocusActions } from '../../src/store';
+import { FruitCounter } from '../../src/components/rewards';
 import { generateExtendedWeekDates } from '../../src/utils/dateUtils';
 
 export default function JournalScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { sessions } = useFocus();
+  const rewards = useRewards();
+  const { deleteSession } = useFocusActions();
 
   // Generate week dates for the date selector
   const weekDates = useMemo(() => generateExtendedWeekDates(), []);
@@ -26,8 +29,52 @@ export default function JournalScreen() {
   };
 
   const handleSessionPress = (sessionId: string) => {
-    // TODO: Navigate to session details or edit session
-    console.log('Session pressed:', sessionId);
+    const session = sessions.byId[sessionId];
+    if (!session) return;
+    
+    // Format times for display
+    const startTime = new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const endTime = new Date(session.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const options = [];
+    
+    // Add delete button
+    options.push({
+      text: 'Delete',
+      style: 'destructive',
+      onPress: () => {
+        Alert.alert(
+          'Delete Session',
+          'Are you sure you want to delete this focus session?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Delete', 
+              style: 'destructive',
+              onPress: () => {
+                deleteSession(sessionId);
+                Alert.alert('Session Deleted', 'The focus session has been removed.');
+              }
+            }
+          ]
+        );
+      }
+    });
+    
+    options.push({ text: 'Cancel', style: 'cancel' });
+    
+    // Create detailed message with start/end times and duration
+    let message = `Start: ${startTime}\nEnd: ${endTime}\nDuration: ${session.targetDuration} minutes`;
+    
+    if (session.notes) {
+      message += `\n\nNotes: ${session.notes}`;
+    }
+    
+    Alert.alert(
+      'Focus Session',
+      message,
+      options
+    );
   };
 
   // Convert store sessions to component format and filter for selected date
@@ -70,6 +117,7 @@ export default function JournalScreen() {
       
       <Header
         title="Journal"
+        leftComponent={<FruitCounter fruitCount={rewards.balance} size="small" />}
         rightAction={{
           icon: 'add',
           onPress: handleAddSession,

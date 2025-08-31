@@ -18,6 +18,7 @@ interface HeaderAction {
 interface HeaderProps {
   title: string;
   leftAction?: HeaderAction;
+  leftComponent?: React.ReactNode;
   rightAction?: HeaderAction;
   variant?: 'default' | 'settings';
   backgroundColor?: string;
@@ -66,6 +67,7 @@ const ActionButton: FC<{ action: HeaderAction; variant?: 'default' | 'danger' }>
 export const Header: FC<HeaderProps> = ({
   title,
   leftAction,
+  leftComponent,
   rightAction,
   variant = 'default',
   backgroundColor = '#1B1C30',
@@ -85,6 +87,7 @@ export const Header: FC<HeaderProps> = ({
         {/* Left Action */}
         <View className="w-10 h-10 items-center justify-center">
           {leftAction && <ActionButton action={leftAction} />}
+          {leftComponent && leftComponent}
         </View>
 
         {/* Title */}

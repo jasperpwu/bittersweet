@@ -14,7 +14,7 @@ export interface FocusSession {
     tagIds: string[];
     description?: string;
     status: 'active' | 'paused' | 'completed' | 'cancelled';
-    seedsEarned: number;
+    fruitsEarned: number;
     pauseHistory: PauseRecord[];
     createdAt: Date;
     updatedAt: Date;
@@ -124,8 +124,8 @@ export interface RewardsSlice {
     unlockableApps: UnlockableApp[];
 
     // Actions
-    addSeeds: (amount: number, source: string, metadata?: any) => void;
-    spendSeeds: (amount: number, purpose: string, metadata?: any) => void;
+    addFruits: (amount: number, source: string, metadata?: any) => void;
+    spendFruits: (amount: number, purpose: string, metadata?: any) => void;
     unlockApp: (appId: string) => boolean;
 }
 
@@ -182,7 +182,7 @@ export interface FocusStats {
     completionRate: number;
     currentStreak: number;
     longestStreak: number;
-    seedsEarned: number;
+    fruitsEarned: number;
     mostProductiveHour: number;
     mostProductiveDay: string;
 }
