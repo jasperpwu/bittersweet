@@ -91,6 +91,17 @@ export interface Tag extends BaseEntity {
   userId: string;
 }
 
+export interface FocusGoal extends BaseEntity {
+  userId: string;
+  name: string;
+  targetMinutes: number;
+  period: 'daily' | 'weekly' | 'yearly';
+  tagIds: string[]; // empty array means "all tags"
+  isActive: boolean;
+  currentProgress: number;
+  lastResetDate: Date;
+}
+
 export interface FocusSettings {
   defaultDuration: number;
   breakDuration: number;
@@ -185,6 +196,7 @@ export interface FocusSlice {
   // Normalized State
   sessions: NormalizedState<FocusSession>;
   tags: NormalizedState<Tag>;
+  goals: NormalizedState<FocusGoal>;
   
   // Current Session State
   currentSession: {
@@ -209,11 +221,19 @@ export interface FocusSlice {
   updateTag: (id: string, updates: Partial<Tag>) => void;
   deleteTag: (id: string) => void;
   
+  // Goal Management
+  addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
+  deleteGoal: (id: string) => void;
+  updateGoalProgress: (goalId: string, minutesToAdd: number) => void;
+  
   // Selectors
   getSessionById: (id: string) => FocusSession | undefined;
   getSessionsForDateRange: (start: Date, end: Date) => FocusSession[];
   getTagById: (id: string) => Tag | undefined;
   getActiveSession: () => FocusSession | null;
+  getGoalById: (id: string) => FocusGoal | undefined;
+  getActiveGoals: () => FocusGoal[];
   
   // Analytics
   getChartData: (period: TimePeriod) => ChartDataPoint[];

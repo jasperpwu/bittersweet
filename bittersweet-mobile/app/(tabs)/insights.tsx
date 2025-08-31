@@ -4,6 +4,7 @@ import { Typography } from '../../src/components/ui/Typography';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
 import { HistoryView } from '../../src/components/analytics/HistoryView';
 import { DailyGoals } from '../../src/components/home/DailyGoals';
+import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
 import { useFocus, useFocusSelectors } from '../../src/store';
 import { TimePeriod } from '../../src/store/types';
 
@@ -12,6 +13,7 @@ type ViewMode = 'statistics' | 'history';
 export default function InsightsScreen() {
   const [currentView, setCurrentView] = useState<ViewMode>('statistics');
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('weekly');
+  const [showGoalModal, setShowGoalModal] = useState(false);
 
   // Get data from focus store
   const { sessions } = useFocus();
@@ -81,8 +83,11 @@ export default function InsightsScreen() {
           </Typography>
         </View>
         
-        {/* Settings icon placeholder */}
-        <Pressable className="p-2 active:opacity-70">
+        {/* Settings icon */}
+        <Pressable 
+          onPress={() => setShowGoalModal(true)}
+          className="p-2 active:opacity-70"
+        >
           <Typography variant="headline-18" color="secondary">
             ⚙️
           </Typography>
@@ -110,6 +115,12 @@ export default function InsightsScreen() {
           onDeleteSession={handleDeleteSession}
         />
       )}
+
+      {/* Goal Configuration Modal */}
+      <GoalConfigModal
+        isVisible={showGoalModal}
+        onClose={() => setShowGoalModal(false)}
+      />
     </SafeAreaView>
   );
 }
