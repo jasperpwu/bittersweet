@@ -3,6 +3,7 @@ import { View, SafeAreaView, Pressable } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
 import { HistoryView } from '../../src/components/analytics/HistoryView';
+import { DailyGoals } from '../../src/components/home/DailyGoals';
 import { useFocus, useFocusSelectors } from '../../src/store';
 import { TimePeriod } from '../../src/store/types';
 
@@ -54,6 +55,12 @@ export default function InsightsScreen() {
     deleteSession(sessionId);
   };
 
+  // Daily goals data (same as from the removed index.tsx)
+  const dailyGoals = {
+    focusTime: { current: 180, target: 240 },
+    sessions: { current: 3, target: 5 },
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
       {/* Header */}
@@ -84,13 +91,19 @@ export default function InsightsScreen() {
 
       {/* Content */}
       {currentView === 'statistics' ? (
-        <StatisticsView
-          chartData={chartData}
-          recentSessions={todaysSessions}
-          period={selectedPeriod}
-          onPeriodChange={handlePeriodChange}
-          onViewAllPress={handleViewAllPress}
-        />
+        <View className="flex-1">
+          {/* Daily Goals Section */}
+          <DailyGoals progress={dailyGoals} />
+          
+          {/* Statistics View */}
+          <StatisticsView
+            chartData={chartData}
+            recentSessions={todaysSessions}
+            period={selectedPeriod}
+            onPeriodChange={handlePeriodChange}
+            onViewAllPress={handleViewAllPress}
+          />
+        </View>
       ) : (
         <HistoryView
           sessionsByDate={sessionsByDate}

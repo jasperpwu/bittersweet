@@ -22,28 +22,6 @@ export default function TabLayout() {
         },
       }}>
       <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Focus',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <Ionicons name="time-outline" size={24} color={color} />
-              {focused && (
-                <View 
-                  style={{
-                    width: 14,
-                    height: 4,
-                    backgroundColor: '#6592E9',
-                    borderRadius: 100,
-                    marginTop: 6,
-                  }}
-                />
-              )}
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="journal"
         options={{
           title: 'Journal',
@@ -66,7 +44,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="focus"
+        name="index"
         options={{
           title: 'Focus',
           tabBarIcon: ({ color, focused }) => (
