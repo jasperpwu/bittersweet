@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useState, useEffect } from 'react';
 import { View, Modal, Pressable } from 'react-native';
 import { Typography } from '../Typography';
 import { TimeDial } from '../TimeDial/TimeDial';
@@ -23,6 +23,11 @@ export const TimePickerModal: FC<TimePickerModalProps> = ({
   maxTime,
 }) => {
   const [selectedTime, setSelectedTime] = useState(initialTime);
+
+  // Update selectedTime when initialTime changes
+  useEffect(() => {
+    setSelectedTime(initialTime);
+  }, [initialTime]);
 
   const handleSave = () => {
     onSave(selectedTime);

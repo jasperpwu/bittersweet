@@ -379,13 +379,6 @@ export default function FocusScreen() {
                       </Typography>
                     )}
                   </View>
-                  <View className="ml-2">
-                    <Ionicons
-                      name="pencil-outline"
-                      size={16}
-                      color="#6592E9"
-                    />
-                  </View>
                 </Pressable>
               ))}
             </View>

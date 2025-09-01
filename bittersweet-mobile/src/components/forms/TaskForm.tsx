@@ -67,7 +67,7 @@ export const SessionForm: FC<SessionFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof CreateSessionInput, string>>>({});
-  const [selectedTags, setSelectedTags] = useState<string[]>(initialData?.tags || [defaultTag]);
+  const [selectedTag, setSelectedTag] = useState<string>(initialData?.tags?.[0] || defaultTag);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
@@ -114,9 +114,15 @@ export const SessionForm: FC<SessionFormProps> = ({
       
       // Sync times when one becomes invalid
       if (field === 'startTime' && value >= prev.endTime) {
-        newData.endTime = value;
+        // Set end time to be 1 minute after start time, preserving the new date
+        const newEndTime = new Date(value);
+        newEndTime.setMinutes(newEndTime.getMinutes() + 1);
+        newData.endTime = newEndTime;
       } else if (field === 'endTime' && value <= prev.startTime) {
-        newData.startTime = value;
+        // Set start time to be 1 minute before end time, preserving the new date
+        const newStartTime = new Date(value);
+        newStartTime.setMinutes(newStartTime.getMinutes() - 1);
+        newData.startTime = newStartTime;
       }
       
       return newData;
@@ -141,14 +147,11 @@ export const SessionForm: FC<SessionFormProps> = ({
               {availableTags.map((tag) => (
                 <Button
                   key={tag.id}
-                  variant={selectedTags.includes(tag.name) ? 'primary' : 'secondary'}
+                  variant={selectedTag === tag.name ? 'primary' : 'secondary'}
                   size="small"
                   onPress={() => {
-                    const newTags = selectedTags.includes(tag.name)
-                      ? selectedTags.filter(t => t !== tag.name)
-                      : [...selectedTags, tag.name];
-                    setSelectedTags(newTags);
-                    updateFormData('tags', newTags);
+                    setSelectedTag(tag.name);
+                    updateFormData('tags', [tag.name]);
                   }}
                   className="mr-2 mb-2"
                 >
@@ -174,7 +177,10 @@ export const SessionForm: FC<SessionFormProps> = ({
               className="justify-start"
             >
               <Typography variant="body-14" color="white">
-                {formData.startTime.toLocaleTimeString([], { 
+                {formData.startTime.toLocaleDateString([], { 
+                  month: 'short', 
+                  day: 'numeric' 
+                })} at {formData.startTime.toLocaleTimeString([], { 
                   hour: '2-digit', 
                   minute: '2-digit', 
                   hour12: true 
@@ -199,7 +205,10 @@ export const SessionForm: FC<SessionFormProps> = ({
               className="justify-start"
             >
               <Typography variant="body-14" color="white">
-                {formData.endTime.toLocaleTimeString([], { 
+                {formData.endTime.toLocaleDateString([], { 
+                  month: 'short', 
+                  day: 'numeric' 
+                })} at {formData.endTime.toLocaleTimeString([], { 
                   hour: '2-digit', 
                   minute: '2-digit', 
                   hour12: true 

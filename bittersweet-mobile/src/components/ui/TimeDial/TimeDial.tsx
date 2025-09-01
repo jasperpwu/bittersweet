@@ -432,7 +432,7 @@ export const TimeDial: FC<TimeDialProps> = ({
           }}
         >
           <Typography variant="body-14" className="text-white font-medium">
-            -5
+            -5 minutes
           </Typography>
         </TouchableOpacity>
 
@@ -446,7 +446,7 @@ export const TimeDial: FC<TimeDialProps> = ({
           }}
         >
           <Typography variant="body-14" className="text-white font-medium">
-            +5
+            +5 minutes
           </Typography>
         </TouchableOpacity>
       </View>
