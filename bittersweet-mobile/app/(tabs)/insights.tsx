@@ -44,10 +44,84 @@ export default function InsightsScreen() {
     console.log('Deleting session:', sessionId);
   };
   
-  // Simple chart data placeholder
+  // Generate chart data from sessions
   const getChartData = (period: TimePeriod) => {
-    // Return empty array for now - this would normally process session data
-    return [];
+    if (!safeSessions.length) return [];
+
+    const now = new Date();
+    const chartData: Array<{ date: Date; value: number; label: string }> = [];
+
+    if (period === 'weekly') {
+      // Get last 7 days
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(now.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        
+        const nextDay = new Date(date);
+        nextDay.setDate(date.getDate() + 1);
+        
+        const daySessionsMinutes = safeSessions
+          .filter(session => {
+            const sessionDate = new Date(session.startTime);
+            return sessionDate >= date && sessionDate < nextDay;
+          })
+          .reduce((total, session) => total + session.duration, 0);
+        
+        chartData.push({
+          date,
+          value: daySessionsMinutes,
+          label: date.toLocaleDateString('en-US', { weekday: 'short' })
+        });
+      }
+    } else if (period === 'monthly') {
+      // Get last 4 weeks
+      for (let i = 3; i >= 0; i--) {
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - (i * 7) - now.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+        
+        const weekSessionsMinutes = safeSessions
+          .filter(session => {
+            const sessionDate = new Date(session.startTime);
+            return sessionDate >= weekStart && sessionDate < weekEnd;
+          })
+          .reduce((total, session) => total + session.duration, 0);
+        
+        chartData.push({
+          date: weekStart,
+          value: weekSessionsMinutes,
+          label: `W${Math.ceil((now.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24 * 7))}`
+        });
+      }
+    } else {
+      // Daily - last 24 hours broken into 6 4-hour chunks
+      for (let i = 5; i >= 0; i--) {
+        const chunkStart = new Date(now);
+        chunkStart.setHours(now.getHours() - (i * 4), 0, 0, 0);
+        
+        const chunkEnd = new Date(chunkStart);
+        chunkEnd.setHours(chunkStart.getHours() + 4);
+        
+        const chunkSessionsMinutes = safeSessions
+          .filter(session => {
+            const sessionDate = new Date(session.startTime);
+            return sessionDate >= chunkStart && sessionDate < chunkEnd;
+          })
+          .reduce((total, session) => total + session.duration, 0);
+        
+        chartData.push({
+          date: chunkStart,
+          value: chunkSessionsMinutes,
+          label: `${chunkStart.getHours()}:00`
+        });
+      }
+    }
+
+    return chartData;
   };
 
   // Memoized data processing

@@ -1,6 +1,6 @@
-import { FC } from 'react';
+import React, { FC } from 'react';
 import { View, Dimensions } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop, Line } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, Line, Text } from 'react-native-svg';
 import { Typography } from '../../ui/Typography';
 import { Button } from '../../ui/Button';
 import { ChartDataPoint, TimePeriod } from '../../../store/types';
@@ -14,7 +14,8 @@ interface FocusSessionsChartProps {
 
 const { width: screenWidth } = Dimensions.get('window');
 const CHART_PADDING = 40;
-const CHART_WIDTH = screenWidth - (CHART_PADDING * 2);
+const Y_AXIS_WIDTH = 50; // Space for Y-axis labels
+const CHART_WIDTH = screenWidth - (CHART_PADDING * 2) - Y_AXIS_WIDTH;
 const GRID_LINES = 4;
 
 export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
@@ -60,7 +61,10 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
     );
   }
 
-  const maxValue = Math.max(...validData.map(d => d.value), 60); // Minimum 60 minutes for scale
+  // Dynamic scaling based on actual data - always round up to whole hours
+  const actualMaxValue = Math.max(...validData.map(d => d.value));
+  const maxHours = actualMaxValue > 0 ? Math.ceil(actualMaxValue / 60) : 1; // Round up to next whole hour
+  const maxValue = maxHours * 60; // Convert back to minutes for calculations
   
   // Generate path for area chart
   const generatePath = () => {
@@ -71,14 +75,14 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
       const x = CHART_WIDTH / 2;
       const y = height - 40 - ((validData[0].value / maxValue) * (height - 80));
       if (isNaN(x) || isNaN(y)) return '';
-      return `M 0 ${height - 40} L ${x} ${y} L ${CHART_WIDTH} ${y} L ${CHART_WIDTH} ${height - 40} Z`;
+      return `M ${Y_AXIS_WIDTH} ${height - 40} L ${Y_AXIS_WIDTH + x} ${y} L ${Y_AXIS_WIDTH + CHART_WIDTH} ${y} L ${Y_AXIS_WIDTH + CHART_WIDTH} ${height - 40} Z`;
     }
     
     const stepX = CHART_WIDTH / Math.max(validData.length - 1, 1);
     let path = '';
     
     validData.forEach((point, index) => {
-      const x = index * stepX;
+      const x = Y_AXIS_WIDTH + (index * stepX);
       const y = height - 40 - ((point.value / maxValue) * (height - 80));
       
       // Ensure values are valid numbers
@@ -88,7 +92,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
         path += `M ${x} ${y}`;
       } else {
         // Create smooth curves
-        const prevX = (index - 1) * stepX;
+        const prevX = Y_AXIS_WIDTH + ((index - 1) * stepX);
         const prevY = height - 40 - ((validData[index - 1].value / maxValue) * (height - 80));
         
         // Ensure previous values are valid
@@ -101,10 +105,10 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
     });
     
     // Close the area
-    const lastX = (validData.length - 1) * stepX;
+    const lastX = Y_AXIS_WIDTH + ((validData.length - 1) * stepX);
     if (!isNaN(lastX) && isFinite(lastX)) {
       path += ` L ${lastX} ${height - 40}`;
-      path += ` L 0 ${height - 40}`;
+      path += ` L ${Y_AXIS_WIDTH} ${height - 40}`;
       path += ' Z';
     }
     
@@ -129,7 +133,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
 
       {/* Chart */}
       <View className="bg-dark-bg border border-dark-border rounded-xl p-4">
-        <Svg width={CHART_WIDTH} height={height}>
+        <Svg width={CHART_WIDTH + Y_AXIS_WIDTH} height={height}>
           <Defs>
             <LinearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
               <Stop offset="0%" stopColor="#6592E9" stopOpacity="0.3" />
@@ -137,20 +141,55 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
             </LinearGradient>
           </Defs>
           
-          {/* Grid lines */}
+          {/* Y-axis labels and grid lines */}
           {Array.from({ length: GRID_LINES + 1 }).map((_, index) => {
             const y = 20 + (index * (height - 60) / GRID_LINES);
+            // Calculate the actual value in minutes for this grid line
+            const minuteValue = maxValue - (index * maxValue / GRID_LINES);
+            
+            // Format label based on the value - top label is always whole hours
+            let label: string;
+            if (index === 0) {
+              // Top label is always the max hours value
+              label = `${maxHours}h`;
+            } else if (minuteValue >= 60) {
+              const hours = Math.floor(minuteValue / 60);
+              const mins = minuteValue % 60;
+              if (mins === 0) {
+                label = `${hours}h`;
+              } else {
+                label = `${hours}h ${Math.round(mins)}m`;
+              }
+            } else {
+              label = `${Math.round(minuteValue)}m`;
+            }
+            
+            // Don't show duplicate labels or negative values
+            if (minuteValue < 0) return null;
+            
             return (
-              <Line
-                key={index}
-                x1="0"
-                y1={y}
-                x2={CHART_WIDTH}
-                y2={y}
-                stroke="#575757"
-                strokeOpacity="0.5"
-                strokeWidth="1"
-              />
+              <React.Fragment key={index}>
+                {/* Y-axis label */}
+                <Text
+                  x={Y_AXIS_WIDTH - 10}
+                  y={y + 4}
+                  fontSize="10"
+                  fill="#9CA3AF"
+                  textAnchor="end"
+                >
+                  {label}
+                </Text>
+                {/* Grid line */}
+                <Line
+                  x1={Y_AXIS_WIDTH}
+                  y1={y}
+                  x2={CHART_WIDTH + Y_AXIS_WIDTH}
+                  y2={y}
+                  stroke="#575757"
+                  strokeOpacity="0.5"
+                  strokeWidth="1"
+                />
+              </React.Fragment>
             );
           })}
           
