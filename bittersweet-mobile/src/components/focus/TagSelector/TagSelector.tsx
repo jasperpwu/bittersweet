@@ -1,6 +1,14 @@
 import React, { FC, useState } from 'react';
 import { ScrollView, Pressable, View, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedGestureHandler,
+  runOnJS,
+  withSpring,
+} from 'react-native-reanimated';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Typography } from '../../ui/Typography';
 
 interface Tag {
@@ -16,6 +24,7 @@ interface TagSelectorProps {
   onTagSelect: (tagName: string) => void;
   maxSelections?: number;
   onTagDelete?: (tagName: string) => void;
+  onTagReorder?: (reorderedTags: Tag[]) => void;
 }
 
 
@@ -25,10 +34,12 @@ export const TagSelector: FC<TagSelectorProps> = ({
   onTagSelect,
   maxSelections,
   onTagDelete,
+  onTagReorder,
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
   const [confirmationText, setConfirmationText] = useState('');
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   
   const isTagSelected = (tagName: string) => selectedTags.includes(tagName);
   
@@ -55,6 +66,118 @@ export const TagSelector: FC<TagSelectorProps> = ({
     setConfirmationText('');
   };
 
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    if (!onTagReorder || fromIndex === toIndex) return;
+    
+    const reorderedTags = [...tags];
+    const [movedTag] = reorderedTags.splice(fromIndex, 1);
+    reorderedTags.splice(toIndex, 0, movedTag);
+    
+    onTagReorder(reorderedTags);
+  };
+
+  // DraggableTag component
+  const DraggableTag: FC<{
+    tag: Tag;
+    index: number;
+    selected: boolean;
+    disabled: boolean;
+    onSelect: () => void;
+    onDelete?: (tag: Tag, event: any) => void;
+    onReorder: (fromIndex: number, toIndex: number) => void;
+    isDragging: boolean;
+  }> = ({ tag, index, selected, disabled, onSelect, onDelete, onReorder, isDragging }) => {
+    const translateX = useSharedValue(0);
+    const translateY = useSharedValue(0);
+    const scale = useSharedValue(1);
+    const zIndex = useSharedValue(0);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { scale: scale.value },
+      ],
+      zIndex: zIndex.value,
+      elevation: zIndex.value,
+    }));
+
+    const gestureHandler = useAnimatedGestureHandler({
+      onStart: () => {
+        runOnJS(setDraggingIndex)(index);
+        scale.value = withSpring(1.1);
+        zIndex.value = 1000;
+      },
+      onActive: (event) => {
+        translateX.value = event.translationX;
+        translateY.value = event.translationY;
+
+        // Calculate new position based on horizontal movement
+        const tagWidth = 120; // Approximate tag width
+        const newIndex = Math.round(event.translationX / tagWidth) + index;
+        const clampedIndex = Math.max(0, Math.min(newIndex, tags.length - 1));
+        
+        if (clampedIndex !== index) {
+          runOnJS(onReorder)(index, clampedIndex);
+        }
+      },
+      onEnd: () => {
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        scale.value = withSpring(1);
+        zIndex.value = withSpring(0);
+        runOnJS(setDraggingIndex)(null);
+      },
+    });
+
+    return (
+      <PanGestureHandler onGestureEvent={gestureHandler} enabled={!!onTagReorder}>
+        <Animated.View 
+          style={[animatedStyle]} 
+          className="relative mr-3"
+        >
+          <Pressable
+            onPress={onSelect}
+            disabled={disabled}
+            className={`
+              px-4 py-3 pr-10 rounded-full border relative
+              ${selected 
+                ? 'border-white' 
+                : 'border-gray-600'
+              }
+              ${disabled ? 'opacity-50' : 'active:opacity-80'}
+              ${isDragging ? 'shadow-lg' : ''}
+            `}
+            style={{
+              backgroundColor: selected ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+            }}
+          >
+            <Typography 
+              variant="body-14" 
+              className="font-medium"
+              style={{ color: '#FFFFFF' }}
+            >
+              {tag.name}
+            </Typography>
+          </Pressable>
+          
+          {/* Delete button - always visible if onDelete is provided */}
+          {onDelete && (
+            <Pressable
+              onPress={(event) => onDelete(tag, event)}
+              className="absolute right-2 top-1/2 w-6 h-6 -mt-3 items-center justify-center rounded-full"
+              style={{
+                backgroundColor: 'rgba(237, 223, 223, 0.8)',
+              }}
+            >
+              <Ionicons name="trash-outline" size={12} color="white" />
+            </Pressable>
+          )}
+        </Animated.View>
+      </PanGestureHandler>
+    );
+  };
+
   return (
     <View className="relative">
       <ScrollView 
@@ -63,51 +186,25 @@ export const TagSelector: FC<TagSelectorProps> = ({
         className="px-4"
         contentContainerStyle={{ paddingRight: 16 }}
       >
-      {tags.map((tag) => {
-        const selected = isTagSelected(tag.name);
-        const disabled = !selected && !canSelectMore;
-        
-        return (
-          <View key={tag.name} className="relative mr-3">
-            <Pressable
-              onPress={() => onTagSelect(tag.name)}
+        {tags.map((tag, index) => {
+          const selected = isTagSelected(tag.name);
+          const disabled = !selected && !canSelectMore;
+          const isDragging = draggingIndex === index;
+          
+          return (
+            <DraggableTag
+              key={tag.name}
+              tag={tag}
+              index={index}
+              selected={selected}
               disabled={disabled}
-              className={`
-                px-4 py-3 pr-10 rounded-full border relative
-                ${selected 
-                  ? 'border-white' 
-                  : 'border-gray-600'
-                }
-                ${disabled ? 'opacity-50' : 'active:opacity-80'}
-              `}
-              style={{
-                backgroundColor: selected ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-              }}
-            >
-              <Typography 
-                variant="body-14" 
-                className="font-medium"
-                style={{ color: '#FFFFFF' }}
-              >
-                {tag.name}
-              </Typography>
-            </Pressable>
-            
-            {/* Delete button - always visible if onTagDelete is provided */}
-            {onTagDelete && (
-              <Pressable
-                onPress={(event) => handleDeletePress(tag, event)}
-                className="absolute right-2 top-1/2 w-6 h-6 -mt-3 items-center justify-center rounded-full"
-                style={{
-                  backgroundColor: 'rgba(237, 223, 223, 0.8)',
-                }}
-              >
-                <Ionicons name="trash-outline" size={12} color="white" />
-              </Pressable>
-            )}
-          </View>
-        );
-      })}
+              onSelect={() => onTagSelect(tag.name)}
+              onDelete={onTagDelete ? handleDeletePress : undefined}
+              onReorder={handleReorder}
+              isDragging={isDragging}
+            />
+          );
+        })}
       </ScrollView>
     
     

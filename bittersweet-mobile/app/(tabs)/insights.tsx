@@ -28,10 +28,10 @@ export default function InsightsScreen() {
   
   // Create tag map for goal progress calculation
   const tagMap = useMemo(() => 
-    tags.allIds.reduce((map, id) => {
-      const tag = tags.byId[id];
+    (tags.allNames || []).reduce((map, name) => {
+      const tag = tags.byName[name];
       if (tag) {
-        map[id] = { id: tag.id, name: tag.name };
+        map[name] = { id: name, name: tag.name };
       }
       return map;
     }, {} as Record<string, { id: string; name: string }>),
