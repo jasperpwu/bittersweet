@@ -71,6 +71,7 @@ interface AppStore {
     pauseSession: () => void;
     resumeSession: () => void;
     completeSession: (id?: string) => void;
+    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagIds: string[]; notes?: string }) => FocusSession;
     
     // View actions
     setSelectedDate: (date: Date) => void;
@@ -279,8 +280,34 @@ export const useAppStore = create<AppStore>()(
         
         deleteSession: (sessionId) => {
           console.log('🗑️ Deleting session:', sessionId);
+          
+          // Get the session being deleted to check if it had rewards
+          const sessionToDelete = get().focus.sessions.byId[sessionId];
+          
           set((state) => {
+            // Remove the session
             const { [sessionId]: removed, ...remainingSessions } = state.focus.sessions.byId;
+            
+            // Remove corresponding reward transactions
+            const filteredTransactions = state.rewards.transactions.filter((transaction: any) => {
+              // Remove transactions that are related to this session
+              return !(transaction.metadata?.sessionId === sessionId || 
+                      (transaction.type === 'earn' && transaction.source === 'focus_session' && 
+                       transaction.metadata?.sessionId === sessionId));
+            });
+            
+            // Calculate fruits to deduct if session had earned rewards
+            let fruitsToDeduct = 0;
+            const removedTransactions = state.rewards.transactions.filter((transaction: any) => 
+              transaction.metadata?.sessionId === sessionId && 
+              transaction.type === 'earn' && 
+              transaction.source === 'focus_session'
+            );
+            
+            removedTransactions.forEach((transaction: any) => {
+              fruitsToDeduct += transaction.amount;
+            });
+            
             return {
               focus: {
                 ...state.focus,
@@ -289,9 +316,19 @@ export const useAppStore = create<AppStore>()(
                   byId: remainingSessions,
                   allIds: state.focus.sessions.allIds.filter(id => id !== sessionId),
                 }
+              },
+              rewards: {
+                ...state.rewards,
+                transactions: filteredTransactions,
+                balance: state.rewards.balance - fruitsToDeduct,
+                totalEarned: state.rewards.totalEarned - fruitsToDeduct,
               }
             };
           });
+          
+          if (sessionToDelete) {
+            console.log('🗑️ Session deleted and corresponding rewards removed:', sessionId);
+          }
         },
         
         startSession: (sessionId) => {
@@ -391,6 +428,67 @@ export const useAppStore = create<AppStore>()(
               }
             }
           }
+        },
+        
+        createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagIds: string[]; notes?: string }) => {
+          console.log('📝 Creating completed session:', params);
+          const sessionId = generateId();
+          
+          const completedSession: FocusSession = {
+            id: sessionId,
+            startTime: params.startTime,
+            endTime: params.endTime,
+            duration: params.duration,
+            isPaused: false,
+            totalPauseTime: 0,
+            tagIds: params.tagIds,
+            notes: params.notes,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          
+          set((state) => ({
+            focus: {
+              ...state.focus,
+              sessions: {
+                ...state.focus.sessions,
+                byId: { ...state.focus.sessions.byId, [sessionId]: completedSession },
+                allIds: [...state.focus.sessions.allIds, sessionId],
+              }
+            }
+          }));
+          
+          // Update tag usage counts
+          params.tagIds.forEach(tagId => {
+            const tag = get().focus.tags.byId[tagId];
+            if (tag) {
+              set((state) => ({
+                focus: {
+                  ...state.focus,
+                  tags: {
+                    ...state.focus.tags,
+                    byId: {
+                      ...state.focus.tags.byId,
+                      [tagId]: { ...tag, usageCount: tag.usageCount + 1 }
+                    }
+                  }
+                }
+              }));
+            }
+          });
+          
+          // Calculate and award fruits (1 fruit per 5 minutes)
+          const fruitsEarned = Math.floor(params.duration / 5);
+          if (fruitsEarned > 0) {
+            get().rewards.earnFruits(fruitsEarned, 'focus_session', {
+              sessionId: sessionId,
+              duration: params.duration,
+            });
+            console.log('🍎 Fruits earned:', fruitsEarned, 'for completed session:', sessionId);
+          }
+          
+          console.log('✅ Completed focus session created:', completedSession);
+          return completedSession;
         },
         
         // View actions
@@ -729,6 +827,7 @@ export const useFocusActions = () => useAppStore((state) => ({
   pauseSession: state.focus.pauseSession,
   resumeSession: state.focus.resumeSession,
   completeSession: state.focus.completeSession,
+  createCompletedSession: state.focus.createCompletedSession,
   setSelectedDate: state.focus.setSelectedDate,
   setViewMode: state.focus.setViewMode,
   goToPreviousWeek: state.focus.goToPreviousWeek,
