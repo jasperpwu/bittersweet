@@ -36,7 +36,7 @@ export interface FocusSession {
   resumedAt?: Date;
   totalPauseTime: number; // in seconds
   
-  tagIds: string[];
+  tagName: string; // Required single tag name for each session
   
   // Metadata
   createdAt: Date;
@@ -44,8 +44,7 @@ export interface FocusSession {
 }
 
 export interface SessionTag {
-  id: string;
-  name: string;
+  name: string; // This is now the primary key/identifier
   icon: string;
   usageCount: number;
   isDefault?: boolean; // For built-in tags like 'work', 'study', etc.
@@ -120,7 +119,7 @@ export interface ApiError {
 
 // Input types for creating sessions
 export interface CreateSessionInput {
-  tags: string[];
+  tagName: string; // Required single tag name
   startTime: Date;
   endTime: Date;
   notes?: string;

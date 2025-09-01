@@ -2,15 +2,7 @@ import React, { FC, useMemo } from 'react';
 import { View, ScrollView, Pressable } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { TimeEntry } from '../TimeEntry';
-
-interface FocusSession {
-  id: string;
-  startTime: Date;
-  endTime: Date;
-  duration: number; // in minutes
-  tags: string[];
-  notes?: string;
-}
+import { FocusSession } from '../../../types/models';
 
 interface DayViewProps {
   selectedDate: Date;
@@ -58,8 +50,8 @@ export const DayView: FC<DayViewProps> = ({
         startTime: new Date(session.startTime),
         endTime: new Date(session.endTime),
         duration: session.duration,
-        category: session.tags.length > 0 ? session.tags[0] : 'Focus',
-        tags: session.tags,
+        category: session.tagName || 'Focus',
+        tags: [session.tagName || 'Focus'],
         description: session.notes,
         isManualEntry: true, // All journal entries are manual for now
       }))
@@ -202,7 +194,7 @@ export const DayView: FC<DayViewProps> = ({
                             startTime: session.startTime,
                             endTime: session.endTime,
                             duration: session.duration,
-                            tags: session.tags,
+                            tagName: session.tagName,
                             notes: session.description,
                           }) : undefined}
                           onDelete={onSessionDelete}

@@ -22,8 +22,8 @@ export const SessionForm: FC<SessionFormProps> = ({
 }) => {
   const { tags, sessions } = useFocus();
   
-  // Get available tags
-  const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean);
+  // Get available tags (with safe checks)
+  const availableTags = (tags.allNames || []).map(name => tags.byName?.[name]).filter(Boolean);
   const defaultTag = availableTags.length > 0 ? availableTags[0].name : '';
   
   // Calculate default times based on requirements
@@ -33,8 +33,8 @@ export const SessionForm: FC<SessionFormProps> = ({
     today.setHours(0, 0, 0, 0);
     
     // Find last session of today
-    const todaySessions = sessions.allIds
-      .map(id => sessions.byId[id])
+    const todaySessions = (sessions.allIds || [])
+      .map(id => sessions.byId?.[id])
       .filter(Boolean) // Filter out undefined sessions
       .filter(session => {
         if (!session.endTime) return false; // Skip sessions without endTime
@@ -60,14 +60,14 @@ export const SessionForm: FC<SessionFormProps> = ({
   }, [sessions]);
 
   const [formData, setFormData] = useState<CreateSessionInput>({
-    tags: initialData?.tags || [defaultTag],
+    tagName: initialData?.tagName || defaultTag,
     startTime: initialData?.startTime || defaultTimes.startTime,
     endTime: initialData?.endTime || defaultTimes.endTime,
     notes: initialData?.notes || '',
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof CreateSessionInput, string>>>({});
-  const [selectedTag, setSelectedTag] = useState<string>(initialData?.tags?.[0] || defaultTag);
+  const [selectedTag, setSelectedTag] = useState<string>(initialData?.tagName || defaultTag);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
@@ -88,8 +88,8 @@ export const SessionForm: FC<SessionFormProps> = ({
       newErrors.endTime = 'Session must have a duration greater than 0 minutes';
     }
 
-    if (formData.tags.length === 0) {
-      newErrors.tags = 'At least one tag is required';
+    if (!formData.tagName || formData.tagName.trim() === '') {
+      newErrors.tagName = 'A tag is required';
     }
 
     setErrors(newErrors);
@@ -99,7 +99,7 @@ export const SessionForm: FC<SessionFormProps> = ({
   const handleSubmit = () => {
     if (validateForm()) {
       const sessionData: CreateSessionInput = {
-        tags: formData.tags,
+        tagName: formData.tagName,
         startTime: formData.startTime,
         endTime: formData.endTime,
         notes: formData.notes,
@@ -146,12 +146,12 @@ export const SessionForm: FC<SessionFormProps> = ({
             <View className="flex-row flex-wrap">
               {availableTags.map((tag) => (
                 <Button
-                  key={tag.id}
+                  key={tag.name}
                   variant={selectedTag === tag.name ? 'primary' : 'secondary'}
                   size="small"
                   onPress={() => {
                     setSelectedTag(tag.name);
-                    updateFormData('tags', [tag.name]);
+                    updateFormData('tagName', tag.name);
                   }}
                   className="mr-2 mb-2"
                 >
@@ -159,9 +159,9 @@ export const SessionForm: FC<SessionFormProps> = ({
                 </Button>
               ))}
             </View>
-            {errors.tags && (
+            {errors.tagName && (
               <Typography variant="body-12" className="text-red-500 mt-1">
-                {errors.tags}
+                {errors.tagName}
               </Typography>
             )}
           </View>

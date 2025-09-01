@@ -95,7 +95,7 @@ export default function JournalScreen() {
           startTime: new Date(session.startTime),
           endTime: new Date(session.endTime),
           duration: Math.round((new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60)),
-          tags: session.tagIds || [], // Changed from session.tags to session.tagIds to match the store structure
+          tagName: session.tagName || '', // Use tagName directly
           notes: session.notes || '',
         };
       })

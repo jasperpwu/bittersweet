@@ -6,15 +6,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { Typography } from '../../ui/Typography';
-
-interface FocusSession {
-  id: string;
-  startTime: Date;
-  endTime: Date;
-  duration: number; // in minutes
-  tags: string[];
-  notes?: string;
-}
+import { FocusSession } from '../../../types/models';
 
 interface SessionBlockProps {
   session: FocusSession;
@@ -76,8 +68,8 @@ export const SessionBlock: FC<SessionBlockProps> = ({
   // Calculate block height based on duration
   const blockHeight = Math.max(session.duration * pixelsPerMinute, 50);
   
-  // Get tag color (use first tag or default)
-  const primaryTag = session.tags[0] || 'Focus';
+  // Get tag color (use tagName or default)
+  const primaryTag = session.tagName || 'Focus';
   const sessionColor = tagColors[primaryTag as keyof typeof tagColors] || '#6592E9';
 
   return (
@@ -114,7 +106,7 @@ export const SessionBlock: FC<SessionBlockProps> = ({
             numberOfLines={blockHeight > 70 ? 2 : 1}
             style={{ marginBottom: blockHeight > 60 ? 4 : 2 }}
           >
-            {session.tags.join(', ') || 'Focus Session'}
+            {session.tagName || 'Focus Session'}
           </Typography>
           {blockHeight > 60 && (
             <Typography

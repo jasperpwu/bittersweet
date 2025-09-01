@@ -77,7 +77,7 @@ export interface FocusSession extends BaseEntity {
   endTime?: Date;
   duration: number;
   targetDuration: number;
-  tagIds: string[];
+  tagId: string;
   notes?: string;
   status: 'active' | 'paused' | 'completed' | 'cancelled';
   fruitsEarned: number;
@@ -96,7 +96,7 @@ export interface FocusGoal extends BaseEntity {
   name: string;
   targetMinutes: number;
   period: 'daily' | 'weekly' | 'yearly';
-  tagIds: string[]; // empty array means "all tags"
+  tagId: string; // empty array means "all tags"
   isActive: boolean;
   currentProgress: number;
   lastResetDate: Date;
@@ -210,7 +210,7 @@ export interface FocusSlice {
   settings: FocusSettings;
   
   // Actions
-  startSession: (params: { targetDuration: number; tagIds: string[]; notes?: string }) => void;
+  startSession: (params: { targetDuration: number; tagId: string; notes?: string }) => void;
   pauseSession: () => void;
   resumeSession: () => void;
   completeSession: () => void;

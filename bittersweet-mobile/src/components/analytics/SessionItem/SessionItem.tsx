@@ -59,9 +59,8 @@ export const SessionItem: FC<SessionItemProps> = ({
 }) => {
   const { tags } = useFocus();
   
-  // Get primary tag info (use first tag or default)
-  const primaryTagId = session.tagIds[0];
-  const primaryTag = primaryTagId ? tags.byId[primaryTagId] : null;
+  // Get primary tag info (use tagId or default)
+  const primaryTag = session.tagId ? tags.byId[session.tagId] : null;
   const tagInfo = {
     name: primaryTag?.name || 'Focus Session',
     icon: primaryTag?.icon || '⏱️',
@@ -124,26 +123,14 @@ export const SessionItem: FC<SessionItemProps> = ({
           </View>
         </View>
         
-        {/* Tags (if any) */}
-        {session.tagIds.length > 0 && variant === 'detailed' && (
+        {/* Tag (if any) */}
+        {session.tagId && variant === 'detailed' && (
           <View className="flex-row flex-wrap mt-3 pt-3 border-t border-dark-border">
-            {session.tagIds.slice(0, 3).map((tagId: string, index: number) => (
-              <View 
-                key={index}
-                className="bg-dark-border rounded-lg px-2 py-1 mr-2 mb-1"
-              >
-                <Typography variant="body-12" color="secondary">
-                  {tagId}
-                </Typography>
-              </View>
-            ))}
-            {session.tagIds.length > 3 && (
-              <View className="bg-dark-border rounded-lg px-2 py-1">
-                <Typography variant="body-12" color="secondary">
-                  +{session.tagIds.length - 3}
-                </Typography>
-              </View>
-            )}
+            <View className="bg-dark-border rounded-lg px-2 py-1 mr-2 mb-1">
+              <Typography variant="body-12" color="secondary">
+                {primaryTag?.name || session.tagId}
+              </Typography>
+            </View>
           </View>
         )}
         

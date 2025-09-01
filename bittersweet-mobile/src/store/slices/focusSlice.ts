@@ -38,12 +38,12 @@ interface FocusSlice {
   settings: FocusSettings;
   
   // Actions
-  startSession: (params: { targetDuration: number; tagIds: string[]; description?: string }) => void;
+  startSession: (params: { targetDuration: number; tagId: string; description?: string }) => void;
   pauseSession: () => void;
   resumeSession: () => void;
   completeSession: () => void;
   cancelSession: () => void;
-  createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagIds: string[]; notes?: string }) => void;
+  createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string }) => void;
   
   // Tag Management
   addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => Tag;
@@ -87,13 +87,13 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
   const eventEmitter = createEventEmitter('focus');
   const eventListener = createEventListener();
   
-  // Force initialize tags with emojis (no backward compatibility)
+  // Initialize default tags with emojis (only if no tags exist)
   const initializeDefaultTags = (userId: string) => {
     if (__DEV__) {
-      console.log('🏷️ Force initializing tags with emojis');
+      console.log('🏷️ Initializing default tags with emojis');
     }
     
-    // Always reinitialize in development to ensure emojis
+    // Create default tags for new users
     const tagsWithIds = defaultTags.map(tag => ({
       ...tag,
       id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -129,8 +129,13 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       
       const userId = (__DEV__ ? 'dev-user' : null);
       if (userId) {
-        // Always reinitialize tags in development to ensure emojis
-        initializeDefaultTags(userId);
+        // Only initialize tags if they don't exist yet (preserve user's deletions)
+        if (!tags?.allIds || tags.allIds.length === 0) {
+          console.log('🏷️ No tags found, initializing default tags');
+          initializeDefaultTags(userId);
+        } else {
+          console.log('🏷️ Tags already exist, skipping initialization');
+        }
       }
     } catch (error) {
       if (__DEV__) {
@@ -218,7 +223,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     },
     
     // Actions
-    startSession: (params: { targetDuration: number; tagIds: string[]; description?: string }) => {
+    startSession: (params: { targetDuration: number; tagId: string; description?: string }) => {
       const state = get();
       
       // Validate parameters
@@ -245,7 +250,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         status: 'active',
         isPaused: false,
         totalPauseTime: 0,
-        tagIds: params.tagIds,
+        tagId: params.tagId,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -277,7 +282,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       eventEmitter.emit(STORE_EVENTS.FOCUS_SESSION_STARTED, {
         sessionId: newSession.id,
         targetDuration: params.targetDuration,
-        tagIds: params.tagIds,
+        tagId: params.tagId,
       });
       
       if (__DEV__) {
@@ -482,7 +487,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       }
     },
 
-    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagIds: string[]; notes?: string }) => {
+    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string }) => {
       const completedSession: FocusSession = {
         id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         startTime: params.startTime,
@@ -492,7 +497,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         status: 'completed',
         isPaused: false,
         totalPauseTime: 0,
-        tagIds: params.tagIds,
+        tagId: params.tagId,
         notes: params.notes,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -578,22 +583,38 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     },
     
     deleteTag: (id: string) => {
-      // Check if tag is being used by any sessions
+      // Find all sessions associated with this tag
       const sessions = get().focus.sessions;
-      const sessionsUsingTag = sessions.allIds
-        .map(id => sessions.byId[id])
+      const sessionsToDelete = sessions.allIds
+        .map(sessionId => sessions.byId[sessionId])
         .filter(Boolean)
-        .filter(session => session.tagIds && session.tagIds.includes(id));
+        .filter(session => session.tagId && session.tagId === id);
       
-      if (sessionsUsingTag.length > 0) {
-        throw new Error('Cannot delete tag that is being used by sessions');
+      if (__DEV__) {
+        console.log(`🗑️ Deleting tag ${id} and ${sessionsToDelete.length} associated sessions`);
       }
       
       set((state: any) => {
-        const manager = new EntityManager(state.focus.tags);
-        manager.remove(id);
+        // Delete all sessions associated with this tag
+        const sessionManager = new EntityManager(state.focus.sessions);
+        sessionsToDelete.forEach(session => {
+          sessionManager.remove(session.id);
+        });
+        
+        // Delete the tag itself
+        const tagManager = new EntityManager(state.focus.tags);
+        tagManager.remove(id);
+        
+        // Update state
+        state.focus.sessions = {
+          ...sessionManager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+        
         state.focus.tags = {
-          ...manager.getState(),
+          ...tagManager.getState(),
           loading: false,
           error: null,
           lastUpdated: new Date(),
@@ -601,7 +622,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       });
       
       if (__DEV__) {
-        console.log('✅ Tag deleted:', id);
+        console.log(`✅ Tag ${id} and ${sessionsToDelete.length} sessions deleted`);
       }
     },
 

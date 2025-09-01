@@ -11,7 +11,7 @@ export interface FocusSession {
     endTime?: Date;
     duration: number; // actual duration in minutes
     targetDuration: number; // planned duration in minutes
-    tagIds: string[];
+    tagId: string;
     description?: string;
     status: 'active' | 'paused' | 'completed' | 'cancelled';
     fruitsEarned: number;
@@ -50,7 +50,7 @@ export interface UnlockableApp {
     name: string;
     bundleId: string;
     icon?: string;
-    tagIds: string[];
+    tagId: string;
     baseCost: number;
     currentCost: number;
     unlockCount: number;
@@ -162,7 +162,7 @@ export interface AppStore {
 // Action Parameter Types
 export interface StartSessionParams {
     targetDuration: number;
-    tagIds: string[];
+    tagId: string;
     description?: string;
 }
 
@@ -188,7 +188,7 @@ export interface FocusStats {
 }
 
 export interface TagStats {
-    tagIds: string[];
+    tagId: string;
     tagName: string;
     sessions: number;
     totalTime: number;

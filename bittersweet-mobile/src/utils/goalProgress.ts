@@ -31,20 +31,8 @@ export const calculateGoalProgress = (
       if (goal.tagIds.length === 0) return isInPeriod;
       
       // Handle tag name/ID mismatch
-      // Sessions store tag names in tagIds, goals store tag IDs in tagIds
-      const hasMatchingTag = session.tagIds.some(sessionTagName => {
-        // If tagMap is provided, convert goal tag IDs to names for comparison
-        if (tagMap) {
-          const goalTagNames = goal.tagIds.map(goalTagId => {
-            const tag = Object.values(tagMap).find(tag => tag.id === goalTagId);
-            return tag ? tag.name : goalTagId;
-          });
-          return goalTagNames.includes(sessionTagName);
-        }
-        
-        // Fallback: direct comparison (in case data formats match)
-        return goal.tagIds.includes(sessionTagName);
-      });
+      // Sessions store single tag ID in tagId, goals store tag IDs in tagIds
+      const hasMatchingTag = session.tagId && goal.tagIds.includes(session.tagId);
       
       return isInPeriod && hasMatchingTag;
     });

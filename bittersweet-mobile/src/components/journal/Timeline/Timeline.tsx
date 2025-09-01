@@ -2,15 +2,7 @@ import { FC, useMemo, useRef, useEffect } from 'react';
 import { View, ScrollView } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { SessionBlock } from '../SessionBlock';
-
-interface FocusSession {
-  id: string;
-  startTime: Date;
-  endTime: Date;
-  duration: number; // in minutes
-  tags: string[];
-  notes?: string;
-}
+import { FocusSession } from '../../../types/models';
 
 interface TimelineProps {
   sessions: FocusSession[];

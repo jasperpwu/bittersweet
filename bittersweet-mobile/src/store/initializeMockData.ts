@@ -17,13 +17,13 @@ export const initializeStoreWithMockData = () => {
     console.log('🎭 Checking if store needs mock data initialization...');
     
     // Check if we already have data (tags or sessions)
-    const hasExistingTags = currentState.focus.tags.allIds.length > 0;
-    const hasExistingSessions = currentState.focus.sessions.allIds.length > 0;
+    const hasExistingTags = (currentState.focus.tags.allNames || []).length > 0;
+    const hasExistingSessions = (currentState.focus.sessions.allIds || []).length > 0;
     
     if (hasExistingTags || hasExistingSessions) {
       console.log('✅ Store already has data, skipping mock data initialization');
-      console.log(`  - Existing tags: ${hasExistingTags ? currentState.focus.tags.allIds.length : 0}`);
-      console.log(`  - Existing sessions: ${hasExistingSessions ? currentState.focus.sessions.allIds.length : 0}`);
+      console.log(`  - Existing tags: ${hasExistingTags ? (currentState.focus.tags.allNames || []).length : 0}`);
+      console.log(`  - Existing sessions: ${hasExistingSessions ? (currentState.focus.sessions.allIds || []).length : 0}`);
       return true;
     }
     
@@ -34,7 +34,7 @@ export const initializeStoreWithMockData = () => {
     // Initialize focus data
     const focusUpdates: any = {
       sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: new Date() },
-      tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: new Date() },
+      tags: { byName: {}, allNames: [], loading: false, error: null, lastUpdated: new Date() },
       currentSession: {
         isRunning: false,
         session: null,
@@ -49,8 +49,10 @@ export const initializeStoreWithMockData = () => {
     console.log('🔖 Adding tags:', mockData.focusTags?.length || 0);
     if (mockData.focusTags) {
       mockData.focusTags.forEach(tag => {
-        focusUpdates.tags.byId[tag.id] = tag;
-        focusUpdates.tags.allIds.push(tag.id);
+        // Remove the id field and use name as the key
+        const { id, ...tagWithoutId } = tag;
+        focusUpdates.tags.byName[tag.name] = tagWithoutId;
+        focusUpdates.tags.allNames.push(tag.name);
       });
     }
 
@@ -58,6 +60,11 @@ export const initializeStoreWithMockData = () => {
     console.log('⏱️  Adding sessions:', mockData.focusSessions?.length || 0);
     if (mockData.focusSessions) {
       mockData.focusSessions.forEach(session => {
+        // Convert tagId to tagName if it exists
+        if (session.tagId && !session.tagName) {
+          session.tagName = session.tagId;
+          delete session.tagId;
+        }
         focusUpdates.sessions.byId[session.id] = session;
         focusUpdates.sessions.allIds.push(session.id);
       });
@@ -71,10 +78,10 @@ export const initializeStoreWithMockData = () => {
     }));
 
     console.log('✅ Mock data initialization completed!');
-    console.log('🎭 Demo user:', mockData.user.name, `(${mockData.user.email})`);
+    console.log('🎭 Demo user:', mockData.user?.name || 'N/A', `(${mockData.user?.email || 'N/A'})`);
     console.log('📊 Sample data loaded:');
-    console.log(`  - ${mockData.focusTags.length} focus tags`);
-    console.log(`  - ${mockData.focusSessions.length} focus sessions`);
+    console.log(`  - ${(mockData.focusTags || []).length} focus tags`);
+    console.log(`  - ${(mockData.focusSessions || []).length} focus sessions`);
 
     return true;
   } catch (error) {

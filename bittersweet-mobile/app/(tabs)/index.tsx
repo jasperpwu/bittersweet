@@ -11,19 +11,31 @@ import { FruitCounter } from '../../src/components/rewards';
 export default function FocusScreen() {
   // Get tags from store
   const { tags } = useFocus();
-  const { createTag, updateTag, startSession, completeSession, createCompletedSession } = useFocusActions();
+  const { createTag, updateTag, deleteTag, startSession, completeSession, createCompletedSession } = useFocusActions();
   const rewards = useRewards();
-  const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean);
+  const availableTags = tags.allNames.map(name => tags.byName[name]).filter(Boolean);
   
   const [selectedTime, setSelectedTime] = useState(10); // minutes; 0 => ∞
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  // Set default tag to first available tag on mount
+  useEffect(() => {
+    if (availableTags.length > 0 && !selectedTag) {
+      setSelectedTag(availableTags[0].name);
+    }
+  }, [availableTags, selectedTag]);
   const [showTagModal, setShowTagModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showNewTagModal, setShowNewTagModal] = useState(false);
-  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editingTagName, setEditingTagName] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState('');
   const [newTagEmoji, setNewTagEmoji] = useState('');
   const [emojiPickerMode, setEmojiPickerMode] = useState<'edit' | 'new'>('edit');
+  
+  // Delete functionality
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [tagToDelete, setTagToDelete] = useState<any>(null);
+  const [confirmationText, setConfirmationText] = useState('');
   
   // Notes modal state
   const [showNotesModal, setShowNotesModal] = useState(false);
@@ -45,16 +57,16 @@ export default function FocusScreen() {
   const timerTranslateY = useRef(new Animated.Value(6)).current;
   const tagsOpacity = useRef(new Animated.Value(1)).current;
 
-  const handleTagSelect = (tagId: string) => {
-    setSelectedTags([tagId]); // Single choice - replace with new selection
+  const handleTagSelect = (tagName: string) => {
+    setSelectedTag(tagName); // Single choice - set selected tag
     setShowTagModal(false); // Close modal immediately
   };
 
-  const handleEmojiPress = (tagId: string) => {
-    console.log('🎯 Emoji button pressed for tag:', tagId);
+  const handleEmojiPress = (tagName: string) => {
+    console.log('🎯 Emoji button pressed for tag:', tagName);
     // Close the tag modal first, then show emoji picker
     setShowTagModal(false);
-    setEditingTagId(tagId);
+    setEditingTagName(tagName);
     setEmojiPickerMode('edit');
     setShowEmojiPicker(true);
     console.log('🎯 showEmojiPicker set to true');
@@ -67,10 +79,10 @@ export default function FocusScreen() {
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    if (emojiPickerMode === 'edit' && editingTagId) {
+    if (emojiPickerMode === 'edit' && editingTagName) {
       // Update existing tag
-      updateTag(editingTagId, { icon: emoji });
-      setEditingTagId(null);
+      updateTag(editingTagName, { icon: emoji });
+      setEditingTagName(null);
       // Close emoji picker and reopen tag modal
       setShowEmojiPicker(false);
       setShowTagModal(true);
@@ -94,6 +106,35 @@ export default function FocusScreen() {
       setNewTagName('');
       setNewTagEmoji('');
     }
+  };
+  
+  const handleDeleteTag = (tag: any, event: any) => {
+    event.stopPropagation(); // Prevent tag selection when clicking delete
+    setTagToDelete(tag);
+    setShowDeleteModal(true);
+    // Keep tag modal open - don't call setShowTagModal(false)
+  };
+  
+  const handleConfirmDelete = () => {
+    if (tagToDelete && confirmationText === tagToDelete.name) {
+      deleteTag(tagToDelete.name);
+      // If deleted tag was selected, reset selection
+      if (selectedTag === tagToDelete.name) {
+        const remainingTags = availableTags.filter(t => t.name !== tagToDelete.name);
+        setSelectedTag(remainingTags.length > 0 ? remainingTags[0].name : null);
+      }
+      setShowDeleteModal(false);
+      setTagToDelete(null);
+      setConfirmationText('');
+      // Tag modal remains open after deletion
+    }
+  };
+  
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setTagToDelete(null);
+    setConfirmationText('');
+    // Tag modal remains open
   };
 
   const resetToIdleVisuals = () => {
@@ -188,6 +229,20 @@ export default function FocusScreen() {
       stopWithAnimation();
       return;
     }
+    
+    // If no tags exist, show new tag modal
+    if (availableTags.length === 0) {
+      setShowNewTagModal(true);
+      return;
+    }
+    
+    // If no tag selected (shouldn't happen with default), select first
+    if (!selectedTag) {
+      if (availableTags.length > 0) {
+        setSelectedTag(availableTags[0].id);
+      }
+      return;
+    }
 
     // Start flow: switch button to Stop immediately
     setIsSessionActive(true);
@@ -228,7 +283,7 @@ export default function FocusScreen() {
 
   const displayTime = isInfinite ? formatTime(elapsedSeconds) : formatTime(remainingSeconds);
 
-  const selectedTagName = selectedTags.length > 0 ? availableTags.find(tag => tag.id === selectedTags[0])?.name : null;
+  const selectedTagName = selectedTag ? availableTags.find(tag => tag.name === selectedTag)?.name : null;
 
   const handleNotesSave = (notes: string) => {
     setSessionNotes(notes);
@@ -247,7 +302,7 @@ export default function FocusScreen() {
         endTime,
         duration: actualDuration,
         targetDuration: isInfinite ? actualDuration : selectedTime,
-        tagIds: selectedTags,
+        tagName: selectedTag!,
         notes: notes,
       });
     }
@@ -291,7 +346,7 @@ export default function FocusScreen() {
             >
               <View className="flex-row items-center">
                 <Typography variant="subtitle-16" color="white">
-                  {selectedTagName || 'Focus'}
+                  {availableTags.length === 0 ? 'Create a new tag' : (selectedTagName || 'Select a tag')}
                 </Typography>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
@@ -318,7 +373,7 @@ export default function FocusScreen() {
             className="font-semibold"
             style={{ color: '#1B1C30' }}
           >
-            {isSessionActive ? 'Stop' : 'Start Focus'}
+            {isSessionActive ? 'Stop' : (availableTags.length === 0 ? 'Create Tag First' : 'Start Focus')}
           </Typography>
         </Pressable>
       </View>
@@ -348,16 +403,19 @@ export default function FocusScreen() {
             {/* Tags List */}
             <View className="p-4">
               {availableTags.map((tag) => (
-                <Pressable
-                  key={tag.id}
-                  onPress={() => handleTagSelect(tag.id)}
-                  className={`mb-3 rounded-2xl p-4 flex-row items-center ${selectedTags.includes(tag.id) ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'
+                <View
+                  key={tag.name}
+                  className={`mb-3 rounded-2xl p-4 pr-12 flex-row items-center relative ${selectedTag === tag.name ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'
                     }`}
                 >
                   <Pressable
+                    onPress={() => handleTagSelect(tag.name)}
+                    className="flex-1 flex-row items-center"
+                  >
+                  <Pressable
                     onPress={(e) => {
                       e.stopPropagation();
-                      handleEmojiPress(tag.id);
+                      handleEmojiPress(tag.name);
                     }}
                     className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 active:bg-gray-500 border border-gray-500"
                   >
@@ -369,17 +427,29 @@ export default function FocusScreen() {
                     <Typography
                       variant="subtitle-16"
                       color="white"
-                      className={selectedTags.includes(tag.id) ? 'font-semibold' : ''}
+                      className={selectedTag === tag.name ? 'font-semibold' : ''}
                     >
                       {tag.name}
                     </Typography>
-                    {selectedTags.includes(tag.id) && (
+                    {selectedTag === tag.name && (
                       <Typography variant="body-12" color="primary" className="mt-1">
                         Selected
                       </Typography>
                     )}
                   </View>
-                </Pressable>
+                  </Pressable>
+                  
+                  {/* Delete button */}
+                  <Pressable
+                    onPress={(event) => handleDeleteTag(tag, event)}
+                    className="absolute right-3 top-1/2 w-8 h-8 -mt-4 items-center justify-center rounded-full"
+                    style={{
+                      backgroundColor: 'rgba(237, 223, 223, 0.8)',
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={14} color="white" />
+                  </Pressable>
+                </View>
               ))}
             </View>
 
@@ -397,6 +467,83 @@ export default function FocusScreen() {
                 </Typography>
               </Pressable>
             </View>
+            
+            {/* Delete Confirmation Popup - appears as overlay within tag modal */}
+            {showDeleteModal && (
+              <View className="absolute inset-0 bg-black bg-opacity-70 rounded-3xl flex-1 justify-center items-center p-4">
+                <View className="bg-gray-800 rounded-2xl w-full max-w-xs">
+                  {/* Delete Popup Header */}
+                  <View className="p-4 border-b border-gray-700">
+                    <Typography variant="headline-18" color="white" className="text-center">
+                      Delete Tag
+                    </Typography>
+                  </View>
+                  
+                  {/* Warning content */}
+                  <View className="p-4">
+                    <View className="bg-red-900 bg-opacity-30 border border-red-500 rounded-xl p-3 mb-4">
+                      <View className="flex-row items-center mb-2">
+                        <Ionicons name="warning" size={18} color="#EF4444" />
+                        <Typography variant="subtitle-16" color="white" className="ml-2 font-semibold">
+                          Warning
+                        </Typography>
+                      </View>
+                      <Typography variant="body-12" color="white" className="leading-4">
+                        Deleting "{tagToDelete?.name}" will permanently remove all associated focus sessions. This cannot be undone.
+                      </Typography>
+                    </View>
+                    
+                    {/* Confirmation input */}
+                    <View className="mb-4">
+                      <Typography variant="body-12" color="white" className="mb-2">
+                        Type <Typography variant="body-12" className="font-semibold text-white">{tagToDelete?.name}</Typography> to confirm:
+                      </Typography>
+                      <TextInput
+                        value={confirmationText}
+                        onChangeText={setConfirmationText}
+                        placeholder={`Type "${tagToDelete?.name}" here`}
+                        placeholderTextColor="#666"
+                        style={{
+                          backgroundColor: '#2A2A2A',
+                          borderRadius: 8,
+                          padding: 12,
+                          fontSize: 14,
+                          color: '#FFFFFF',
+                          borderWidth: 1,
+                          borderColor: confirmationText === tagToDelete?.name ? '#EF4444' : '#444',
+                        }}
+                        autoFocus={true}
+                      />
+                    </View>
+                  </View>
+                  
+                  {/* Action buttons */}
+                  <View className="p-3 border-t border-gray-700 flex-row space-x-2">
+                    <Pressable
+                      onPress={handleCancelDelete}
+                      className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
+                    >
+                      <Typography variant="body-14" color="white">
+                        Cancel
+                      </Typography>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleConfirmDelete}
+                      disabled={confirmationText !== tagToDelete?.name}
+                      className={`flex-1 rounded-xl py-3 items-center ${
+                        confirmationText === tagToDelete?.name 
+                          ? 'bg-red-600 active:opacity-80' 
+                          : 'bg-gray-500 opacity-50'
+                      }`}
+                    >
+                      <Typography variant="body-14" color="white" className="font-semibold">
+                        Delete
+                      </Typography>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -527,6 +674,87 @@ export default function FocusScreen() {
         onEmojiSelect={handleEmojiSelect}
         title={emojiPickerMode === 'edit' ? 'Change Emoji' : 'Choose Emoji for New Tag'}
       />
+
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelDelete}
+      >
+        <View className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4">
+          <View className="bg-gray-800 rounded-3xl w-full max-w-sm overflow-hidden">
+            {/* Modal Header */}
+            <View className="p-6 border-b border-gray-700">
+              <Typography variant="headline-20" color="white" className="text-center">
+                Delete Tag
+              </Typography>
+            </View>
+            
+            {/* Warning content */}
+            <View className="p-6">
+              <View className="bg-red-900 bg-opacity-30 border border-red-500 rounded-xl p-4 mb-4">
+                <View className="flex-row items-center mb-2">
+                  <Ionicons name="warning" size={20} color="#EF4444" />
+                  <Typography variant="subtitle-16" color="white" className="ml-2 font-semibold">
+                    Warning
+                  </Typography>
+                </View>
+                <Typography variant="body-14" color="white" className="leading-5">
+                  Deleting this tag will permanently remove all focus sessions associated with "{tagToDelete?.name}". This action cannot be undone.
+                </Typography>
+              </View>
+              
+              {/* Confirmation input */}
+              <View className="mb-4">
+                <Typography variant="body-14" color="white" className="mb-3">
+                  To confirm deletion, type the tag name: <Typography variant="body-14" className="font-semibold text-white">{tagToDelete?.name}</Typography>
+                </Typography>
+                <TextInput
+                  value={confirmationText}
+                  onChangeText={setConfirmationText}
+                  placeholder={`Type "${tagToDelete?.name}" here`}
+                  placeholderTextColor="#666"
+                  style={{
+                    backgroundColor: '#2A2A2A',
+                    borderRadius: 12,
+                    padding: 16,
+                    fontSize: 16,
+                    color: '#FFFFFF',
+                    borderWidth: 1,
+                    borderColor: confirmationText === tagToDelete?.name ? '#EF4444' : '#444',
+                  }}
+                  autoFocus={true}
+                />
+              </View>
+            </View>
+            
+            {/* Action buttons */}
+            <View className="p-4 border-t border-gray-700 flex-row space-x-3">
+              <Pressable
+                onPress={handleCancelDelete}
+                className="flex-1 bg-gray-600 rounded-2xl py-4 items-center active:opacity-80"
+              >
+                <Typography variant="subtitle-16" color="white">
+                  Cancel
+                </Typography>
+              </Pressable>
+              <Pressable
+                onPress={handleConfirmDelete}
+                disabled={confirmationText !== tagToDelete?.name}
+                className={`flex-1 rounded-2xl py-4 items-center ${
+                  confirmationText === tagToDelete?.name 
+                    ? 'bg-red-600 active:opacity-80' 
+                    : 'bg-gray-500 opacity-50'
+                }`}
+              >
+                <Typography variant="subtitle-16" color="white" className="font-semibold">
+                  Delete Tag
+                </Typography>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Notes Modal */}
       <NotesModal
