@@ -30,18 +30,20 @@ export default function SessionCreationModal() {
 
     try {
       console.log('✅ Creating session:', sessionData);
-      createSession(sessionData);
-
-      Alert.alert(
-        'Success',
-        'Focus session created successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
+      const newSession = createSession(sessionData);
+      
+      // Navigate back to journal with session info for scrolling
+      if (newSession && newSession.id) {
+        router.replace({
+          pathname: '/(tabs)/journal',
+          params: {
+            sessionId: newSession.id,
+            sessionDate: sessionData.startTime.toISOString(),
           },
-        ]
-      );
+        });
+      } else {
+        router.back();
+      }
     } catch (error) {
       console.error('Error creating session:', error);
       Alert.alert(

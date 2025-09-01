@@ -109,7 +109,19 @@ export const SessionForm: FC<SessionFormProps> = ({
   };
 
   const updateFormData = (field: keyof CreateSessionInput, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Sync times when one becomes invalid
+      if (field === 'startTime' && value >= prev.endTime) {
+        newData.endTime = value;
+      } else if (field === 'endTime' && value <= prev.startTime) {
+        newData.startTime = value;
+      }
+      
+      return newData;
+    });
+    
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));

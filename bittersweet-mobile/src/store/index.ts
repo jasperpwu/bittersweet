@@ -64,7 +64,7 @@ interface AppStore {
     };
     
     // Actions
-    createSession: (sessionData: CreateSessionInput) => void;
+    createSession: (sessionData: CreateSessionInput) => FocusSession;
     updateSession: (id: string, updates: Partial<FocusSession>) => void;
     deleteSession: (id: string) => void;
     startSession: (id: string) => void;
@@ -248,6 +248,7 @@ export const useAppStore = create<AppStore>()(
           }
           
           console.log('✅ Focus session created:', session);
+          return session;
         },
         
         updateSession: (sessionId, updates) => {

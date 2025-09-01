@@ -1,4 +1,4 @@
-import { FC, useMemo } from 'react';
+import { FC, useMemo, useRef, useEffect } from 'react';
 import { View, ScrollView } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { SessionBlock } from '../SessionBlock';
@@ -16,6 +16,8 @@ interface TimelineProps {
   sessions: FocusSession[];
   currentTime: Date;
   onSessionPress: (sessionId: string) => void;
+  scrollToSessionId?: string | null;
+  onScrollComplete?: () => void;
 }
 
 const TIME_COLUMN_WIDTH = 70;
@@ -60,7 +62,10 @@ export const Timeline: FC<TimelineProps> = ({
   sessions,
   currentTime,
   onSessionPress,
+  scrollToSessionId,
+  onScrollComplete,
 }) => {
+  const scrollViewRef = useRef<ScrollView>(null);
   // Filter sessions for the visible time range and sort by start time
   const sortedSessions = useMemo(() => {
     return sessions
@@ -84,9 +89,30 @@ export const Timeline: FC<TimelineProps> = ({
   const showCurrentTimeIndicator = isCurrentTimeInRange(currentTime);
   const currentTimePosition = showCurrentTimeIndicator ? getCurrentTimePosition(currentTime) : 0;
 
+  // Handle scrolling to specific session
+  useEffect(() => {
+    if (scrollToSessionId && scrollViewRef.current) {
+      const targetSession = sortedSessions.find(session => session.id === scrollToSessionId);
+      if (targetSession) {
+        const scrollPosition = getTopPosition(targetSession.startTime);
+        // Offset to center the session in view (accounting for some padding)
+        const offsetScrollPosition = Math.max(0, scrollPosition - 200);
+        
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({
+            y: offsetScrollPosition,
+            animated: true,
+          });
+          onScrollComplete?.();
+        }, 300); // Small delay to ensure the component is fully rendered
+      }
+    }
+  }, [scrollToSessionId, sortedSessions, onScrollComplete]);
+
   return (
     <View className="flex-1">
       <ScrollView
+        ref={scrollViewRef}
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}

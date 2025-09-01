@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { View, SafeAreaView, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from '../../src/components/ui/StatusBar';
 import { Header } from '../../src/components/ui/Header';
 import { DateSelector, Timeline } from '../../src/components/journal';
@@ -9,10 +9,24 @@ import { FruitCounter } from '../../src/components/rewards';
 import { generateExtendedWeekDates } from '../../src/utils/dateUtils';
 
 export default function JournalScreen() {
+  const params = useLocalSearchParams();
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [scrollToSessionId, setScrollToSessionId] = useState<string | null>(null);
   const { sessions } = useFocus();
   const rewards = useRewards();
   const { deleteSession } = useFocusActions();
+
+  // Handle navigation from session creation
+  useEffect(() => {
+    if (params.sessionId && params.sessionDate) {
+      const sessionDate = new Date(params.sessionDate as string);
+      setSelectedDate(sessionDate);
+      setScrollToSessionId(params.sessionId as string);
+      
+      // Clear the params to avoid re-triggering
+      router.setParams({ sessionId: undefined, sessionDate: undefined });
+    }
+  }, [params.sessionId, params.sessionDate]);
 
   // Generate week dates for the date selector
   const weekDates = useMemo(() => generateExtendedWeekDates(), []);
@@ -43,21 +57,7 @@ export default function JournalScreen() {
       text: 'Delete',
       style: 'destructive',
       onPress: () => {
-        Alert.alert(
-          'Delete Session',
-          'Are you sure you want to delete this focus session?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Delete', 
-              style: 'destructive',
-              onPress: () => {
-                deleteSession(sessionId);
-                Alert.alert('Session Deleted', 'The focus session has been removed.');
-              }
-            }
-          ]
-        );
+        deleteSession(sessionId);
       }
     });
     
@@ -141,6 +141,8 @@ export default function JournalScreen() {
             sessions={sessionsForSelectedDate}
             currentTime={currentTime}
             onSessionPress={handleSessionPress}
+            scrollToSessionId={scrollToSessionId}
+            onScrollComplete={() => setScrollToSessionId(null)}
           />
         </View>
       </View>
