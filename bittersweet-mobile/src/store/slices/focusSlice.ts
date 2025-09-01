@@ -6,6 +6,7 @@
 import { 
   FocusSettings, 
   Tag,
+  FocusGoal,
   ChartDataPoint, 
   TimePeriod,
   ProductivityInsights 
@@ -23,6 +24,7 @@ interface FocusSlice {
   // Normalized State
   sessions: any;
   tags: any;
+  goals: any;
   
   // Current Session State
   currentSession: {
@@ -48,12 +50,20 @@ interface FocusSlice {
   updateTag: (id: string, updates: Partial<Tag>) => void;
   deleteTag: (id: string) => void;
   
+  // Goal Management
+  addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => FocusGoal;
+  updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
+  deleteGoal: (id: string) => void;
+  
   // Selectors
   getSessionById: (id: string) => FocusSession | undefined;
   getSessionsForDateRange: (start: Date, end: Date) => FocusSession[];
   getTagById: (id: string) => Tag | undefined;
   getAllTags: () => Tag[];
   getActiveSession: () => FocusSession | null;
+  getGoalById: (id: string) => FocusGoal | undefined;
+  getAllGoals: () => FocusGoal[];
+  getActiveGoals: () => FocusGoal[];
   
   // Analytics
   getChartData: (period: TimePeriod) => any[];
@@ -185,6 +195,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     // Normalized State
     sessions: createNormalizedState(),
     tags: createNormalizedState(),
+    goals: createNormalizedState(),
     
     // Current Session State
     currentSession: {
@@ -593,6 +604,71 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         console.log('✅ Tag deleted:', id);
       }
     },
+
+    // Goal Management
+    addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const state = get();
+      
+      const newGoal: FocusGoal = {
+        ...goal,
+        id: `goal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        userId: 'dev-user', // TODO: Get from auth
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastResetDate: new Date(), // Start tracking from now
+      };
+      
+      set((state: any) => {
+        const manager = new EntityManager(state.focus.goals);
+        manager.add(newGoal);
+        state.focus.goals = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+      });
+      
+      if (__DEV__) {
+        console.log('✅ Goal added:', newGoal);
+      }
+      
+      return newGoal;
+    },
+
+    updateGoal: (id: string, updates: Partial<FocusGoal>) => {
+      set((state: any) => {
+        const manager = new EntityManager(state.focus.goals);
+        manager.update(id, { ...updates, updatedAt: new Date() });
+        state.focus.goals = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+      });
+      
+      if (__DEV__) {
+        console.log('✅ Goal updated:', id, updates);
+      }
+    },
+
+    deleteGoal: (id: string) => {
+      set((state: any) => {
+        const manager = new EntityManager(state.focus.goals);
+        manager.remove(id);
+        state.focus.goals = {
+          ...manager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+      });
+      
+      if (__DEV__) {
+        console.log('✅ Goal deleted:', id);
+      }
+    },
     
     // Selectors
     getSessionById: (id: string) => {
@@ -623,6 +699,25 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     
     getActiveSession: () => {
       return get().focus.currentSession.session;
+    },
+
+    // Goal Selectors
+    getGoalById: (id: string) => {
+      const goals = get().focus.goals;
+      return goals.byId[id];
+    },
+
+    getAllGoals: () => {
+      const goals = get().focus.goals;
+      return goals.allIds.map(id => goals.byId[id]).filter(Boolean);
+    },
+
+    getActiveGoals: () => {
+      const goals = get().focus.goals;
+      return goals.allIds
+        .map(id => goals.byId[id])
+        .filter(Boolean)
+        .filter(goal => goal.isActive);
     },
     
     // Analytics

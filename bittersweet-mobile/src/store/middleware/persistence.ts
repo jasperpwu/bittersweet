@@ -192,6 +192,7 @@ export const persistenceConfig = {
     focus: {
       sessions: state.focus.sessions,
       tags: state.focus.tags,
+      goals: state.focus.goals,
       currentSession: state.focus.currentSession,
       selectedDate: state.focus.selectedDate,
       viewMode: state.focus.viewMode,

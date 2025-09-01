@@ -1,0 +1,1 @@
+export { GoalProgress } from './GoalProgress';

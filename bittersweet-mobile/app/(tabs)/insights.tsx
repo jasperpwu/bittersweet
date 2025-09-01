@@ -3,10 +3,11 @@ import { View, SafeAreaView, Pressable } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
 import { HistoryView } from '../../src/components/analytics/HistoryView';
-import { DailyGoals } from '../../src/components/home/DailyGoals';
+import { GoalProgress } from '../../src/components/analytics/GoalProgress';
 import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
-import { useFocus, useFocusSelectors } from '../../src/store';
-import { TimePeriod } from '../../src/store/types';
+import { useFocus, useFocusActions } from '../../src/store';
+import { TimePeriod, FocusGoal } from '../../src/store/types';
+import { calculateGoalProgress, getActiveGoals } from '../../src/utils/goalProgress';
 
 type ViewMode = 'statistics' | 'history';
 
@@ -16,8 +17,26 @@ export default function InsightsScreen() {
   const [showGoalModal, setShowGoalModal] = useState(false);
 
   // Get data from focus store
-  const { sessions } = useFocus();
-  const selectors = useFocusSelectors();
+  const { sessions, tags } = useFocus();
+  const { getActiveGoals } = useFocusActions();
+  
+  // Extract sessions array from normalized state
+  const safeSessions = sessions ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean) : [];
+
+  // Get goals from store
+  const storeGoals = getActiveGoals();
+  
+  // Create tag map for goal progress calculation
+  const tagMap = useMemo(() => 
+    tags.allIds.reduce((map, id) => {
+      const tag = tags.byId[id];
+      if (tag) {
+        map[id] = { id: tag.id, name: tag.name };
+      }
+      return map;
+    }, {} as Record<string, { id: string; name: string }>),
+    [tags]
+  );
   
   // Placeholder functions until focus slice is fully implemented
   const getSessionsByDate = () => ({});
@@ -32,8 +51,14 @@ export default function InsightsScreen() {
   };
 
   // Memoized data processing
-  const chartData = useMemo(() => getChartData(selectedPeriod), [selectedPeriod, sessions]);
-  const sessionsByDate = useMemo(() => getSessionsByDate(), [sessions]);
+  const chartData = useMemo(() => getChartData(selectedPeriod), [selectedPeriod, safeSessions]);
+  const sessionsByDate = useMemo(() => getSessionsByDate(), [safeSessions]);
+  
+  // Calculate goal progress
+  const goalProgress = useMemo(() => 
+    calculateGoalProgress(storeGoals, safeSessions, tagMap), 
+    [storeGoals, safeSessions, tagMap]
+  );
   
   // Get today's sessions for statistics view
   const todaysSessions = useMemo(() => {
@@ -55,12 +80,6 @@ export default function InsightsScreen() {
 
   const handleDeleteSession = (sessionId: string) => {
     deleteSession(sessionId);
-  };
-
-  // Daily goals data (same as from the removed index.tsx)
-  const dailyGoals = {
-    focusTime: { current: 180, target: 240 },
-    sessions: { current: 3, target: 5 },
   };
 
   return (
@@ -97,8 +116,11 @@ export default function InsightsScreen() {
       {/* Content */}
       {currentView === 'statistics' ? (
         <View className="flex-1">
-          {/* Daily Goals Section */}
-          <DailyGoals progress={dailyGoals} />
+          {/* Goal Progress Section */}
+          <GoalProgress 
+            goals={storeGoals}
+            currentPeriodProgress={goalProgress}
+          />
           
           {/* Statistics View */}
           <StatisticsView

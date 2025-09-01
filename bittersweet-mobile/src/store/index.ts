@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { FocusSession, SessionTag, CreateSessionInput } from '../types/models';
+import { FocusGoal } from './types';
 import { persistenceConfig } from './middleware/persistence';
 
 interface AppStore {
@@ -22,6 +23,15 @@ interface AppStore {
     // Tags for organizing sessions
     tags: { 
       byId: Record<string, SessionTag>; 
+      allIds: string[]; 
+      loading: boolean; 
+      error: string | null; 
+      lastUpdated: Date | null;
+    };
+    
+    // Goals for focus tracking
+    goals: { 
+      byId: Record<string, FocusGoal>; 
       allIds: string[]; 
       loading: boolean; 
       error: string | null; 
@@ -73,6 +83,12 @@ interface AppStore {
     createTag: (tag: Omit<SessionTag, 'id' | 'usageCount'>) => void;
     updateTag: (id: string, updates: Partial<SessionTag>) => void;
     deleteTag: (id: string) => void;
+    
+    // Goal management
+    addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
+    updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
+    deleteGoal: (id: string) => void;
+    getActiveGoals: () => FocusGoal[];
   };
   
   // UI
@@ -140,6 +156,13 @@ export const useAppStore = create<AppStore>()(
       focus: {
         sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
         tags: { 
+          byId: {}, 
+          allIds: [], 
+          loading: false, 
+          error: null, 
+          lastUpdated: null 
+        },
+        goals: { 
           byId: {}, 
           allIds: [], 
           loading: false, 
@@ -413,6 +436,72 @@ export const useAppStore = create<AppStore>()(
           }));
         },
         
+        // Goal management
+        addGoal: (goalData) => {
+          console.log('🎯 Creating goal:', goalData);
+          const goalId = generateId();
+          const goal: FocusGoal = {
+            ...goalData,
+            id: goalId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          
+          set((state) => ({
+            focus: {
+              ...state.focus,
+              goals: {
+                ...state.focus.goals,
+                byId: { ...state.focus.goals.byId, [goalId]: goal },
+                allIds: [...state.focus.goals.allIds, goalId],
+              }
+            }
+          }));
+        },
+        
+        updateGoal: (goalId, updates) => {
+          console.log('🎯 Updating goal:', goalId, updates);
+          set((state) => {
+            const existingGoal = state.focus.goals.byId[goalId];
+            if (existingGoal) {
+              return {
+                focus: {
+                  ...state.focus,
+                  goals: {
+                    ...state.focus.goals,
+                    byId: {
+                      ...state.focus.goals.byId,
+                      [goalId]: { ...existingGoal, ...updates, updatedAt: new Date() }
+                    }
+                  }
+                }
+              };
+            }
+            return state;
+          });
+        },
+        
+        deleteGoal: (goalId) => {
+          console.log('🗑️ Deleting goal:', goalId);
+          set((state) => {
+            const { [goalId]: removed, ...remainingGoals } = state.focus.goals.byId;
+            return {
+              focus: {
+                ...state.focus,
+                goals: {
+                  ...state.focus.goals,
+                  byId: remainingGoals,
+                  allIds: state.focus.goals.allIds.filter(id => id !== goalId),
+                }
+              }
+            };
+          });
+        },
+        
+        getActiveGoals: () => {
+          return Object.values(get().focus.goals.byId).filter((goal: FocusGoal) => goal.isActive);
+        },
+        
         // Tag management
         createTag: (tagData) => {
           console.log('🏷️ Creating tag:', tagData);
@@ -647,6 +736,10 @@ export const useFocusActions = () => useAppStore((state) => ({
   createTag: state.focus.createTag,
   updateTag: state.focus.updateTag,
   deleteTag: state.focus.deleteTag,
+  addGoal: state.focus.addGoal,
+  updateGoal: state.focus.updateGoal,
+  deleteGoal: state.focus.deleteGoal,
+  getActiveGoals: state.focus.getActiveGoals,
 }));
 
 export const useUIActions = () => useAppStore((state) => ({
@@ -708,7 +801,25 @@ export const subscribeToStore = useAppStore.subscribe;
 export function initializeStore() {
   try {
     console.log('🔧 Initializing store...');
-    getStoreState();
+    const state = getStoreState();
+    
+    // Initialize default tags if none exist
+    if (state.focus.tags.allIds.length === 0) {
+      console.log('🏷️ Initializing default tags...');
+      const defaultTags = [
+        { name: 'Work', icon: '💼' },
+        { name: 'Study', icon: '📚' },
+        { name: 'Reading', icon: '📖' },
+        { name: 'Exercise', icon: '🏃' },
+        { name: 'Creative', icon: '🎨' },
+        { name: 'Personal', icon: '👤' },
+      ];
+      
+      defaultTags.forEach(tag => {
+        state.focus.createTag({ ...tag, isDefault: true });
+      });
+    }
+    
     console.log('✅ Store initialized successfully');
   } catch (error) {
     console.error('❌ Error initializing store:', error);
