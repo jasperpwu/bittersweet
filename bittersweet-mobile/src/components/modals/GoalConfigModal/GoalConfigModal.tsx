@@ -53,7 +53,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
     name: string;
     targetMinutes: number;
     period: 'daily' | 'weekly' | 'yearly';
-    tagIds: string[];
+    tagNames: string[];
   }) => {
     if (editingGoal) {
       // Update existing goal
@@ -61,7 +61,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
         name: goalData.name,
         targetMinutes: goalData.targetMinutes,
         period: goalData.period,
-        tagIds: goalData.tagIds,
+        tagNames: goalData.tagNames,
       });
     } else {
       // Add new goal to store
@@ -70,7 +70,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
         name: goalData.name,
         targetMinutes: goalData.targetMinutes,
         period: goalData.period,
-        tagIds: goalData.tagIds,
+        tagNames: goalData.tagNames,
         isActive: true,
         currentProgress: 0,
         lastResetDate: new Date(),

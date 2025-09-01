@@ -20,14 +20,7 @@ InsightsScreen (Tab Container)
 │       ├── SectionHeader (Date, View All)
 │       └── SessionList
 │           └── SessionItem[]
-└── HistoryView (Navigation Target)
-    ├── Header (Back, Title, Settings)
-    └── SessionHistory
-        ├── DateSection[]
-        │   ├── DateHeader
-        │   └── SessionList
-        │       └── SwipeableSessionItem[]
-        └── EmptyState (when no sessions)
+
 ```
 
 ### Navigation Flow

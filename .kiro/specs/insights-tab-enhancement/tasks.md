@@ -59,9 +59,6 @@ bittersweet-mobile/src/components/analytics/
 ├── StatisticsView/
 │   ├── StatisticsView.tsx (new)
 │   └── index.ts (new)
-├── HistoryView/
-│   ├── HistoryView.tsx (new)
-│   └── index.ts (new)
 └── index.ts (update existing)
 
 bittersweet-mobile/app/(tabs)/insights.tsx (update existing)

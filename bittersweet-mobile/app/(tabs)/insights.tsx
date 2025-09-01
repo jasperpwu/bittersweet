@@ -2,12 +2,11 @@ import { useState, useMemo } from 'react';
 import { View, SafeAreaView, Pressable } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
-import { HistoryView } from '../../src/components/analytics/HistoryView';
 import { GoalProgress } from '../../src/components/analytics/GoalProgress';
 import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
 import { useFocus, useFocusActions } from '../../src/store';
 import { TimePeriod, FocusGoal } from '../../src/store/types';
-import { calculateGoalProgress, getActiveGoals } from '../../src/utils/goalProgress';
+import { calculateGoalProgress } from '../../src/utils/goalProgress';
 
 type ViewMode = 'statistics' | 'history';
 
@@ -21,17 +20,21 @@ export default function InsightsScreen() {
   const { getActiveGoals } = useFocusActions();
   
   // Extract sessions array from normalized state
-  const safeSessions = sessions ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean) : [];
+  const safeSessions = (sessions && sessions.allIds && sessions.byId) 
+    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean) 
+    : [];
 
   // Get goals from store
-  const storeGoals = getActiveGoals();
+  const storeGoals = getActiveGoals() || [];
   
   // Create tag map for goal progress calculation
   const tagMap = useMemo(() => 
-    (tags.allNames || []).reduce((map, name) => {
-      const tag = tags.byName[name];
-      if (tag) {
-        map[name] = { id: name, name: tag.name };
+    (tags && tags.allNames && tags.byName ? tags.allNames : []).reduce((map, name) => {
+      if (tags && tags.byName) {
+        const tag = tags.byName[name];
+        if (tag) {
+          map[name] = { id: name, name: tag.name };
+        }
       }
       return map;
     }, {} as Record<string, { id: string; name: string }>),
@@ -46,7 +49,7 @@ export default function InsightsScreen() {
   
   // Generate chart data from sessions
   const getChartData = (period: TimePeriod) => {
-    if (!safeSessions.length) return [];
+    if (!safeSessions || !Array.isArray(safeSessions) || !safeSessions.length) return [];
 
     const now = new Date();
     const chartData: Array<{ date: Date; value: number; label: string }> = [];
@@ -206,10 +209,7 @@ export default function InsightsScreen() {
           />
         </View>
       ) : (
-        <HistoryView
-          sessionsByDate={sessionsByDate}
-          onDeleteSession={handleDeleteSession}
-        />
+        <View className="flex-1">Empty View</View>
       )}
 
       {/* Goal Configuration Modal */}

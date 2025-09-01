@@ -33,17 +33,19 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   // Get tags and sessions from store for real data
   const { tags, sessions } = useFocus();
 
-  if (goals.length === 0) return null;
-
   // Extract sessions array from normalized state
-  const safeSessions = sessions ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean) : [];
+  const safeSessions = (sessions && sessions.allIds && sessions.byId) 
+    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean) 
+    : [];
 
   // Create tag map for name/ID conversion
   const tagMap = useMemo(() => 
-    tags.allIds.reduce((map, id) => {
-      const tag = tags.byId[id];
-      if (tag) {
-        map[id] = { id: tag.id, name: tag.name };
+    (tags && tags.allNames && tags.byName ? tags.allNames : []).reduce((map, name) => {
+      if (tags && tags.byName) {
+        const tag = tags.byName[name];
+        if (tag) {
+          map[name] = { id: name, name: tag.name };
+        }
       }
       return map;
     }, {} as Record<string, { id: string; name: string }>),
@@ -52,9 +54,12 @@ export const GoalProgress: FC<GoalProgressProps> = ({
 
   // Calculate fresh goal progress from current session data
   const freshGoalProgress = useMemo(() => 
-    calculateGoalProgress(goals, safeSessions, tagMap), 
+    calculateGoalProgress(goals || [], safeSessions, tagMap), 
     [goals, safeSessions, tagMap]
   );
+
+  // Early return after all hooks are called
+  if (!goals || goals.length === 0) return null;
 
   // Process goals to calculate progress
   const processedGoals: ProcessedGoal[] = goals.map(goal => {
@@ -138,7 +143,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
 
 interface GoalProgressItemProps {
   goal: ProcessedGoal;
-  tags: { byId: Record<string, any>; allIds: string[] };
+  tags: { byName: Record<string, any>; allNames: string[] };
 }
 
 const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
@@ -175,9 +180,9 @@ const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
     return `${mins}m`;
   };
 
-  const getTagNames = (tagIds: string[]): string => {
-    return tagIds
-      .map(id => tags.byId[id]?.name || 'Unknown')
+  const getTagNames = (tagNames: string[]): string => {
+    return tagNames
+      .map(name => tags.byName[name]?.name || name)
       .join(', ');
   };
 
@@ -245,12 +250,12 @@ const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
             {formatTime(goal.currentProgress)} / {formatTime(goal.targetMinutes)}
           </Typography>
           
-          {goal.tagIds.length > 0 && (
+          {((goal as any).tagNames || []).length > 0 && (
             <Typography 
               variant="tiny-10" 
               className="text-gray-400"
             >
-              {getTagNames(goal.tagIds)}
+              {getTagNames((goal as any).tagNames || [])}
             </Typography>
           )}
         </View>

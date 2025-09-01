@@ -6,4 +6,3 @@ export * from './SessionItem';
 export * from './SwipeableSessionItem';
 export * from './FocusSessionsChart';
 export * from './StatisticsView';
-export * from './HistoryView';

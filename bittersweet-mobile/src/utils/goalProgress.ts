@@ -28,11 +28,13 @@ export const calculateGoalProgress = (
       const isInPeriod = sessionDate >= periodStart && sessionDate <= periodEnd;
       
       // If goal has no tags, count all sessions
-      if (goal.tagIds.length === 0) return isInPeriod;
+      const goalTagIds = (goal as any).tagIds || [];
+      const goalTagNames = (goal as any).tagNames || [];
+      if (goalTagIds.length === 0 && goalTagNames.length === 0) return isInPeriod;
       
       // Handle tag name/ID mismatch
-      // Sessions store single tag ID in tagId, goals store tag IDs in tagIds
-      const hasMatchingTag = session.tagId && goal.tagIds.includes(session.tagId);
+      // Sessions store single tag in tagName, goals store tag names in tagNames
+      const hasMatchingTag = (session as any).tagName && goalTagNames.includes((session as any).tagName);
       
       return isInPeriod && hasMatchingTag;
     });
