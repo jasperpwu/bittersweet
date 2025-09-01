@@ -73,36 +73,6 @@ export const StatisticsView: FC<StatisticsViewProps> = ({
         onPeriodChange={onPeriodChange}
       />
 
-      {/* Recent Sessions Section */}
-      <View className="px-4">
-        <View className="flex-row items-center justify-between mb-4">
-          <Typography variant="subtitle-16" color="white">
-            {todayDate}
-          </Typography>
-          <Pressable onPress={onViewAllPress} className="active:opacity-70">
-            <Typography variant="body-14" className="text-link">
-              View all
-            </Typography>
-          </Pressable>
-        </View>
-
-        {/* Session List */}
-        {recentSessions.length > 0 ? (
-          <View className="space-y-3">
-            {recentSessions.slice(0, 3).map((session) => (
-              <View key={session.id} className="mb-3">
-                <SessionItem session={session} variant="compact" />
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View className="bg-dark-bg border border-dark-border rounded-xl p-6 items-center">
-            <Typography variant="body-14" color="secondary" className="text-center">
-              No focus sessions today.{'\n'}Start your first session to see it here!
-            </Typography>
-          </View>
-        )}
-      </View>
     </ScrollView>
   );
 };
