@@ -13,7 +13,15 @@
       "expo-router",
       "expo-font",
       "expo-secure-store",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "expo-dev-client",
+      [
+        "react-native-device-activity",
+        {
+          "appleTeamId": "WFHA987U5W",
+          "appGroup": "group.com.path2us.bittersweet.appblocker"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -32,13 +40,23 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "deploymentTarget": "17.0",
+      "deploymentTarget": "16.0",
+      "appleTeamId": "WFHA987U5W",
       "splash": {
         "image": "./assets/splash.png",
         "resizeMode": "contain",
         "backgroundColor": "#f1f1f1"
       },
-      "bundleIdentifier": "com.path2us.bittersweet"
+      "bundleIdentifier": "com.path2us.bittersweet",
+      "entitlements": {
+        "com.apple.developer.family-controls": true,
+        "com.apple.security.application-groups": [
+          "group.com.path2us.bittersweet.appblocker"
+        ]
+      },
+      "infoPlist": {
+        "NSFamilyControlsUsageDescription": "This app uses Family Controls to help you manage app usage and focus time by blocking selected apps during work sessions."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -49,7 +67,8 @@
         "image": "./assets/splash.png",
         "resizeMode": "contain",
         "backgroundColor": "#f1f1f1"
-      }
+      },
+      "package": "com.path2us.bittersweet"
     }
   }
 }

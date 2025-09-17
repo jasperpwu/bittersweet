@@ -125,3 +125,52 @@ export interface CreateSessionInput {
   notes?: string;
 }
 
+// Blocklist Types for Family Controls Integration
+export interface FamilyActivityToken {
+  id: string;
+  bundleIdentifier: string;
+  displayName: string;
+  iconData?: string;
+}
+
+export interface FamilyActivitySelection {
+  applicationTokens: FamilyActivityToken[];
+  categoryTokens: FamilyActivityToken[];
+  webDomainTokens: FamilyActivityToken[];
+}
+
+export interface UnlockSession {
+  id: string;
+  appTokens: FamilyActivityToken[];
+  startTime: Date;
+  endTime: Date;
+  duration: number; // in minutes
+  cost: number; // fruits spent
+  isActive: boolean;
+  remainingTime?: number; // in seconds
+}
+
+export interface UnlockTransaction {
+  id: string;
+  sessionId: string;
+  appTokens: FamilyActivityToken[];
+  duration: number; // in minutes
+  cost: number; // fruits spent
+  timestamp: Date;
+  status: 'completed' | 'cancelled' | 'expired';
+}
+
+export interface BlocklistSettings {
+  isEnabled: boolean;
+  blockedApps: FamilyActivitySelection;
+  unlockCostPerMinute: number; // fruits per minute
+  maxUnlockDuration: number; // maximum minutes per unlock session
+  allowedUnlocksPerDay: number;
+  scheduleEnabled: boolean;
+  blockingSchedule?: {
+    startTime: string; // HH:mm format
+    endTime: string; // HH:mm format
+    daysOfWeek: number[]; // 0-6, Sunday = 0
+  };
+}
+

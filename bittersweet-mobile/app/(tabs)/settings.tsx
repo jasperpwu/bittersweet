@@ -5,6 +5,8 @@ import { Avatar } from '../../src/components/ui/Avatar';
 import { Toggle } from '../../src/components/ui/Toggle';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
+import { useBlocklist } from '../../src/store';
+import { router } from 'expo-router';
 
 interface SettingsItemProps {
   title: string;
@@ -60,12 +62,13 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
 
 export default function SettingsScreen() {
   const { preferences, updatePreferences, theme } = useAppSettings();
-  const { 
-    hasNotifications, 
-    triggerHaptic, 
+  const {
+    hasNotifications,
+    triggerHaptic,
     requestNotificationPermissions,
-    deviceInfo 
+    deviceInfo
   } = useDeviceIntegration();
+  const { settings: blocklistSettings, isAuthorized } = useBlocklist();
 
   const handleAbout = () => {
     triggerHaptic('light');
@@ -162,6 +165,11 @@ export default function SettingsScreen() {
     console.log('Open help center');
   };
 
+  const handleBlockList = () => {
+    triggerHaptic('light');
+    router.push('/(modals)/blocklist-settings');
+  };
+
   const handleAvatarEdit = () => {
     // Open avatar editor
     console.log('Edit avatar');
@@ -239,6 +247,12 @@ export default function SettingsScreen() {
               title="Reminder ringtone"
               hasArrow={true}
               onPress={handleReminderRingtone}
+            />
+
+            <SettingsItem
+              title="Block List"
+              hasArrow={true}
+              onPress={handleBlockList}
             />
 
             <SettingsItem

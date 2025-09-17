@@ -4,7 +4,8 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { FocusSession, SessionTag, CreateSessionInput } from '../types/models';
+import { FocusSession, SessionTag, CreateSessionInput, FamilyActivitySelection, UnlockSession, UnlockTransaction, BlocklistSettings } from '../types/models';
+import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { FocusGoal } from './types';
 import { persistenceConfig } from './middleware/persistence';
 
@@ -130,6 +131,39 @@ interface AppStore {
     earnFruits: (amount: number, source: string, metadata?: any) => void;
     spendFruits: (amount: number, purpose: string, metadata?: any) => void;
     unlockApp: (appId: string) => Promise<boolean>;
+  };
+
+  // Blocklist
+  blocklist: {
+    // Settings and blocked apps
+    settings: BlocklistSettings;
+
+    // Current unlock sessions
+    activeSessions: {
+      byId: Record<string, UnlockSession>;
+      allIds: string[];
+    };
+
+    // Unlock history
+    transactions: {
+      byId: Record<string, UnlockTransaction>;
+      allIds: string[];
+    };
+
+    // Runtime state
+    isAuthorized: boolean;
+    authorizationStatus: 'notDetermined' | 'denied' | 'approved';
+    lastAuthCheck: Date | null;
+
+    // Actions
+    requestAuthorization: () => Promise<boolean>;
+    updateBlockedApps: (selection: FamilyActivitySelection) => Promise<void>;
+    updateSettings: (settings: Partial<BlocklistSettings>) => void;
+    requestUnlock: (appTokens: any[], duration: number) => Promise<UnlockSession | null>;
+    endUnlock: (sessionId: string) => void;
+    checkActiveUnlocks: () => void;
+    getDailyUnlockCount: () => number;
+    getRemainingUnlocks: () => number;
   };
 }
 
@@ -854,6 +888,254 @@ export const useAppStore = create<AppStore>()(
           }
           return false;
         }
+      },
+
+      // Blocklist state
+      blocklist: {
+        settings: {
+          isEnabled: false,
+          blockedApps: {
+            applicationTokens: [],
+            categoryTokens: [],
+            webDomainTokens: []
+          },
+          unlockCostPerMinute: 1, // 1 fruit per minute
+          maxUnlockDuration: 60, // 60 minutes max
+          allowedUnlocksPerDay: 5,
+          scheduleEnabled: false,
+        },
+        activeSessions: {
+          byId: {},
+          allIds: []
+        },
+        transactions: {
+          byId: {},
+          allIds: []
+        },
+        isAuthorized: false,
+        authorizationStatus: 'notDetermined',
+        lastAuthCheck: null,
+
+        // Blocklist actions
+        requestAuthorization: async () => {
+          try {
+            console.log('🔐 Requesting Family Controls authorization...');
+            const authorized = await FamilyControlsModule.requestAuthorization();
+
+            set((state) => ({
+              blocklist: {
+                ...state.blocklist,
+                isAuthorized: authorized,
+                authorizationStatus: authorized ? 'approved' : 'denied',
+                lastAuthCheck: new Date()
+              }
+            }));
+
+            console.log('🔐 Authorization result:', authorized);
+            return authorized;
+          } catch (error) {
+            console.error('❌ Failed to request authorization:', error);
+            set((state) => ({
+              blocklist: {
+                ...state.blocklist,
+                isAuthorized: false,
+                authorizationStatus: 'denied',
+                lastAuthCheck: new Date()
+              }
+            }));
+            return false;
+          }
+        },
+
+        updateBlockedApps: async (selection: FamilyActivitySelection) => {
+          try {
+            console.log('📱 Updating blocked apps:', selection);
+
+            // Apply restrictions using native module
+            const success = await FamilyControlsModule.applyRestrictions(selection);
+
+            if (success) {
+              set((state) => ({
+                blocklist: {
+                  ...state.blocklist,
+                  settings: {
+                    ...state.blocklist.settings,
+                    blockedApps: selection
+                  }
+                }
+              }));
+
+              // Start monitoring if enabled
+              if (get().blocklist.settings.isEnabled) {
+                await FamilyControlsModule.startMonitoring(selection);
+              }
+
+              console.log('✅ Blocked apps updated successfully');
+            } else {
+              throw new Error('Failed to apply restrictions via native module');
+            }
+          } catch (error) {
+            console.error('❌ Failed to update blocked apps:', error);
+            throw error;
+          }
+        },
+
+        updateSettings: (settingsUpdate: Partial<BlocklistSettings>) => {
+          console.log('⚙️ Updating blocklist settings:', settingsUpdate);
+          set((state) => ({
+            blocklist: {
+              ...state.blocklist,
+              settings: {
+                ...state.blocklist.settings,
+                ...settingsUpdate
+              }
+            }
+          }));
+        },
+
+        requestUnlock: async (appTokens: any[], duration: number) => {
+          try {
+            const { blocklist, rewards } = get();
+            const totalCost = duration * blocklist.settings.unlockCostPerMinute;
+
+            // Check if user has enough fruits
+            if (rewards.balance < totalCost) {
+              console.log('❌ Insufficient fruits for unlock');
+              return null;
+            }
+
+            // Check daily unlock limit
+            const dailyCount = blocklist.getDailyUnlockCount();
+            if (dailyCount >= blocklist.settings.allowedUnlocksPerDay) {
+              console.log('❌ Daily unlock limit exceeded');
+              return null;
+            }
+
+            // Check maximum duration
+            if (duration > blocklist.settings.maxUnlockDuration) {
+              console.log('❌ Duration exceeds maximum allowed');
+              return null;
+            }
+
+            console.log('🔓 Creating unlock session:', { duration, cost: totalCost });
+
+            const sessionId = generateId();
+            const startTime = new Date();
+            const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
+
+            const unlockSession: UnlockSession = {
+              id: sessionId,
+              appTokens,
+              startTime,
+              endTime,
+              duration,
+              cost: totalCost,
+              isActive: true,
+              remainingTime: duration * 60
+            };
+
+            // Create unlock transaction
+            const transaction: UnlockTransaction = {
+              id: generateId(),
+              sessionId,
+              appTokens,
+              duration,
+              cost: totalCost,
+              timestamp: new Date(),
+              status: 'completed'
+            };
+
+            // Update state
+            set((state) => ({
+              blocklist: {
+                ...state.blocklist,
+                activeSessions: {
+                  byId: { ...state.blocklist.activeSessions.byId, [sessionId]: unlockSession },
+                  allIds: [...state.blocklist.activeSessions.allIds, sessionId]
+                },
+                transactions: {
+                  byId: { ...state.blocklist.transactions.byId, [transaction.id]: transaction },
+                  allIds: [...state.blocklist.transactions.allIds, transaction.id]
+                }
+              }
+            }));
+
+            // Spend fruits
+            get().rewards.spendFruits(totalCost, 'app_unlock', { sessionId, duration, appTokens });
+
+            // Call native module to temporarily remove restrictions
+            const unlockSuccess = await FamilyControlsModule.temporaryUnlock(
+              appTokens.map(token => token.id),
+              duration
+            );
+
+            if (!unlockSuccess) {
+              // Refund fruits if unlock failed
+              get().rewards.earnFruits(totalCost, 'refund', { reason: 'unlock_failed', sessionId });
+              console.log('❌ Native unlock failed, refunding fruits');
+              return null;
+            }
+
+            console.log('✅ Unlock session created:', unlockSession);
+            return unlockSession;
+          } catch (error) {
+            console.error('❌ Failed to create unlock session:', error);
+            return null;
+          }
+        },
+
+        endUnlock: (sessionId: string) => {
+          console.log('🔒 Ending unlock session:', sessionId);
+          const session = get().blocklist.activeSessions.byId[sessionId];
+
+          if (session && session.isActive) {
+            set((state) => ({
+              blocklist: {
+                ...state.blocklist,
+                activeSessions: {
+                  ...state.blocklist.activeSessions,
+                  byId: {
+                    ...state.blocklist.activeSessions.byId,
+                    [sessionId]: { ...session, isActive: false, remainingTime: 0 }
+                  }
+                }
+              }
+            }));
+
+            // Call native module to reapply restrictions
+            FamilyControlsModule.reapplyRestrictions();
+
+            console.log('🔒 Unlock session ended:', sessionId);
+          }
+        },
+
+        checkActiveUnlocks: () => {
+          const now = new Date();
+          const { activeSessions } = get().blocklist;
+
+          Object.values(activeSessions.byId).forEach(session => {
+            if (session.isActive && now >= session.endTime) {
+              console.log('⏰ Auto-ending expired unlock session:', session.id);
+              get().blocklist.endUnlock(session.id);
+            }
+          });
+        },
+
+        getDailyUnlockCount: () => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const { transactions } = get().blocklist;
+          return Object.values(transactions.byId).filter(transaction =>
+            transaction.timestamp >= today && transaction.status === 'completed'
+          ).length;
+        },
+
+        getRemainingUnlocks: () => {
+          const { settings } = get().blocklist;
+          const dailyCount = get().blocklist.getDailyUnlockCount();
+          return Math.max(0, settings.allowedUnlocksPerDay - dailyCount);
+        }
       }
     }),
       { name: 'bittersweet-store' }
@@ -869,6 +1151,7 @@ export const useFocus = () => useAppStore((state) => state.focus);
 export const useSettings = () => useAppStore((state) => state.settings);
 export const useUI = () => useAppStore((state) => state.ui);
 export const useRewards = () => useAppStore((state) => state.rewards);
+export const useBlocklist = () => useAppStore((state) => state.blocklist);
 
 /**
  * Store actions hooks
@@ -915,6 +1198,17 @@ export const useRewardsActions = () => useAppStore((state) => ({
   earnFruits: state.rewards.earnFruits,
   spendFruits: state.rewards.spendFruits,
   unlockApp: state.rewards.unlockApp,
+}));
+
+export const useBlocklistActions = () => useAppStore((state) => ({
+  requestAuthorization: state.blocklist.requestAuthorization,
+  updateBlockedApps: state.blocklist.updateBlockedApps,
+  updateSettings: state.blocklist.updateSettings,
+  requestUnlock: state.blocklist.requestUnlock,
+  endUnlock: state.blocklist.endUnlock,
+  checkActiveUnlocks: state.blocklist.checkActiveUnlocks,
+  getDailyUnlockCount: state.blocklist.getDailyUnlockCount,
+  getRemainingUnlocks: state.blocklist.getRemainingUnlocks,
 }));
 
 /**

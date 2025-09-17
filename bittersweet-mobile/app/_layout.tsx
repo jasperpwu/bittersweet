@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import '../global.css';
 
 import { Stack } from 'expo-router';
@@ -8,6 +9,7 @@ import { AnimatedSplashScreen } from '../src/components/ui/AnimatedSplashScreen'
 import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
 import { useAppState, initializeUnifiedStore } from '../src/store/unified-store';
 import { autoInitializeMockData } from '../src/store/initializeMockData';
+import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -22,6 +24,9 @@ export const unstable_settings = {
 export default function RootLayout() {
   const { fontsLoaded } = useFonts();
   const { isHydrated, initializeApp } = useAppState();
+
+  // Initialize Device Activity Listener
+  const { isListening } = useDeviceActivityListener();
 
   // Initialize stores
   useEffect(() => {
@@ -52,13 +57,29 @@ export default function RootLayout() {
                   gestureEnabled: true,
                 }} 
               />
-              <Stack.Screen 
-                name="(modals)/session-complete" 
-                options={{ 
+              <Stack.Screen
+                name="(modals)/session-complete"
+                options={{
                   headerShown: false,
                   presentation: 'modal',
                   gestureEnabled: true,
-                }} 
+                }}
+              />
+              <Stack.Screen
+                name="(modals)/blocklist-settings"
+                options={{
+                  headerShown: false,
+                  presentation: 'modal',
+                  gestureEnabled: true,
+                }}
+              />
+              <Stack.Screen
+                name="(modals)/blocking-screen"
+                options={{
+                  headerShown: false,
+                  presentation: 'fullScreenModal',
+                  gestureEnabled: false,
+                }}
               />
             </Stack>
           ) : (
