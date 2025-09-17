@@ -2,7 +2,5 @@
 export * from './ProgressChart';
 export * from './StatCard';
 export * from './TrendAnalysis';
-export * from './SessionItem';
-export * from './SwipeableSessionItem';
 export * from './FocusSessionsChart';
 export * from './StatisticsView';

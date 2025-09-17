@@ -53,14 +53,6 @@ export default function RootLayout() {
                 }} 
               />
               <Stack.Screen 
-                name="(modals)/category-selection" 
-                options={{ 
-                  headerShown: false,
-                  presentation: 'modal',
-                  gestureEnabled: true,
-                }} 
-              />
-              <Stack.Screen 
                 name="(modals)/session-complete" 
                 options={{ 
                   headerShown: false,
