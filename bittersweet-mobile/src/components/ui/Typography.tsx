@@ -26,6 +26,23 @@ export const Typography: FC<TypographyProps> = ({
   ...props
 }) => {
   const baseTypographyStyle = TYPOGRAPHY_VARIANTS[variant] as TextStyle;
+
+  if (!baseTypographyStyle) {
+    console.error(`Typography variant "${variant}" not found. Using body-14 as fallback.`);
+    const fallbackStyle = TYPOGRAPHY_VARIANTS['body-14'] as TextStyle;
+    const noClipStyle = createNoClipTextStyle(fallbackStyle);
+
+    return (
+      <Text
+        className={`${colorClasses[color]} ${className || ''}`}
+        style={[noClipStyle, style]}
+        {...props}
+      >
+        {children}
+      </Text>
+    );
+  }
+
   const noClipStyle = createNoClipTextStyle(baseTypographyStyle);
 
   return (

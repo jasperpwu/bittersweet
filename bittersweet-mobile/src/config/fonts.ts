@@ -64,6 +64,12 @@ export const TYPOGRAPHY_VARIANTS = {
   },
   
   // Body text
+  'body-16': {
+    fontFamily: FONT_FAMILIES.regular,
+    fontSize: 16,
+    lineHeight: 22, // 1.375x for better spacing and no clipping
+    fontWeight: FONT_WEIGHTS.regular,
+  },
   'body-14': {
     fontFamily: FONT_FAMILIES.regular,
     fontSize: 14,

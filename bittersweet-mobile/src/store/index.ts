@@ -156,8 +156,9 @@ interface AppStore {
     lastAuthCheck: Date | null;
 
     // Actions
+    checkAuthorizationStatus: () => Promise<boolean>;
     requestAuthorization: () => Promise<boolean>;
-    updateBlockedApps: (selection: FamilyActivitySelection) => Promise<void>;
+    updateBlockedApps: (selection: FamilyActivitySelection, metadata?: { applicationCount?: number; categoryCount?: number; webDomainCount?: number }) => Promise<void>;
     updateSettings: (settings: Partial<BlocklistSettings>) => void;
     requestUnlock: (appTokens: any[], duration: number) => Promise<UnlockSession | null>;
     endUnlock: (sessionId: string) => void;
@@ -917,6 +918,37 @@ export const useAppStore = create<AppStore>()(
         lastAuthCheck: null,
 
         // Blocklist actions
+        checkAuthorizationStatus: async () => {
+          try {
+            console.log('🔍 Checking current Family Controls authorization status...');
+            const status = await FamilyControlsModule.getAuthorizationStatus();
+            const isAuthorized = status === 'approved';
+
+            set((state) => ({
+              blocklist: {
+                ...state.blocklist,
+                isAuthorized,
+                authorizationStatus: status,
+                lastAuthCheck: new Date()
+              }
+            }));
+
+            console.log('🔍 Current authorization status:', status, 'isAuthorized:', isAuthorized);
+            return isAuthorized;
+          } catch (error) {
+            console.error('❌ Failed to check authorization status:', error);
+            set((state) => ({
+              blocklist: {
+                ...state.blocklist,
+                isAuthorized: false,
+                authorizationStatus: 'unknown',
+                lastAuthCheck: new Date()
+              }
+            }));
+            return false;
+          }
+        },
+
         requestAuthorization: async () => {
           try {
             console.log('🔐 Requesting Family Controls authorization...');
@@ -947,35 +979,70 @@ export const useAppStore = create<AppStore>()(
           }
         },
 
-        updateBlockedApps: async (selection: FamilyActivitySelection) => {
+        updateBlockedApps: async (selection: FamilyActivitySelection, metadata?: { applicationCount?: number; categoryCount?: number; webDomainCount?: number }) => {
           try {
-            console.log('📱 Updating blocked apps:', selection);
+            console.log('📱 Store: updateBlockedApps called');
+            console.log('📱 Store: selection token:', selection);
+            console.log('📱 Store: metadata:', metadata);
 
-            // Apply restrictions using native module
+            // Apply restrictions using native module with the string token
+            console.log('📱 Store: Calling FamilyControlsModule.applyRestrictions...');
             const success = await FamilyControlsModule.applyRestrictions(selection);
+            console.log('📱 Store: applyRestrictions result:', success);
 
             if (success) {
-              set((state) => ({
-                blocklist: {
-                  ...state.blocklist,
-                  settings: {
-                    ...state.blocklist.settings,
-                    blockedApps: selection
+              // Convert string token to legacy format for storage/display
+              const legacySelection = {
+                applicationTokens: metadata?.applicationCount ? [{
+                  id: selection,
+                  bundleIdentifier: 'selected.apps',
+                  displayName: `${metadata.applicationCount} Selected Apps`
+                }] : [],
+                categoryTokens: metadata?.categoryCount ? [{
+                  id: selection,
+                  bundleIdentifier: 'selected.categories',
+                  displayName: `${metadata.categoryCount} Selected Categories`
+                }] : [],
+                webDomainTokens: metadata?.webDomainCount ? [{
+                  id: selection,
+                  bundleIdentifier: 'selected.domains',
+                  displayName: `${metadata.webDomainCount} Selected Domains`
+                }] : []
+              };
+
+              console.log('📱 Store: Generated legacySelection:', legacySelection);
+              console.log('📱 Store: Updating store state...');
+
+              set((state) => {
+                console.log('📱 Store: Current state before update:', state.blocklist.settings.blockedApps);
+                const newState = {
+                  blocklist: {
+                    ...state.blocklist,
+                    settings: {
+                      ...state.blocklist.settings,
+                      blockedApps: legacySelection
+                    }
                   }
-                }
-              }));
+                };
+                console.log('📱 Store: New state after update:', newState.blocklist.settings.blockedApps);
+                return newState;
+              });
 
-              // Start monitoring if enabled
-              if (get().blocklist.settings.isEnabled) {
-                await FamilyControlsModule.startMonitoring(selection);
-              }
+              // Verify the update
+              console.log('📱 Store: Verifying update...');
+              const updatedState = get();
+              console.log('📱 Store: Final state:', updatedState.blocklist.settings.blockedApps);
 
-              console.log('✅ Blocked apps updated successfully');
+              // Skip monitoring for now to avoid Swift crash
+              // TODO: Implement proper monitoring once blocking is working
+              console.log('📱 Store: Skipping monitoring to avoid crash (will implement later)');
+
+              console.log('✅ Store: Blocked apps updated successfully');
             } else {
               throw new Error('Failed to apply restrictions via native module');
             }
           } catch (error) {
-            console.error('❌ Failed to update blocked apps:', error);
+            console.error('❌ Store: Failed to update blocked apps:', error);
             throw error;
           }
         },
@@ -1201,6 +1268,7 @@ export const useRewardsActions = () => useAppStore((state) => ({
 }));
 
 export const useBlocklistActions = () => useAppStore((state) => ({
+  checkAuthorizationStatus: state.blocklist.checkAuthorizationStatus,
   requestAuthorization: state.blocklist.requestAuthorization,
   updateBlockedApps: state.blocklist.updateBlockedApps,
   updateSettings: state.blocklist.updateSettings,
@@ -1269,29 +1337,7 @@ export function initializeStore() {
       });
     }
     
-    // Migrate existing sessions that use tagId to tagName (if any old data exists)
-    const sessions = state.focus.sessions;
-    const tags = state.focus.tags;
-    
-    let migratedCount = 0;
-    if (sessions && sessions.allIds && tags && tags.byName) {
-      sessions.allIds.forEach(sessionId => {
-        const session = sessions.byId[sessionId];
-        if (session && session.tagId && !session.tagName) {
-          // This session has old tagId format, try to find matching tag name
-          const tag = Object.values(tags.byName).find(t => t.name === session.tagId);
-          if (tag) {
-            console.log(`📝 Migrating session ${sessionId}: tagId "${session.tagId}" -> tagName "${tag.name}"`);
-            state.focus.updateSession(sessionId, { tagName: tag.name });
-            migratedCount++;
-          }
-        }
-      });
-      
-      if (migratedCount > 0) {
-        console.log(`✅ Migrated ${migratedCount} sessions to use tagName instead of tagId`);
-      }
-    }
+    // Store is already using tagName for sessions, no migration needed
     
     console.log('✅ Store initialized successfully');
   } catch (error) {

@@ -133,7 +133,11 @@ export interface FamilyActivityToken {
   iconData?: string;
 }
 
-export interface FamilyActivitySelection {
+// Updated to match react-native-device-activity library format (string token)
+export type FamilyActivitySelection = string;
+
+// Legacy format for display purposes
+export interface FamilyActivitySelectionLegacy {
   applicationTokens: FamilyActivityToken[];
   categoryTokens: FamilyActivityToken[];
   webDomainTokens: FamilyActivityToken[];
@@ -162,7 +166,7 @@ export interface UnlockTransaction {
 
 export interface BlocklistSettings {
   isEnabled: boolean;
-  blockedApps: FamilyActivitySelection;
+  blockedApps: FamilyActivitySelectionLegacy; // Use legacy format for storage/display
   unlockCostPerMinute: number; // fruits per minute
   maxUnlockDuration: number; // maximum minutes per unlock session
   allowedUnlocksPerDay: number;

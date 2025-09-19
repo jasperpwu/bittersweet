@@ -55,7 +55,8 @@
         ]
       },
       "infoPlist": {
-        "NSFamilyControlsUsageDescription": "This app uses Family Controls to help you manage app usage and focus time by blocking selected apps during work sessions."
+        "NSFamilyControlsUsageDescription": "This app uses Family Controls to help you manage app usage and focus time by blocking selected apps during work sessions.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -69,6 +70,50 @@
         "backgroundColor": "#f1f1f1"
       },
       "package": "com.path2us.bittersweet"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.ShieldConfiguration",
+                  "targetName": "ShieldConfiguration",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.ShieldAction",
+                  "targetName": "ShieldAction",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.ActivityMonitorExtension",
+                  "targetName": "ActivityMonitorExtension",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "198c1a1c-5de3-4571-858d-9eb2d149281d"
+      }
     }
   }
 }
