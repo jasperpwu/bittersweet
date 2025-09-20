@@ -13,6 +13,42 @@ try {
   console.warn('react-native-device-activity not available:', error);
 }
 
+// MARK: - Shield Configuration Constants
+
+const SHIELD_CONFIGURATION_KEY = 'shieldConfiguration';
+const SHIELD_ACTIONS_KEY = 'shieldActions';
+
+// MARK: - Shield Configuration Types
+
+interface ShieldConfigurationData {
+  title: string;
+  subtitle: string;
+  primaryButtonLabel: string;
+  secondaryButtonLabel?: string;
+  backgroundColor?: { red: number; green: number; blue: number; alpha: number };
+  titleColor?: { red: number; green: number; blue: number; alpha: number };
+  subtitleColor?: { red: number; green: number; blue: number; alpha: number };
+  primaryButtonLabelColor?: { red: number; green: number; blue: number; alpha: number };
+  primaryButtonBackgroundColor?: { red: number; green: number; blue: number; alpha: number };
+  secondaryButtonLabelColor?: { red: number; green: number; blue: number; alpha: number };
+  iconSystemName?: string;
+}
+
+interface ShieldActionData {
+  primary: {
+    type: string;
+    url?: string;
+    actions?: any[];
+    behavior?: string;
+  };
+  secondary?: {
+    type: string;
+    url?: string;
+    actions?: any[];
+    behavior?: string;
+  };
+}
+
 // MARK: - Authorization Status Types
 
 type BitterSweetAuthorizationStatus = 'notDetermined' | 'denied' | 'approved' | 'unknown';
@@ -41,6 +77,113 @@ interface BitterSweetAuthorizationChangedEvent {
 // MARK: - Main Module Interface
 
 class BitterSweetFamilyControlsModule {
+
+  // MARK: - Shield Configuration Methods
+
+  /**
+   * Configure the shield appearance with current app state
+   * @param fruitBalance - Current fruit balance
+   * @param unlockOptions - Available unlock options with pricing
+   */
+  async configureShield(fruitBalance: number, unlockOptions: { duration: number; cost: number }[]): Promise<boolean> {
+    try {
+      if (!ReactNativeDeviceActivity) {
+        console.warn('ReactNativeDeviceActivity not available on this platform');
+        return false;
+      }
+
+      // Default to 1 minute and 5 minute unlock options if not provided
+      const options = unlockOptions.length > 0 ? unlockOptions : [
+        { duration: 1, cost: 1 },
+        { duration: 5, cost: 5 }
+      ];
+
+      const primaryOption = options[0];
+      const secondaryOption = options[1];
+
+      // Configure shield appearance
+      const shieldConfig: ShieldConfigurationData = {
+        title: '{applicationOrDomainDisplayName} is Blocked',
+        subtitle: `You have ${fruitBalance} 🍎\nSpend fruits to unlock temporarily`,
+        primaryButtonLabel: `Unlock ${primaryOption.duration} min - ${primaryOption.cost} 🍎`,
+        secondaryButtonLabel: secondaryOption ? `Unlock ${secondaryOption.duration} min - ${secondaryOption.cost} 🍎` : 'Close',
+        iconSystemName: 'hand.raised.fill',
+        backgroundColor: { red: 0.7, green: 0.1, blue: 0.1, alpha: 1.0 }, // Dark red
+        titleColor: { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }, // White
+        subtitleColor: { red: 0.9, green: 0.9, blue: 0.9, alpha: 1.0 }, // Light gray
+        primaryButtonLabelColor: { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }, // White
+        primaryButtonBackgroundColor: { red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0 }, // Green
+        secondaryButtonLabelColor: { red: 0.7, green: 0.7, blue: 0.7, alpha: 1.0 }, // Gray
+      };
+
+      // Configure shield actions
+      const shieldActions: ShieldActionData = {
+        primary: {
+          type: 'openUrl',
+          url: `bittersweet-mobile://unlock?duration=${primaryOption.duration}&cost=${primaryOption.cost}&balance=${fruitBalance}`,
+          behavior: 'close'
+        },
+        secondary: secondaryOption ? {
+          type: 'openUrl',
+          url: `bittersweet-mobile://unlock?duration=${secondaryOption.duration}&cost=${secondaryOption.cost}&balance=${fruitBalance}`,
+          behavior: 'close'
+        } : {
+          type: 'close',
+          behavior: 'close'
+        }
+      };
+
+      // Store configuration in UserDefaults for the shield extensions
+      ReactNativeDeviceActivity.userDefaultsSet(SHIELD_CONFIGURATION_KEY, shieldConfig);
+      ReactNativeDeviceActivity.userDefaultsSet(SHIELD_ACTIONS_KEY, shieldActions);
+
+      console.log('✅ Shield configuration updated:', { fruitBalance, unlockOptions: options });
+      return true;
+    } catch (error) {
+      console.error('Failed to configure shield:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Update shield configuration when fruit balance changes
+   * @param fruitBalance - New fruit balance
+   */
+  async updateShieldBalance(fruitBalance: number): Promise<boolean> {
+    try {
+      // Get existing configuration and update with new balance
+      const defaultOptions = [
+        { duration: 1, cost: 1 },
+        { duration: 5, cost: 5 }
+      ];
+
+      return await this.configureShield(fruitBalance, defaultOptions);
+    } catch (error) {
+      console.error('Failed to update shield balance:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear shield configuration
+   */
+  async clearShieldConfiguration(): Promise<boolean> {
+    try {
+      if (!ReactNativeDeviceActivity) {
+        console.warn('ReactNativeDeviceActivity not available on this platform');
+        return false;
+      }
+
+      ReactNativeDeviceActivity.userDefaultsRemove(SHIELD_CONFIGURATION_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(SHIELD_ACTIONS_KEY);
+
+      console.log('✅ Shield configuration cleared');
+      return true;
+    } catch (error) {
+      console.error('Failed to clear shield configuration:', error);
+      return false;
+    }
+  }
 
   // MARK: - Authorization Methods
 
@@ -145,10 +288,10 @@ class BitterSweetFamilyControlsModule {
       // Apply restrictions using the selection token
       console.log('Applying restrictions for selection token:', selection);
 
-      // Temporarily disable blocking to avoid crash while we debug
-      // TODO: Re-enable once we understand the proper format
-      console.log('Temporarily skipping native blockSelection to avoid crash');
-      console.log('Selection ID would be:', selection);
+      // Use the correct blockSelection format with activitySelectionId
+      ReactNativeDeviceActivity.blockSelection({
+        activitySelectionId: selection,
+      });
 
       console.log('✅ App restrictions applied successfully');
       return true;

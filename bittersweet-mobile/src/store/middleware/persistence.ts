@@ -12,9 +12,25 @@ export const STORAGE_KEY = 'bittersweet-store';
 
 // Helper function to ensure dates are properly converted
 const ensureDate = (date: any): Date => {
+  if (!date) return new Date();
   if (date instanceof Date) return date;
   if (typeof date === 'string' || typeof date === 'number') return new Date(date);
   return new Date();
+};
+
+// Helper function to safely access nested objects
+const safeGet = (obj: any, path: string, defaultValue: any = {}) => {
+  try {
+    const keys = path.split('.');
+    let result = obj;
+    for (const key of keys) {
+      if (result == null || typeof result !== 'object') return defaultValue;
+      result = result[key];
+    }
+    return result ?? defaultValue;
+  } catch {
+    return defaultValue;
+  }
 };
 
 // Migration functions for different versions
@@ -22,10 +38,16 @@ const migrations = {
   1: (state: any) => {
     // Migration from version 0 to 1
     console.log('🔄 Migrating store from version 0 to 1');
-    
+
+    if (!state || typeof state !== 'object') {
+      console.warn('Invalid state during migration, returning default');
+      return {};
+    }
+
     // Handle legacy homeSlice data
-    if (state.homeSlice) {
-      const { user, dailyGoals, ...rest } = state.homeSlice;
+    const homeSlice = safeGet(state, 'homeSlice', {});
+    if (homeSlice && Object.keys(homeSlice).length > 0) {
+      const { user, dailyGoals, ...rest } = homeSlice;
       
       // Migrate user data to settings
       if (user) {
@@ -231,10 +253,11 @@ export const persistenceConfig = {
   onRehydrateStorage: () => (state: any, error: any) => {
     if (error) {
       console.error('❌ Store rehydration error:', error);
-      // Could implement error recovery here
+      // Clear corrupted storage and start fresh
+      AsyncStorage.removeItem(STORAGE_KEY).catch(console.error);
       return;
     }
-    
+
     if (state) {
       console.log('✅ Store rehydrated successfully');
       
@@ -304,12 +327,24 @@ export const persistenceConfig = {
   
   // Merge function for handling conflicts
   merge: (persistedState: any, currentState: any) => {
+    // Safety checks
+    if (!persistedState || typeof persistedState !== 'object') {
+      console.warn('Invalid persisted state, using current state');
+      return currentState;
+    }
+
+    if (!currentState || typeof currentState !== 'object') {
+      console.warn('Invalid current state, using persisted state');
+      return persistedState;
+    }
+
     // Custom merge logic to handle conflicts
     // IMPORTANT: Only merge data, preserve all functions from currentState
     const merged = { ...currentState };
-    
-    // Merge only data properties, not functions
-    Object.keys(persistedState).forEach(sliceKey => {
+
+    try {
+      // Merge only data properties, not functions
+      Object.keys(persistedState).forEach(sliceKey => {
       if (sliceKey === 'ui') {
         // UI state is never persisted
         return;
@@ -331,9 +366,19 @@ export const persistenceConfig = {
         });
       }
     });
-    
+    } catch (error) {
+      console.error('❌ Error during state merge:', error);
+      // Return current state if merge fails
+      return currentState;
+    }
+
     // Validate data integrity
-    validateStateIntegrity(merged);
+    try {
+      validateStateIntegrity(merged);
+    } catch (error) {
+      console.error('❌ State validation failed:', error);
+      return currentState;
+    }
     
     return merged;
   },
@@ -350,8 +395,12 @@ function setupPostHydration(state: any) {
 
 // Validate state integrity after hydration
 function validateStateIntegrity(state: any) {
+  if (!state || typeof state !== 'object') {
+    throw new Error('State is not a valid object');
+  }
+
   const issues: string[] = [];
-  
+
   // Check for required fields
   if (!state.focus) issues.push('Missing focus slice');
   if (!state.rewards) issues.push('Missing rewards slice');
@@ -361,7 +410,7 @@ function validateStateIntegrity(state: any) {
   // Check normalized structures
   const normalizedSlices = ['focus', 'rewards'];
   normalizedSlices.forEach(sliceName => {
-    if (state[sliceName]) {
+    if (state[sliceName] && typeof state[sliceName] === 'object') {
       Object.keys(state[sliceName]).forEach(key => {
         const value = state[sliceName][key];
         if (value && typeof value === 'object' && 'byId' in value) {

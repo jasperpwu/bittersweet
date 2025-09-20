@@ -862,6 +862,12 @@ export const useAppStore = create<AppStore>()(
               transactions: [...state.rewards.transactions, { id: generateId(), amount, source, metadata, type: 'earn', timestamp: new Date() }]
             }
           }));
+
+          // Update shield configuration with new balance
+          const newBalance = get().rewards.balance;
+          FamilyControlsModule.updateShieldBalance(newBalance).catch((error) => {
+            console.error('Failed to update shield balance after earning fruits:', error);
+          });
         },
         spendFruits: (amount, purpose, metadata) => {
           set((state) => ({
@@ -872,6 +878,12 @@ export const useAppStore = create<AppStore>()(
               transactions: [...state.rewards.transactions, { id: generateId(), amount, purpose, metadata, type: 'spend', timestamp: new Date() }]
             }
           }));
+
+          // Update shield configuration with new balance
+          const newBalance = get().rewards.balance;
+          FamilyControlsModule.updateShieldBalance(newBalance).catch((error) => {
+            console.error('Failed to update shield balance after spending fruits:', error);
+          });
         },
         unlockApp: async (appId) => {
           const app = get().rewards.unlockableApps.find(app => app.id === appId);

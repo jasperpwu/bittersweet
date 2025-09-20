@@ -159,7 +159,6 @@ export default function AppSelectionScreen() {
         </Typography>
         <Pressable
           onPress={handleSave}
-          disabled={!hasSelection}
           className={`active:opacity-70 ${!hasSelection ? 'opacity-50' : ''}`}
         >
           <Typography variant="body-14" className="text-primary">

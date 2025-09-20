@@ -92,13 +92,19 @@ export default function BlockingScreen() {
   } = useBlocklist();
   const { requestUnlock, endUnlock } = useBlocklistActions();
 
-  // Get app info from search params (passed by native module)
+  // Get app info from search params (passed by native module or shield)
   const params = useLocalSearchParams();
   const appName = params.appName as string || 'Unknown App';
   const appBundleId = params.appBundleId as string || '';
   const appTokens = params.appTokens ? JSON.parse(params.appTokens as string) : [];
 
-  const [selectedDuration, setSelectedDuration] = useState(1);
+  // Handle parameters from shield unlock
+  const fromShield = params.fromShield === 'true';
+  const unlockDuration = fromShield ? parseInt(params.unlockDuration as string || '1') : 1;
+  const unlockCost = fromShield ? parseInt(params.unlockCost as string || '1') : 1;
+  const shieldBalance = fromShield ? parseInt(params.currentBalance as string || '0') : balance;
+
+  const [selectedDuration, setSelectedDuration] = useState(unlockDuration);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [remainingTime, setRemainingTime] = useState(0);
@@ -167,12 +173,15 @@ export default function BlockingScreen() {
     const cost = selectedDuration * settings.unlockCostPerMinute;
     const remainingUnlocks = getRemainingUnlocks();
 
+    // Use shield balance if coming from shield, otherwise use current balance
+    const currentBalance = fromShield ? shieldBalance : balance;
+
     // Validation checks
-    if (balance < cost) {
+    if (currentBalance < cost) {
       triggerHaptic('error');
       Alert.alert(
         'Insufficient Fruits',
-        `You need ${cost} fruits to unlock for ${selectedDuration} minute${selectedDuration !== 1 ? 's' : ''}, but only have ${balance} fruits.`,
+        `You need ${cost} fruits to unlock for ${selectedDuration} minute${selectedDuration !== 1 ? 's' : ''}, but only have ${currentBalance} fruits.`,
         [{ text: 'OK' }]
       );
       return;
@@ -335,10 +344,10 @@ export default function BlockingScreen() {
         {/* Fruits Available */}
         <View className="bg-red-800/50 p-4 rounded-xl mb-8">
           <Typography variant="subtitle-16" color="white" className="text-center">
-            You have {balance} 🍎
+            You have {fromShield ? shieldBalance : balance} 🍎
           </Typography>
           <Typography variant="body-12" color="red-100" className="text-center mt-1">
-            Earn more by completing focus sessions
+            {fromShield ? 'Use fruits to unlock this app temporarily' : 'Earn more by completing focus sessions'}
           </Typography>
         </View>
 
@@ -350,7 +359,7 @@ export default function BlockingScreen() {
 
           {unlockOptions.map(duration => {
             const cost = duration * settings.unlockCostPerMinute;
-            const canAfford = balance >= cost;
+            const canAfford = (fromShield ? shieldBalance : balance) >= cost;
 
             return (
               <UnlockOption
@@ -370,10 +379,10 @@ export default function BlockingScreen() {
           {remainingUnlocks > 0 ? (
             <Pressable
               onPress={handleUnlock}
-              disabled={isUnlocking || balance < (selectedDuration * settings.unlockCostPerMinute)}
+              disabled={isUnlocking || (fromShield ? shieldBalance : balance) < (selectedDuration * settings.unlockCostPerMinute)}
               className={`
                 py-4 rounded-xl mb-3 active:opacity-80
-                ${balance >= (selectedDuration * settings.unlockCostPerMinute)
+                ${(fromShield ? shieldBalance : balance) >= (selectedDuration * settings.unlockCostPerMinute)
                   ? 'bg-primary'
                   : 'bg-gray-600'
                 }

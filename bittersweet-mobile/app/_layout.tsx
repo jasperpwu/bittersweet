@@ -12,6 +12,8 @@ import { autoInitializeMockData } from '../src/store/initializeMockData';
 import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -32,6 +34,59 @@ export default function RootLayout() {
   useEffect(() => {
     initializeUnifiedStore();
     autoInitializeMockData(); // Initialize main store with mock data
+
+    // Debug: Clear storage if needed (change to true if needed)
+    if (__DEV__ && false) {
+      import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+        AsyncStorage.clear().then(() => {
+          console.log('🧹 Debug: Storage cleared for fresh start');
+        });
+      });
+    }
+  }, []);
+
+  // Handle URL scheme for shield unlocks
+  useEffect(() => {
+    const handleURL = (event: { url: string }) => {
+      console.log('📱 URL received:', event.url);
+
+      if (event.url.includes('unlock')) {
+        const url = new URL(event.url);
+        const duration = url.searchParams.get('duration');
+        const cost = url.searchParams.get('cost');
+        const balance = url.searchParams.get('balance');
+
+        console.log('🔓 Unlock request:', { duration, cost, balance });
+
+        // Navigate to blocking screen with unlock parameters
+        router.push({
+          pathname: '/(modals)/blocking-screen',
+          params: {
+            unlockDuration: duration || '1',
+            unlockCost: cost || '1',
+            currentBalance: balance || '0',
+            fromShield: 'true'
+          }
+        });
+      }
+    };
+
+    const handleInitialURL = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) {
+        handleURL({ url: initialUrl });
+      }
+    };
+
+    // Handle app opened from URL while running
+    const subscription = Linking.addEventListener('url', handleURL);
+
+    // Handle app opened from URL when not running
+    handleInitialURL();
+
+    return () => {
+      subscription?.remove();
+    };
   }, []);
 
   // Debug logging
