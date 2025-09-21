@@ -1,17 +1,8 @@
 import { Platform } from 'react-native';
 import { FamilyActivitySelection } from '../types/models';
 
-// Import react-native-device-activity
-let ReactNativeDeviceActivity: any = null;
-
-try {
-  if (Platform.OS === 'ios') {
-    // Import the main module - react-native-device-activity exports everything from index
-    ReactNativeDeviceActivity = require('react-native-device-activity');
-  }
-} catch (error) {
-  console.warn('react-native-device-activity not available:', error);
-}
+// Import react-native-device-activity with type safety for iOS
+import * as ReactNativeDeviceActivity from 'react-native-device-activity';
 
 // MARK: - Shield Configuration Constants
 
@@ -87,10 +78,6 @@ class BitterSweetFamilyControlsModule {
    */
   async configureShield(fruitBalance: number, unlockOptions: { duration: number; cost: number }[]): Promise<boolean> {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.warn('ReactNativeDeviceActivity not available on this platform');
-        return false;
-      }
 
       // Default to 1 minute and 5 minute unlock options if not provided
       const options = unlockOptions.length > 0 ? unlockOptions : [
@@ -105,15 +92,15 @@ class BitterSweetFamilyControlsModule {
       const shieldConfig: ShieldConfigurationData = {
         title: '{applicationOrDomainDisplayName} is Blocked',
         subtitle: `You have ${fruitBalance} 🍎\nSpend fruits to unlock temporarily`,
-        primaryButtonLabel: `Unlock ${primaryOption.duration} min - ${primaryOption.cost} 🍎`,
-        secondaryButtonLabel: secondaryOption ? `Unlock ${secondaryOption.duration} min - ${secondaryOption.cost} 🍎` : 'Close',
+        primaryButtonLabel: `Unlock ${primaryOption.duration} min`,
+        secondaryButtonLabel: secondaryOption ? `Unlock ${secondaryOption.duration} min` : 'Close',
         iconSystemName: 'hand.raised.fill',
-        backgroundColor: { red: 0.7, green: 0.1, blue: 0.1, alpha: 1.0 }, // Dark red
-        titleColor: { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }, // White
-        subtitleColor: { red: 0.9, green: 0.9, blue: 0.9, alpha: 1.0 }, // Light gray
-        primaryButtonLabelColor: { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 }, // White
-        primaryButtonBackgroundColor: { red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0 }, // Green
-        secondaryButtonLabelColor: { red: 0.7, green: 0.7, blue: 0.7, alpha: 1.0 }, // Gray
+        backgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Dark red
+        titleColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
+        subtitleColor: { red: 230, green: 230, blue: 230, alpha: 1.0 }, // Light gray
+        primaryButtonLabelColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
+        primaryButtonBackgroundColor: { red: 51, green: 153, blue: 51, alpha: 1.0 }, // Green
+        secondaryButtonLabelColor: { red: 178, green: 178, blue: 178, alpha: 1.0 }, // Gray
       };
 
       // Configure shield actions
@@ -136,6 +123,8 @@ class BitterSweetFamilyControlsModule {
       // Store configuration in UserDefaults for the shield extensions
       ReactNativeDeviceActivity.userDefaultsSet(SHIELD_CONFIGURATION_KEY, shieldConfig);
       ReactNativeDeviceActivity.userDefaultsSet(SHIELD_ACTIONS_KEY, shieldActions);
+
+      console.log('✅ Shield configuration set:', { fruitBalance, unlockOptions: options });
 
       console.log('✅ Shield configuration updated:', { fruitBalance, unlockOptions: options });
       return true;
@@ -169,10 +158,6 @@ class BitterSweetFamilyControlsModule {
    */
   async clearShieldConfiguration(): Promise<boolean> {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.warn('ReactNativeDeviceActivity not available on this platform');
-        return false;
-      }
 
       ReactNativeDeviceActivity.userDefaultsRemove(SHIELD_CONFIGURATION_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(SHIELD_ACTIONS_KEY);
@@ -193,10 +178,6 @@ class BitterSweetFamilyControlsModule {
    */
   async requestAuthorization(): Promise<boolean> {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.warn('ReactNativeDeviceActivity not available on this platform');
-        return false;
-      }
 
       await ReactNativeDeviceActivity.requestAuthorization();
       const status = await this.getAuthorizationStatus();
@@ -213,10 +194,6 @@ class BitterSweetFamilyControlsModule {
    */
   async getAuthorizationStatus(): Promise<BitterSweetAuthorizationStatus> {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.log('🔍 ReactNativeDeviceActivity not available, returning unknown');
-        return 'unknown';
-      }
 
       console.log('🔍 Calling ReactNativeDeviceActivity.getAuthorizationStatus()...');
       const status = await ReactNativeDeviceActivity.getAuthorizationStatus();
@@ -269,28 +246,24 @@ class BitterSweetFamilyControlsModule {
   // MARK: - Restriction Methods
 
   /**
-   * Apply app restrictions based on selection
-   * @param selection - App selection token string
+   * Apply app restrictions based on selection ID
+   * @param selectionId - App selection ID string
    * @returns Promise<boolean> - True if restrictions applied successfully
    */
-  async applyRestrictions(selection: FamilyActivitySelection): Promise<boolean> {
+  async applyRestrictions(selectionId: FamilyActivitySelection): Promise<boolean> {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.warn('ReactNativeDeviceActivity not available on this platform');
-        return false;
-      }
 
-      if (!selection || selection.trim() === '') {
+      if (!selectionId || selectionId.trim() === '') {
         console.log('No apps selected for restriction');
         return true;
       }
 
-      // Apply restrictions using the selection token
-      console.log('Applying restrictions for selection token:', selection);
+      // Apply restrictions using the selection ID
+      console.log('🔒 Applying restrictions for selectionId:', selectionId);
 
       // Use the correct blockSelection format with activitySelectionId
       ReactNativeDeviceActivity.blockSelection({
-        activitySelectionId: selection,
+        activitySelectionId: selectionId,
       });
 
       console.log('✅ App restrictions applied successfully');
@@ -302,24 +275,30 @@ class BitterSweetFamilyControlsModule {
   }
 
   /**
-   * Remove all app restrictions
+   * Remove app restrictions using stored selection ID
+   * @param selectionId - The selection ID to unblock
    * @returns Promise<boolean> - True if restrictions removed successfully
    */
-  async removeRestrictions(): Promise<boolean> {
+  async removeRestrictions(selectionId: FamilyActivitySelection): Promise<boolean> {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.warn('ReactNativeDeviceActivity not available on this platform');
-        return false;
+      console.log('🔓 removeRestrictions called with selectionId:', selectionId);
+
+      if (!selectionId) {
+        console.log('No selectionId provided, nothing to unblock');
+        return true;
       }
 
-      // Clear all restrictions using react-native-device-activity
-      // Note: The exact API for clearing restrictions may differ
-      console.warn('removeRestrictions: Clear restrictions functionality may need to be implemented differently');
+      // Unblock the specific selection using the stored ID
+      console.log('🔓 Unblocking restrictions for selectionId:', selectionId);
 
-      console.log('✅ All app restrictions removed');
+      ReactNativeDeviceActivity.unblockSelection({
+        activitySelectionId: selectionId,
+      });
+
+      console.log('✅ App restrictions removed for selectionId:', selectionId);
       return true;
     } catch (error) {
-      console.error('Failed to remove restrictions:', error);
+      console.error('❌ Failed to remove restrictions:', error);
       return false;
     }
   }
@@ -332,10 +311,6 @@ class BitterSweetFamilyControlsModule {
    */
   async temporaryUnlock(appTokens: string[], durationMinutes: number): Promise<boolean> {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.warn('ReactNativeDeviceActivity not available on this platform');
-        return false;
-      }
 
       // Temporary unlock functionality - this may need to be implemented differently
       // with react-native-device-activity's monitoring system
@@ -379,10 +354,6 @@ class BitterSweetFamilyControlsModule {
    */
   async startMonitoring(selection: FamilyActivitySelection): Promise<boolean> {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.warn('ReactNativeDeviceActivity not available on this platform');
-        return false;
-      }
 
       if (!selection || selection.trim() === '') {
         console.log('No apps selected for monitoring');
@@ -422,10 +393,6 @@ class BitterSweetFamilyControlsModule {
    */
   async stopMonitoring(): Promise<boolean> {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.warn('ReactNativeDeviceActivity not available on this platform');
-        return false;
-      }
 
       // Stop monitoring using react-native-device-activity
       await ReactNativeDeviceActivity.stopMonitoring();
@@ -448,10 +415,6 @@ class BitterSweetFamilyControlsModule {
     listener: (event: BitterSweetAppLaunchBlockedEvent) => void
   ): { remove: () => void } {
     try {
-      if (!ReactNativeDeviceActivity) {
-        console.warn('ReactNativeDeviceActivity not available on this platform');
-        return { remove: () => {} };
-      }
 
       // Use react-native-device-activity's event listener
       const subscription = ReactNativeDeviceActivity.onDeviceActivityMonitorEvent((event: any) => {
@@ -476,7 +439,7 @@ class BitterSweetFamilyControlsModule {
    * Add listener for unlock session expired events
    */
   addUnlockSessionExpiredListener(
-    listener: (event: BitterSweetUnlockSessionExpiredEvent) => void
+    _listener: (event: BitterSweetUnlockSessionExpiredEvent) => void
   ): { remove: () => void } {
     // This would integrate with DeviceActivity event listeners if needed
     console.log('Unlock expiration handling setup');
@@ -487,7 +450,7 @@ class BitterSweetFamilyControlsModule {
    * Add listener for authorization changed events
    */
   addAuthorizationChangedListener(
-    listener: (event: BitterSweetAuthorizationChangedEvent) => void
+    _listener: (event: BitterSweetAuthorizationChangedEvent) => void
   ): { remove: () => void } {
     // This would listen for authorization status changes
     console.log('Authorization change listening setup');

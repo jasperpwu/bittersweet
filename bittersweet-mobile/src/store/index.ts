@@ -138,6 +138,9 @@ interface AppStore {
     // Settings and blocked apps
     settings: BlocklistSettings;
 
+    // Current active selection ID
+    currentSelectionId: string | null;
+
     // Current unlock sessions
     activeSessions: {
       byId: Record<string, UnlockSession>;
@@ -152,7 +155,7 @@ interface AppStore {
 
     // Runtime state
     isAuthorized: boolean;
-    authorizationStatus: 'notDetermined' | 'denied' | 'approved';
+    authorizationStatus: 'notDetermined' | 'denied' | 'approved' | 'unknown';
     lastAuthCheck: Date | null;
 
     // Actions
@@ -361,9 +364,15 @@ export const useAppStore = create<AppStore>()(
               }
             };
           });
-          
+
           if (sessionToDelete) {
             console.log('🗑️ Session deleted and corresponding rewards removed:', sessionId);
+
+            // Update shield configuration with new balance after deletion
+            const newBalance = get().rewards.balance;
+            FamilyControlsModule.updateShieldBalance(newBalance).catch((error) => {
+              console.error('Failed to update shield balance after deleting session:', error);
+            });
           }
         },
         
@@ -917,6 +926,7 @@ export const useAppStore = create<AppStore>()(
           allowedUnlocksPerDay: 5,
           scheduleEnabled: false,
         },
+        currentSelectionId: null,
         activeSessions: {
           byId: {},
           allIds: []
@@ -997,10 +1007,71 @@ export const useAppStore = create<AppStore>()(
             console.log('📱 Store: selection token:', selection);
             console.log('📱 Store: metadata:', metadata);
 
-            // Apply restrictions using native module with the string token
+            const currentState = get();
+            const currentSelectionId = currentState.blocklist.currentSelectionId;
+            console.log('📱 Store: current stored selectionId:', currentSelectionId);
+            console.log('📱 selection:', selection);
+
+            // If we have a current selectionId and it's different from the new selection, unblock it first
+            if (currentSelectionId && currentSelectionId !== selection) {
+              console.log('📱 Store: SelectionId changed, unblocking previous selection:', currentSelectionId);
+              console.log('📱 Store: About to call FamilyControlsModule.removeRestrictions...');
+              const unblockSuccess = await FamilyControlsModule.removeRestrictions(currentSelectionId);
+              console.log('📱 Store: unblock previous result:', unblockSuccess);
+
+              // Clear shield configuration when unblocking
+              if (unblockSuccess) {
+                await FamilyControlsModule.clearShieldConfiguration();
+              }
+            } else {
+              console.log('📱 Store: No selectionId change detected');
+              console.log('📱 Store: currentSelectionId:', currentSelectionId, 'newSelection:', selection);
+            }
+
+            // If selection is null or empty, clear the blocklist
+            if (selection === null || selection === '') {
+              console.log('📱 Store: Clearing blocklist - no new selection to apply');
+
+              // Clear the stored selection
+              set((state) => {
+                console.log('📱 Store: Clearing stored blocklist state');
+                return {
+                  blocklist: {
+                    ...state.blocklist,
+                    currentSelectionId: null,
+                    settings: {
+                      ...state.blocklist.settings,
+                      blockedApps: {
+                        applicationTokens: [],
+                        categoryTokens: [],
+                        webDomainTokens: []
+                      }
+                    }
+                  }
+                };
+              });
+
+              // Clear shield configuration when clearing blocklist
+              await FamilyControlsModule.clearShieldConfiguration();
+
+              console.log('✅ Store: Blocklist cleared successfully');
+              return;
+            }
+
+            // Apply restrictions using native module with the selection ID
             console.log('📱 Store: Calling FamilyControlsModule.applyRestrictions...');
             const success = await FamilyControlsModule.applyRestrictions(selection);
             console.log('📱 Store: applyRestrictions result:', success);
+
+            // Configure shield with current fruit balance
+            if (success) {
+              const currentBalance = get().rewards.balance;
+              console.log('📱 Store: Configuring shield with balance:', currentBalance);
+              await FamilyControlsModule.configureShield(currentBalance, [
+                { duration: 1, cost: 1 },
+                { duration: 5, cost: 5 }
+              ]);
+            }
 
             if (success) {
               // Convert string token to legacy format for storage/display
@@ -1030,6 +1101,7 @@ export const useAppStore = create<AppStore>()(
                 const newState = {
                   blocklist: {
                     ...state.blocklist,
+                    currentSelectionId: selection,
                     settings: {
                       ...state.blocklist.settings,
                       blockedApps: legacySelection
@@ -1037,6 +1109,7 @@ export const useAppStore = create<AppStore>()(
                   }
                 };
                 console.log('📱 Store: New state after update:', newState.blocklist.settings.blockedApps);
+                console.log('📱 Store: Stored selectionId:', selection);
                 return newState;
               });
 

@@ -9,7 +9,7 @@ import { Typography } from '../../src/components/ui/Typography';
 import { useBlocklist, useBlocklistActions } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
-import { DeviceActivitySelectionView, DeviceActivitySelectionViewPersisted } from 'react-native-device-activity';
+import { DeviceActivitySelectionView, DeviceActivitySelectionViewPersisted, getFamilyActivitySelectionId, setFamilyActivitySelectionId } from 'react-native-device-activity';
 
 export default function AppSelectionScreen() {
   const { triggerHaptic } = useDeviceIntegration();
@@ -24,6 +24,13 @@ export default function AppSelectionScreen() {
     categoryCount: 0,
     webDomainCount: 0
   });
+
+  // Generate unique selection ID
+  const generateSelectionId = () => {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    return `bittersweet-selection-${timestamp}-${random}`;
+  };
 
   // Initialize counts from current stored data
   React.useEffect(() => {
@@ -61,14 +68,27 @@ export default function AppSelectionScreen() {
     console.log('  - selectionCounts:', selectionCounts);
     console.log('  - hasSelection:', hasSelection);
 
-    if (!selectedApps) {
-      console.log('❌ No selectedApps, showing alert');
-      Alert.alert(
-        'No Selection',
-        'Please select apps to block before saving.',
-        [{ text: 'OK' }]
-      );
-      return;
+    // Allow saving with no selection to clear the blocklist
+    const totalSelectionCount = selectionCounts.applicationCount + selectionCounts.categoryCount + selectionCounts.webDomainCount;
+
+    let selectionId: string | null = null;
+
+    if (totalSelectionCount > 0) {
+      // Generate a new unique selectionId for this save
+      selectionId = generateSelectionId();
+      console.log('🔍 Generated new selectionId:', selectionId);
+
+      // Copy the selection from the fixed ID to our new unique ID
+      const currentSelection = getFamilyActivitySelectionId('bittersweet-blocklist');
+      if (currentSelection) {
+        console.log('🔍 Copying selection to new ID:', currentSelection);
+        setFamilyActivitySelectionId({
+          id: selectionId,
+          familyActivitySelection: currentSelection
+        });
+      }
+    } else {
+      console.log('🔍 No apps selected, clearing blocklist');
     }
 
     try {
@@ -82,19 +102,16 @@ export default function AppSelectionScreen() {
       };
 
       console.log('🔍 Calling updateBlockedApps with:');
-      console.log('  - selection token:', selectedApps);
+      console.log('  - selectionId:', selectionId);
       console.log('  - metadata:', metadata);
 
-      // Pass the token string and metadata to updateBlockedApps
-      await updateBlockedApps(selectedApps, metadata);
+      // Pass the selectionId (or empty string to clear) and metadata to updateBlockedApps
+      await updateBlockedApps(selectionId || '', metadata);
       console.log('✅ updateBlockedApps completed successfully');
       triggerHaptic('success');
 
-      Alert.alert(
-        'Success',
-        'Selected apps have been added to the block list.',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      // Navigate back without showing alert
+      router.back();
     } catch (error) {
       console.error('❌ Failed to save app selection:', error);
       Alert.alert(
@@ -120,7 +137,6 @@ export default function AppSelectionScreen() {
       console.log('🔍 categoryCount:', nativeEvent.categoryCount);
       console.log('🔍 webDomainCount:', nativeEvent.webDomainCount);
       console.log('🔍 includeEntireCategory:', nativeEvent.includeEntireCategory);
-
       const { applicationCount, categoryCount, webDomainCount, includeEntireCategory } = nativeEvent;
 
       console.log('🔍 Parsed values:');
@@ -129,17 +145,27 @@ export default function AppSelectionScreen() {
       console.log('  - webDomainCount:', webDomainCount);
       console.log('  - includeEntireCategory:', includeEntireCategory);
 
-      // For DeviceActivitySelectionViewPersisted, we use the familyActivitySelectionId
-      setSelectedApps('bittersweet-blocklist');
+      // For DeviceActivitySelectionViewPersisted, we'll generate a new ID when saving
+      const totalCount = applicationCount + categoryCount + webDomainCount;
+      const hasValidSelection = totalCount > 0;
+
+      console.log('🔍 Selection detected - hasValidSelection:', hasValidSelection);
+      // We'll generate the actual selectionId when user saves, not here
+      setSelectedApps(hasValidSelection ? 'pending-selection' : null);
       setSelectionCounts({
         applicationCount: applicationCount || 0,
         categoryCount: categoryCount || 0,
         webDomainCount: webDomainCount || 0
       });
-      setHasSelection((applicationCount + categoryCount + webDomainCount) > 0);
+      setHasSelection(hasValidSelection);
 
-      console.log('🔍 State updated - hasSelection:', (applicationCount + categoryCount + webDomainCount) > 0);
-      console.log('🔍 Using persisted selection ID: bittersweet-blocklist');
+      console.log('🔍 State updated - hasSelection:', hasValidSelection);
+      if (hasValidSelection) {
+        const token = getFamilyActivitySelectionId('bittersweet-blocklist');
+        console.log('🔍 Final selection token:', token);
+      } else {
+        console.log('🔍 Final selection token: null (no selection)');
+      }
     } else {
       console.log('❌ No nativeEvent found in event');
     }
