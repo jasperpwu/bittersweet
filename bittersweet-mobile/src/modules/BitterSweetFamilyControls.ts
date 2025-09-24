@@ -1,50 +1,26 @@
-import { Platform } from 'react-native';
 import { FamilyActivitySelection } from '../types/models';
 
-// Import react-native-device-activity with type safety for iOS
+// Import react-native-device-activity with proper types
 import * as ReactNativeDeviceActivity from 'react-native-device-activity';
+import type {
+  ShieldConfiguration,
+  ShieldActions,
+  AuthorizationStatusType,
+  DeviceActivityEvent,
+  DeviceActivitySchedule
+} from 'react-native-device-activity';
 
 // MARK: - Shield Configuration Constants
 
 const SHIELD_CONFIGURATION_KEY = 'shieldConfiguration';
 const SHIELD_ACTIONS_KEY = 'shieldActions';
+const APP_GROUP_ID = 'group.com.path2us.bittersweet.appblocker';
+const PENDING_DEEPLINK_KEY = 'pendingDeepLink';
+const PENDING_DEEPLINK_TIMESTAMP_KEY = 'pendingDeepLinkTimestamp';
 
-// MARK: - Shield Configuration Types
+// MARK: - Custom Data Types (for events only, not shield config)
 
-interface ShieldConfigurationData {
-  title: string;
-  subtitle: string;
-  primaryButtonLabel: string;
-  secondaryButtonLabel?: string;
-  backgroundColor?: { red: number; green: number; blue: number; alpha: number };
-  titleColor?: { red: number; green: number; blue: number; alpha: number };
-  subtitleColor?: { red: number; green: number; blue: number; alpha: number };
-  primaryButtonLabelColor?: { red: number; green: number; blue: number; alpha: number };
-  primaryButtonBackgroundColor?: { red: number; green: number; blue: number; alpha: number };
-  secondaryButtonLabelColor?: { red: number; green: number; blue: number; alpha: number };
-  iconSystemName?: string;
-}
-
-interface ShieldActionData {
-  primary: {
-    type: string;
-    url?: string;
-    actions?: any[];
-    behavior?: string;
-  };
-  secondary?: {
-    type: string;
-    url?: string;
-    actions?: any[];
-    behavior?: string;
-  };
-}
-
-// MARK: - Authorization Status Types
-
-type BitterSweetAuthorizationStatus = 'notDetermined' | 'denied' | 'approved' | 'unknown';
-
-// MARK: - Event Types
+// MARK: - Custom Event Types (extending official types)
 
 interface BitterSweetAppLaunchBlockedEvent {
   appName: string;
@@ -60,7 +36,7 @@ interface BitterSweetUnlockSessionExpiredEvent {
 }
 
 interface BitterSweetAuthorizationChangedEvent {
-  status: BitterSweetAuthorizationStatus;
+  status: AuthorizationStatusType;
   isAuthorized: boolean;
   timestamp: number;
 }
@@ -74,26 +50,16 @@ class BitterSweetFamilyControlsModule {
   /**
    * Configure the shield appearance with current app state
    * @param fruitBalance - Current fruit balance
-   * @param unlockOptions - Available unlock options with pricing
    */
-  async configureShield(fruitBalance: number, unlockOptions: { duration: number; cost: number }[]): Promise<boolean> {
+  async configureShield(fruitBalance: number): Promise<boolean> {
     try {
 
-      // Default to 1 minute and 5 minute unlock options if not provided
-      const options = unlockOptions.length > 0 ? unlockOptions : [
-        { duration: 1, cost: 1 },
-        { duration: 5, cost: 5 }
-      ];
-
-      const primaryOption = options[0];
-      const secondaryOption = options[1];
-
-      // Configure shield appearance
-      const shieldConfig: ShieldConfigurationData = {
+      // Configure shield appearance (using official library interface)
+      const shieldConfig: ShieldConfiguration = {
         title: '{applicationOrDomainDisplayName} is Blocked',
         subtitle: `You have ${fruitBalance} 🍎\nSpend fruits to unlock temporarily`,
-        primaryButtonLabel: `Unlock ${primaryOption.duration} min`,
-        secondaryButtonLabel: secondaryOption ? `Unlock ${secondaryOption.duration} min` : 'Close',
+        primaryButtonLabel: 'Unlock App',
+        secondaryButtonLabel: 'Close',
         iconSystemName: 'hand.raised.fill',
         backgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Dark red
         titleColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
@@ -103,19 +69,20 @@ class BitterSweetFamilyControlsModule {
         secondaryButtonLabelColor: { red: 178, green: 178, blue: 178, alpha: 1.0 }, // Gray
       };
 
+      // No need to store unlock options - app will handle them when opened
+
       // Configure shield actions
-      const shieldActions: ShieldActionData = {
+      const shieldActions: ShieldActions = {
         primary: {
-          type: 'openUrl',
-          url: `bittersweet-mobile://unlock?duration=${primaryOption.duration}&cost=${primaryOption.cost}&balance=${fruitBalance}`,
-          behavior: 'close'
+          behavior: 'defer',
+          actions: [
+            {
+              type: "openApp",
+              deeplinkUrl: "bittersweet-mobile://unlock?currentBalance=" + fruitBalance
+            }
+          ]
         },
-        secondary: secondaryOption ? {
-          type: 'openUrl',
-          url: `bittersweet-mobile://unlock?duration=${secondaryOption.duration}&cost=${secondaryOption.cost}&balance=${fruitBalance}`,
-          behavior: 'close'
-        } : {
-          type: 'close',
+        secondary: {
           behavior: 'close'
         }
       };
@@ -124,9 +91,19 @@ class BitterSweetFamilyControlsModule {
       ReactNativeDeviceActivity.userDefaultsSet(SHIELD_CONFIGURATION_KEY, shieldConfig);
       ReactNativeDeviceActivity.userDefaultsSet(SHIELD_ACTIONS_KEY, shieldActions);
 
-      console.log('✅ Shield configuration set:', { fruitBalance, unlockOptions: options });
+      // Debug: Log the stored configuration
+      console.log('✅ Shield configuration updated:', {
+        fruitBalance,
+        shieldConfig,
+        shieldActions,
+        deeplinkUrl: (shieldActions.primary.actions?.[0] as any)?.deeplinkUrl
+      });
 
-      console.log('✅ Shield configuration updated:', { fruitBalance, unlockOptions: options });
+      // Debug: Verify configuration was stored
+      const storedConfig = ReactNativeDeviceActivity.userDefaultsGet(SHIELD_CONFIGURATION_KEY);
+      const storedActions = ReactNativeDeviceActivity.userDefaultsGet(SHIELD_ACTIONS_KEY);
+      console.log('🔍 Stored shield configuration:', storedConfig);
+      console.log('🔍 Stored shield actions:', storedActions);
       return true;
     } catch (error) {
       console.error('Failed to configure shield:', error);
@@ -140,13 +117,8 @@ class BitterSweetFamilyControlsModule {
    */
   async updateShieldBalance(fruitBalance: number): Promise<boolean> {
     try {
-      // Get existing configuration and update with new balance
-      const defaultOptions = [
-        { duration: 1, cost: 1 },
-        { duration: 5, cost: 5 }
-      ];
-
-      return await this.configureShield(fruitBalance, defaultOptions);
+      // Update shield with new balance
+      return await this.configureShield(fruitBalance);
     } catch (error) {
       console.error('Failed to update shield balance:', error);
       return false;
@@ -178,56 +150,45 @@ class BitterSweetFamilyControlsModule {
    */
   async requestAuthorization(): Promise<boolean> {
     try {
+      console.log('🔐 Requesting Family Controls authorization...');
+
+      // First check current status
+      const currentStatus = await this.getAuthorizationStatus();
+      console.log('📊 Current authorization status:', currentStatus);
+
+      if (currentStatus === 2) { // 2 = approved
+        console.log('✅ Already authorized');
+        return true;
+      }
 
       await ReactNativeDeviceActivity.requestAuthorization();
       const status = await this.getAuthorizationStatus();
-      return status === 'approved';
+      console.log('✅ Authorization result:', status);
+      return status === 2; // 2 = approved
     } catch (error) {
-      console.error('Failed to request Family Controls authorization:', error);
+      console.error('❌ Authorization failed:', error);
+      console.error('💡 Hint: Another app might have Family Controls authorization. Only one app can have it at a time.');
+      console.error('💡 Check Settings > Screen Time for other apps with permissions.');
       return false;
     }
   }
 
   /**
    * Get current authorization status
-   * @returns Promise<AuthorizationStatus> - Current authorization status
+   * @returns Promise<AuthorizationStatusType> - Current authorization status
    */
-  async getAuthorizationStatus(): Promise<BitterSweetAuthorizationStatus> {
+  async getAuthorizationStatus(): Promise<AuthorizationStatusType> {
     try {
 
       console.log('🔍 Calling ReactNativeDeviceActivity.getAuthorizationStatus()...');
       const status = await ReactNativeDeviceActivity.getAuthorizationStatus();
-      console.log('🔍 Raw status from native module:', status, 'type:', typeof status);
+      console.log('🔍 Received status:', status, 'type:', typeof status);
 
-      // Map numeric enum values to string values
-      // iOS Family Controls authorization status enum:
-      // 0 = notDetermined, 1 = denied, 2 = approved
-      let mappedStatus: BitterSweetAuthorizationStatus;
-      if (typeof status === 'number') {
-        switch (status) {
-          case 0:
-            mappedStatus = 'notDetermined';
-            break;
-          case 1:
-            mappedStatus = 'denied';
-            break;
-          case 2:
-            mappedStatus = 'approved';
-            break;
-          default:
-            mappedStatus = 'unknown';
-            break;
-        }
-      } else {
-        // If it's already a string, use it directly
-        mappedStatus = status as BitterSweetAuthorizationStatus;
-      }
-
-      console.log('🔍 Mapped status:', mappedStatus);
-      return mappedStatus;
+      // Status should already be the correct numeric type from the library
+      return status as AuthorizationStatusType;
     } catch (error) {
       console.error('Failed to get authorization status:', error);
-      return 'unknown';
+      return 0; // notDetermined
     }
   }
 
@@ -362,14 +323,14 @@ class BitterSweetFamilyControlsModule {
 
       // Start monitoring using react-native-device-activity
       const monitoringName = 'BitterSweetAppBlocking';
-      const schedule = {
+      const schedule: DeviceActivitySchedule = {
         intervalStart: { hour: 0, minute: 0, second: 0 },
         intervalEnd: { hour: 23, minute: 59, second: 59 },
         repeats: true
       };
 
       // Create events for monitoring with the selection ID
-      const events = [
+      const events: DeviceActivityEvent[] = [
         {
           eventName: 'appBlocking',
           familyActivitySelection: selection, // This should be the selection ID
@@ -464,6 +425,66 @@ class BitterSweetFamilyControlsModule {
     console.log('Event listeners cleaned up');
   }
 
+  // MARK: - App Group Communication Methods
+
+  /**
+   * Check for pending deep links from shield extension
+   * @returns Promise<string | null> - Pending deep link URL or null
+   */
+  async checkPendingDeepLink(): Promise<string | null> {
+    try {
+      // Get the pending deep link from App Group UserDefaults
+      const pendingUrl = ReactNativeDeviceActivity.userDefaultsGet(PENDING_DEEPLINK_KEY) as string | null;
+
+      if (pendingUrl) {
+        console.log('🔗 Found pending deep link from shield:', pendingUrl);
+
+        // Clear the pending link so it's not processed again
+        ReactNativeDeviceActivity.userDefaultsRemove(PENDING_DEEPLINK_KEY);
+        ReactNativeDeviceActivity.userDefaultsRemove(PENDING_DEEPLINK_TIMESTAMP_KEY);
+
+        return pendingUrl;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Failed to check pending deep link:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Process a deep link URL (whether from direct URL or App Group)
+   * @param url - The deep link URL to process
+   */
+  processPendingDeepLink(url: string): void {
+    try {
+      console.log('🔗 Processing deep link:', url);
+
+      // Parse the URL
+      const urlObj = new URL(url);
+
+      if (url.includes('unlock')) {
+        const currentBalance = urlObj.searchParams.get('currentBalance');
+        console.log('🍎 Extracted currentBalance from deep link:', currentBalance);
+
+        // Import router dynamically to avoid circular dependencies
+        import('expo-router').then(({ router }) => {
+          router.push({
+            pathname: '/(modals)/blocking-screen',
+            params: {
+              fromShield: 'true',
+              ...(currentBalance && { currentBalance })
+            }
+          });
+          console.log('🚀 Navigated to blocking screen from App Group deep link');
+        });
+      }
+    } catch (error) {
+      console.error('Failed to process deep link:', error);
+    }
+  }
+
   // MARK: - Utility Methods
 
   /**
@@ -480,15 +501,14 @@ class BitterSweetFamilyControlsModule {
    * @param status - Authorization status
    * @returns string - Human readable status
    */
-  getStatusDescription(status: BitterSweetAuthorizationStatus): string {
+  getStatusDescription(status: AuthorizationStatusType): string {
     switch (status) {
-      case 'notDetermined':
+      case 0: // notDetermined
         return 'Not yet requested';
-      case 'denied':
+      case 1: // denied
         return 'Permission denied';
-      case 'approved':
+      case 2: // approved
         return 'Permission granted';
-      case 'unknown':
       default:
         return 'Unknown status';
     }
@@ -500,7 +520,7 @@ export const FamilyControlsModule = new BitterSweetFamilyControlsModule();
 
 // Export types
 export type {
-  BitterSweetAuthorizationStatus,
+  AuthorizationStatusType as BitterSweetAuthorizationStatus,
   BitterSweetAppLaunchBlockedEvent,
   BitterSweetUnlockSessionExpiredEvent,
   BitterSweetAuthorizationChangedEvent

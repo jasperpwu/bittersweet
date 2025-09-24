@@ -1067,10 +1067,7 @@ export const useAppStore = create<AppStore>()(
             if (success) {
               const currentBalance = get().rewards.balance;
               console.log('📱 Store: Configuring shield with balance:', currentBalance);
-              await FamilyControlsModule.configureShield(currentBalance, [
-                { duration: 1, cost: 1 },
-                { duration: 5, cost: 5 }
-              ]);
+              await FamilyControlsModule.configureShield(currentBalance);
             }
 
             if (success) {

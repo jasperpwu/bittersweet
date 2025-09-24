@@ -10,6 +10,8 @@ import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
 import { useAppState, initializeUnifiedStore } from '../src/store/unified-store';
 import { autoInitializeMockData } from '../src/store/initializeMockData';
 import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
+import { useShieldDeepLinkMonitor } from '../src/hooks/useShieldDeepLinkMonitor';
+import { useShieldNotificationHandler } from '../src/hooks/useShieldNotificationHandler';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
@@ -30,6 +32,12 @@ export default function RootLayout() {
   // Initialize Device Activity Listener
   const { isListening } = useDeviceActivityListener();
 
+  // Initialize Shield Deep Link Monitor
+  const { manualCheck } = useShieldDeepLinkMonitor();
+
+  // Initialize Shield Notification Handler
+  const { checkLastNotificationResponse } = useShieldNotificationHandler();
+
   // Initialize stores
   useEffect(() => {
     initializeUnifiedStore();
@@ -48,26 +56,19 @@ export default function RootLayout() {
   // Handle URL scheme for shield unlocks
   useEffect(() => {
     const handleURL = (event: { url: string }) => {
-      console.log('📱 URL received:', event.url);
+      console.log('📱 [DEEPLINK] URL received:', event.url);
+      console.log('📱 [DEEPLINK] URL type:', typeof event.url);
+      console.log('📱 [DEEPLINK] URL includes unlock:', event.url.includes('unlock'));
 
       if (event.url.includes('unlock')) {
-        const url = new URL(event.url);
-        const duration = url.searchParams.get('duration');
-        const cost = url.searchParams.get('cost');
-        const balance = url.searchParams.get('balance');
+        console.log('✅ [DEEPLINK] URL contains unlock, processing via FamilyControlsModule...');
 
-        console.log('🔓 Unlock request:', { duration, cost, balance });
-
-        // Navigate to blocking screen with unlock parameters
-        router.push({
-          pathname: '/(modals)/blocking-screen',
-          params: {
-            unlockDuration: duration || '1',
-            unlockCost: cost || '1',
-            currentBalance: balance || '0',
-            fromShield: 'true'
-          }
+        // Use the centralized deep link processing
+        import('../src/modules/BitterSweetFamilyControls').then(({ FamilyControlsModule }) => {
+          FamilyControlsModule.processPendingDeepLink(event.url);
         });
+      } else {
+        console.log('ℹ️ [DEEPLINK] URL does not contain unlock keyword');
       }
     };
 

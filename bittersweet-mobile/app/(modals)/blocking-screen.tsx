@@ -100,9 +100,19 @@ export default function BlockingScreen() {
 
   // Handle parameters from shield unlock
   const fromShield = params.fromShield === 'true';
+  const fromNotification = params.fromNotification === 'true';
   const unlockDuration = fromShield ? parseInt(params.unlockDuration as string || '1') : 1;
   const unlockCost = fromShield ? parseInt(params.unlockCost as string || '1') : 1;
   const shieldBalance = fromShield ? parseInt(params.currentBalance as string || '0') : balance;
+
+  // Log the source for debugging
+  console.log('🛡️ [BLOCKING SCREEN] Source:', {
+    fromShield,
+    fromNotification,
+    shieldBalance,
+    appName,
+    appBundleId
+  });
 
   const [selectedDuration, setSelectedDuration] = useState(unlockDuration);
   const [isUnlocking, setIsUnlocking] = useState(false);
@@ -338,7 +348,10 @@ export default function BlockingScreen() {
           {appName} is Blocked
         </Typography>
         <Typography variant="body-14" color="red-100" className="text-center mb-2">
-          This app is currently blocked to help you focus
+          {fromNotification
+            ? "You tapped the notification to unlock this app"
+            : "This app is currently blocked to help you focus"
+          }
         </Typography>
 
         {/* Fruits Available */}
