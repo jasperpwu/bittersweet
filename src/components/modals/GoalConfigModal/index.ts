@@ -1,0 +1,1 @@
+export { GoalConfigModal } from './GoalConfigModal';

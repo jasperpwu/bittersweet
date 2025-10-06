@@ -1,0 +1,1 @@
+export { TrendAnalysis } from './TrendAnalysis';

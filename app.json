@@ -1,0 +1,128 @@
+{
+  "expo": {
+    "name": "bittersweet-mobile",
+    "slug": "bittersweet-mobile",
+    "version": "1.0.0",
+    "scheme": "bittersweet-mobile",
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      "expo-splash-screen",
+      "expo-dev-client",
+      [
+        "react-native-device-activity",
+        {
+          "appleTeamId": "WFHA987U5W",
+          "appGroup": "group.com.path2us.bittersweet.appblocker"
+        }
+      ],
+      [
+        "expo-live-activity",
+        {
+          "enablePushNotifications": true,
+          "appGroupIdentifier": "group.com.path2us.bittersweet.appblocker"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    },
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f1f1f1"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "deploymentTarget": "16.2",
+      "appleTeamId": "WFHA987U5W",
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#f1f1f1"
+      },
+      "bundleIdentifier": "com.path2us.bittersweet",
+      "entitlements": {
+        "com.apple.developer.family-controls": true,
+        "com.apple.security.application-groups": [
+          "group.com.path2us.bittersweet.appblocker"
+        ]
+      },
+      "infoPlist": {
+        "NSFamilyControlsUsageDescription": "This app uses Family Controls to help you manage app usage and focus time by blocking selected apps during work sessions.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSupportsLiveActivities": true
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#f1f1f1"
+      },
+      "package": "com.path2us.bittersweet"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.ShieldConfiguration",
+                  "targetName": "ShieldConfiguration",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.ShieldAction",
+                  "targetName": "ShieldAction",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.ActivityMonitorExtension",
+                  "targetName": "ActivityMonitorExtension",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "17feb958-07b2-4f60-bfe9-8985a83eefb3"
+      }
+    },
+    "owner": "jasperwu516"
+  }
+}
