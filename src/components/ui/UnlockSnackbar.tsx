@@ -10,6 +10,7 @@ import { useBlocklist, useBlocklistActions, useRewards } from '../../store';
 import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
 import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
 import { LiveActivityService } from '../../services/LiveActivityService';
+import { UnlockReasonModal } from '../modals/UnlockReasonModal';
 
 interface UnlockOptionProps {
   duration: number;
@@ -71,13 +72,13 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
 
   const [selectedDuration, setSelectedDuration] = useState(1);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [unlockReason, setUnlockReason] = useState('');
 
   const currentBalance = propBalance ?? balance;
   const unlockOptions = [1, 5, 15, 30];
 
-  const handleUnlock = async () => {
-    if (isUnlocking) return;
-
+  const handleUnlockClick = () => {
     const cost = selectedDuration * settings.unlockCostPerMinute;
 
     if (currentBalance < cost) {
@@ -90,7 +91,15 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
       return;
     }
 
+    // Show reason modal
+    setShowReasonModal(true);
+  };
 
+  const handleUnlock = async (reason: string) => {
+    if (isUnlocking) return;
+
+    setUnlockReason(reason);
+    setShowReasonModal(false);
     setIsUnlocking(true);
     triggerHaptic('light');
 
@@ -153,8 +162,8 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
       const unlockSession = await requestUnlock([], selectedDuration);
 
       if (unlockSession) {
-        // Start Live Activity for countdown display
-        const liveActivityId = LiveActivityService.startUnlockCountdown(reblockTime, selectedDuration);
+        // Start Live Activity for countdown display with reason
+        const liveActivityId = LiveActivityService.startUnlockCountdown(reblockTime, selectedDuration, reason);
 
         // Update the unlock session with Live Activity ID if it was started
         if (liveActivityId) {
@@ -278,7 +287,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
           </Pressable>
 
           <Pressable
-            onPress={handleUnlock}
+            onPress={handleUnlockClick}
             disabled={isUnlocking || currentBalance < (selectedDuration * settings.unlockCostPerMinute)}
             className={`
               flex-1 py-3 rounded-xl active:opacity-80
@@ -298,6 +307,14 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
         </View>
 
       </View>
+
+      {/* Unlock Reason Modal */}
+      <UnlockReasonModal
+        visible={showReasonModal}
+        onClose={() => setShowReasonModal(false)}
+        onConfirm={handleUnlock}
+        onCancel={() => setShowReasonModal(false)}
+      />
     </View>
   );
 };

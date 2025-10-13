@@ -17,9 +17,10 @@ export class LiveActivityService {
    * Start a new Live Activity for unlock countdown
    * @param endTime - When the unlock expires
    * @param durationMinutes - Total unlock duration in minutes
+   * @param reason - The reason for unlocking (user-provided text)
    * @returns Activity ID if started successfully, undefined otherwise
    */
-  static startUnlockCountdown(endTime: Date, durationMinutes: number): string | undefined {
+  static startUnlockCountdown(endTime: Date, durationMinutes: number, reason?: string): string | undefined {
     // Check if Live Activities are available
     if (!this.isAvailable()) {
       console.log('Live Activities not available:', {
@@ -37,13 +38,14 @@ export class LiveActivityService {
 
       // State for Live Activity (using correct expo-live-activity API)
       const state: LiveActivity.LiveActivityState = {
-        title: 'Focus Session Active',
-        subtitle: `${durationMinutes}m session`,
+        title: reason || 'Unlocked',
+        subtitle: `${durationMinutes}m unlock`,
         progressBar: {
           date: endTimestamp,
         },
         imageName: 'app_icon',
         dynamicIslandImageName: 'app_icon',
+        dynamicIslandText: reason || 'Unlocked'
       };
 
       // Configuration for Live Activity
@@ -114,8 +116,7 @@ export class LiveActivityService {
       console.log('✅ Live Activity stopped');
     } catch (error: any) {
       // Activity might have already expired/ended naturally, which is fine
-      const errorCode = error?.code || error?.cause?.code;
-      if (errorCode === 'ERR_ACTIVITY_NOT_FOUND') {
+      if (error?.code === 'ERR_ACTIVITY_NOT_FOUND') {
         console.log('ℹ️ Live Activity already ended (likely expired naturally)');
       } else {
         console.error('❌ Error stopping Live Activity:', error);
@@ -155,6 +156,7 @@ export class LiveActivityService {
         },
         imageName: 'app_icon',
         dynamicIslandImageName: 'app_icon',
+        dynamicIslandText: labelName
       };
 
       // Configuration for Live Activity
@@ -206,11 +208,6 @@ export class LiveActivityService {
    */
   static stopFocusTimer(activityId: string, reason: 'completed' | 'cancelled' = 'completed'): void {
     if (!this.isAvailable()) {
-      return;
-    }
-
-    if (!activityId || typeof activityId !== 'string') {
-      console.warn('⚠️ Invalid activity ID provided to stopFocusTimer:', activityId);
       return;
     }
 
