@@ -40,7 +40,7 @@ const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
 
   const onLottieAnimationFinish = useCallback(() => {
     // Start the exit animation after Lottie finishes with a shorter delay
-    animation.value = withDelay(200, withTiming(1, { duration: 600 }, (isFinished) => {
+    animation.value = withDelay(100, withTiming(1, { duration: 300 }, (isFinished) => {
       if (isFinished) {
         runOnJS(setAnimationComplete)(true);
       }
