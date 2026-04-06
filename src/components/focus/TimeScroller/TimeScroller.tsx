@@ -1,5 +1,5 @@
-import { FC, useRef, useEffect } from 'react';
-import { View, ScrollView, Dimensions, Text } from 'react-native';
+import { FC, useRef, useEffect, useMemo } from 'react';
+import { View, Dimensions, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 interface TimeScrollerProps {
@@ -9,53 +9,173 @@ interface TimeScrollerProps {
 
 const { width: screenWidth } = Dimensions.get('window');
 const TICK_SPACING = 100;
+const TIME_VALUES = Array.from({ length: 13 }, (_, i) => i * 5); // 0, 5, 10, ... 60
 
-// Optional font family names assuming they are loaded in the app
-const FONT_REGULAR = 'Poppins-Regular';
-const FONT_MEDIUM = 'Poppins-Medium';
 const FONT_BOLD = 'Poppins-Bold';
+
+const centerPosition = screenWidth / 2;
+const centerOffset = (screenWidth - TICK_SPACING) / 2;
+
+/**
+ * Animated tick item that reacts to scroll position for smooth scale/opacity transitions.
+ */
+const TickItem: FC<{
+  time: number;
+  index: number;
+  scrollX: Animated.Value;
+}> = ({ time, index, scrollX }) => {
+  const itemCenter = index * TICK_SPACING; // scroll position when this item is centered
+
+  // Distance from center in scroll coordinates
+  const inputRange = [
+    itemCenter - TICK_SPACING * 3,
+    itemCenter - TICK_SPACING * 2,
+    itemCenter - TICK_SPACING,
+    itemCenter,
+    itemCenter + TICK_SPACING,
+    itemCenter + TICK_SPACING * 2,
+    itemCenter + TICK_SPACING * 3,
+  ];
+
+  const scale = scrollX.interpolate({
+    inputRange,
+    outputRange: [0.42, 0.5, 0.62, 1, 0.62, 0.5, 0.42],
+    extrapolate: 'clamp',
+  });
+
+  const opacity = scrollX.interpolate({
+    inputRange,
+    outputRange: [0.2, 0.35, 0.6, 1, 0.6, 0.35, 0.2],
+    extrapolate: 'clamp',
+  });
+
+  // Tick height: hide when centered (selected), show otherwise
+  const tickOpacity = scrollX.interpolate({
+    inputRange: [itemCenter - TICK_SPACING * 0.5, itemCenter, itemCenter + TICK_SPACING * 0.5],
+    outputRange: [0.4, 0, 0.4],
+    extrapolate: 'clamp',
+  });
+
+  return (
+    <View
+      style={{
+        width: TICK_SPACING,
+        height: 110,
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <View style={{ height: 80, justifyContent: 'center', width: TICK_SPACING }}>
+        <Animated.Text
+          style={{
+            color: '#FFFFFF',
+            fontSize: 56,
+            fontFamily: FONT_BOLD,
+            textAlign: 'center',
+            paddingBottom: 100,
+            opacity,
+            transform: [{ scale }],
+          }}
+        >
+          {time === 0 ? '∞' : time}
+        </Animated.Text>
+      </View>
+
+      {/* Minor ticks inside the segment */}
+      <View
+        style={{ position: 'absolute', bottom: 20, left: 0, right: 0, height: 20 }}
+        pointerEvents="none"
+      >
+        {[1, 2, 3, 4].map((j) => {
+          const left = (TICK_SPACING / 5) * j;
+          return (
+            <View
+              key={`minor-${j}`}
+              style={{
+                position: 'absolute',
+                left: left - 1,
+                width: 2,
+                height: 10,
+                backgroundColor: 'rgba(255,255,255,0.25)',
+                borderRadius: 1,
+              }}
+            />
+          );
+        })}
+      </View>
+
+      {/* Major tick */}
+      <Animated.View
+        style={{
+          width: 3,
+          height: 24,
+          backgroundColor: '#FFFFFF',
+          borderRadius: 1.5,
+          opacity: tickOpacity,
+        }}
+      />
+    </View>
+  );
+};
 
 export const TimeScroller: FC<TimeScrollerProps> = ({
   selectedTime,
   onTimeChange,
 }) => {
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<typeof Animated.ScrollView | null>(null);
   const isUserScrollingRef = useRef(false);
-
-  // Define the exact center position for both center line and triangle
-  const centerPosition = screenWidth / 2;
-  const centerOffset = (screenWidth - TICK_SPACING) / 2;
+  const lastSnappedRef = useRef(selectedTime);
+  const scrollX = useRef(new Animated.Value((selectedTime / 5) * TICK_SPACING)).current;
 
   useEffect(() => {
     if (isUserScrollingRef.current) return;
     if (scrollViewRef.current) {
       const tickIndex = selectedTime / 5;
       const scrollPosition = tickIndex * TICK_SPACING;
-      scrollViewRef.current.scrollTo({ x: scrollPosition, animated: false });
+      (scrollViewRef.current as any).scrollTo({ x: scrollPosition, animated: false });
     }
   }, [selectedTime]);
 
-  const handleMomentumBegin = () => {
+  // Haptic feedback during scroll — fire when crossing a snap boundary
+  useEffect(() => {
+    const listenerId = scrollX.addListener(({ value }) => {
+      if (!isUserScrollingRef.current) return;
+      const snappedIndex = Math.round(value / TICK_SPACING);
+      const snappedTime = Math.max(0, Math.min(60, snappedIndex * 5));
+      if (snappedTime !== lastSnappedRef.current) {
+        lastSnappedRef.current = snappedTime;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    });
+    return () => scrollX.removeListener(listenerId);
+  }, [scrollX]);
+
+  const handleScrollBegin = () => {
     isUserScrollingRef.current = true;
   };
 
   const handleScrollEnd = (event: any) => {
-    const scrollX = event.nativeEvent.contentOffset.x;
-    const rawIndex = scrollX / TICK_SPACING;
-    const snappedIndex = Math.round(rawIndex);
+    const scrollXVal = event.nativeEvent.contentOffset.x;
+    const snappedIndex = Math.round(scrollXVal / TICK_SPACING);
     const snappedTime = Math.max(0, Math.min(60, snappedIndex * 5));
-
-    const targetScrollX = snappedIndex * TICK_SPACING;
-    scrollViewRef.current?.scrollTo({ x: targetScrollX, animated: true });
 
     if (snappedTime !== selectedTime) {
       onTimeChange(snappedTime);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
-    // Allow programmatic updates again after snap
+    lastSnappedRef.current = snappedTime;
     isUserScrollingRef.current = false;
   };
+
+  const onScroll = useMemo(
+    () =>
+      Animated.event(
+        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+        { useNativeDriver: true },
+      ),
+    [scrollX],
+  );
 
   return (
     <View style={{ height: 140 }}>
@@ -64,7 +184,7 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
         <View
           style={{
             position: 'absolute',
-            left: centerPosition - 3, // Center the 6px line at exact center
+            left: centerPosition - 3,
             top: 58,
             width: 6,
             height: 40,
@@ -73,110 +193,33 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
             zIndex: 10,
           }}
         />
-        <ScrollView
-          ref={scrollViewRef}
+        <Animated.ScrollView
+          ref={scrollViewRef as any}
           horizontal
           showsHorizontalScrollIndicator={false}
-          onMomentumScrollBegin={handleMomentumBegin}
-          onScrollBeginDrag={handleMomentumBegin}
+          onScrollBeginDrag={handleScrollBegin}
           onMomentumScrollEnd={handleScrollEnd}
+          onScrollEndDrag={handleScrollEnd}
+          onScroll={onScroll}
           scrollEventThrottle={16}
           decelerationRate="fast"
           snapToInterval={TICK_SPACING}
-          snapToAlignment="center"
+          snapToAlignment="start"
           contentContainerStyle={{
             paddingHorizontal: centerOffset,
           }}
         >
-          {Array.from({ length: 13 }, (_, i) => i * 5).map((time, idx) => {
-            const isSelected = time === selectedTime;
-            const distance = Math.abs(time - selectedTime);
-
-            let opacity = 1;
-            let fontSize = 26;
-            let fontFamily = FONT_REGULAR;
-
-            if (isSelected) {
-              opacity = 1;
-              fontSize = 56;
-              fontFamily = FONT_BOLD;
-            } else if (distance <= 10) {
-              opacity = 0.7;
-              fontSize = 34;
-              fontFamily = FONT_MEDIUM;
-            } else if (distance <= 20) {
-              opacity = 0.5;
-              fontSize = 28;
-              fontFamily = FONT_MEDIUM;
-            } else {
-              opacity = 0.25;
-              fontSize = 24;
-              fontFamily = FONT_REGULAR;
-            }
-            return (
-              <View
-                key={time}
-                style={{
-                  width: TICK_SPACING,
-                  height: 110,
-                  alignItems: 'center',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                <View style={{ height: 80, justifyContent: 'center', width: TICK_SPACING }}>
-                  <Text
-                    style={{
-                      color: `rgba(255, 255, 255, ${opacity})`,
-                      fontSize: fontSize,
-                      fontFamily: fontFamily,
-                      textAlign: 'center',
-                      paddingBottom: 100
-                    }}
-                  >
-                    {time === 0 ? '∞' : time}
-                  </Text>
-                </View>
-                {/* Minor ticks inside the segment (4 between major ticks) */}
-                <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, height: 20 }} pointerEvents="none">
-                  {Array.from({ length: 4 }, (_, j) => j + 1).map((j) => {
-                    const left = (TICK_SPACING / 5) * j;
-                    return (
-                      <View
-                        key={`minor-${idx}-${j}`}
-                        style={{
-                          position: 'absolute',
-                          left: left - 1,
-                          width: 2,
-                          height: 10,
-                          backgroundColor: 'rgba(255,255,255,0.25)',
-                          borderRadius: 1,
-                        }}
-                      />
-                    );
-                  })}
-                </View>
-
-                {/* Major tick */}
-                <View
-                  style={{
-                    width: 3,
-                    height: isSelected ? 0 : 24,
-                    backgroundColor: `rgba(255, 255, 255, ${opacity * 0.6})`,
-                    borderRadius: 1.5,
-                  }}
-                />
-              </View>
-            );
-          })}
-        </ScrollView>
+          {TIME_VALUES.map((time, idx) => (
+            <TickItem key={time} time={time} index={idx} scrollX={scrollX} />
+          ))}
+        </Animated.ScrollView>
       </View>
-      {/* Triangle pointer - positioned to align exactly with center line */}
+      {/* Triangle pointer */}
       <View style={{ position: 'relative', height: 24, marginTop: 6 }}>
         <View
           style={{
             position: 'absolute',
-            left: centerPosition - 8, // Center the 16px triangle at exact center
+            left: centerPosition - 8,
             width: 0,
             height: 0,
             borderLeftWidth: 8,
