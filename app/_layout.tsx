@@ -147,6 +147,14 @@ export default function RootLayout() {
                     gestureEnabled: true,
                   }}
                 />
+                <Stack.Screen
+                  name="(modals)/dev-tools"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
               </Stack>
 
               {/* Unlock bottom sheet overlay */}

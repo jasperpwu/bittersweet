@@ -321,8 +321,18 @@ export default function SettingsScreen() {
         {__DEV__ && (
           <View className="px-5 mt-6">
             <Typography variant="subtitle-14-medium" color="white" className="mb-4">
-              Device Info (Debug)
+              Developer
             </Typography>
+
+            <Pressable
+              onPress={() => router.push('/(modals)/dev-tools')}
+              className="bg-gray-700 rounded-xl py-3 px-4 mb-4 active:opacity-80"
+            >
+              <Typography variant="subtitle-14-semibold" color="primary">
+                Open Dev Tools
+              </Typography>
+            </Pressable>
+
             <View className="bg-dark-border rounded-lg p-4">
               <Typography variant="body-12" color="secondary">
                 Device: {deviceInfo.brand} {deviceInfo.modelName}
