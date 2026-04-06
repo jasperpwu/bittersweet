@@ -371,8 +371,8 @@ export default function FocusScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
-      {/* Fruit Counter - Top Left */}
-      <View className="absolute top-12 left-4 z-50">
+      {/* Fruit Counter - Top Right */}
+      <View className="absolute top-16 right-8 z-50">
         <FruitCounter fruitCount={rewards.balance} size="small" />
       </View>
 

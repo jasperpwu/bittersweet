@@ -12,8 +12,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from '../../src/components/ui/StatusBar';
 import { Header } from '../../src/components/ui/Header';
 import { DateSelector, Timeline } from '../../src/components/journal';
-import { useFocus, useRewards, useFocusActions } from '../../src/store';
-import { FruitCounter } from '../../src/components/rewards';
+import { useFocus, useFocusActions } from '../../src/store';
 import { generateExtendedWeekDates } from '../../src/utils/dateUtils';
 
 export default function JournalScreen() {
@@ -21,7 +20,6 @@ export default function JournalScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [scrollToSessionId, setScrollToSessionId] = useState<string | null>(null);
   const { sessions } = useFocus();
-  const rewards = useRewards();
   const { deleteSession } = useFocusActions();
 
   // Handle navigation from session creation
@@ -184,7 +182,6 @@ export default function JournalScreen() {
       
       <Header
         title="Journal"
-        leftComponent={<FruitCounter fruitCount={rewards.balance} size="small" />}
         rightAction={{
           icon: 'add',
           onPress: handleAddSession,
