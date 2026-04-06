@@ -8,6 +8,7 @@ import { NotesModal } from '../../src/components/modals/NotesModal';
 import { useFocus, useFocusActions, useRewards } from '../../src/store';
 import { FruitCounter } from '../../src/components/rewards';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
+import { router } from 'expo-router';
 
 export default function FocusScreen() {
   // Get tags from store
@@ -296,6 +297,13 @@ export default function FocusScreen() {
     setIsSessionActive(true);
     transitionCancelledRef.current = false;
 
+    // Set the display value before the timer fades in
+    if (selectedTime === 0) {
+      setElapsedSeconds(0);
+    } else {
+      setRemainingSeconds(selectedTime * 60);
+    }
+
     // Prepare timer visuals for entrance
     timerOpacity.setValue(0);
     timerScale.setValue(0.94);
@@ -307,13 +315,13 @@ export default function FocusScreen() {
       Animated.timing(tagsOpacity, { toValue: 0, duration: 140, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start(() => {
       if (transitionCancelledRef.current) return;
+      // Start the countdown immediately as the timer fades in, not after the spring settles
+      startTimer();
       Animated.parallel([
         Animated.timing(timerOpacity, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         Animated.spring(timerScale, { toValue: 1, stiffness: 220, damping: 20, mass: 0.6, useNativeDriver: true }),
         Animated.spring(timerTranslateY, { toValue: 0, stiffness: 220, damping: 20, mass: 0.6, useNativeDriver: true }),
-      ]).start(({ finished }) => {
-        if (finished && !transitionCancelledRef.current) startTimer();
-      });
+      ]).start();
     });
   };
 
@@ -335,17 +343,15 @@ export default function FocusScreen() {
 
   const handleNotesSave = (notes: string) => {
     setSessionNotes(notes);
-    console.log('Session completed with notes:', notes);
-    
+
     const actualDuration = isInfinite ? Math.floor(elapsedSeconds / 60) : selectedTime - Math.floor(remainingSeconds / 60);
-    
+
     // Only create session if duration is meaningful (1+ minutes)
     if (actualDuration >= 1) {
       const startTime = new Date(Date.now() - (isInfinite ? elapsedSeconds * 1000 : (selectedTime * 60 * 1000 - remainingSeconds * 1000)));
       const endTime = new Date();
-      
-      // Use the store action to create and save the completed session
-      createCompletedSession({
+
+      const session = createCompletedSession({
         startTime,
         endTime,
         duration: actualDuration,
@@ -353,6 +359,9 @@ export default function FocusScreen() {
         tagName: selectedTag!,
         notes: notes,
       });
+
+      // Navigate to session complete modal
+      router.push({ pathname: '/(modals)/session-complete', params: { sessionId: session.id } });
     }
   };
 
@@ -378,7 +387,7 @@ export default function FocusScreen() {
           </Animated.View>
           <Animated.View style={{ position: 'absolute', opacity: timerOpacity, transform: [{ scale: timerScale }, { translateY: timerTranslateY }], zIndex: 100 }}>
             <Animated.Text
-              style={{ fontSize: 96, lineHeight: 104, color: '#FFFFFF', fontFamily: 'Poppins-Bold', textAlign: 'center' }}
+              style={{ fontSize: 96, lineHeight: 120, color: '#FFFFFF', fontFamily: 'Poppins-Bold', textAlign: 'center' }}
             >
               {displayTime}
             </Animated.Text>

@@ -2,7 +2,6 @@ import React, { FC, useState } from 'react';
 import { View, Modal, Pressable } from 'react-native';
 import { Typography } from '../ui/Typography';
 import { Input } from '../ui/Input';
-import { Button } from '../ui/Button';
 
 interface NotesModalProps {
   visible: boolean;
@@ -65,21 +64,26 @@ export const NotesModal: FC<NotesModalProps> = ({
             />
             
             {/* Buttons */}
-            <View className="flex-row space-x-3">
-              <Button
-                variant="secondary"
+            <View className="flex-row" style={{ gap: 12 }}>
+              <Pressable
                 onPress={handleCancel}
-                className="flex-1"
+                className="flex-1 rounded-xl items-center justify-center py-3 border border-dark-border active:opacity-80"
               >
-                Skip
-              </Button>
-              <Button
-                variant="primary"
+                <Typography variant="subtitle-14-semibold" color="white">
+                  Skip
+                </Typography>
+              </Pressable>
+              <Pressable
                 onPress={handleSave}
-                className="flex-1"
+                className="flex-1 rounded-xl items-center justify-center py-3 bg-white active:opacity-80"
               >
-                Save Notes
-              </Button>
+                <Typography
+                  variant="subtitle-14-semibold"
+                  style={{ color: '#1B1C30' }}
+                >
+                  Save Notes
+                </Typography>
+              </Pressable>
             </View>
           </View>
         </Pressable>
