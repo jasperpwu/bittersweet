@@ -1,5 +1,13 @@
-import { useState, useMemo, useEffect } from 'react';
-import { View, SafeAreaView, Alert } from 'react-native';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, SafeAreaView, Alert, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+  Easing,
+} from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from '../../src/components/ui/StatusBar';
 import { Header } from '../../src/components/ui/Header';
@@ -34,9 +42,68 @@ export default function JournalScreen() {
   // Current time for the timeline indicator
   const currentTime = new Date();
 
+  const { width: screenWidth } = useWindowDimensions();
+  const translateX = useSharedValue(0);
+  const isSwiping = useSharedValue(false);
+
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
   };
+
+  const navigateDay = useCallback((direction: -1 | 1) => {
+    setSelectedDate(prev => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + direction);
+      return next;
+    });
+  }, []);
+
+  const slideIn = useCallback((fromDirection: -1 | 1) => {
+    // New content enters from the opposite side
+    translateX.value = fromDirection * screenWidth * 0.3;
+    translateX.value = withTiming(0, {
+      duration: 250,
+      easing: Easing.out(Easing.cubic),
+    }, () => {
+      isSwiping.value = false;
+    });
+  }, [screenWidth, translateX, isSwiping]);
+
+  const swipeGesture = useMemo(() =>
+    Gesture.Pan()
+      .activeOffsetX([-30, 30])
+      .failOffsetY([-20, 20])
+      .onUpdate((event) => {
+        if (!isSwiping.value) {
+          translateX.value = event.translationX;
+        }
+      })
+      .onEnd((event) => {
+        if (isSwiping.value) return;
+        if (Math.abs(event.translationX) > 50) {
+          const direction = event.translationX < 0 ? 1 : -1;
+          isSwiping.value = true;
+          // Slide current content off-screen
+          translateX.value = withTiming(
+            -direction * screenWidth * 0.5,
+            { duration: 150, easing: Easing.in(Easing.cubic) },
+            () => {
+              runOnJS(navigateDay)(direction);
+              runOnJS(slideIn)(direction);
+            }
+          );
+        } else {
+          // Snap back
+          translateX.value = withTiming(0, { duration: 200 });
+        }
+      }),
+    [navigateDay, screenWidth, translateX, isSwiping, slideIn]
+  );
+
+  const animatedTimelineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+    opacity: withTiming(isSwiping.value ? 0.5 : 1, { duration: 100 }),
+  }));
 
   const handleAddSession = () => {
     router.push('/(modals)/session-creation');
@@ -136,15 +203,17 @@ export default function JournalScreen() {
         </View>
 
         {/* Timeline */}
-        <View className="flex-1 px-5 pt-4">
-          <Timeline
-            sessions={sessionsForSelectedDate}
-            currentTime={currentTime}
-            onSessionPress={handleSessionPress}
-            scrollToSessionId={scrollToSessionId}
-            onScrollComplete={() => setScrollToSessionId(null)}
-          />
-        </View>
+        <GestureDetector gesture={swipeGesture}>
+          <Animated.View className="flex-1 px-5 pt-4" style={animatedTimelineStyle}>
+            <Timeline
+              sessions={sessionsForSelectedDate}
+              currentTime={currentTime}
+              onSessionPress={handleSessionPress}
+              scrollToSessionId={scrollToSessionId}
+              onScrollComplete={() => setScrollToSessionId(null)}
+            />
+          </Animated.View>
+        </GestureDetector>
       </View>
     </SafeAreaView>
   );
