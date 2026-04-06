@@ -228,6 +228,12 @@ export const persistenceConfig = {
       transactions: state.rewards.transactions,
       unlockableApps: state.rewards.unlockableApps,
     },
+    blocklist: {
+      settings: state.blocklist.settings,
+      currentSelectionId: state.blocklist.currentSelectionId,
+      isAuthorized: state.blocklist.isAuthorized,
+      authorizationStatus: state.blocklist.authorizationStatus,
+    },
     settings: state.settings,
     ui: state.ui,
   }),
