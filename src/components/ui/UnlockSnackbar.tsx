@@ -6,7 +6,7 @@ import {
   Alert
 } from 'react-native';
 import { Typography } from './Typography';
-import { useBlocklist, useBlocklistActions, useRewards } from '../../store';
+import { useBlocklist, useBlocklistActions, useRewards, useAppStore } from '../../store';
 import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
 import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
 import { LiveActivityService } from '../../services/LiveActivityService';
@@ -165,10 +165,32 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
         // Start Live Activity for countdown display with reason
         const liveActivityId = LiveActivityService.startUnlockCountdown(reblockTime, selectedDuration, reason);
 
-        // Update the unlock session with Live Activity ID if it was started
+        // Persist the Live Activity ID in the store so endUnlock can stop it
         if (liveActivityId) {
-          unlockSession.liveActivityId = liveActivityId;
+          useAppStore.setState((state) => ({
+            blocklist: {
+              ...state.blocklist,
+              activeSessions: {
+                ...state.blocklist.activeSessions,
+                byId: {
+                  ...state.blocklist.activeSessions.byId,
+                  [unlockSession.id]: {
+                    ...state.blocklist.activeSessions.byId[unlockSession.id],
+                    liveActivityId,
+                  },
+                },
+              },
+            },
+          }));
           console.log('🎬 Live Activity started for unlock session:', unlockSession.id);
+
+          // Schedule Live Activity dismissal when unlock expires
+          const msUntilExpiry = reblockTime.getTime() - Date.now();
+          setTimeout(() => {
+            console.log('⏰ Unlock expired — dismissing Live Activity:', liveActivityId);
+            LiveActivityService.stopUnlockCountdown(liveActivityId, 'expired');
+            useAppStore.getState().blocklist.endUnlock(unlockSession.id);
+          }, msUntilExpiry);
         }
 
         // Stop any existing monitoring first to avoid "excessive activities" error

@@ -13,6 +13,9 @@ export interface UnlockCountdownState {
  * Service for managing iOS Live Activities for unlock countdown
  */
 export class LiveActivityService {
+  // Track the last unlock activity ID so we can clean up stale ones
+  private static lastUnlockActivityId: string | undefined;
+
   /**
    * Start a new Live Activity for unlock countdown
    * @param endTime - When the unlock expires
@@ -33,6 +36,20 @@ export class LiveActivityService {
     }
 
     try {
+      // Stop any stale unlock activity before starting a new one
+      if (this.lastUnlockActivityId) {
+        console.log('🧹 Cleaning up stale unlock activity:', this.lastUnlockActivityId);
+        try {
+          LiveActivity.stopActivity(this.lastUnlockActivityId, {
+            title: 'Unlock Ended',
+            progressBar: { date: Date.now() },
+          });
+        } catch (e) {
+          // Already ended — ignore
+        }
+        this.lastUnlockActivityId = undefined;
+      }
+
       const now = Date.now();
       const endTimestamp = endTime.getTime();
 
@@ -76,6 +93,7 @@ export class LiveActivityService {
       const activityId = LiveActivity.startActivity(state, config);
 
       if (activityId) {
+        this.lastUnlockActivityId = activityId;
         console.log('✅ Live Activity started with ID:', activityId);
         return activityId;
       } else {
@@ -113,11 +131,17 @@ export class LiveActivityService {
       };
 
       LiveActivity.stopActivity(activityId, finalState);
+      if (this.lastUnlockActivityId === activityId) {
+        this.lastUnlockActivityId = undefined;
+      }
       console.log('✅ Live Activity stopped');
     } catch (error: any) {
       // Activity might have already expired/ended naturally, which is fine
       if (error?.code === 'ERR_ACTIVITY_NOT_FOUND') {
         console.log('ℹ️ Live Activity already ended (likely expired naturally)');
+        if (this.lastUnlockActivityId === activityId) {
+          this.lastUnlockActivityId = undefined;
+        }
       } else {
         console.error('❌ Error stopping Live Activity:', error);
       }
