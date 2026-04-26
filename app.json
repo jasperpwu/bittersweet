@@ -115,6 +115,15 @@
                       "group.com.path2us.bittersweet.appblocker"
                     ]
                   }
+                },
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.bittersweetmobileLiveActivity",
+                  "targetName": "bittersweetmobileLiveActivity",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
                 }
               ]
             }
