@@ -23,8 +23,9 @@ export const NotesModal: FC<NotesModalProps> = ({
     onClose();
   };
 
-  const handleCancel = () => {
+  const handleSkip = () => {
     setNotes(initialNotes); // Reset to initial value
+    onSave(''); // Save session without notes
     onClose();
   };
 
@@ -38,7 +39,7 @@ export const NotesModal: FC<NotesModalProps> = ({
       {/* Backdrop */}
       <Pressable 
         className="flex-1 bg-black/50 justify-center items-center px-6"
-        onPress={handleCancel}
+        onPress={handleSkip}
       >
         {/* Modal Content */}
         <Pressable className="w-full max-w-md" onPress={(e) => e.stopPropagation()}>
@@ -66,7 +67,7 @@ export const NotesModal: FC<NotesModalProps> = ({
             {/* Buttons */}
             <View className="flex-row" style={{ gap: 12 }}>
               <Pressable
-                onPress={handleCancel}
+                onPress={handleSkip}
                 className="flex-1 rounded-xl items-center justify-center py-3 border border-dark-border active:opacity-80"
               >
                 <Typography variant="subtitle-14-semibold" color="white">

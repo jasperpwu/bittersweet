@@ -120,16 +120,16 @@ export const Timeline: FC<TimelineProps> = ({
             {hourSlots.map((hour, index) => (
               <View
                 key={hour}
-                style={{ 
+                style={{
                   height: HOUR_HEIGHT,
                   justifyContent: 'flex-start',
                   alignItems: 'flex-end',
-                  paddingTop: 8,
                 }}
               >
                 <Typography
                   variant="body-12"
                   color="secondary"
+                  style={{ lineHeight: 14, marginTop: -7 }}
                 >
                   {formatHour(hour)}
                 </Typography>

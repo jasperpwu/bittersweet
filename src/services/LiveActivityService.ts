@@ -13,8 +13,12 @@ export interface UnlockCountdownState {
  * Service for managing iOS Live Activities for unlock countdown
  */
 export class LiveActivityService {
-  // Track the last unlock activity ID so we can clean up stale ones
+  // Track activity IDs and end times so we can clean up expired ones from
+  // _layout.tsx on app foreground (JS timers don't run in background).
   private static lastUnlockActivityId: string | undefined;
+  private static lastFocusActivityId: string | undefined;
+  private static focusEndTimestamp: number | undefined;
+  private static unlockEndTimestamp: number | undefined;
 
   /**
    * Start a new Live Activity for unlock countdown
@@ -43,7 +47,7 @@ export class LiveActivityService {
           LiveActivity.stopActivity(this.lastUnlockActivityId, {
             title: 'Unlock Ended',
             progressBar: { date: Date.now() },
-          });
+          } as LiveActivity.LiveActivityState);
         } catch (e) {
           // Already ended — ignore
         }
@@ -72,7 +76,8 @@ export class LiveActivityService {
         subtitleColor: '#8B4513',
         progressViewTint: '#FF6347',
         progressViewLabelColor: '#8B4513',
-        deepLinkUrl: '/dashboard',
+        // No deepLinkUrl — tapping the live activity opens the app via default iOS
+        // behavior without triggering Expo Router navigation to a nonexistent route.
         timerType: 'digital',
       };
 
@@ -94,6 +99,7 @@ export class LiveActivityService {
 
       if (activityId) {
         this.lastUnlockActivityId = activityId;
+        this.unlockEndTimestamp = endTimestamp;
         console.log('✅ Live Activity started with ID:', activityId);
         return activityId;
       } else {
@@ -121,18 +127,21 @@ export class LiveActivityService {
       console.log('🛑 Stopping Live Activity:', activityId, 'Reason:', reason);
 
       // Final state showing the countdown has ended
+      // Note: Do NOT pass imageName here — the native stopActivity runs
+      // updateImages() before activity.end(), and if image resolution fails
+      // the Task throws silently and the activity is never dismissed.
       const finalState: LiveActivity.LiveActivityState = {
         title: reason === 'expired' ? "Focus Session Complete" : "Focus Session Ended",
         subtitle: "Apps are now unblocked",
         progressBar: {
           date: Date.now(), // Set to now to show 00:00
         },
-        imageName: "app_icon"
       };
 
       LiveActivity.stopActivity(activityId, finalState);
       if (this.lastUnlockActivityId === activityId) {
         this.lastUnlockActivityId = undefined;
+        this.unlockEndTimestamp = undefined;
       }
       console.log('✅ Live Activity stopped');
     } catch (error: any) {
@@ -141,6 +150,7 @@ export class LiveActivityService {
         console.log('ℹ️ Live Activity already ended (likely expired naturally)');
         if (this.lastUnlockActivityId === activityId) {
           this.lastUnlockActivityId = undefined;
+          this.unlockEndTimestamp = undefined;
         }
       } else {
         console.error('❌ Error stopping Live Activity:', error);
@@ -190,7 +200,8 @@ export class LiveActivityService {
         subtitleColor: '#8B4513',
         progressViewTint: '#FF6347',
         progressViewLabelColor: '#8B4513',
-        deepLinkUrl: '/dashboard',
+        // No deepLinkUrl — tapping the live activity opens the app via default iOS
+        // behavior without triggering Expo Router navigation to a nonexistent route.
         timerType: 'digital',
       };
 
@@ -212,6 +223,8 @@ export class LiveActivityService {
       const activityId = LiveActivity.startActivity(state, config);
 
       if (activityId) {
+        this.lastFocusActivityId = activityId;
+        this.focusEndTimestamp = endTimestamp;
         console.log('✅ Live Activity started with ID:', activityId);
         return activityId;
       } else {
@@ -239,16 +252,22 @@ export class LiveActivityService {
       console.log('🛑 Stopping Focus Timer Live Activity:', activityId, 'Reason:', reason);
 
       // Final state showing the session has ended
+      // Note: Do NOT pass imageName here — the native stopActivity runs
+      // updateImages() before activity.end(), and if image resolution fails
+      // the Task throws silently and the activity is never dismissed.
       const finalState: LiveActivity.LiveActivityState = {
         title: reason === 'completed' ? "Focus Session Complete" : "Focus Session Cancelled",
         subtitle: "Great work!",
         progressBar: {
           date: Date.now(), // Set to now to show 00:00
         },
-        imageName: "app_icon"
       };
 
       LiveActivity.stopActivity(activityId, finalState);
+      if (this.lastFocusActivityId === activityId) {
+        this.lastFocusActivityId = undefined;
+        this.focusEndTimestamp = undefined;
+      }
       console.log('✅ Focus Timer Live Activity stopped');
     } catch (error: any) {
       // Activity might have already expired/ended naturally, which is fine
@@ -257,6 +276,10 @@ export class LiveActivityService {
         console.log('ℹ️ Focus Timer Live Activity already ended (likely expired naturally)');
       } else {
         console.error('❌ Error stopping Focus Timer Live Activity:', error);
+      }
+      if (this.lastFocusActivityId === activityId) {
+        this.lastFocusActivityId = undefined;
+        this.focusEndTimestamp = undefined;
       }
     }
   }
@@ -273,5 +296,52 @@ export class LiveActivityService {
     const isModuleAvailable = LiveActivity && typeof LiveActivity.startActivity === 'function';
 
     return isIOSVersionSupported && isModuleAvailable;
+  }
+
+  /**
+   * End any tracked live activities whose timer has expired. Called from
+   * _layout.tsx on app foreground as a safety net — JS timers are suspended
+   * while the app is in the background, so stopActivity can't be called until
+   * the user opens the app again. Only cleans up expired activities; running
+   * sessions are left alone.
+   */
+  static cleanupExpired(): void {
+    if (!this.isAvailable()) return;
+
+    const now = Date.now();
+    const stopState: LiveActivity.LiveActivityState = {
+      title: 'Session Ended',
+      progressBar: { date: now },
+    };
+
+    if (this.lastFocusActivityId && this.focusEndTimestamp && now >= this.focusEndTimestamp) {
+      try {
+        LiveActivity.stopActivity(this.lastFocusActivityId, stopState);
+        console.log('🧹 Cleaned up expired focus activity:', this.lastFocusActivityId);
+      } catch (e) {
+        // Already ended — ignore
+      }
+      this.lastFocusActivityId = undefined;
+      this.focusEndTimestamp = undefined;
+    }
+
+    if (this.lastUnlockActivityId && this.unlockEndTimestamp && now >= this.unlockEndTimestamp) {
+      try {
+        LiveActivity.stopActivity(this.lastUnlockActivityId, stopState);
+        console.log('🧹 Cleaned up expired unlock activity:', this.lastUnlockActivityId);
+      } catch (e) {
+        // Already ended — ignore
+      }
+      this.lastUnlockActivityId = undefined;
+      this.unlockEndTimestamp = undefined;
+    }
+  }
+
+  /**
+   * Check if a focus session is currently tracked (activity ID exists).
+   * Used by the focus screen to avoid double-stopping.
+   */
+  static get hasFocusActivity(): boolean {
+    return !!this.lastFocusActivityId;
   }
 }

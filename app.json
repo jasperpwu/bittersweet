@@ -58,6 +58,8 @@
       "entitlements": {
         "com.apple.developer.family-controls": true,
         "com.apple.security.application-groups": [
+          "group.com.path2us.bittersweet.appblocker",
+          "group.com.path2us.bittersweet.appblocker",
           "group.com.path2us.bittersweet.appblocker"
         ]
       },
@@ -124,14 +126,53 @@
                       "group.com.path2us.bittersweet.appblocker"
                     ]
                   }
+                },
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.ShieldConfiguration",
+                  "targetName": "ShieldConfiguration",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.ShieldAction",
+                  "targetName": "ShieldAction",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.ActivityMonitorExtension",
+                  "targetName": "ActivityMonitorExtension",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.path2us.bittersweet.bittersweetmobileLiveActivity",
+                  "targetName": "bittersweetmobileLiveActivity",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.path2us.bittersweet.appblocker"
+                    ]
+                  }
                 }
               ]
             }
           }
         },
-        "projectId": "17feb958-07b2-4f60-bfe9-8985a83eefb3"
+        "projectId": "4445cb0e-e9b4-4970-a6c8-9ad2534ea765"
       }
     },
-    "owner": "jasperwu516"
+    "owner": "bittersweet-mobile"
   }
 }

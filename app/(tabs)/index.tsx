@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView } from 'react-native';
+import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal } from '../../src/components/ui/EmojiPicker/EmojiPicker';
@@ -8,6 +8,7 @@ import { NotesModal } from '../../src/components/modals/NotesModal';
 import { useFocus, useFocusActions, useRewards } from '../../src/store';
 import { FruitCounter } from '../../src/components/rewards';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
+import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 
 export default function FocusScreen() {
@@ -50,8 +51,16 @@ export default function FocusScreen() {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const liveActivityIdRef = useRef<string | undefined>(undefined);
+  const sessionEndTimeRef = useRef<number | null>(null); // Unix ms when session should end
+  const sessionStartTimeRef = useRef<number | null>(null); // Unix ms when session started (for infinite mode)
+  const scheduledNotificationRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transitionCancelledRef = useRef(false);
+  // Refs to keep current values accessible in the AppState handler (which has [] deps)
+  const selectedTimeRef = useRef(selectedTime);
+  const selectedTagRef = useRef(selectedTag);
+  selectedTimeRef.current = selectedTime;
+  selectedTagRef.current = selectedTag;
 
   // Animation refs
   const scrollerOpacity = useRef(new Animated.Value(1)).current;
@@ -155,6 +164,7 @@ export default function FocusScreen() {
 
     if (infinite) {
       setElapsedSeconds(0);
+      sessionStartTimeRef.current = Date.now();
     } else {
       setRemainingSeconds(selectedTime * 60);
     }
@@ -169,6 +179,7 @@ export default function FocusScreen() {
 
     // Start Live Activity for the focus timer
     const endTime = new Date(Date.now() + selectedTime * 60 * 1000);
+    sessionEndTimeRef.current = endTime.getTime();
     const activityId = LiveActivityService.startFocusTimer(
       endTime,
       selectedTime,
@@ -179,6 +190,27 @@ export default function FocusScreen() {
       console.log('🎬 Live Activity started for focus session:', activityId);
     } else {
       console.log('⚠️ Live Activity was not created (may not be available on this device)');
+    }
+
+    // Schedule a notification with sound for when the timer ends
+    if (selectedTime > 0) {
+      // Cancel any existing scheduled notification
+      if (scheduledNotificationRef.current) {
+        Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
+      }
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Focus Session Complete',
+          body: `Your ${selectedTime}m ${selectedTag || 'focus'} session is done!`,
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: selectedTime * 60,
+        },
+      }).then(id => {
+        scheduledNotificationRef.current = id;
+      });
     }
 
     if (timerRef.current) clearInterval(timerRef.current as any);
@@ -194,12 +226,14 @@ export default function FocusScreen() {
             setIsSessionActive(false);
 
             // Stop Live Activity when timer completes
+            sessionEndTimeRef.current = null;
+            sessionStartTimeRef.current = null;
             const activityId = liveActivityIdRef.current;
             liveActivityIdRef.current = undefined;
             if (activityId) {
               LiveActivityService.stopFocusTimer(activityId, 'completed');
-              console.log('🛑 Live Activity stopped (completed)');
             }
+            // Notification will fire on its own from the schedule — no need to cancel
 
             // Reverse to scroller view at the end
             Animated.parallel([
@@ -226,6 +260,7 @@ export default function FocusScreen() {
   const stopCompletely = () => {
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = null;
+    sessionStartTimeRef.current = null;
     setIsRunning(false);
     setIsSessionActive(false);
   };
@@ -236,11 +271,17 @@ export default function FocusScreen() {
     setIsRunning(false);
 
     // Stop Live Activity if it's running - clear ID first to prevent double-stop
+    sessionEndTimeRef.current = null;
+    sessionStartTimeRef.current = null;
     const activityId = liveActivityIdRef.current;
     liveActivityIdRef.current = undefined;
     if (activityId) {
       LiveActivityService.stopFocusTimer(activityId, 'cancelled');
-      console.log('🛑 Live Activity stopped (cancelled)');
+    }
+    // Cancel the scheduled completion notification
+    if (scheduledNotificationRef.current) {
+      Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
+      scheduledNotificationRef.current = null;
     }
 
     Animated.parallel([
@@ -259,6 +300,85 @@ export default function FocusScreen() {
     });
   };
 
+  // Sync timer when app returns to foreground (JS timers are suspended in background)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        const now = Date.now();
+
+        // Timed session: recalculate remaining time from the stored end time
+        if (sessionEndTimeRef.current) {
+          if (now >= sessionEndTimeRef.current) {
+            // Session expired while in background — create session entry
+            // immediately with correct timestamps, then clean up.
+            const endTime = new Date(sessionEndTimeRef.current);
+            const startTime = new Date(sessionEndTimeRef.current - selectedTimeRef.current * 60 * 1000);
+            const duration = selectedTimeRef.current;
+
+            if (timerRef.current) clearInterval(timerRef.current as any);
+            timerRef.current = null;
+            setRemainingSeconds(0);
+            setIsRunning(false);
+            setIsSessionActive(false);
+
+            sessionEndTimeRef.current = null;
+            sessionStartTimeRef.current = null;
+            const activityId = liveActivityIdRef.current;
+            liveActivityIdRef.current = undefined;
+            if (activityId) {
+              LiveActivityService.stopFocusTimer(activityId, 'completed');
+            }
+
+            // Cancel the scheduled notification (it already fired)
+            if (scheduledNotificationRef.current) {
+              Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
+              scheduledNotificationRef.current = null;
+            }
+
+            // Auto-save the session with the real timestamps
+            const tag = selectedTagRef.current;
+            if (duration >= 1 && tag) {
+              const session = createCompletedSession({
+                startTime,
+                endTime,
+                duration,
+                targetDuration: duration,
+                tagName: tag,
+              });
+
+              // Reset UI then navigate to session complete
+              resetToIdleVisuals();
+              router.push({ pathname: '/(modals)/session-complete', params: { sessionId: session.id } });
+            } else {
+              // Reset UI without creating a session
+              Animated.parallel([
+                Animated.timing(timerOpacity, { toValue: 0, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                Animated.timing(timerScale, { toValue: 0.96, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                Animated.timing(timerTranslateY, { toValue: 6, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+              ]).start(() => {
+                Animated.parallel([
+                  Animated.timing(scrollerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                  Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                ]).start();
+              });
+            }
+          } else {
+            // Session still running — sync remaining seconds with real clock
+            const remaining = Math.max(0, Math.ceil((sessionEndTimeRef.current - now) / 1000));
+            setRemainingSeconds(remaining);
+          }
+        }
+
+        // Infinite session: recalculate elapsed time from the stored start time
+        if (sessionStartTimeRef.current) {
+          const elapsed = Math.floor((now - sessionStartTimeRef.current) / 1000);
+          setElapsedSeconds(elapsed);
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current as any);
@@ -266,8 +386,14 @@ export default function FocusScreen() {
       const activityId = liveActivityIdRef.current;
       if (activityId) {
         liveActivityIdRef.current = undefined;
-        console.log('🧹 Cleanup: Stopping Live Activity on unmount:', activityId);
+        sessionEndTimeRef.current = null;
+        sessionStartTimeRef.current = null;
         LiveActivityService.stopFocusTimer(activityId, 'cancelled');
+      }
+      // Cancel scheduled notification on unmount
+      if (scheduledNotificationRef.current) {
+        Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
+        scheduledNotificationRef.current = null;
       }
     };
   }, []);
@@ -341,9 +467,7 @@ export default function FocusScreen() {
 
   const selectedTagName = selectedTag ? availableTags.find(tag => tag.name === selectedTag)?.name : null;
 
-  const handleNotesSave = (notes: string) => {
-    setSessionNotes(notes);
-
+  const saveSessionAndNavigate = (notes?: string) => {
     const actualDuration = isInfinite ? Math.floor(elapsedSeconds / 60) : selectedTime - Math.floor(remainingSeconds / 60);
 
     // Only create session if duration is meaningful (1+ minutes)
@@ -357,12 +481,17 @@ export default function FocusScreen() {
         duration: actualDuration,
         targetDuration: isInfinite ? actualDuration : selectedTime,
         tagName: selectedTag!,
-        notes: notes,
+        notes: notes || undefined,
       });
 
       // Navigate to session complete modal
       router.push({ pathname: '/(modals)/session-complete', params: { sessionId: session.id } });
     }
+  };
+
+  const handleNotesSave = (notes: string) => {
+    setSessionNotes(notes);
+    saveSessionAndNavigate(notes);
   };
 
   const handleNotesClose = () => {

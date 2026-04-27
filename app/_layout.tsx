@@ -12,9 +12,21 @@ import { autoInitializeMockData } from '../src/store/initializeMockData';
 import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
 import { useEffect, useRef, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { AppState, AppStateStatus } from 'react-native';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
+import { LiveActivityService } from '../src/services/LiveActivityService';
+
+// Show notification banner even when app is in foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: false,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -40,6 +52,8 @@ export default function RootLayout() {
     initializeUnifiedStore();
     autoInitializeMockData(); // Initialize main store with mock data
 
+    // Request notification permissions for focus timer completion sound
+    Notifications.requestPermissionsAsync();
 
     // Debug: Clear storage if needed (change to true if needed)
     if (__DEV__ && false) {
@@ -103,6 +117,11 @@ export default function RootLayout() {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         console.log('🛡️ [SHIELD_LAYOUT] App came to foreground - checking for shield opening...');
         checkShieldOpening('foreground');
+
+        // End any lingering live activities. JS timers are suspended in the
+        // background, so if a focus session's timer expired while the phone was
+        // locked, stopActivity was never called. This is the safety net.
+        LiveActivityService.cleanupExpired();
       }
 
       appState.current = nextAppState;

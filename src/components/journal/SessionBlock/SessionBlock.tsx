@@ -66,7 +66,7 @@ export const SessionBlock: FC<SessionBlockProps> = ({
   };
 
   // Calculate block height based on duration
-  const blockHeight = Math.max(session.duration * pixelsPerMinute, 50);
+  const blockHeight = Math.max(session.duration * pixelsPerMinute, 1);
   
   // Get tag color (use tagName or default)
   const primaryTag = session.tagName || 'Focus';
@@ -80,7 +80,7 @@ export const SessionBlock: FC<SessionBlockProps> = ({
           backgroundColor: sessionColor,
           borderRadius: 12,
           paddingHorizontal: 12,
-          paddingVertical: 8,
+          paddingVertical: blockHeight <= 40 ? 4 : 8,
           shadowColor: '#000',
           shadowOffset: {
             width: 0,
@@ -97,17 +97,26 @@ export const SessionBlock: FC<SessionBlockProps> = ({
       onPressOut={handlePressOut}
       onPress={onPress}
     >
-      <View style={{ flex: 1, justifyContent: 'space-between' }}>
+      <View style={{ flex: 1, justifyContent: blockHeight <= 40 ? 'center' : 'space-between' }}>
         {/* Session info */}
-        <View style={{ flex: 1, justifyContent: 'flex-start' }}>
+        <View style={{ flex: blockHeight <= 40 ? 0 : 1, justifyContent: 'flex-start', flexDirection: blockHeight <= 40 ? 'row' : 'column', alignItems: blockHeight <= 40 ? 'center' : 'stretch' }}>
           <Typography
-            variant="subtitle-14-semibold"
+            variant={blockHeight <= 40 ? 'body-12' : 'subtitle-14-semibold'}
             color="white"
-            numberOfLines={blockHeight > 70 ? 2 : 1}
-            style={{ marginBottom: blockHeight > 60 ? 4 : 2 }}
+            numberOfLines={1}
+            style={blockHeight <= 40 ? undefined : { marginBottom: blockHeight > 60 ? 4 : 2 }}
           >
             {session.tagName || 'Focus Session'}
           </Typography>
+          {blockHeight <= 40 && (
+            <Typography
+              variant="tiny-10"
+              color="white"
+              style={{ opacity: 0.8, marginLeft: 6 }}
+            >
+              {session.duration}min
+            </Typography>
+          )}
           {blockHeight > 60 && (
             <Typography
               variant="body-12"
@@ -131,9 +140,9 @@ export const SessionBlock: FC<SessionBlockProps> = ({
 
         {/* Duration indicator */}
         {blockHeight > 50 && (
-          <View style={{ 
-            flexDirection: 'row', 
-            alignItems: 'center', 
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
             justifyContent: 'space-between',
             marginTop: blockHeight > 70 ? 8 : 4,
           }}>
@@ -147,7 +156,7 @@ export const SessionBlock: FC<SessionBlockProps> = ({
                 opacity: 0.8,
               }}
             />
-            
+
             {/* Duration */}
             <Typography
               variant="tiny-10"

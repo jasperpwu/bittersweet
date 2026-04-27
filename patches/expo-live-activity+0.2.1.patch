@@ -1,0 +1,56 @@
+diff --git a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
+index 419a8a0..a222928 100644
+--- a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
++++ b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
+@@ -212,16 +212,49 @@ public class ExpoLiveActivityModule: Module {
+           dynamicIslandText: state.dynamicIslandText
+         )
+ 
++        // Set staleDate to the timer end time so the widget knows when
++        // content is outdated (e.g. timer reached 0:00 while app was in background).
++        let timerEndDate: Date? = state.progressBar?.date.map {
++          Date(timeIntervalSince1970: $0 / 1000)
++        }
++
+         let activity = try Activity.request(
+           attributes: attributes,
+-          content: .init(state: initialState, staleDate: nil),
++          content: .init(state: initialState, staleDate: timerEndDate),
+           pushType: pushNotificationsEnabled ? .token : nil
+         )
+ 
+         Task {
+           var newState = activity.content.state
+           try await updateImages(state: state, newState: &newState)
+-          await activity.update(ActivityContent(state: newState, staleDate: nil))
++          await activity.update(ActivityContent(state: newState, staleDate: timerEndDate))
++        }
++
++        // Schedule auto-end: sleep until the timer expires, then dismiss.
++        // Task.sleep is suspended when the app is in background, but resumes
++        // when the app returns to foreground — so this acts as a reliable
++        // cleanup that doesn't depend on JS state.
++        if let endDate = timerEndDate {
++          Task {
++            let delay = endDate.timeIntervalSinceNow + 1 // 1s buffer
++            if delay > 0 {
++              try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
++            }
++            let finalState = LiveActivityAttributes.ContentState(
++              title: "Session Complete",
++              subtitle: nil,
++              timerEndDateInMilliseconds: state.progressBar?.date,
++              progress: nil,
++              imageName: nil,
++              dynamicIslandImageName: nil,
++              dynamicIslandText: nil
++            )
++            await activity.end(
++              ActivityContent(state: finalState, staleDate: nil),
++              dismissalPolicy: .immediate
++            )
++            print("🧹 Auto-ended live activity: \(activity.id)")
++          }
+         }
+ 
+         return activity.id
