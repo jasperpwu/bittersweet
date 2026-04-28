@@ -9,7 +9,10 @@ interface TimeScrollerProps {
 
 const { width: screenWidth } = Dimensions.get('window');
 const TICK_SPACING = 100;
-const TIME_VALUES = Array.from({ length: 13 }, (_, i) => i * 5); // 0, 5, 10, ... 60
+// -1 is a dev-only sentinel for "5 seconds" test mode
+const TIME_VALUES = __DEV__
+  ? [-1, ...Array.from({ length: 13 }, (_, i) => i * 5)]  // -1, 0, 5, 10, ... 60
+  : Array.from({ length: 13 }, (_, i) => i * 5);           // 0, 5, 10, ... 60
 
 const FONT_BOLD = 'Poppins-Bold';
 
@@ -78,7 +81,7 @@ const TickItem: FC<{
             transform: [{ scale }],
           }}
         >
-          {time === 0 ? '∞' : time}
+          {time === -1 ? '5s' : time === 0 ? '∞' : time}
         </Animated.Text>
       </View>
 
@@ -126,12 +129,13 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   const scrollViewRef = useRef<typeof Animated.ScrollView | null>(null);
   const isUserScrollingRef = useRef(false);
   const lastSnappedRef = useRef(selectedTime);
-  const scrollX = useRef(new Animated.Value((selectedTime / 5) * TICK_SPACING)).current;
+  const timeToIndex = (time: number) => TIME_VALUES.indexOf(time);
+  const scrollX = useRef(new Animated.Value(timeToIndex(selectedTime) * TICK_SPACING)).current;
 
   useEffect(() => {
     if (isUserScrollingRef.current) return;
     if (scrollViewRef.current) {
-      const tickIndex = selectedTime / 5;
+      const tickIndex = timeToIndex(selectedTime);
       const scrollPosition = tickIndex * TICK_SPACING;
       (scrollViewRef.current as any).scrollTo({ x: scrollPosition, animated: false });
     }
@@ -141,8 +145,8 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   useEffect(() => {
     const listenerId = scrollX.addListener(({ value }) => {
       if (!isUserScrollingRef.current) return;
-      const snappedIndex = Math.round(value / TICK_SPACING);
-      const snappedTime = Math.max(0, Math.min(60, snappedIndex * 5));
+      const snappedIndex = Math.max(0, Math.min(TIME_VALUES.length - 1, Math.round(value / TICK_SPACING)));
+      const snappedTime = TIME_VALUES[snappedIndex];
       if (snappedTime !== lastSnappedRef.current) {
         lastSnappedRef.current = snappedTime;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -158,7 +162,8 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   const handleScrollEnd = (event: any) => {
     const scrollXVal = event.nativeEvent.contentOffset.x;
     const snappedIndex = Math.round(scrollXVal / TICK_SPACING);
-    const snappedTime = Math.max(0, Math.min(60, snappedIndex * 5));
+    const clampedIndex = Math.max(0, Math.min(TIME_VALUES.length - 1, snappedIndex));
+    const snappedTime = TIME_VALUES[clampedIndex];
 
     if (snappedTime !== selectedTime) {
       onTimeChange(snappedTime);

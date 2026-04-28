@@ -166,6 +166,9 @@ export default function FocusScreen() {
   };
 
   const startTimer = () => {
+    // Dev-only: -1 means 5-second test timer
+    const isDevTimer = selectedTime === -1;
+    const timerSeconds = isDevTimer ? 5 : selectedTime * 60;
     const infinite = selectedTime === 0;
     setIsInfinite(infinite);
     setIsRunning(true);
@@ -174,16 +177,16 @@ export default function FocusScreen() {
       setElapsedSeconds(0);
       sessionStartTimeRef.current = Date.now();
     } else {
-      setRemainingSeconds(selectedTime * 60);
+      setRemainingSeconds(timerSeconds);
     }
 
     // Start Live Activity for the focus timer (service will reuse existing
     // activity if one is still around, ensuring at most one is shown)
-    const endTime = new Date(Date.now() + selectedTime * 60 * 1000);
+    const endTime = new Date(Date.now() + timerSeconds * 1000);
     sessionEndTimeRef.current = endTime.getTime();
     const activityId = LiveActivityService.startFocusTimer(
       endTime,
-      selectedTime,
+      isDevTimer ? 1 : selectedTime,
       selectedTag || 'Focus'
     );
     if (activityId) {
@@ -194,7 +197,7 @@ export default function FocusScreen() {
     }
 
     // Schedule a notification with sound for when the timer ends
-    if (selectedTime > 0) {
+    if (selectedTime > 0 || isDevTimer) {
       // Cancel any existing scheduled notification
       if (scheduledNotificationRef.current) {
         Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
@@ -202,12 +205,14 @@ export default function FocusScreen() {
       Notifications.scheduleNotificationAsync({
         content: {
           title: 'Focus Session Complete',
-          body: `Your ${selectedTime}m ${selectedTag || 'focus'} session is done!`,
+          body: isDevTimer
+            ? `Your 5s dev test session is done!`
+            : `Your ${selectedTime}m ${selectedTag || 'focus'} session is done!`,
           sound: true,
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: selectedTime * 60,
+          seconds: timerSeconds,
         },
       }).then(id => {
         scheduledNotificationRef.current = id;
@@ -218,7 +223,7 @@ export default function FocusScreen() {
     AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
       startTime: Date.now(),
       endTime: endTime.getTime(),
-      targetDuration: selectedTime,
+      targetDuration: isDevTimer ? 1 : selectedTime,
       tagName: selectedTag || 'Focus',
       isInfinite: infinite,
     } satisfies PersistedSession));
@@ -520,25 +525,30 @@ export default function FocusScreen() {
 
   const selectedTagName = selectedTag ? availableTags.find(tag => tag.name === selectedTag)?.name : null;
 
-  const saveSessionAndNavigate = (notes?: string) => {
+  const saveSessionAndNavigate = (notes?: string, includeBonusTime: boolean = true) => {
     const wasBonus = stoppedInBonusRef.current;
     const savedBonusSeconds = stoppedBonusSecondsRef.current;
+    const isDevTimer = selectedTime === -1;
+    const baseMinutes = isDevTimer ? 1 : selectedTime;
+    const baseSeconds = isDevTimer ? 5 : selectedTime * 60;
+    const bonusMinutes = Math.floor(savedBonusSeconds / 60);
     const actualDuration = wasBonus
-      ? selectedTime + Math.floor(savedBonusSeconds / 60)
-      : isInfinite ? Math.floor(elapsedSeconds / 60) : selectedTime - Math.floor(remainingSeconds / 60);
+      ? baseMinutes + (includeBonusTime ? bonusMinutes : 0)
+      : isInfinite ? Math.floor(elapsedSeconds / 60) : baseMinutes - Math.floor(remainingSeconds / 60);
 
-    // Only create session if duration is meaningful (1+ minutes)
-    if (actualDuration >= 1) {
-      const startTime = wasBonus
-        ? new Date(Date.now() - (selectedTime * 60 + savedBonusSeconds) * 1000)
-        : new Date(Date.now() - (isInfinite ? elapsedSeconds * 1000 : (selectedTime * 60 * 1000 - remainingSeconds * 1000)));
+    // Only create session if duration is meaningful (1+ minutes, or dev timer)
+    if (actualDuration >= 1 || isDevTimer) {
+      const totalSeconds = wasBonus
+        ? baseSeconds + (includeBonusTime ? savedBonusSeconds : 0)
+        : isInfinite ? elapsedSeconds : (baseSeconds - remainingSeconds);
+      const startTime = new Date(Date.now() - totalSeconds * 1000);
       const endTime = new Date();
 
       const session = createCompletedSession({
         startTime,
         endTime,
-        duration: actualDuration,
-        targetDuration: isInfinite ? actualDuration : selectedTime,
+        duration: Math.max(1, actualDuration),
+        targetDuration: isInfinite ? Math.max(1, actualDuration) : baseMinutes,
         tagName: selectedTag!,
         notes: notes || undefined,
       });
@@ -548,9 +558,9 @@ export default function FocusScreen() {
     }
   };
 
-  const handleNotesSave = (notes: string) => {
+  const handleNotesSave = (notes: string, includeBonusTime: boolean) => {
     setSessionNotes(notes);
-    saveSessionAndNavigate(notes);
+    saveSessionAndNavigate(notes, includeBonusTime);
   };
 
   const handleNotesClose = () => {
@@ -1007,6 +1017,9 @@ export default function FocusScreen() {
         onClose={handleNotesClose}
         onSave={handleNotesSave}
         initialNotes={sessionNotes}
+        hadBonusTime={stoppedInBonusRef.current}
+        targetDurationMinutes={selectedTime === -1 ? 1 : selectedTime}
+        bonusSeconds={stoppedBonusSecondsRef.current}
       />
     </SafeAreaView>
   );

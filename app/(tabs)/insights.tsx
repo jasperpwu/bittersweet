@@ -207,7 +207,7 @@ export default function InsightsScreen() {
               </Typography>
             </Pressable>
           )}
-          <Typography variant="headline-18" color="white">
+          <Typography variant="headline-24" color="white">
             {currentView === 'statistics' ? 'Statistics' : 'History'}
           </Typography>
         </View>
