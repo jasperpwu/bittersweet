@@ -8,8 +8,19 @@ import { NotesModal } from '../../src/components/modals/NotesModal';
 import { useFocus, useFocusActions, useRewards } from '../../src/store';
 import { FruitCounter } from '../../src/components/rewards';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
+
+const ACTIVE_SESSION_KEY = 'active-focus-session';
+
+type PersistedSession = {
+  startTime: number; // Unix ms
+  endTime: number;   // Unix ms
+  targetDuration: number; // minutes
+  tagName: string;
+  isInfinite: boolean;
+};
 
 export default function FocusScreen() {
   // Get tags from store
@@ -213,6 +224,15 @@ export default function FocusScreen() {
       });
     }
 
+    // Persist active session so it survives app kills
+    AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
+      startTime: Date.now(),
+      endTime: endTime.getTime(),
+      targetDuration: selectedTime,
+      tagName: selectedTag || 'Focus',
+      isInfinite: infinite,
+    } satisfies PersistedSession));
+
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = setInterval(() => {
       if (infinite) {
@@ -224,6 +244,7 @@ export default function FocusScreen() {
             timerRef.current = null;
             setIsRunning(false);
             setIsSessionActive(false);
+            AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
 
             // Stop Live Activity when timer completes
             sessionEndTimeRef.current = null;
@@ -263,12 +284,14 @@ export default function FocusScreen() {
     sessionStartTimeRef.current = null;
     setIsRunning(false);
     setIsSessionActive(false);
+    AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
   };
 
   const stopWithAnimation = () => {
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = null;
     setIsRunning(false);
+    AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
 
     // Stop Live Activity if it's running - clear ID first to prevent double-stop
     sessionEndTimeRef.current = null;
@@ -320,6 +343,7 @@ export default function FocusScreen() {
             setRemainingSeconds(0);
             setIsRunning(false);
             setIsSessionActive(false);
+            AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
 
             sessionEndTimeRef.current = null;
             sessionStartTimeRef.current = null;
@@ -396,6 +420,98 @@ export default function FocusScreen() {
         scheduledNotificationRef.current = null;
       }
     };
+  }, []);
+
+  // Recover active session after app kill + restart
+  useEffect(() => {
+    AsyncStorage.getItem(ACTIVE_SESSION_KEY).then(raw => {
+      if (!raw) return;
+      try {
+        const persisted: PersistedSession = JSON.parse(raw);
+        const now = Date.now();
+
+        if (persisted.isInfinite) {
+          // Infinite sessions can't auto-complete — just discard the record.
+          // The user will need to start a new one.
+          AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+          return;
+        }
+
+        if (now >= persisted.endTime) {
+          // Session already expired while app was killed — auto-complete it
+          AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+          const duration = persisted.targetDuration;
+          if (duration >= 1) {
+            const session = createCompletedSession({
+              startTime: new Date(persisted.startTime),
+              endTime: new Date(persisted.endTime),
+              duration,
+              targetDuration: duration,
+              tagName: persisted.tagName,
+            });
+            router.push({ pathname: '/(modals)/session-complete', params: { sessionId: session.id } });
+          }
+        } else {
+          // Session still running — resume the timer
+          const remainingMs = persisted.endTime - now;
+          const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+
+          setSelectedTime(persisted.targetDuration);
+          setSelectedTag(persisted.tagName);
+          setRemainingSeconds(remainingSec);
+          setIsInfinite(false);
+          setIsRunning(true);
+          setIsSessionActive(true);
+          sessionEndTimeRef.current = persisted.endTime;
+
+          // Switch visuals to timer mode immediately (no animation needed on recovery)
+          scrollerOpacity.setValue(0);
+          tagsOpacity.setValue(0);
+          timerOpacity.setValue(1);
+          timerScale.setValue(1);
+          timerTranslateY.setValue(0);
+
+          // Start the countdown interval
+          if (timerRef.current) clearInterval(timerRef.current as any);
+          timerRef.current = setInterval(() => {
+            setRemainingSeconds(prev => {
+              if (prev <= 1) {
+                if (timerRef.current) clearInterval(timerRef.current as any);
+                timerRef.current = null;
+                setIsRunning(false);
+                setIsSessionActive(false);
+                AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+
+                sessionEndTimeRef.current = null;
+                const activityId = liveActivityIdRef.current;
+                liveActivityIdRef.current = undefined;
+                if (activityId) {
+                  LiveActivityService.stopFocusTimer(activityId, 'completed');
+                }
+
+                Animated.parallel([
+                  Animated.timing(timerOpacity, { toValue: 0, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                  Animated.timing(timerScale, { toValue: 0.96, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                  Animated.timing(timerTranslateY, { toValue: 6, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                ]).start(() => {
+                  Animated.parallel([
+                    Animated.timing(scrollerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                    Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                  ]).start(() => {
+                    setShowNotesModal(true);
+                  });
+                });
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        }
+      } catch (e) {
+        // Corrupted data — just clear it
+        AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+      }
+    });
   }, []);
 
   const handleStartFocus = () => {
