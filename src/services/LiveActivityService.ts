@@ -193,6 +193,38 @@ export class LiveActivityService {
         dynamicIslandText: labelName
       };
 
+      console.log('🎬 Starting Live Activity for focus timer:', {
+        label: labelName,
+        duration: durationMinutes,
+        endsAt: endTime.toLocaleTimeString(),
+        endTimestamp: endTimestamp,
+        currentTime: now,
+        timeUntilEnd: Math.round((endTimestamp - now) / 1000),
+        existingActivityId: this.lastFocusActivityId,
+      });
+
+      if (!LiveActivity?.startActivity) {
+        console.log('❌ LiveActivity.startActivity is not available - app may need rebuild after adding plugin');
+        return undefined;
+      }
+
+      // Reuse existing live activity if one is still around (e.g. previous
+      // session completed but iOS hasn't dismissed it yet). This ensures at
+      // most one focus live activity is shown at any time.
+      if (this.lastFocusActivityId) {
+        try {
+          LiveActivity.updateActivity(this.lastFocusActivityId, state);
+          this.focusEndTimestamp = endTimestamp;
+          console.log('♻️ Reused existing Live Activity:', this.lastFocusActivityId);
+          return this.lastFocusActivityId;
+        } catch (e: any) {
+          // Activity was already dismissed by iOS — fall through to create a new one
+          console.log('ℹ️ Could not reuse existing activity, creating new one:', e?.message);
+          this.lastFocusActivityId = undefined;
+          this.focusEndTimestamp = undefined;
+        }
+      }
+
       // Configuration for Live Activity
       const config: LiveActivity.LiveActivityConfig = {
         backgroundColor: '#D2B48C',
@@ -204,21 +236,6 @@ export class LiveActivityService {
         // behavior without triggering Expo Router navigation to a nonexistent route.
         timerType: 'digital',
       };
-
-      console.log('🎬 Starting Live Activity for focus timer:', {
-        label: labelName,
-        duration: durationMinutes,
-        endsAt: endTime.toLocaleTimeString(),
-        endTimestamp: endTimestamp,
-        currentTime: now,
-        timeUntilEnd: Math.round((endTimestamp - now) / 1000),
-        LiveActivityAvailable: !!LiveActivity?.startActivity
-      });
-
-      if (!LiveActivity?.startActivity) {
-        console.log('❌ LiveActivity.startActivity is not available - app may need rebuild after adding plugin');
-        return undefined;
-      }
 
       const activityId = LiveActivity.startActivity(state, config);
 
@@ -264,23 +281,22 @@ export class LiveActivityService {
       };
 
       LiveActivity.stopActivity(activityId, finalState);
-      if (this.lastFocusActivityId === activityId) {
-        this.lastFocusActivityId = undefined;
-        this.focusEndTimestamp = undefined;
-      }
+      // Keep lastFocusActivityId so startFocusTimer can attempt to reuse it
+      // (updateActivity will fail gracefully if iOS already dismissed it).
+      this.focusEndTimestamp = undefined;
       console.log('✅ Focus Timer Live Activity stopped');
     } catch (error: any) {
       // Activity might have already expired/ended naturally, which is fine
       const errorCode = error?.code || error?.cause?.code;
       if (errorCode === 'ERR_ACTIVITY_NOT_FOUND') {
         console.log('ℹ️ Focus Timer Live Activity already ended (likely expired naturally)');
+        if (this.lastFocusActivityId === activityId) {
+          this.lastFocusActivityId = undefined;
+        }
       } else {
         console.error('❌ Error stopping Focus Timer Live Activity:', error);
       }
-      if (this.lastFocusActivityId === activityId) {
-        this.lastFocusActivityId = undefined;
-        this.focusEndTimestamp = undefined;
-      }
+      this.focusEndTimestamp = undefined;
     }
   }
 

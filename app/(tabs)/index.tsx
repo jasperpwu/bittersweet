@@ -180,15 +180,8 @@ export default function FocusScreen() {
       setRemainingSeconds(selectedTime * 60);
     }
 
-    // Stop any existing Live Activity before starting new one
-    const existingActivityId = liveActivityIdRef.current;
-    if (existingActivityId) {
-      LiveActivityService.stopFocusTimer(existingActivityId, 'cancelled');
-      console.log('🛑 Stopped existing Live Activity before starting new one:', existingActivityId);
-    }
-    liveActivityIdRef.current = undefined;
-
-    // Start Live Activity for the focus timer
+    // Start Live Activity for the focus timer (service will reuse existing
+    // activity if one is still around, ensuring at most one is shown)
     const endTime = new Date(Date.now() + selectedTime * 60 * 1000);
     sessionEndTimeRef.current = endTime.getTime();
     const activityId = LiveActivityService.startFocusTimer(
