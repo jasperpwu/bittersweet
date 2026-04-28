@@ -5,7 +5,7 @@ import { StatisticsView } from '../../src/components/analytics/StatisticsView';
 import { GoalProgress } from '../../src/components/analytics/GoalProgress';
 import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
 import { useFocus, useFocusActions } from '../../src/store';
-import { TimePeriod, FocusGoal } from '../../src/store/types';
+import { TimePeriod, FocusGoal, ChartSegment } from '../../src/store/types';
 import { calculateGoalProgress } from '../../src/utils/goalProgress';
 
 type ViewMode = 'statistics' | 'history';
@@ -47,79 +47,112 @@ export default function InsightsScreen() {
     console.log('Deleting session:', sessionId);
   };
   
+  // Tag color mapping
+  const tagColorMap: Record<string, string> = {
+    'Work': '#6592E9',
+    'Study': '#FFC107',
+    'Reading': '#51BC6F',
+    'Exercise': '#FF9800',
+    'Sport': '#FF9800',
+    'Meditation': '#4CAF50',
+    'Code': '#EF786C',
+    'IT': '#2196F3',
+    'Music': '#9C27B0',
+    'Personal': '#9E9E9E',
+    'Focus': '#6592E9',
+  };
+
+  const getTagColor = (tagName: string): string => {
+    return tagColorMap[tagName] || '#6592E9';
+  };
+
+  // Build segments from sessions in a time range
+  const buildSegments = (rangeSessions: typeof safeSessions): ChartSegment[] => {
+    const tagTotals: Record<string, number> = {};
+    rangeSessions.forEach(session => {
+      const key = (session as any).tagName || (session as any).tagId || 'Other';
+      tagTotals[key] = (tagTotals[key] || 0) + session.duration;
+    });
+    return Object.entries(tagTotals).map(([name, value]) => ({
+      tagName: name,
+      value,
+      color: getTagColor(name),
+    }));
+  };
+
   // Generate chart data from sessions
   const getChartData = (period: TimePeriod) => {
     if (!safeSessions || !Array.isArray(safeSessions) || !safeSessions.length) return [];
 
     const now = new Date();
-    const chartData: Array<{ date: Date; value: number; label: string }> = [];
+    const chartData: Array<{ date: Date; value: number; label: string; segments: ChartSegment[] }> = [];
 
     if (period === 'weekly') {
-      // Get last 7 days
       for (let i = 6; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(now.getDate() - i);
         date.setHours(0, 0, 0, 0);
-        
+
         const nextDay = new Date(date);
         nextDay.setDate(date.getDate() + 1);
-        
-        const daySessionsMinutes = safeSessions
-          .filter(session => {
-            const sessionDate = new Date(session.startTime);
-            return sessionDate >= date && sessionDate < nextDay;
-          })
-          .reduce((total, session) => total + session.duration, 0);
-        
+
+        const daySessions = safeSessions.filter(session => {
+          const sessionDate = new Date(session.startTime);
+          return sessionDate >= date && sessionDate < nextDay;
+        });
+
+        const totalMinutes = daySessions.reduce((total, session) => total + session.duration, 0);
+
         chartData.push({
           date,
-          value: daySessionsMinutes,
-          label: date.toLocaleDateString('en-US', { weekday: 'short' })
+          value: totalMinutes,
+          label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          segments: buildSegments(daySessions),
         });
       }
     } else if (period === 'monthly') {
-      // Get last 4 weeks
       for (let i = 3; i >= 0; i--) {
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - (i * 7) - now.getDay());
         weekStart.setHours(0, 0, 0, 0);
-        
+
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
-        
-        const weekSessionsMinutes = safeSessions
-          .filter(session => {
-            const sessionDate = new Date(session.startTime);
-            return sessionDate >= weekStart && sessionDate < weekEnd;
-          })
-          .reduce((total, session) => total + session.duration, 0);
-        
+
+        const weekSessions = safeSessions.filter(session => {
+          const sessionDate = new Date(session.startTime);
+          return sessionDate >= weekStart && sessionDate < weekEnd;
+        });
+
+        const totalMinutes = weekSessions.reduce((total, session) => total + session.duration, 0);
+
         chartData.push({
           date: weekStart,
-          value: weekSessionsMinutes,
-          label: `W${Math.ceil((now.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24 * 7))}`
+          value: totalMinutes,
+          label: `W${Math.ceil((now.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24 * 7))}`,
+          segments: buildSegments(weekSessions),
         });
       }
     } else {
-      // Daily - last 24 hours broken into 6 4-hour chunks
       for (let i = 5; i >= 0; i--) {
         const chunkStart = new Date(now);
         chunkStart.setHours(now.getHours() - (i * 4), 0, 0, 0);
-        
+
         const chunkEnd = new Date(chunkStart);
         chunkEnd.setHours(chunkStart.getHours() + 4);
-        
-        const chunkSessionsMinutes = safeSessions
-          .filter(session => {
-            const sessionDate = new Date(session.startTime);
-            return sessionDate >= chunkStart && sessionDate < chunkEnd;
-          })
-          .reduce((total, session) => total + session.duration, 0);
-        
+
+        const chunkSessions = safeSessions.filter(session => {
+          const sessionDate = new Date(session.startTime);
+          return sessionDate >= chunkStart && sessionDate < chunkEnd;
+        });
+
+        const totalMinutes = chunkSessions.reduce((total, session) => total + session.duration, 0);
+
         chartData.push({
           date: chunkStart,
-          value: chunkSessionsMinutes,
-          label: `${chunkStart.getHours()}:00`
+          value: totalMinutes,
+          label: `${chunkStart.getHours()}:00`,
+          segments: buildSegments(chunkSessions),
         });
       }
     }

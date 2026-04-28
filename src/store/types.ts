@@ -173,10 +173,17 @@ export interface StoreEvent {
 }
 
 // Analytics Types
+export interface ChartSegment {
+  tagName: string;
+  value: number; // minutes
+  color: string;
+}
+
 export interface ChartDataPoint {
   date: Date;
   value: number;
   label?: string;
+  segments?: ChartSegment[];
 }
 
 export interface ProductivityInsights {
