@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, SafeAreaView, Pressable, Alert, Share, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { Toggle } from '../../src/components/ui/Toggle';
+import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { useBlocklist, useBlocklistActions } from '../../src/store';
@@ -114,28 +115,51 @@ export default function SettingsScreen() {
   } = useDeviceIntegration();
   const { settings: blocklistSettings } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
+  const [notificationSheetVisible, setNotificationSheetVisible] = useState(false);
 
   // --- Handlers ---
 
-  const handleNotificationsToggle = async (value: boolean) => {
+  const ensureNotificationPermissions = async (): Promise<boolean> => {
+    if (hasNotifications) return true;
+    const granted = await requestNotificationPermissions();
+    if (!granted) {
+      Alert.alert(
+        'Notifications Disabled',
+        'Please enable notifications in your device settings to receive reminders.',
+        [{ text: 'OK' }]
+      );
+    }
+    return granted;
+  };
+
+  const handleNotificationSoundToggle = async (value: boolean) => {
     try {
-      if (value && !hasNotifications) {
-        const granted = await requestNotificationPermissions();
-        if (!granted) {
-          Alert.alert(
-            'Notifications Disabled',
-            'Please enable notifications in your device settings to receive reminders.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
+      if (value) {
+        const granted = await ensureNotificationPermissions();
+        if (!granted) return;
       }
       await updatePreferences({
-        notifications: { ...preferences.notifications, enabled: value },
+        notifications: { ...preferences.notifications, sound: value, enabled: value || preferences.notifications.vibration },
       });
       triggerHaptic('light');
     } catch (error) {
-      console.error('Failed to update notifications setting:', error);
+      console.error('Failed to update notification sound setting:', error);
+      triggerHaptic('error');
+    }
+  };
+
+  const handleNotificationVibrationToggle = async (value: boolean) => {
+    try {
+      if (value) {
+        const granted = await ensureNotificationPermissions();
+        if (!granted) return;
+      }
+      await updatePreferences({
+        notifications: { ...preferences.notifications, vibration: value, enabled: value || preferences.notifications.sound },
+      });
+      triggerHaptic('light');
+    } catch (error) {
+      console.error('Failed to update notification vibration setting:', error);
       triggerHaptic('error');
     }
   };
@@ -225,11 +249,22 @@ export default function SettingsScreen() {
         <SettingsSection title="Focus & Blocking">
           <SettingsItem
             title="Notifications"
-            subtitle="Reminders when sessions end"
+            subtitle="Sound & vibration settings"
             icon="notifications-outline"
-            hasToggle
-            toggleValue={preferences.notifications.enabled}
-            onToggleChange={handleNotificationsToggle}
+            hasChevron
+            valueLabel={
+              preferences.notifications.sound && preferences.notifications.vibration
+                ? 'Sound & Vibrate'
+                : preferences.notifications.sound
+                ? 'Sound'
+                : preferences.notifications.vibration
+                ? 'Vibrate'
+                : 'Off'
+            }
+            onPress={() => {
+              triggerHaptic('light');
+              setNotificationSheetVisible(true);
+            }}
           />
           <SettingsItem
             title="Block List"
@@ -333,6 +368,53 @@ export default function SettingsScreen() {
         {/* Bottom spacing for tab bar */}
         <View className="h-20" />
       </ScrollView>
+
+      {/* Notification Settings Snackbar */}
+      <BottomSheet
+        isVisible={notificationSheetVisible}
+        onClose={() => setNotificationSheetVisible(false)}
+        height={200}
+      >
+        <Typography variant="headline-20" color="white" className="mb-4">
+          Notifications
+        </Typography>
+
+        <View className="bg-[#242540] rounded-2xl px-4">
+          <View className="flex-row items-center justify-between py-3 border-b border-dark-border">
+            <View className="flex-row items-center flex-1">
+              <View className="w-8 items-center mr-3">
+                <Ionicons name="volume-high-outline" size={20} color="#CACACA" />
+              </View>
+              <Typography variant="subtitle-14-medium" color="white">
+                Sound
+              </Typography>
+            </View>
+            <Toggle
+              value={preferences.notifications.sound}
+              onValueChange={handleNotificationSoundToggle}
+              size="medium"
+              accessibilityLabel="Toggle notification sound"
+            />
+          </View>
+
+          <View className="flex-row items-center justify-between py-3">
+            <View className="flex-row items-center flex-1">
+              <View className="w-8 items-center mr-3">
+                <Ionicons name="phone-portrait-outline" size={20} color="#CACACA" />
+              </View>
+              <Typography variant="subtitle-14-medium" color="white">
+                Vibrate
+              </Typography>
+            </View>
+            <Toggle
+              value={preferences.notifications.vibration}
+              onValueChange={handleNotificationVibrationToggle}
+              size="medium"
+              accessibilityLabel="Toggle notification vibration"
+            />
+          </View>
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }

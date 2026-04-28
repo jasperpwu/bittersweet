@@ -175,11 +175,12 @@ export const useDeviceIntegration = (): DeviceCapabilities & SystemIntegration =
         if (!granted) return null;
       }
 
+      const soundEnabled = useUnifiedStore.getState().preferences.notifications.sound;
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title,
           body,
-          sound: true,
+          sound: soundEnabled,
         },
         trigger: trigger ? { date: trigger } : null,
       });

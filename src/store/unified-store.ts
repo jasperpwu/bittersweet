@@ -29,6 +29,8 @@ interface AppPreferences {
 
 interface NotificationSettings {
   enabled: boolean;
+  sound: boolean;
+  vibration: boolean;
   sessionReminders: boolean;
   breakReminders: boolean;
   dailyGoals: boolean;
@@ -123,6 +125,8 @@ const createDefaultPreferences = (): AppPreferences => ({
   language: 'en',
   notifications: {
     enabled: true,
+    sound: true,
+    vibration: true,
     sessionReminders: true,
     breakReminders: true,
     dailyGoals: true,

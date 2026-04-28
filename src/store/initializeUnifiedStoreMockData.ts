@@ -36,6 +36,8 @@ const createMockUnifiedUser = () => ({
     language: 'en',
     notifications: {
       enabled: true,
+      sound: true,
+      vibration: true,
       sessionReminders: true,
       breakReminders: true,
       dailyGoals: true

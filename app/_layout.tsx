@@ -13,6 +13,7 @@ import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListene
 import { useEffect, useRef, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { AppState, AppStateStatus } from 'react-native';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
@@ -20,12 +21,16 @@ import { LiveActivityService } from '../src/services/LiveActivityService';
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: false,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async () => {
+    const { useUnifiedStore } = await import('../src/store/unified-store');
+    const soundEnabled = useUnifiedStore.getState().preferences.notifications.sound;
+    return {
+      shouldShowBanner: true,
+      shouldShowList: false,
+      shouldPlaySound: soundEnabled,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 // Keep the splash screen visible while we fetch resources
@@ -55,6 +60,15 @@ export default function RootLayout() {
     // Request notification permissions for focus timer completion sound
     Notifications.requestPermissionsAsync();
 
+    // Vibrate on foreground notification if vibration is enabled
+    const notificationSubscription = Notifications.addNotificationReceivedListener(() => {
+      const { useUnifiedStore } = require('../src/store/unified-store');
+      const vibrationEnabled = useUnifiedStore.getState().preferences.notifications.vibration;
+      if (vibrationEnabled) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    });
+
     // Debug: Clear storage if needed (change to true if needed)
     if (__DEV__ && false) {
       import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
@@ -63,6 +77,10 @@ export default function RootLayout() {
         });
       });
     }
+
+    return () => {
+      notificationSubscription.remove();
+    };
   }, []);
 
   // Check if app was opened from shield (both on mount and app foreground)
