@@ -1,47 +1,67 @@
 import React from 'react';
-import { View, ScrollView, SafeAreaView, Pressable, Alert } from 'react-native';
+import { View, ScrollView, SafeAreaView, Pressable, Alert, Share, Linking } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
-import { Avatar } from '../../src/components/ui/Avatar';
 import { Toggle } from '../../src/components/ui/Toggle';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { useBlocklist, useBlocklistActions } from '../../src/store';
 import { router } from 'expo-router';
 
+// --- Inline sub-components ---
+
 interface SettingsItemProps {
   title: string;
+  subtitle?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
   hasToggle?: boolean;
   toggleValue?: boolean;
   onToggleChange?: (value: boolean) => void;
-  hasArrow?: boolean;
+  hasChevron?: boolean;
+  valueLabel?: string;
   onPress?: () => void;
-  disabled?: boolean;
-  rightContent?: React.ReactNode;
+  isLast?: boolean;
 }
 
 const SettingsItem: React.FC<SettingsItemProps> = ({
   title,
+  subtitle,
+  icon,
   hasToggle = false,
   toggleValue = false,
   onToggleChange,
-  hasArrow = false,
+  hasChevron = false,
+  valueLabel,
   onPress,
-  disabled = false,
-  rightContent,
+  isLast = false,
 }) => {
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled || hasToggle}
+      disabled={hasToggle && !onPress}
       className={`
-        h-[47px] w-full flex-row items-center justify-between px-0 py-0
-        ${!hasToggle && !disabled ? 'active:opacity-70' : ''}
+        w-full flex-row items-center py-3
+        ${!hasToggle ? 'active:opacity-70' : ''}
+        ${!isLast ? 'border-b border-dark-border' : ''}
       `}
     >
-      <Typography variant="body-14" color="white">
-        {title}
-      </Typography>
-      
+      {icon && (
+        <View className="w-8 items-center mr-3">
+          <Ionicons name={icon} size={20} color="#CACACA" />
+        </View>
+      )}
+
+      <View className="flex-1 mr-3">
+        <Typography variant="subtitle-14-medium" color="white">
+          {title}
+        </Typography>
+        {subtitle && (
+          <Typography variant="body-12" color="secondary" className="mt-0.5">
+            {subtitle}
+          </Typography>
+        )}
+      </View>
+
       {hasToggle && onToggleChange && (
         <Toggle
           value={toggleValue}
@@ -51,14 +71,38 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
         />
       )}
 
-      {rightContent && (
-        <View>
-          {rightContent}
-        </View>
+      {valueLabel && (
+        <Typography variant="body-12" color="secondary" className="mr-1">
+          {valueLabel}
+        </Typography>
+      )}
+
+      {hasChevron && (
+        <Ionicons name="chevron-forward" size={16} color="#575757" />
       )}
     </Pressable>
   );
 };
+
+interface SettingsSectionProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+const SettingsSection: React.FC<SettingsSectionProps> = ({ title, children }) => {
+  return (
+    <View className="px-5 mt-6">
+      <Typography variant="subtitle-14-medium" className="text-primary mb-3">
+        {title}
+      </Typography>
+      <View className="bg-[#242540] rounded-2xl px-4">
+        {children}
+      </View>
+    </View>
+  );
+};
+
+// --- Main screen ---
 
 export default function SettingsScreen() {
   const { preferences, updatePreferences, theme } = useAppSettings();
@@ -68,21 +112,13 @@ export default function SettingsScreen() {
     requestNotificationPermissions,
     deviceInfo
   } = useDeviceIntegration();
-  const { settings: blocklistSettings, isAuthorized } = useBlocklist();
+  const { settings: blocklistSettings } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
 
-  const handleAbout = () => {
-    triggerHaptic('light');
-    Alert.alert(
-      'About Bittersweet',
-      'Focus timer app for productive work sessions.',
-      [{ text: 'OK' }]
-    );
-  };
+  // --- Handlers ---
 
   const handleNotificationsToggle = async (value: boolean) => {
     try {
-      // Request permissions if enabling notifications
       if (value && !hasNotifications) {
         const granted = await requestNotificationPermissions();
         if (!granted) {
@@ -94,15 +130,9 @@ export default function SettingsScreen() {
           return;
         }
       }
-
       await updatePreferences({
-        notifications: {
-          ...preferences.notifications,
-          enabled: value,
-        },
+        notifications: { ...preferences.notifications, enabled: value },
       });
-
-      // Provide haptic feedback
       triggerHaptic('light');
     } catch (error) {
       console.error('Failed to update notifications setting:', error);
@@ -112,11 +142,7 @@ export default function SettingsScreen() {
 
   const handleNightModeToggle = async (value: boolean) => {
     try {
-      await updatePreferences({
-        theme: value ? 'dark' : 'light',
-      });
-      
-      // Provide haptic feedback
+      await updatePreferences({ theme: value ? 'dark' : 'light' });
       triggerHaptic('light');
     } catch (error) {
       console.error('Failed to update theme setting:', error);
@@ -124,59 +150,12 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleDoNotDisturbToggle = (value: boolean) => {
-    // This would integrate with system DND settings
-    console.log('Do not disturb:', value);
-  };
-
-  const handleReminderToggle = async (value: boolean) => {
-    try {
-      await updatePreferences({
-        notifications: {
-          ...preferences.notifications,
-          sessionReminders: value,
-        },
-      });
-      
-      // Provide haptic feedback
-      triggerHaptic('light');
-    } catch (error) {
-      console.error('Failed to update reminder setting:', error);
-      triggerHaptic('error');
-    }
-  };
-
-  const handleReminderRingtone = () => {
-    // Navigate to ringtone selection
-    console.log('Open ringtone selection');
-  };
-
-  const handleProfile = () => {
-    // Navigate to profile screen
-    console.log('Open profile');
-  };
-
-  const handleSecureAccount = () => {
-    // Navigate to security settings
-    console.log('Open security settings');
-  };
-
-  const handleHelpCenter = () => {
-    // Navigate to help center
-    console.log('Open help center');
-  };
-
   const handleBlockList = async () => {
     triggerHaptic('light');
-
-    // Check current authorization status
     const authorized = await checkAuthorizationStatus();
-
     if (!authorized) {
-      // Request authorization first
       const granted = await requestAuthorization();
       if (granted) {
-        // Ensure authorization status is updated before navigating
         await checkAuthorizationStatus();
         router.push('/(modals)/app-selection');
       } else {
@@ -187,153 +166,147 @@ export default function SettingsScreen() {
         );
       }
     } else {
-      // Already authorized, go directly to app selection
       router.push('/(modals)/app-selection');
     }
   };
 
-  const handleAvatarEdit = () => {
-    // Open avatar editor
-    console.log('Edit avatar');
+  const handleShareWithFriends = async () => {
+    triggerHaptic('light');
+    try {
+      await Share.share({
+        message: 'Check out Bittersweet — a focus timer that helps you stay productive! https://apps.apple.com/app/bittersweet',
+      });
+    } catch (error) {
+      console.error('Failed to share:', error);
+    }
   };
+
+  const handleSendFeedback = () => {
+    triggerHaptic('light');
+    Linking.openURL('mailto:junxwoo@icloud.com?subject=Bittersweet%20Feedback');
+  };
+
+  const handleHelpCenter = () => {
+    triggerHaptic('light');
+    console.log('Open help center');
+  };
+
+  // Compute block list count
+  const getBlockedCount = () => {
+    const totalApps = blocklistSettings.blockedApps.applicationTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
+    const totalCategories = blocklistSettings.blockedApps.categoryTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
+    const totalDomains = blocklistSettings.blockedApps.webDomainTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
+    return Number(totalApps) + Number(totalCategories) + Number(totalDomains);
+  };
+
+  const blockedCount = getBlockedCount();
 
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
       {/* Header */}
-      <View className="h-[76px] px-5 flex-row items-center justify-between">
-        <Typography variant="headline-18" color="white">
+      <View className="h-[56px] px-5 flex-row items-center">
+        <Typography variant="headline-24" color="white">
           Settings
         </Typography>
-        <Pressable onPress={handleAbout} className="active:opacity-70">
-          <Typography variant="body-14" className="text-primary">
-            About
-          </Typography>
-        </Pressable>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Profile Section */}
-        <View className="px-5 py-4 flex-row items-center">
-          <Avatar
-            size="large"
-            name="Focus User"
-            showEditButton={true}
-            onEditPress={handleAvatarEdit}
-          />
-          <View className="ml-4 flex-1">
-            <Typography variant="subtitle-16" color="white">
-              Focus User
-            </Typography>
-            <Typography variant="body-14" color="secondary" className="mt-1">
-              Productive work sessions
-            </Typography>
-          </View>
-        </View>
-
-        {/* General Settings Section */}
-        <View className="px-5 mt-6">
-          <Typography variant="subtitle-14-medium" color="white" className="mb-4">
-            General settings
+        {/* Motivational Quote */}
+        <View className="px-5 pt-2 pb-2">
+          <Typography variant="headline-20" color="white">
+            Make today count.
           </Typography>
-
-          <View className="space-y-2">
-            <SettingsItem
-              title="Notifications"
-              hasToggle={true}
-              toggleValue={preferences.notifications.enabled}
-              onToggleChange={handleNotificationsToggle}
-            />
-
-            <SettingsItem
-              title="Night mode"
-              hasToggle={true}
-              toggleValue={theme === 'dark'}
-              onToggleChange={handleNightModeToggle}
-            />
-
-            <SettingsItem
-              title="Do not disturb"
-              hasToggle={true}
-              toggleValue={false} // This would come from system settings
-              onToggleChange={handleDoNotDisturbToggle}
-            />
-
-            <SettingsItem
-              title="Reminder"
-              hasToggle={true}
-              toggleValue={preferences.notifications.sessionReminders}
-              onToggleChange={handleReminderToggle}
-            />
-
-            <SettingsItem
-              title="Reminder ringtone"
-                            onPress={handleReminderRingtone}
-            />
-
-            <SettingsItem
-              title="Block List"
-                            onPress={handleBlockList}
-              rightContent={
-                (() => {
-                  // Use the real metadata counts instead of fake token array lengths
-                  const totalApps = blocklistSettings.blockedApps.applicationTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
-                  const totalCategories = blocklistSettings.blockedApps.categoryTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
-                  const totalDomains = blocklistSettings.blockedApps.webDomainTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
-                  const total = Number(totalApps) + Number(totalCategories) + Number(totalDomains);
-
-                  if (total === 0) {
-                    return (
-                      <Typography variant="body-12" color="secondary">
-                        None
-                      </Typography>
-                    );
-                  }
-
-                  return (
-                    <View className="bg-primary px-2 py-1 rounded-md">
-                      <Typography variant="body-12" color="white">
-                        {total} blocked
-                      </Typography>
-                    </View>
-                  );
-                })()
-              }
-            />
-
-            <SettingsItem
-              title="Profile"
-                            onPress={handleProfile}
-            />
-
-            <SettingsItem
-              title="Secure account"
-                            onPress={handleSecureAccount}
-            />
-
-            <SettingsItem
-              title="Help center"
-                            onPress={handleHelpCenter}
-            />
-          </View>
+          <Typography variant="body-14" color="secondary" className="mt-1">
+            Every focused minute is an investment in yourself.
+          </Typography>
         </View>
 
-        {/* Debug Info Section (Development Only) */}
+        {/* Focus & Blocking */}
+        <SettingsSection title="Focus & Blocking">
+          <SettingsItem
+            title="Notifications"
+            subtitle="Reminders when sessions end"
+            icon="notifications-outline"
+            hasToggle
+            toggleValue={preferences.notifications.enabled}
+            onToggleChange={handleNotificationsToggle}
+          />
+          <SettingsItem
+            title="Block List"
+            subtitle="Manage blocked apps during focus"
+            icon="ban-outline"
+            hasChevron
+            valueLabel={blockedCount > 0 ? `${blockedCount} blocked` : 'None'}
+            onPress={handleBlockList}
+            isLast
+          />
+        </SettingsSection>
+
+        {/* Appearance */}
+        <SettingsSection title="Appearance">
+          <SettingsItem
+            title="Night Mode"
+            subtitle="Use dark theme"
+            icon="moon-outline"
+            hasToggle
+            toggleValue={theme === 'dark'}
+            onToggleChange={handleNightModeToggle}
+            isLast
+          />
+        </SettingsSection>
+
+        {/* Support */}
+        <SettingsSection title="Support">
+          <SettingsItem
+            title="Share with Friends"
+            subtitle="Spread the focus"
+            icon="share-social-outline"
+            hasChevron
+            onPress={handleShareWithFriends}
+          />
+          <SettingsItem
+            title="Send Feedback"
+            subtitle="junxwoo@icloud.com"
+            icon="mail-outline"
+            hasChevron
+            onPress={handleSendFeedback}
+            isLast
+          />
+        </SettingsSection>
+
+        {/* About */}
+        <SettingsSection title="About">
+          <SettingsItem
+            title="Version"
+            icon="information-circle-outline"
+            valueLabel="1.0.0"
+          />
+          <SettingsItem
+            title="Help Center"
+            icon="help-circle-outline"
+            hasChevron
+            onPress={handleHelpCenter}
+            isLast
+          />
+        </SettingsSection>
+
+        {/* Developer (dev only) */}
         {__DEV__ && (
           <View className="px-5 mt-6">
-            <Typography variant="subtitle-14-medium" color="white" className="mb-4">
+            <Typography variant="subtitle-14-medium" className="text-primary mb-3">
               Developer
             </Typography>
 
             <Pressable
               onPress={() => router.push('/(modals)/dev-tools')}
-              className="bg-gray-700 rounded-xl py-3 px-4 mb-4 active:opacity-80"
+              className="bg-[#242540] rounded-2xl py-3 px-4 mb-4 active:opacity-80"
             >
               <Typography variant="subtitle-14-semibold" color="primary">
                 Open Dev Tools
               </Typography>
             </Pressable>
 
-            <View className="bg-dark-border rounded-lg p-4">
+            <View className="bg-[#242540] rounded-2xl p-4">
               <Typography variant="body-12" color="secondary">
                 Device: {deviceInfo.brand} {deviceInfo.modelName}
               </Typography>
@@ -346,6 +319,16 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+
+        {/* Footer */}
+        <View className="items-center mt-10 mb-6">
+          <Typography variant="tiny-10" color="secondary">
+            Bittersweet v1.0.0
+          </Typography>
+          <Typography variant="tiny-10" color="secondary" className="mt-1">
+            Per aspera ad astra
+          </Typography>
+        </View>
 
         {/* Bottom spacing for tab bar */}
         <View className="h-20" />
