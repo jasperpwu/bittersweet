@@ -330,16 +330,8 @@ export class LiveActivityService {
       progressBar: { date: now },
     };
 
-    if (this.lastFocusActivityId && this.focusEndTimestamp && now >= this.focusEndTimestamp) {
-      try {
-        LiveActivity.stopActivity(this.lastFocusActivityId, stopState);
-        console.log('🧹 Cleaned up expired focus activity:', this.lastFocusActivityId);
-      } catch (e) {
-        // Already ended — ignore
-      }
-      this.lastFocusActivityId = undefined;
-      this.focusEndTimestamp = undefined;
-    }
+    // Note: expired focus activities are NOT cleaned up here — they stay
+    // alive to show the bonus time count-up until the user manually ends.
 
     if (this.lastUnlockActivityId && this.unlockEndTimestamp && now >= this.unlockEndTimestamp) {
       try {
@@ -360,4 +352,5 @@ export class LiveActivityService {
   static get hasFocusActivity(): boolean {
     return !!this.lastFocusActivityId;
   }
+
 }

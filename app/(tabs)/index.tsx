@@ -61,6 +61,11 @@ export default function FocusScreen() {
   const [isInfinite, setIsInfinite] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isBonusTime, setIsBonusTime] = useState(false);
+  const [bonusSeconds, setBonusSeconds] = useState(0);
+  // Refs to capture bonus state at stop time (before state resets) for saveSessionAndNavigate
+  const stoppedInBonusRef = useRef(false);
+  const stoppedBonusSecondsRef = useRef(0);
   const liveActivityIdRef = useRef<string | undefined>(undefined);
   const sessionEndTimeRef = useRef<number | null>(null); // Unix ms when session should end
   const sessionStartTimeRef = useRef<number | null>(null); // Unix ms when session started (for infinite mode)
@@ -160,14 +165,6 @@ export default function FocusScreen() {
     // Tag modal remains open
   };
 
-  const resetToIdleVisuals = () => {
-    scrollerOpacity.setValue(1);
-    tagsOpacity.setValue(1);
-    timerOpacity.setValue(0);
-    timerScale.setValue(0.94);
-    timerTranslateY.setValue(6);
-  };
-
   const startTimer = () => {
     const infinite = selectedTime === 0;
     setIsInfinite(infinite);
@@ -233,36 +230,17 @@ export default function FocusScreen() {
       } else {
         setRemainingSeconds(prev => {
           if (prev <= 1) {
+            // Timer reached 0 — enter bonus time mode instead of stopping
             if (timerRef.current) clearInterval(timerRef.current as any);
             timerRef.current = null;
-            setIsRunning(false);
-            setIsSessionActive(false);
-            AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+            setIsBonusTime(true);
+            setBonusSeconds(0);
 
-            // Stop Live Activity when timer completes
-            sessionEndTimeRef.current = null;
-            sessionStartTimeRef.current = null;
-            const activityId = liveActivityIdRef.current;
-            liveActivityIdRef.current = undefined;
-            if (activityId) {
-              LiveActivityService.stopFocusTimer(activityId, 'completed');
-            }
-            // Notification will fire on its own from the schedule — no need to cancel
+            // Start a new interval that counts UP for bonus time
+            timerRef.current = setInterval(() => {
+              setBonusSeconds(b => b + 1);
+            }, 1000);
 
-            // Reverse to scroller view at the end
-            Animated.parallel([
-              Animated.timing(timerOpacity, { toValue: 0, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-              Animated.timing(timerScale, { toValue: 0.96, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-              Animated.timing(timerTranslateY, { toValue: 6, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-            ]).start(() => {
-              Animated.parallel([
-                Animated.timing(scrollerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-              ]).start(() => {
-                // Show notes modal after session completes
-                setShowNotesModal(true);
-              });
-            });
             return 0;
           }
           return prev - 1;
@@ -277,13 +255,21 @@ export default function FocusScreen() {
     sessionStartTimeRef.current = null;
     setIsRunning(false);
     setIsSessionActive(false);
+    setIsBonusTime(false);
+    setBonusSeconds(0);
     AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
   };
 
   const stopWithAnimation = () => {
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = null;
+    const wasBonusTime = isBonusTime;
+    // Capture bonus info for saveSessionAndNavigate (called later from notes modal)
+    stoppedInBonusRef.current = isBonusTime;
+    stoppedBonusSecondsRef.current = bonusSeconds;
     setIsRunning(false);
+    setIsBonusTime(false);
+    setBonusSeconds(0);
     AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
 
     // Stop Live Activity if it's running - clear ID first to prevent double-stop
@@ -292,7 +278,7 @@ export default function FocusScreen() {
     const activityId = liveActivityIdRef.current;
     liveActivityIdRef.current = undefined;
     if (activityId) {
-      LiveActivityService.stopFocusTimer(activityId, 'cancelled');
+      LiveActivityService.stopFocusTimer(activityId, wasBonusTime ? 'completed' : 'cancelled');
     }
     // Cancel the scheduled completion notification
     if (scheduledNotificationRef.current) {
@@ -325,60 +311,19 @@ export default function FocusScreen() {
         // Timed session: recalculate remaining time from the stored end time
         if (sessionEndTimeRef.current) {
           if (now >= sessionEndTimeRef.current) {
-            // Session expired while in background — create session entry
-            // immediately with correct timestamps, then clean up.
-            const endTime = new Date(sessionEndTimeRef.current);
-            const startTime = new Date(sessionEndTimeRef.current - selectedTimeRef.current * 60 * 1000);
-            const duration = selectedTimeRef.current;
-
+            // Session expired while in background — enter bonus time mode
             if (timerRef.current) clearInterval(timerRef.current as any);
             timerRef.current = null;
             setRemainingSeconds(0);
-            setIsRunning(false);
-            setIsSessionActive(false);
-            AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
 
-            sessionEndTimeRef.current = null;
-            sessionStartTimeRef.current = null;
-            const activityId = liveActivityIdRef.current;
-            liveActivityIdRef.current = undefined;
-            if (activityId) {
-              LiveActivityService.stopFocusTimer(activityId, 'completed');
-            }
+            const bonus = Math.floor((now - sessionEndTimeRef.current) / 1000);
+            setIsBonusTime(true);
+            setBonusSeconds(bonus);
 
-            // Cancel the scheduled notification (it already fired)
-            if (scheduledNotificationRef.current) {
-              Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
-              scheduledNotificationRef.current = null;
-            }
-
-            // Auto-save the session with the real timestamps
-            const tag = selectedTagRef.current;
-            if (duration >= 1 && tag) {
-              const session = createCompletedSession({
-                startTime,
-                endTime,
-                duration,
-                targetDuration: duration,
-                tagName: tag,
-              });
-
-              // Reset UI then navigate to session complete
-              resetToIdleVisuals();
-              router.push({ pathname: '/(modals)/session-complete', params: { sessionId: session.id } });
-            } else {
-              // Reset UI without creating a session
-              Animated.parallel([
-                Animated.timing(timerOpacity, { toValue: 0, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                Animated.timing(timerScale, { toValue: 0.96, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                Animated.timing(timerTranslateY, { toValue: 6, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-              ]).start(() => {
-                Animated.parallel([
-                  Animated.timing(scrollerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                  Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                ]).start();
-              });
-            }
+            // Start bonus count-up interval
+            timerRef.current = setInterval(() => {
+              setBonusSeconds(b => b + 1);
+            }, 1000);
           } else {
             // Session still running — sync remaining seconds with real clock
             const remaining = Math.max(0, Math.ceil((sessionEndTimeRef.current - now) / 1000));
@@ -431,19 +376,31 @@ export default function FocusScreen() {
         }
 
         if (now >= persisted.endTime) {
-          // Session already expired while app was killed — auto-complete it
-          AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
-          const duration = persisted.targetDuration;
-          if (duration >= 1) {
-            const session = createCompletedSession({
-              startTime: new Date(persisted.startTime),
-              endTime: new Date(persisted.endTime),
-              duration,
-              targetDuration: duration,
-              tagName: persisted.tagName,
-            });
-            router.push({ pathname: '/(modals)/session-complete', params: { sessionId: session.id } });
-          }
+          // Session expired while app was killed — resume in bonus time mode
+          setSelectedTime(persisted.targetDuration);
+          setSelectedTag(persisted.tagName);
+          setRemainingSeconds(0);
+          setIsInfinite(false);
+          setIsRunning(true);
+          setIsSessionActive(true);
+          sessionEndTimeRef.current = persisted.endTime;
+
+          const bonus = Math.floor((now - persisted.endTime) / 1000);
+          setIsBonusTime(true);
+          setBonusSeconds(bonus);
+
+          // Switch visuals to timer mode immediately
+          scrollerOpacity.setValue(0);
+          tagsOpacity.setValue(0);
+          timerOpacity.setValue(1);
+          timerScale.setValue(1);
+          timerTranslateY.setValue(0);
+
+          // Start bonus count-up interval
+          if (timerRef.current) clearInterval(timerRef.current as any);
+          timerRef.current = setInterval(() => {
+            setBonusSeconds(b => b + 1);
+          }, 1000);
         } else {
           // Session still running — resume the timer
           const remainingMs = persisted.endTime - now;
@@ -469,31 +426,16 @@ export default function FocusScreen() {
           timerRef.current = setInterval(() => {
             setRemainingSeconds(prev => {
               if (prev <= 1) {
+                // Enter bonus time mode
                 if (timerRef.current) clearInterval(timerRef.current as any);
                 timerRef.current = null;
-                setIsRunning(false);
-                setIsSessionActive(false);
-                AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+                setIsBonusTime(true);
+                setBonusSeconds(0);
 
-                sessionEndTimeRef.current = null;
-                const activityId = liveActivityIdRef.current;
-                liveActivityIdRef.current = undefined;
-                if (activityId) {
-                  LiveActivityService.stopFocusTimer(activityId, 'completed');
-                }
+                timerRef.current = setInterval(() => {
+                  setBonusSeconds(b => b + 1);
+                }, 1000);
 
-                Animated.parallel([
-                  Animated.timing(timerOpacity, { toValue: 0, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                  Animated.timing(timerScale, { toValue: 0.96, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                  Animated.timing(timerTranslateY, { toValue: 6, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                ]).start(() => {
-                  Animated.parallel([
-                    Animated.timing(scrollerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                    Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-                  ]).start(() => {
-                    setShowNotesModal(true);
-                  });
-                });
                 return 0;
               }
               return prev - 1;
@@ -572,16 +514,24 @@ export default function FocusScreen() {
     return `${mm}:${ss}`;
   };
 
-  const displayTime = isInfinite ? formatTime(elapsedSeconds) : formatTime(remainingSeconds);
+  const displayTime = isBonusTime
+    ? `+${formatTime(bonusSeconds)}`
+    : isInfinite ? formatTime(elapsedSeconds) : formatTime(remainingSeconds);
 
   const selectedTagName = selectedTag ? availableTags.find(tag => tag.name === selectedTag)?.name : null;
 
   const saveSessionAndNavigate = (notes?: string) => {
-    const actualDuration = isInfinite ? Math.floor(elapsedSeconds / 60) : selectedTime - Math.floor(remainingSeconds / 60);
+    const wasBonus = stoppedInBonusRef.current;
+    const savedBonusSeconds = stoppedBonusSecondsRef.current;
+    const actualDuration = wasBonus
+      ? selectedTime + Math.floor(savedBonusSeconds / 60)
+      : isInfinite ? Math.floor(elapsedSeconds / 60) : selectedTime - Math.floor(remainingSeconds / 60);
 
     // Only create session if duration is meaningful (1+ minutes)
     if (actualDuration >= 1) {
-      const startTime = new Date(Date.now() - (isInfinite ? elapsedSeconds * 1000 : (selectedTime * 60 * 1000 - remainingSeconds * 1000)));
+      const startTime = wasBonus
+        ? new Date(Date.now() - (selectedTime * 60 + savedBonusSeconds) * 1000)
+        : new Date(Date.now() - (isInfinite ? elapsedSeconds * 1000 : (selectedTime * 60 * 1000 - remainingSeconds * 1000)));
       const endTime = new Date();
 
       const session = createCompletedSession({
@@ -625,7 +575,7 @@ export default function FocusScreen() {
           </Animated.View>
           <Animated.View style={{ position: 'absolute', opacity: timerOpacity, transform: [{ scale: timerScale }, { translateY: timerTranslateY }], zIndex: 100 }}>
             <Animated.Text
-              style={{ fontSize: 96, lineHeight: 120, color: '#FFFFFF', fontFamily: 'Poppins-Bold', textAlign: 'center' }}
+              style={{ fontSize: 96, lineHeight: 120, color: isBonusTime ? '#4CAF7C' : '#FFFFFF', fontFamily: 'Poppins-Bold', textAlign: 'center' }}
             >
               {displayTime}
             </Animated.Text>
