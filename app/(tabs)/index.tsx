@@ -20,6 +20,7 @@ type PersistedSession = {
   targetDuration: number; // minutes
   tagName: string;
   isInfinite: boolean;
+  notificationId?: string; // scheduled completion notification
 };
 
 export default function FocusScreen() {
@@ -231,6 +232,14 @@ export default function FocusScreen() {
         },
       }).then(id => {
         scheduledNotificationRef.current = id;
+        // Update persisted session with notification ID so it can be cancelled after app restart
+        AsyncStorage.getItem(ACTIVE_SESSION_KEY).then(raw => {
+          if (raw) {
+            const persisted = JSON.parse(raw);
+            persisted.notificationId = id;
+            AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(persisted));
+          }
+        });
       });
     }
 
@@ -389,10 +398,44 @@ export default function FocusScreen() {
         const persisted: PersistedSession = JSON.parse(raw);
         const now = Date.now();
 
+        // Restore notification ID so it can be cancelled if the user stops the session
+        if (persisted.notificationId) {
+          scheduledNotificationRef.current = persisted.notificationId;
+        }
+
         if (persisted.isInfinite) {
-          // Infinite sessions can't auto-complete — just discard the record.
-          // The user will need to start a new one.
-          AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+          // Infinite session was running when app was killed — restore it
+          const elapsed = Math.floor((now - persisted.startTime) / 1000);
+
+          setSelectedTime(0);
+          setSelectedTag(persisted.tagName);
+          setElapsedSeconds(elapsed);
+          setIsInfinite(true);
+          setIsRunning(true);
+          setIsSessionActive(true);
+          sessionStartTimeRef.current = persisted.startTime;
+
+          // Switch visuals to timer mode immediately
+          scrollerOpacity.setValue(0);
+          tagsOpacity.setValue(0);
+          timerOpacity.setValue(1);
+          timerScale.setValue(1);
+          timerTranslateY.setValue(0);
+
+          // Restart the live activity so the lock screen widget is back
+          const activityId = LiveActivityService.startFocusTimerInfinite(
+            new Date(persisted.startTime),
+            persisted.tagName
+          );
+          if (activityId) {
+            liveActivityIdRef.current = activityId;
+          }
+
+          // Start elapsed count-up interval
+          if (timerRef.current) clearInterval(timerRef.current as any);
+          timerRef.current = setInterval(() => {
+            setElapsedSeconds(prev => prev + 1);
+          }, 1000);
           return;
         }
 
