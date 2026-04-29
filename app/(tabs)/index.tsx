@@ -592,8 +592,13 @@ export default function FocusScreen() {
       ? baseMinutes + (includeBonusTime ? bonusMinutes : 0)
       : isInfinite ? Math.floor(elapsedSeconds / 60) : baseMinutes - Math.floor(remainingSeconds / 60);
 
-    // Only create session if duration is meaningful (1+ minutes, or dev timer)
-    if (actualDuration >= 1 || isDevTimer) {
+    // Only create session if duration is meaningful (1+ minutes, dev timer,
+    // or any infinite session with at least 1 second elapsed)
+    const hasMinimumDuration = actualDuration >= 1
+      || isDevTimer
+      || (isInfinite && elapsedSeconds >= 1);
+
+    if (hasMinimumDuration) {
       const totalSeconds = wasBonus
         ? baseSeconds + (includeBonusTime ? savedBonusSeconds : 0)
         : isInfinite ? elapsedSeconds : (baseSeconds - remainingSeconds);

@@ -268,7 +268,11 @@ export class LiveActivityService {
     }
 
     try {
-      const startTimestamp = startTime.getTime();
+      // Subtract 1 second so the date is unambiguously in the past when the
+      // widget renders.  In release builds the JS→native bridge is fast enough
+      // that `startTime` can equal or even slightly exceed the widget's
+      // `Date.now`, causing it to take the countdown path and freeze at 0:00.
+      const startTimestamp = startTime.getTime() - 1000;
 
       const state: LiveActivity.LiveActivityState = {
         title: labelName,
