@@ -6,7 +6,7 @@ import { Toggle } from '../../src/components/ui/Toggle';
 import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
-import { useBlocklist, useBlocklistActions } from '../../src/store';
+import { useBlocklist, useBlocklistActions, useFocus, useBlocklistEditCost } from '../../src/store';
 import { router } from 'expo-router';
 
 // --- Inline sub-components ---
@@ -115,6 +115,8 @@ export default function SettingsScreen() {
   } = useDeviceIntegration();
   const { settings: blocklistSettings } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
+  const { currentSession } = useFocus();
+  const blocklistEditCost = useBlocklistEditCost();
   const [notificationSheetVisible, setNotificationSheetVisible] = useState(false);
 
   // --- Handlers ---
@@ -176,6 +178,17 @@ export default function SettingsScreen() {
 
   const handleBlockList = async () => {
     triggerHaptic('light');
+
+    // Lock blocklist editing during active focus sessions
+    if (currentSession.session !== null) {
+      Alert.alert(
+        'Blocklist Locked',
+        'You cannot edit the blocklist during a focus session. Complete your session first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     const authorized = await checkAuthorizationStatus();
     if (!authorized) {
       const granted = await requestAuthorization();
@@ -268,7 +281,7 @@ export default function SettingsScreen() {
           />
           <SettingsItem
             title="Block List"
-            subtitle="Manage blocked apps during focus"
+            subtitle={`Next edit: ${blocklistEditCost.cost} 🍎`}
             icon="ban-outline"
             hasChevron
             valueLabel={blockedCount > 0 ? `${blockedCount} blocked` : 'None'}

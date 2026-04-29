@@ -272,7 +272,7 @@ export class LiveActivityService {
 
       const state: LiveActivity.LiveActivityState = {
         title: labelName,
-        subtitle: '  ',
+        subtitle: undefined,
         progressBar: {
           date: startTimestamp, // Past date → iOS timer widget counts UP
         },

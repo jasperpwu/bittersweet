@@ -154,6 +154,12 @@ interface AppStore {
       allIds: string[];
     };
 
+    // Edit cost tracking (weekly escalation: 1, 2, 4, 8, 16...)
+    editHistory: {
+      weekStart: string; // ISO date string of current week's Monday
+      editsThisWeek: number;
+    };
+
     // Runtime state
     isAuthorized: boolean;
     authorizationStatus: 0 | 1 | 2 | 3; // 0=notDetermined, 1=denied, 2=approved, 3=unknown
@@ -167,6 +173,7 @@ interface AppStore {
     requestUnlock: (appTokens: any[], duration: number) => Promise<UnlockSession | null>;
     endUnlock: (sessionId: string) => void;
     checkActiveUnlocks: () => void;
+    getBlocklistEditCost: () => number;
   };
 }
 
@@ -931,6 +938,10 @@ export const useAppStore = create<AppStore>()(
           byId: {},
           allIds: []
         },
+        editHistory: {
+          weekStart: getWeekStart().toISOString(),
+          editsThisWeek: 0,
+        },
         isAuthorized: false,
         authorizationStatus: 0, // 0 = notDetermined
         lastAuthCheck: null,
@@ -1005,6 +1016,35 @@ export const useAppStore = create<AppStore>()(
             console.log('📱 Store: updateBlockedApps called');
             console.log('📱 Store: selection token:', selection);
             console.log('📱 Store: metadata:', metadata);
+
+            // Charge fruit cost for editing blocklist (weekly escalation)
+            const editCost = get().blocklist.getBlocklistEditCost();
+            const currentBalance = get().rewards.balance;
+            console.log('📱 Store: Blocklist edit cost:', editCost, 'balance:', currentBalance);
+
+            if (currentBalance < editCost) {
+              throw new Error(`Insufficient fruits. Need ${editCost} but have ${currentBalance}.`);
+            }
+
+            // Deduct cost
+            get().rewards.spendFruits(editCost, 'blocklist_edit', { editCost });
+
+            // Update edit history
+            const currentWeekStart = getWeekStart().toISOString();
+            const { editHistory } = get().blocklist;
+            const editsThisWeek = editHistory.weekStart === currentWeekStart
+              ? editHistory.editsThisWeek + 1
+              : 1; // new week, this is the first edit
+
+            set((state) => ({
+              blocklist: {
+                ...state.blocklist,
+                editHistory: {
+                  weekStart: currentWeekStart,
+                  editsThisWeek,
+                },
+              },
+            }));
 
             const currentState = get();
             const currentSelectionId = currentState.blocklist.currentSelectionId;
@@ -1253,6 +1293,18 @@ export const useAppStore = create<AppStore>()(
           });
         },
 
+        getBlocklistEditCost: () => {
+          const { editHistory } = get().blocklist;
+          const currentWeekStart = getWeekStart().toISOString();
+
+          // Reset count if we're in a new week
+          if (editHistory.weekStart !== currentWeekStart) {
+            return 1; // 2^0 = 1 (first edit of new week)
+          }
+
+          return Math.pow(2, editHistory.editsThisWeek); // 1, 2, 4, 8, 16...
+        },
+
       }
     }),
       { name: 'bittersweet-store' }
@@ -1325,7 +1377,23 @@ export const useBlocklistActions = () => useAppStore((state) => ({
   requestUnlock: state.blocklist.requestUnlock,
   endUnlock: state.blocklist.endUnlock,
   checkActiveUnlocks: state.blocklist.checkActiveUnlocks,
+  getBlocklistEditCost: state.blocklist.getBlocklistEditCost,
 }));
+
+export const useBlocklistEditCost = () => useAppStore((state) => {
+  const { editHistory } = state.blocklist;
+  const currentWeekStart = getWeekStart().toISOString();
+  const editsThisWeek = editHistory.weekStart === currentWeekStart
+    ? editHistory.editsThisWeek
+    : 0;
+  const cost = Math.pow(2, editsThisWeek); // 1, 2, 4, 8, 16...
+  return {
+    cost,
+    editsThisWeek,
+    canAfford: state.rewards.balance >= cost,
+    balance: state.rewards.balance,
+  };
+});
 
 /**
  * Store selectors hooks

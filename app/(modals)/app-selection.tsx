@@ -6,7 +6,7 @@ import {
   Alert
 } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
-import { useBlocklist, useBlocklistActions } from '../../src/store';
+import { useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
 import { DeviceActivitySelectionView, DeviceActivitySelectionViewPersisted, getFamilyActivitySelectionId, setFamilyActivitySelectionId } from 'react-native-device-activity';
@@ -16,6 +16,7 @@ export default function AppSelectionScreen() {
   const { triggerHaptic } = useDeviceIntegration();
   const { updateBlockedApps } = useBlocklistActions();
   const { settings } = useBlocklist();
+  const blocklistEditCost = useBlocklistEditCost();
 
   // Initialize with current stored selection if any
   const [selectedApps, setSelectedApps] = useState<string | null>(null);
@@ -62,7 +63,7 @@ export default function AppSelectionScreen() {
     router.back();
   };
 
-  const handleSave = async () => {
+  const executeSave = async () => {
     console.log('🔍 Save button pressed');
     console.log('🔍 Current state:');
     console.log('  - selectedApps:', selectedApps);
@@ -113,15 +114,36 @@ export default function AppSelectionScreen() {
 
       // Navigate back without showing alert
       router.back();
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to save app selection:', error);
-      Alert.alert(
-        'Error',
-        'Failed to save app selection. Please try again.',
-        [{ text: 'OK' }]
-      );
+      const message = error?.message?.includes('Insufficient fruits')
+        ? error.message
+        : 'Failed to save app selection. Please try again.';
+      Alert.alert('Error', message, [{ text: 'OK' }]);
       triggerHaptic('error');
     }
+  };
+
+  const handleSave = () => {
+    const { cost, canAfford, balance } = blocklistEditCost;
+
+    if (!canAfford) {
+      Alert.alert(
+        'Not Enough Fruits',
+        `Editing the blocklist costs ${cost} 🍎 but you only have ${balance}. Focus more to earn fruits!`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Edit Blocklist',
+      `This will cost ${cost} 🍎. Continue?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Confirm', onPress: () => executeSave() },
+      ]
+    );
   };
 
   const handleSelectionChange = (event: any) => {
