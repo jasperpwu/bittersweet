@@ -1,5 +1,5 @@
 diff --git a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
-index a222928..0e12f10 100644
+index a222928..379f645 100644
 --- a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 +++ b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 @@ -191,6 +191,18 @@ public class ExpoLiveActivityModule: Module {
@@ -21,7 +21,21 @@ index a222928..0e12f10 100644
          let config = maybeConfig ?? LiveActivityConfig()
          let attributes = LiveActivityAttributes(
            name: "ExpoLiveActivity",
-@@ -230,33 +242,6 @@ public class ExpoLiveActivityModule: Module {
+@@ -214,8 +226,11 @@ public class ExpoLiveActivityModule: Module {
+ 
+         // Set staleDate to the timer end time so the widget knows when
+         // content is outdated (e.g. timer reached 0:00 while app was in background).
+-        let timerEndDate: Date? = state.progressBar?.date.map {
+-          Date(timeIntervalSince1970: $0 / 1000)
++        // Skip staleDate when the date is in the past (infinite/count-up mode) —
++        // otherwise iOS considers the activity immediately stale and won't show it.
++        let timerEndDate: Date? = state.progressBar?.date.flatMap { ms -> Date? in
++          let d = Date(timeIntervalSince1970: ms / 1000)
++          return d > Date() ? d : nil
+         }
+ 
+         let activity = try Activity.request(
+@@ -230,33 +245,6 @@ public class ExpoLiveActivityModule: Module {
            await activity.update(ActivityContent(state: newState, staleDate: timerEndDate))
          }
  

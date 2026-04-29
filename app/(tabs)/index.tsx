@@ -182,18 +182,33 @@ export default function FocusScreen() {
 
     // Start Live Activity for the focus timer (service will reuse existing
     // activity if one is still around, ensuring at most one is shown)
-    const endTime = new Date(Date.now() + timerSeconds * 1000);
-    sessionEndTimeRef.current = endTime.getTime();
-    const activityId = LiveActivityService.startFocusTimer(
-      endTime,
-      isDevTimer ? 1 : selectedTime,
-      selectedTag || 'Focus'
-    );
-    if (activityId) {
-      liveActivityIdRef.current = activityId;
-      console.log('🎬 Live Activity started for focus session:', activityId);
+    if (infinite) {
+      // Infinite mode: no end time — use a count-up live activity
+      sessionEndTimeRef.current = null;
+      const activityId = LiveActivityService.startFocusTimerInfinite(
+        new Date(),
+        selectedTag || 'Focus'
+      );
+      if (activityId) {
+        liveActivityIdRef.current = activityId;
+        console.log('🎬 Live Activity started for infinite focus session:', activityId);
+      } else {
+        console.log('⚠️ Live Activity was not created (may not be available on this device)');
+      }
     } else {
-      console.log('⚠️ Live Activity was not created (may not be available on this device)');
+      const endTime = new Date(Date.now() + timerSeconds * 1000);
+      sessionEndTimeRef.current = endTime.getTime();
+      const activityId = LiveActivityService.startFocusTimer(
+        endTime,
+        isDevTimer ? 1 : selectedTime,
+        selectedTag || 'Focus'
+      );
+      if (activityId) {
+        liveActivityIdRef.current = activityId;
+        console.log('🎬 Live Activity started for focus session:', activityId);
+      } else {
+        console.log('⚠️ Live Activity was not created (may not be available on this device)');
+      }
     }
 
     // Schedule a notification with sound for when the timer ends
@@ -220,9 +235,10 @@ export default function FocusScreen() {
     }
 
     // Persist active session so it survives app kills
+    const now = Date.now();
     AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
-      startTime: Date.now(),
-      endTime: endTime.getTime(),
+      startTime: now,
+      endTime: infinite ? 0 : now + timerSeconds * 1000,
       targetDuration: isDevTimer ? 1 : selectedTime,
       tagName: selectedTag || 'Focus',
       isInfinite: infinite,

@@ -256,6 +256,71 @@ export class LiveActivityService {
   }
 
   /**
+   * Start a Live Activity for an infinite (no end time) focus session.
+   * Uses the start time so iOS shows an elapsed count-up timer.
+   * @param startTime - When the focus session started
+   * @param labelName - The focus label/tag name
+   * @returns Activity ID if started successfully, undefined otherwise
+   */
+  static startFocusTimerInfinite(startTime: Date, labelName: string): string | undefined {
+    if (!this.isAvailable()) {
+      return undefined;
+    }
+
+    try {
+      const startTimestamp = startTime.getTime();
+
+      const state: LiveActivity.LiveActivityState = {
+        title: labelName,
+        subtitle: '  ',
+        progressBar: {
+          date: startTimestamp, // Past date → iOS timer widget counts UP
+        },
+        imageName: 'app_icon',
+        dynamicIslandImageName: 'app_icon',
+        dynamicIslandText: labelName,
+      };
+
+      if (!LiveActivity?.startActivity) {
+        return undefined;
+      }
+
+      // Reuse existing live activity if one is still around
+      if (this.lastFocusActivityId) {
+        try {
+          LiveActivity.updateActivity(this.lastFocusActivityId, state);
+          this.focusEndTimestamp = undefined;
+          return this.lastFocusActivityId;
+        } catch (e) {
+          this.lastFocusActivityId = undefined;
+          this.focusEndTimestamp = undefined;
+        }
+      }
+
+      const config: LiveActivity.LiveActivityConfig = {
+        backgroundColor: '#D2B48C',
+        titleColor: '#8B4513',
+        subtitleColor: '#8B4513',
+        progressViewTint: '#FF6347',
+        progressViewLabelColor: '#8B4513',
+        timerType: 'digital',
+      };
+
+      const activityId = LiveActivity.startActivity(state, config);
+
+      if (activityId) {
+        this.lastFocusActivityId = activityId;
+        this.focusEndTimestamp = undefined; // No end time for infinite
+        return activityId;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Error starting infinite focus Live Activity:', error);
+      return undefined;
+    }
+  }
+
+  /**
    * Stop a focus timer Live Activity
    * @param activityId - The ID of the activity to stop
    * @param reason - Optional reason for stopping (for final state)
