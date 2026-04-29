@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal } from '../../src/components/ui/EmojiPicker/EmojiPicker';
 import { TimeScroller } from '../../src/components/focus';
-import { NotesModal } from '../../src/components/modals/NotesModal';
+
 import { useFocus, useFocusActions, useRewards } from '../../src/store';
 import { FruitCounter } from '../../src/components/rewards';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
@@ -52,9 +52,6 @@ export default function FocusScreen() {
   const [tagToDelete, setTagToDelete] = useState<any>(null);
   const [confirmationText, setConfirmationText] = useState('');
   
-  // Notes modal state
-  const [showNotesModal, setShowNotesModal] = useState(false);
-  const [sessionNotes, setSessionNotes] = useState('');
 
   // Session + timer state
   const [isSessionActive, setIsSessionActive] = useState(false); // true during transition or running
@@ -326,8 +323,8 @@ export default function FocusScreen() {
         Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]).start(() => {
         setIsSessionActive(false);
-        // Show notes modal after stopping
-        setShowNotesModal(true);
+        // Go straight to session summary
+        saveSessionAndNavigate();
       });
     });
   };
@@ -617,14 +614,6 @@ export default function FocusScreen() {
     }
   };
 
-  const handleNotesSave = (notes: string, includeBonusTime: boolean) => {
-    setSessionNotes(notes);
-    saveSessionAndNavigate(notes, includeBonusTime);
-  };
-
-  const handleNotesClose = () => {
-    setShowNotesModal(false);
-  };
 
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
@@ -1070,16 +1059,6 @@ export default function FocusScreen() {
         </View>
       </Modal>
 
-      {/* Notes Modal */}
-      <NotesModal
-        visible={showNotesModal}
-        onClose={handleNotesClose}
-        onSave={handleNotesSave}
-        initialNotes={sessionNotes}
-        hadBonusTime={stoppedInBonusRef.current}
-        targetDurationMinutes={selectedTime === -1 ? 1 : selectedTime}
-        bonusSeconds={stoppedBonusSecondsRef.current}
-      />
     </SafeAreaView>
   );
 }
