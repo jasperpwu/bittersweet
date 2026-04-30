@@ -9,6 +9,7 @@ import { useFocus, useFocusActions, useRewards, useAppStore } from '../../src/st
 import { FruitCounter } from '../../src/components/rewards';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
 import { FamilyControlsModule } from '../../src/modules/BitterSweetFamilyControls';
+import { blockSelection, stopMonitoring } from 'react-native-device-activity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
@@ -165,6 +166,38 @@ export default function FocusScreen() {
   };
 
   const startTimer = () => {
+    // End any active unlock sessions — re-block apps and refund remaining time
+    const store = useAppStore.getState();
+    const { activeSessions, currentSelectionId } = store.blocklist;
+    const nowMs = Date.now();
+    activeSessions.allIds.forEach(id => {
+      const session = activeSessions.byId[id];
+      if (!session?.isActive) return;
+
+      // Calculate remaining minutes and refund fruits (1 fruit per minute)
+      const endTimeMs = session.endTime instanceof Date ? session.endTime.getTime() : new Date(session.endTime).getTime();
+      const remainingMs = endTimeMs - nowMs;
+      const remainingMinutes = Math.max(0, Math.floor(remainingMs / (60 * 1000)));
+      if (remainingMinutes > 0) {
+        store.rewards.earnFruits(remainingMinutes, 'unlock_refund', {
+          sessionId: id,
+          refundedMinutes: remainingMinutes,
+        });
+        console.log(`🍎 Refunded ${remainingMinutes} fruits for remaining unlock time`);
+      }
+
+      // Re-block the apps immediately
+      if (currentSelectionId) {
+        blockSelection({ activitySelectionId: currentSelectionId });
+        // Stop the scheduled re-block monitor (no longer needed)
+        try { stopMonitoring([`reblock-${currentSelectionId}`]); } catch (e) { /* ignore */ }
+      }
+
+      // End the unlock session (stops live activity, marks inactive)
+      store.blocklist.endUnlock(id);
+      console.log('🔒 Ended unlock session for focus start:', id);
+    });
+
     // Dev-only: -1 means 5-second test timer
     const isDevTimer = selectedTime === -1;
     const timerSeconds = isDevTimer ? 5 : selectedTime * 60;
