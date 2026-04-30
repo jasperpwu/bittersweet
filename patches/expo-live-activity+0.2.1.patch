@@ -43,29 +43,60 @@ index e309104..d2c05ea 100644
            ProgressView(value: progress)
              .tint(progressViewTint)
 diff --git a/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift b/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift
-index fd8eea7..9837cb1 100644
+index fd8eea7..9e15b30 100644
 --- a/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift
 +++ b/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift
-@@ -32,15 +32,15 @@ struct LiveActivityWidget: Widget {
+@@ -21,6 +21,7 @@ struct LiveActivityAttributes: ActivityAttributes {
+   var progressViewLabelColor: String?
+   var deepLinkUrl: String?
+   var timerType: DynamicIslandTimerType?
++  var autoEnd: Bool?
+ 
+   enum DynamicIslandTimerType: String, Codable {
+     case circular
+@@ -31,16 +32,37 @@ struct LiveActivityAttributes: ActivityAttributes {
+ struct LiveActivityWidget: Widget {
    var body: some WidgetConfiguration {
      ActivityConfiguration(for: LiveActivityAttributes.self) { context in
-       if context.isStale {
+-      if context.isStale {
 -        // Timer expired while app was in background — show completion state
-+        // Timer expired — show bonus time count-up
++      if context.isStale, context.attributes.autoEnd == true {
++        // Unlock session expired — show "Unblock Expired" (no bonus time)
          VStack(alignment: .leading) {
            HStack(alignment: .center) {
              VStack(alignment: .leading, spacing: 2) {
 -              Text("Session Complete")
-+              Text(context.state.title)
++              Text("Unblock Expired")
                  .font(.title2)
                  .fontWeight(.semibold)
                  .foregroundStyle(Color(hex: context.attributes.titleColor ?? "#8B4513"))
 -              Text("Tap to open app")
++            }
++            Spacer()
++            resizableImage(imageName: context.state.imageName ?? "default-coffee-bean")
++              .frame(maxHeight: 64)
++          }
++        }
++        .padding(24)
++        .activityBackgroundTint(
++          context.attributes.backgroundColor.map { Color(hex: $0) }
++        )
++        .activitySystemActionForegroundColor(Color.black)
++        .applyWidgetURL(from: context.attributes.deepLinkUrl)
++      } else if context.isStale {
++        // Focus session expired — show bonus time count-up
++        VStack(alignment: .leading) {
++          HStack(alignment: .center) {
++            VStack(alignment: .leading, spacing: 2) {
++              Text(context.state.title)
++                .font(.title2)
++                .fontWeight(.semibold)
++                .foregroundStyle(Color(hex: context.attributes.titleColor ?? "#8B4513"))
 +              Text("Bonus Time")
                  .font(.title3)
                  .foregroundStyle(Color(hex: context.attributes.subtitleColor ?? "#8B4513").opacity(0.7))
              }
-@@ -48,6 +48,18 @@ struct LiveActivityWidget: Widget {
+@@ -48,6 +70,18 @@ struct LiveActivityWidget: Widget {
              resizableImage(imageName: context.state.imageName ?? "default-coffee-bean")
                .frame(maxHeight: 64)
            }
@@ -84,33 +115,41 @@ index fd8eea7..9837cb1 100644
          }
          .padding(24)
          .activityBackgroundTint(
-@@ -116,10 +128,15 @@ struct LiveActivityWidget: Widget {
+@@ -116,10 +150,20 @@ struct LiveActivityWidget: Widget {
          }
          .applyWidgetURL(from: context.attributes.deepLinkUrl)
        } compactTrailing: {
 -        if context.isStale {
 -          Text("Done")
--            .font(.system(size: 14))
-+        if context.isStale, let date = context.state.timerEndDateInMilliseconds {
-+          // Count up from the expired end date
++        if context.isStale, context.attributes.autoEnd == true {
++          // Unlock expired
++          Text("Expired")
+             .font(.system(size: 14))
+             .fontWeight(.semibold)
++        } else if context.isStale, let date = context.state.timerEndDateInMilliseconds {
++          // Focus session — count up from the expired end date
 +          Text(Date(timeIntervalSince1970: date / 1000), style: .timer)
 +            .font(.system(size: 15))
 +            .minimumScaleFactor(0.8)
-             .fontWeight(.semibold)
++            .fontWeight(.semibold)
 +            .foregroundStyle(Color(hex: "#4CAF7C"))
 +            .frame(maxWidth: 60)
 +            .multilineTextAlignment(.trailing)
          } else if let date = context.state.timerEndDateInMilliseconds {
            compactTimer(
              endDate: date,
-@@ -128,9 +145,12 @@ struct LiveActivityWidget: Widget {
+@@ -128,9 +172,16 @@ struct LiveActivityWidget: Widget {
            ).applyWidgetURL(from: context.attributes.deepLinkUrl)
          }
        } minimal: {
 -        if context.isStale {
 -          Image(systemName: "checkmark.circle.fill")
-+        if context.isStale, let date = context.state.timerEndDateInMilliseconds {
-+          // Count up from the expired end date
++        if context.isStale, context.attributes.autoEnd == true {
++          // Unlock expired
++          Image(systemName: "lock.fill")
++            .font(.system(size: 14))
++        } else if context.isStale, let date = context.state.timerEndDateInMilliseconds {
++          // Focus session — count up from the expired end date
 +          Text(Date(timeIntervalSince1970: date / 1000), style: .timer)
              .font(.system(size: 14))
 +            .fontWeight(.semibold)
@@ -118,7 +157,7 @@ index fd8eea7..9837cb1 100644
          } else if let date = context.state.timerEndDateInMilliseconds {
            compactTimer(
              endDate: date,
-@@ -148,7 +168,16 @@ struct LiveActivityWidget: Widget {
+@@ -148,7 +199,16 @@ struct LiveActivityWidget: Widget {
      timerType: LiveActivityAttributes.DynamicIslandTimerType,
      progressViewTint: String?
    ) -> some View {
@@ -136,7 +175,7 @@ index fd8eea7..9837cb1 100644
        Text(timerInterval: Date.toTimerInterval(miliseconds: endDate))
          .font(.system(size: 15))
          .minimumScaleFactor(0.8)
-@@ -187,11 +216,21 @@ struct LiveActivityWidget: Widget {
+@@ -187,11 +247,21 @@ struct LiveActivityWidget: Widget {
      }
    }
  
