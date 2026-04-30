@@ -1,3 +1,15 @@
+diff --git a/node_modules/expo-live-activity/build/index.d.ts b/node_modules/expo-live-activity/build/index.d.ts
+index bdcae0f..1d01555 100644
+--- a/node_modules/expo-live-activity/build/index.d.ts
++++ b/node_modules/expo-live-activity/build/index.d.ts
+@@ -33,6 +33,7 @@ export type LiveActivityConfig = {
+     progressViewLabelColor?: string;
+     deepLinkUrl?: string;
+     timerType?: DynamicIslandTimerType;
++    autoEnd?: boolean;
+ };
+ export type ActivityTokenReceivedEvent = {
+     activityID: string;
 diff --git a/node_modules/expo-live-activity/ios-files/LiveActivityView.swift b/node_modules/expo-live-activity/ios-files/LiveActivityView.swift
 index e309104..d2c05ea 100644
 --- a/node_modules/expo-live-activity/ios-files/LiveActivityView.swift
@@ -151,10 +163,20 @@ index fd8eea7..9837cb1 100644
  
    private func circularTimer(endDate: Double) -> some View {
 diff --git a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
-index a222928..379f645 100644
+index a222928..1d16c7c 100644
 --- a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 +++ b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
-@@ -191,6 +191,18 @@ public class ExpoLiveActivityModule: Module {
+@@ -51,6 +51,9 @@ public class ExpoLiveActivityModule: Module {
+ 
+     @Field
+     var timerType: DynamicIslandTimerType?
++
++    @Field
++    var autoEnd: Bool?
+   }
+ 
+   enum DynamicIslandTimerType: String, Enumerable {
+@@ -191,6 +194,18 @@ public class ExpoLiveActivityModule: Module {
        }
  
        do {
@@ -173,7 +195,17 @@ index a222928..379f645 100644
          let config = maybeConfig ?? LiveActivityConfig()
          let attributes = LiveActivityAttributes(
            name: "ExpoLiveActivity",
-@@ -214,8 +226,11 @@ public class ExpoLiveActivityModule: Module {
+@@ -200,7 +215,8 @@ public class ExpoLiveActivityModule: Module {
+           progressViewTint: config.progressViewTint,
+           progressViewLabelColor: config.progressViewLabelColor,
+           deepLinkUrl: config.deepLinkUrl,
+-          timerType: config.timerType == .digital ? .digital : .circular
++          timerType: config.timerType == .digital ? .digital : .circular,
++          autoEnd: config.autoEnd
+         )
+         let initialState = LiveActivityAttributes.ContentState(
+           title: state.title,
+@@ -214,8 +230,11 @@ public class ExpoLiveActivityModule: Module {
  
          // Set staleDate to the timer end time so the widget knows when
          // content is outdated (e.g. timer reached 0:00 while app was in background).
@@ -187,7 +219,7 @@ index a222928..379f645 100644
          }
  
          let activity = try Activity.request(
-@@ -230,33 +245,6 @@ public class ExpoLiveActivityModule: Module {
+@@ -230,32 +249,6 @@ public class ExpoLiveActivityModule: Module {
            await activity.update(ActivityContent(state: newState, staleDate: timerEndDate))
          }
  
@@ -217,7 +249,30 @@ index a222928..379f645 100644
 -            print("🧹 Auto-ended live activity: \(activity.id)")
 -          }
 -        }
--
+ 
          return activity.id
        } catch {
-         throw UnexpectedErrorException(error)
+diff --git a/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift b/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift
+index e96360d..0a08fdb 100644
+--- a/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift
++++ b/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift
+@@ -20,6 +20,7 @@ struct LiveActivityAttributes: ActivityAttributes {
+   var progressViewLabelColor: String?
+   var deepLinkUrl: String?
+   var timerType: DynamicIslandTimerType?
++  var autoEnd: Bool?
+ 
+   enum DynamicIslandTimerType: String, Codable {
+     case circular
+diff --git a/node_modules/expo-live-activity/src/index.ts b/node_modules/expo-live-activity/src/index.ts
+index 2b58e20..34f6431 100644
+--- a/node_modules/expo-live-activity/src/index.ts
++++ b/node_modules/expo-live-activity/src/index.ts
+@@ -44,6 +44,7 @@ export type LiveActivityConfig = {
+   progressViewLabelColor?: string
+   deepLinkUrl?: string
+   timerType?: DynamicIslandTimerType
++  autoEnd?: boolean
+ }
+ 
+ export type ActivityTokenReceivedEvent = {

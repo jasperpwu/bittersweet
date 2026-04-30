@@ -79,6 +79,9 @@ export class LiveActivityService {
         // No deepLinkUrl — tapping the live activity opens the app via default iOS
         // behavior without triggering Expo Router navigation to a nonexistent route.
         timerType: 'digital',
+        // Auto-end the activity when the timer expires instead of showing
+        // "Bonus Time" — bonus time is only meaningful for focus sessions.
+        autoEnd: true,
       };
 
       console.log('🎬 Starting Live Activity for unlock countdown:', {

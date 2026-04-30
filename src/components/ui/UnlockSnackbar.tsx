@@ -11,6 +11,7 @@ import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
 import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
 import { LiveActivityService } from '../../services/LiveActivityService';
 import { UnlockReasonModal } from '../modals/UnlockReasonModal';
+import * as Notifications from 'expo-notifications';
 
 interface UnlockOptionProps {
   duration: number;
@@ -184,7 +185,28 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
           }));
           console.log('🎬 Live Activity started for unlock session:', unlockSession.id);
 
-          // Schedule Live Activity dismissal when unlock expires
+          // Schedule a local notification at unlock expiry. When it fires,
+          // iOS wakes the app and the notification listener in _layout.tsx
+          // dismisses the live activity immediately.
+          const secondsUntilExpiry = Math.max(1, Math.round((reblockTime.getTime() - Date.now()) / 1000));
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'Unlock Expired',
+              body: `Your ${selectedDuration}m unlock has ended. Apps are blocked again.`,
+              sound: true,
+              data: {
+                type: 'unlock-expired',
+                liveActivityId,
+                unlockSessionId: unlockSession.id,
+              },
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+              seconds: secondsUntilExpiry,
+            },
+          });
+
+          // Also schedule JS dismissal for when the app is in foreground
           const msUntilExpiry = reblockTime.getTime() - Date.now();
           setTimeout(() => {
             console.log('⏰ Unlock expired — dismissing Live Activity:', liveActivityId);

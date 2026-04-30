@@ -61,12 +61,18 @@ export default function RootLayout() {
     // Request notification permissions for focus timer completion sound
     Notifications.requestPermissionsAsync();
 
-    // Vibrate on foreground notification if vibration is enabled
-    const notificationSubscription = Notifications.addNotificationReceivedListener(() => {
+    // Handle incoming notifications (vibration + unlock expiry dismissal)
+    const notificationSubscription = Notifications.addNotificationReceivedListener((notification) => {
       const { useUnifiedStore } = require('../src/store/unified-store');
       const vibrationEnabled = useUnifiedStore.getState().preferences.notifications.vibration;
       if (vibrationEnabled) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
+      // Dismiss the live activity when the unlock session expires
+      const data = notification.request.content.data;
+      if (data?.type === 'unlock-expired' && data.liveActivityId) {
+        LiveActivityService.stopUnlockCountdown(data.liveActivityId as string, 'expired');
       }
     });
 
