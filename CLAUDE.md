@@ -1,2 +1,3 @@
 ## Guide of working on this repository
 * Always reference actual expo and ios doc, do not guess and expect user to try and test. Users are very inpatient so we need to one-shot get it working based on best knowledge accessible.
+* As this is a react project, ios/ and node_modules/ are not tracked. Always avoid updating ios/ or node_modules/ without syncing those changes somehow to other actually tracked files such as patch or Expo plugin.

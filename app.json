@@ -28,7 +28,8 @@
           "enablePushNotifications": true,
           "appGroupIdentifier": "group.com.path2us.bittersweet.appblocker"
         }
-      ]
+      ],
+      "./plugins/withFmtFix"
     ],
     "experiments": {
       "typedRoutes": true,
