@@ -18,6 +18,7 @@ import { router } from 'expo-router';
 import { AppState, AppStateStatus } from 'react-native';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
 import { LiveActivityService } from '../src/services/LiveActivityService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
@@ -101,6 +102,13 @@ export default function RootLayout() {
       console.log('🛡️ [SHIELD_LAYOUT] checkIfOpenedFromShield result:', wasOpenedFromShield);
 
       if (wasOpenedFromShield) {
+        // Don't show unlock sheet during a focus session
+        const activeSession = await AsyncStorage.getItem('active-focus-session');
+        if (activeSession) {
+          console.log('🛡️ [SHIELD_LAYOUT] Focus session active, skipping unlock sheet');
+          return;
+        }
+
         console.log('✅ [SHIELD_LAYOUT] App was opened from shield, showing bottom sheet...');
 
         // Navigate to calendar tab and show bottom sheet

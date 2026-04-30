@@ -5,9 +5,10 @@ import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal } from '../../src/components/ui/EmojiPicker/EmojiPicker';
 import { TimeScroller } from '../../src/components/focus';
 
-import { useFocus, useFocusActions, useRewards } from '../../src/store';
+import { useFocus, useFocusActions, useRewards, useAppStore } from '../../src/store';
 import { FruitCounter } from '../../src/components/rewards';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
+import { FamilyControlsModule } from '../../src/modules/BitterSweetFamilyControls';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
@@ -240,6 +241,12 @@ export default function FocusScreen() {
       });
     }
 
+    // Update shield to block unlocking during focus session
+    const currentBalance = useAppStore.getState().rewards.balance;
+    FamilyControlsModule.updateShieldBalance(currentBalance, true).catch((error) => {
+      console.error('Failed to update shield for focus session start:', error);
+    });
+
     // Persist active session so it survives app kills
     const now = Date.now();
     AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
@@ -285,6 +292,12 @@ export default function FocusScreen() {
     setIsBonusTime(false);
     setBonusSeconds(0);
     AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+
+    // Restore normal shield (allow unlocking again)
+    const currentBalance = useAppStore.getState().rewards.balance;
+    FamilyControlsModule.updateShieldBalance(currentBalance, false).catch((error) => {
+      console.error('Failed to restore shield after focus session stop:', error);
+    });
   };
 
   const stopWithAnimation = () => {
@@ -298,6 +311,12 @@ export default function FocusScreen() {
     setIsBonusTime(false);
     setBonusSeconds(0);
     AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+
+    // Restore normal shield (allow unlocking again)
+    const currentBalance = useAppStore.getState().rewards.balance;
+    FamilyControlsModule.updateShieldBalance(currentBalance, false).catch((error) => {
+      console.error('Failed to restore shield after focus session stop:', error);
+    });
 
     // Stop Live Activity if it's running - clear ID first to prevent double-stop
     sessionEndTimeRef.current = null;
@@ -399,6 +418,12 @@ export default function FocusScreen() {
         if (persisted.notificationId) {
           scheduledNotificationRef.current = persisted.notificationId;
         }
+
+        // Restore shield to focus-session mode (block unlocking)
+        const currentBalance = useAppStore.getState().rewards.balance;
+        FamilyControlsModule.updateShieldBalance(currentBalance, true).catch((error) => {
+          console.error('Failed to update shield for recovered focus session:', error);
+        });
 
         if (persisted.isInfinite) {
           // Infinite session was running when app was killed — restore it

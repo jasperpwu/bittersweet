@@ -1,4 +1,5 @@
 import { FamilyActivitySelection } from '../types/models';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import react-native-device-activity with proper types
 import * as ReactNativeDeviceActivity from 'react-native-device-activity';
@@ -51,42 +52,62 @@ class BitterSweetFamilyControlsModule {
   /**
    * Configure the shield appearance with current app state
    * @param fruitBalance - Current fruit balance
+   * @param focusSessionActive - Whether a focus session is currently running
    */
-  async configureShield(fruitBalance: number): Promise<boolean> {
+  async configureShield(fruitBalance: number, focusSessionActive: boolean = false): Promise<boolean> {
     try {
 
       // Configure shield appearance (using official library interface)
-      const shieldConfig: ShieldConfiguration = {
-        title: '{applicationOrDomainDisplayName} is Blocked',
-        subtitle: `You have ${fruitBalance} 🍎\nSpend fruits to unlock temporarily`,
-        primaryButtonLabel: 'Unlock App',
-        secondaryButtonLabel: 'Close',
-        iconSystemName: 'hand.raised.fill',
-        backgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Dark red
-        titleColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
-        subtitleColor: { red: 230, green: 230, blue: 230, alpha: 1.0 }, // Light gray
-        primaryButtonLabelColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
-        primaryButtonBackgroundColor: { red: 51, green: 153, blue: 51, alpha: 1.0 }, // Green
-        secondaryButtonLabelColor: { red: 178, green: 178, blue: 178, alpha: 1.0 }, // Gray
-      };
+      const shieldConfig: ShieldConfiguration = focusSessionActive
+        ? {
+            title: '{applicationOrDomainDisplayName} is Blocked',
+            subtitle: 'Focus session in progress\nStay focused!',
+            primaryButtonLabel: 'Close',
+            iconSystemName: 'hand.raised.fill',
+            backgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Dark red
+            titleColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
+            subtitleColor: { red: 230, green: 230, blue: 230, alpha: 1.0 }, // Light gray
+            primaryButtonLabelColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
+            primaryButtonBackgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Red (not green)
+          }
+        : {
+            title: '{applicationOrDomainDisplayName} is Blocked',
+            subtitle: `You have ${fruitBalance} 🍎\nSpend fruits to unlock temporarily`,
+            primaryButtonLabel: 'Unlock App',
+            secondaryButtonLabel: 'Close',
+            iconSystemName: 'hand.raised.fill',
+            backgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Dark red
+            titleColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
+            subtitleColor: { red: 230, green: 230, blue: 230, alpha: 1.0 }, // Light gray
+            primaryButtonLabelColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
+            primaryButtonBackgroundColor: { red: 51, green: 153, blue: 51, alpha: 1.0 }, // Green
+            secondaryButtonLabelColor: { red: 178, green: 178, blue: 178, alpha: 1.0 }, // Gray
+          };
 
-      // No need to store unlock options - app will handle them when opened
-
-      // Configure shield actions
-      const shieldActions: ShieldActions = {
-        primary: {
-          behavior: 'defer',
-          actions: [
-              {
-                type: "openAppWithBundleId",
-                bundleId: "com.path2us.bittersweet"
-              }
-          ]
-        },
-        secondary: {
-          behavior: 'close'
-        }
-      };
+      // Configure shield actions - during focus session, just close; otherwise open app for unlock
+      const shieldActions: ShieldActions = focusSessionActive
+        ? {
+            primary: {
+              behavior: 'close'
+            },
+            secondary: {
+              behavior: 'close'
+            }
+          }
+        : {
+            primary: {
+              behavior: 'defer',
+              actions: [
+                  {
+                    type: "openAppWithBundleId",
+                    bundleId: "com.path2us.bittersweet"
+                  }
+              ]
+            },
+            secondary: {
+              behavior: 'close'
+            }
+          };
 
       // Store configuration in UserDefaults for the shield extensions
       ReactNativeDeviceActivity.userDefaultsSet(SHIELD_CONFIGURATION_KEY, shieldConfig);
@@ -112,13 +133,20 @@ class BitterSweetFamilyControlsModule {
   }
 
   /**
-   * Update shield configuration when fruit balance changes
+   * Update shield configuration when fruit balance changes.
+   * Automatically checks AsyncStorage for active focus session if focusSessionActive is not provided.
    * @param fruitBalance - New fruit balance
+   * @param focusSessionActive - Whether a focus session is currently running (auto-detected if omitted)
    */
-  async updateShieldBalance(fruitBalance: number): Promise<boolean> {
+  async updateShieldBalance(fruitBalance: number, focusSessionActive?: boolean): Promise<boolean> {
     try {
-      // Update shield with new balance
-      return await this.configureShield(fruitBalance);
+      // Auto-detect focus session state if not explicitly provided
+      let isFocusActive = focusSessionActive;
+      if (isFocusActive === undefined) {
+        const activeSession = await AsyncStorage.getItem('active-focus-session');
+        isFocusActive = !!activeSession;
+      }
+      return await this.configureShield(fruitBalance, isFocusActive);
     } catch (error) {
       console.error('Failed to update shield balance:', error);
       return false;

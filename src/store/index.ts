@@ -376,7 +376,8 @@ export const useAppStore = create<AppStore>()(
 
             // Update shield configuration with new balance after deletion
             const newBalance = get().rewards.balance;
-            FamilyControlsModule.updateShieldBalance(newBalance).catch((error) => {
+            const focusActive = get().focus.currentSession.isRunning;
+            FamilyControlsModule.updateShieldBalance(newBalance, focusActive).catch((error) => {
               console.error('Failed to update shield balance after deleting session:', error);
             });
           }
@@ -1106,7 +1107,7 @@ export const useAppStore = create<AppStore>()(
             if (success) {
               const currentBalance = get().rewards.balance;
               console.log('📱 Store: Configuring shield with balance:', currentBalance);
-              await FamilyControlsModule.configureShield(currentBalance);
+              await FamilyControlsModule.updateShieldBalance(currentBalance);
             }
 
             if (success) {
