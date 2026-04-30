@@ -93,6 +93,7 @@ const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
           <LottieView
             autoPlay
             loop={false}
+            speed={2}
             onAnimationFinish={onLottieAnimationFinish}
             style={{
               width: 500,
