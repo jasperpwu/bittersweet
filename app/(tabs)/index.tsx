@@ -58,7 +58,6 @@ export default function FocusScreen() {
   // Delete functionality
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<any>(null);
-  const [confirmationText, setConfirmationText] = useState('');
   
 
   // Session + timer state
@@ -117,6 +116,7 @@ export default function FocusScreen() {
       // Set emoji in edit tag state (saved when user hits Save)
       setEditTagEmoji(emoji);
       setShowEmojiPicker(false);
+      setShowTagModal(true);
       setShowEditTagModal(true);
     } else if (emojiPickerMode === 'edit' && editingTagName) {
       // Legacy: direct emoji update from tag list
@@ -156,12 +156,13 @@ export default function FocusScreen() {
     setEditTagName(tag.name);
     setEditTagEmoji(tag.icon || '');
     setEditTagColor(tag.color || '#6592E9');
-    setShowTagModal(false);
     setShowEditTagModal(true);
+    // Keep tag modal open - edit appears as overlay within it
   };
 
   const handleEditTagEmojiPress = () => {
     setShowEditTagModal(false);
+    setShowTagModal(false);
     setEmojiPickerMode('edit');
     setShowEmojiPicker(true);
   };
@@ -180,7 +181,7 @@ export default function FocusScreen() {
       }
       setShowEditTagModal(false);
       setEditingTag(null);
-      setShowTagModal(true);
+      // Tag modal remains open
     }
   };
 
@@ -192,7 +193,7 @@ export default function FocusScreen() {
   };
   
   const handleConfirmDelete = () => {
-    if (tagToDelete && confirmationText === tagToDelete.name) {
+    if (tagToDelete) {
       deleteTag(tagToDelete.name);
       // If deleted tag was selected, reset selection
       if (selectedTag === tagToDelete.name) {
@@ -201,15 +202,13 @@ export default function FocusScreen() {
       }
       setShowDeleteModal(false);
       setTagToDelete(null);
-      setConfirmationText('');
       // Tag modal remains open after deletion
     }
   };
-  
+
   const handleCancelDelete = () => {
     setShowDeleteModal(false);
     setTagToDelete(null);
-    setConfirmationText('');
     // Tag modal remains open
   };
 
@@ -797,10 +796,13 @@ export default function FocusScreen() {
         visible={showTagModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowTagModal(false)}
+        onRequestClose={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
       >
-        <View className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4">
-          <View className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
+        <Pressable
+          className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4"
+          onPress={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
+        >
+          <Pressable onPress={() => {}} className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
             {/* Modal Header */}
             <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
               <Typography variant="headline-20" color="white">
@@ -809,6 +811,7 @@ export default function FocusScreen() {
               <Pressable
                 onPress={() => setShowTagModal(false)}
                 className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center"
+                hitSlop={8}
               >
                 <Ionicons name="close" size={20} color="#FFFFFF" />
               </Pressable>
@@ -858,20 +861,20 @@ export default function FocusScreen() {
                   </Pressable>
                   
                   {/* Edit & Delete buttons */}
-                  <View className="absolute right-3 top-1/2 flex-row" style={{ marginTop: -16, gap: 8 }}>
+                  <View className="absolute right-0 top-0 bottom-0 flex-row">
                     <Pressable
                       onPress={(event) => handleEditTag(tag, event)}
-                      className="w-8 h-8 items-center justify-center rounded-full"
-                      style={{ backgroundColor: 'rgba(200, 200, 200, 0.3)' }}
+                      className="w-12 items-center justify-center active:opacity-60"
+                      style={{ backgroundColor: 'rgba(200, 200, 200, 0.15)' }}
                     >
-                      <Ionicons name="pencil-outline" size={14} color="white" />
+                      <Ionicons name="pencil-outline" size={16} color="white" />
                     </Pressable>
                     <Pressable
                       onPress={(event) => handleDeleteTag(tag, event)}
-                      className="w-8 h-8 items-center justify-center rounded-full"
-                      style={{ backgroundColor: 'rgba(237, 223, 223, 0.8)' }}
+                      className="w-12 items-center justify-center rounded-r-2xl active:opacity-60"
+                      style={{ backgroundColor: 'rgba(239, 68, 68, 0.25)' }}
                     >
-                      <Ionicons name="trash-outline" size={14} color="white" />
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
                     </Pressable>
                   </View>
                 </View>
@@ -893,55 +896,111 @@ export default function FocusScreen() {
               </Pressable>
             </View>
             
+            {/* Edit Tag Overlay - appears within tag modal */}
+            {showEditTagModal && (
+              <View className="absolute inset-0 bg-black bg-opacity-70 rounded-3xl flex-1 justify-center items-center p-4">
+                <Pressable onPress={() => {}} className="bg-gray-800 rounded-2xl w-full max-w-xs overflow-hidden">
+                  {/* Edit Header */}
+                  <View className="p-4 border-b border-gray-700">
+                    <Typography variant="headline-18" color="white">
+                      Edit Tag
+                    </Typography>
+                  </View>
+
+                  {/* Edit Form */}
+                  <View className="p-4">
+                    {/* Emoji + Name row */}
+                    <View className="mb-4 flex-row items-center" style={{ gap: 12 }}>
+                      <Pressable
+                        onPress={handleEditTagEmojiPress}
+                        className="w-12 h-12 rounded-xl bg-gray-700 items-center justify-center border border-gray-500 active:opacity-80"
+                      >
+                        <Text className="text-2xl">{editTagEmoji || '🏷️'}</Text>
+                      </Pressable>
+                      <TextInput
+                        value={editTagName}
+                        onChangeText={setEditTagName}
+                        placeholder="Tag name"
+                        placeholderTextColor="#666"
+                        className="flex-1"
+                        style={{
+                          backgroundColor: '#2A2A2A',
+                          borderRadius: 12,
+                          padding: 14,
+                          fontSize: 16,
+                          color: '#FFFFFF',
+                          borderWidth: 1,
+                          borderColor: '#444',
+                        }}
+                      />
+                    </View>
+
+                    {/* Color Selection */}
+                    <View>
+                      <Typography variant="body-14" color="white" className="mb-3">
+                        Color
+                      </Typography>
+                      <View className="flex-row flex-wrap" style={{ gap: 12 }}>
+                        {(['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'] as const).map((color) => (
+                          <Pressable
+                            key={color}
+                            onPress={() => setEditTagColor(color)}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 18,
+                              backgroundColor: color,
+                              borderWidth: editTagColor === color ? 3 : 0,
+                              borderColor: '#FFFFFF',
+                            }}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Action buttons */}
+                  <View className="p-3 border-t border-gray-700 flex-row space-x-2">
+                    <Pressable
+                      onPress={() => { setShowEditTagModal(false); setEditingTag(null); }}
+                      className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
+                    >
+                      <Typography variant="body-14" color="white">
+                        Cancel
+                      </Typography>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleSaveEditTag}
+                      disabled={!editTagName.trim()}
+                      className={`flex-1 rounded-xl py-3 items-center ${editTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}
+                    >
+                      <Typography variant="body-14" color="white" className="font-semibold">
+                        Save
+                      </Typography>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            )}
+
             {/* Delete Confirmation Popup - appears as overlay within tag modal */}
             {showDeleteModal && (
               <View className="absolute inset-0 bg-black bg-opacity-70 rounded-3xl flex-1 justify-center items-center p-4">
-                <View className="bg-gray-800 rounded-2xl w-full max-w-xs">
+                <Pressable className="bg-gray-800 rounded-2xl w-full max-w-xs">
                   {/* Delete Popup Header */}
                   <View className="p-4 border-b border-gray-700">
                     <Typography variant="headline-18" color="white" className="text-center">
                       Delete Tag
                     </Typography>
                   </View>
-                  
+
                   {/* Warning content */}
                   <View className="p-4">
-                    <View className="bg-red-900 bg-opacity-30 border border-red-500 rounded-xl p-3 mb-4">
-                      <View className="flex-row items-center mb-2">
-                        <Ionicons name="warning" size={18} color="#EF4444" />
-                        <Typography variant="subtitle-16" color="white" className="ml-2 font-semibold">
-                          Warning
-                        </Typography>
-                      </View>
-                      <Typography variant="body-12" color="white" className="leading-4">
-                        Deleting "{tagToDelete?.name}" will permanently remove all associated focus sessions. This cannot be undone.
-                      </Typography>
-                    </View>
-                    
-                    {/* Confirmation input */}
-                    <View className="mb-4">
-                      <Typography variant="body-12" color="white" className="mb-2">
-                        Type <Typography variant="body-12" className="font-semibold text-white">{tagToDelete?.name}</Typography> to confirm:
-                      </Typography>
-                      <TextInput
-                        value={confirmationText}
-                        onChangeText={setConfirmationText}
-                        placeholder={`Type "${tagToDelete?.name}" here`}
-                        placeholderTextColor="#666"
-                        style={{
-                          backgroundColor: '#2A2A2A',
-                          borderRadius: 8,
-                          padding: 12,
-                          fontSize: 14,
-                          color: '#FFFFFF',
-                          borderWidth: 1,
-                          borderColor: confirmationText === tagToDelete?.name ? '#EF4444' : '#444',
-                        }}
-                        autoFocus={true}
-                      />
-                    </View>
+                    <Typography variant="body-14" color="white" className="leading-5">
+                      Deleting "{tagToDelete?.name}" will permanently remove all associated focus sessions. This cannot be undone.
+                    </Typography>
                   </View>
-                  
+
                   {/* Action buttons */}
                   <View className="p-3 border-t border-gray-700 flex-row space-x-2">
                     <Pressable
@@ -954,23 +1013,18 @@ export default function FocusScreen() {
                     </Pressable>
                     <Pressable
                       onPress={handleConfirmDelete}
-                      disabled={confirmationText !== tagToDelete?.name}
-                      className={`flex-1 rounded-xl py-3 items-center ${
-                        confirmationText === tagToDelete?.name 
-                          ? 'bg-red-600 active:opacity-80' 
-                          : 'bg-gray-500 opacity-50'
-                      }`}
+                      className="flex-1 rounded-xl py-3 items-center bg-red-600 active:opacity-80"
                     >
                       <Typography variant="body-14" color="white" className="font-semibold">
                         Delete
                       </Typography>
                     </Pressable>
                   </View>
-                </View>
+                </Pressable>
               </View>
             )}
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* New Tag Creation Modal */}
@@ -1107,124 +1161,6 @@ export default function FocusScreen() {
 
 
 
-      {/* Edit Tag Modal */}
-      <Modal
-        visible={showEditTagModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowEditTagModal(false);
-          setEditingTag(null);
-          setShowTagModal(true);
-        }}
-      >
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <Pressable
-            className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4"
-            onPress={() => {
-              setShowEditTagModal(false);
-              setEditingTag(null);
-              setShowTagModal(true);
-            }}
-          >
-            <Pressable onPress={() => {}} className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
-              <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
-                <Typography variant="headline-20" color="white">
-                  Edit Tag
-                </Typography>
-                <Pressable
-                  onPress={() => {
-                    setShowEditTagModal(false);
-                    setEditingTag(null);
-                    setShowTagModal(true);
-                  }}
-                  className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center"
-                >
-                  <Ionicons name="close" size={20} color="#FFFFFF" />
-                </Pressable>
-              </View>
-
-              <View className="p-6">
-                {/* Emoji + Name row */}
-                <View className="mb-6 flex-row items-center" style={{ gap: 12 }}>
-                  <Pressable
-                    onPress={handleEditTagEmojiPress}
-                    className="w-12 h-12 rounded-xl bg-gray-700 items-center justify-center border border-gray-500 active:opacity-80"
-                  >
-                    <Text className="text-2xl">{editTagEmoji || '🏷️'}</Text>
-                  </Pressable>
-                  <TextInput
-                    value={editTagName}
-                    onChangeText={setEditTagName}
-                    placeholder="Tag name"
-                    placeholderTextColor="#666"
-                    className="flex-1"
-                    style={{
-                      backgroundColor: '#2A2A2A',
-                      borderRadius: 12,
-                      padding: 14,
-                      fontSize: 16,
-                      color: '#FFFFFF',
-                      borderWidth: 1,
-                      borderColor: '#444',
-                    }}
-                  />
-                </View>
-
-                {/* Color Selection */}
-                <View>
-                  <Typography variant="body-14" color="white" className="mb-3">
-                    Color
-                  </Typography>
-                  <View className="flex-row flex-wrap" style={{ gap: 12 }}>
-                    {(['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'] as const).map((color) => (
-                      <Pressable
-                        key={color}
-                        onPress={() => setEditTagColor(color)}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          backgroundColor: color,
-                          borderWidth: editTagColor === color ? 3 : 0,
-                          borderColor: '#FFFFFF',
-                        }}
-                      />
-                    ))}
-                  </View>
-                </View>
-              </View>
-
-              <View className="p-4 border-t border-gray-700 flex-row space-x-3">
-                <Pressable
-                  onPress={() => {
-                    setShowEditTagModal(false);
-                    setEditingTag(null);
-                    setShowTagModal(true);
-                  }}
-                  className="flex-1 bg-gray-600 rounded-2xl py-4 items-center active:opacity-80"
-                >
-                  <Typography variant="subtitle-16" color="white">
-                    Cancel
-                  </Typography>
-                </Pressable>
-                <Pressable
-                  onPress={handleSaveEditTag}
-                  disabled={!editTagName.trim()}
-                  className={`flex-1 rounded-2xl py-4 items-center ${editTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}
-                >
-                  <Typography variant="subtitle-16" color="white" className="font-semibold">
-                    Save
-                  </Typography>
-                </Pressable>
-              </View>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
 
       {/* Emoji Picker */}
       <EmojiPickerModal
@@ -1245,86 +1181,6 @@ export default function FocusScreen() {
         title={emojiPickerMode === 'edit' ? 'Change Emoji' : 'Choose Emoji for New Tag'}
       />
 
-      <Modal
-        visible={showDeleteModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleCancelDelete}
-      >
-        <View className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4">
-          <View className="bg-gray-800 rounded-3xl w-full max-w-sm overflow-hidden">
-            {/* Modal Header */}
-            <View className="p-6 border-b border-gray-700">
-              <Typography variant="headline-20" color="white" className="text-center">
-                Delete Tag
-              </Typography>
-            </View>
-            
-            {/* Warning content */}
-            <View className="p-6">
-              <View className="bg-red-900 bg-opacity-30 border border-red-500 rounded-xl p-4 mb-4">
-                <View className="flex-row items-center mb-2">
-                  <Ionicons name="warning" size={20} color="#EF4444" />
-                  <Typography variant="subtitle-16" color="white" className="ml-2 font-semibold">
-                    Warning
-                  </Typography>
-                </View>
-                <Typography variant="body-14" color="white" className="leading-5">
-                  Deleting this tag will permanently remove all focus sessions associated with "{tagToDelete?.name}". This action cannot be undone.
-                </Typography>
-              </View>
-              
-              {/* Confirmation input */}
-              <View className="mb-4">
-                <Typography variant="body-14" color="white" className="mb-3">
-                  To confirm deletion, type the tag name: <Typography variant="body-14" className="font-semibold text-white">{tagToDelete?.name}</Typography>
-                </Typography>
-                <TextInput
-                  value={confirmationText}
-                  onChangeText={setConfirmationText}
-                  placeholder={`Type "${tagToDelete?.name}" here`}
-                  placeholderTextColor="#666"
-                  style={{
-                    backgroundColor: '#2A2A2A',
-                    borderRadius: 12,
-                    padding: 16,
-                    fontSize: 16,
-                    color: '#FFFFFF',
-                    borderWidth: 1,
-                    borderColor: confirmationText === tagToDelete?.name ? '#EF4444' : '#444',
-                  }}
-                  autoFocus={true}
-                />
-              </View>
-            </View>
-            
-            {/* Action buttons */}
-            <View className="p-4 border-t border-gray-700 flex-row space-x-3">
-              <Pressable
-                onPress={handleCancelDelete}
-                className="flex-1 bg-gray-600 rounded-2xl py-4 items-center active:opacity-80"
-              >
-                <Typography variant="subtitle-16" color="white">
-                  Cancel
-                </Typography>
-              </Pressable>
-              <Pressable
-                onPress={handleConfirmDelete}
-                disabled={confirmationText !== tagToDelete?.name}
-                className={`flex-1 rounded-2xl py-4 items-center ${
-                  confirmationText === tagToDelete?.name 
-                    ? 'bg-red-600 active:opacity-80' 
-                    : 'bg-gray-500 opacity-50'
-                }`}
-              >
-                <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  Delete Tag
-                </Typography>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
     </SafeAreaView>
   );

@@ -1,5 +1,5 @@
 import React, { FC, useState } from 'react';
-import { ScrollView, Pressable, View, Modal, TextInput } from 'react-native';
+import { ScrollView, Pressable, View, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -38,7 +38,6 @@ export const TagSelector: FC<TagSelectorProps> = ({
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
-  const [confirmationText, setConfirmationText] = useState('');
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   
   const isTagSelected = (tagName: string) => selectedTags.includes(tagName);
@@ -52,18 +51,16 @@ export const TagSelector: FC<TagSelectorProps> = ({
   };
   
   const handleConfirmDelete = () => {
-    if (tagToDelete && confirmationText === tagToDelete.name && onTagDelete) {
+    if (tagToDelete && onTagDelete) {
       onTagDelete(tagToDelete.name);
       setShowDeleteModal(false);
       setTagToDelete(null);
-      setConfirmationText('');
     }
   };
-  
+
   const handleCancelDelete = () => {
     setShowDeleteModal(false);
     setTagToDelete(null);
-    setConfirmationText('');
   };
 
   const handleReorder = (fromIndex: number, toIndex: number) => {
@@ -223,45 +220,14 @@ export const TagSelector: FC<TagSelectorProps> = ({
               Delete Tag
             </Typography>
           </View>
-          
+
           {/* Warning content */}
           <View className="p-6">
-            <View className="bg-red-900 bg-opacity-30 border border-red-500 rounded-xl p-4 mb-4">
-              <View className="flex-row items-center mb-2">
-                <Ionicons name="warning" size={20} color="#EF4444" />
-                <Typography variant="subtitle-16" color="white" className="ml-2 font-semibold">
-                  Warning
-                </Typography>
-              </View>
-              <Typography variant="body-14" color="white" className="leading-5">
-                Deleting this tag will permanently remove all focus sessions associated with "{tagToDelete?.name}". This action cannot be undone.
-              </Typography>
-            </View>
-            
-            {/* Confirmation input */}
-            <View className="mb-4">
-              <Typography variant="body-14" color="white" className="mb-3">
-                To confirm deletion, type the tag name: <Typography variant="body-14" className="font-semibold text-white">{tagToDelete?.name}</Typography>
-              </Typography>
-              <TextInput
-                value={confirmationText}
-                onChangeText={setConfirmationText}
-                placeholder={`Type "${tagToDelete?.name}" here`}
-                placeholderTextColor="#666"
-                style={{
-                  backgroundColor: '#2A2A2A',
-                  borderRadius: 12,
-                  padding: 16,
-                  fontSize: 16,
-                  color: '#FFFFFF',
-                  borderWidth: 1,
-                  borderColor: confirmationText === tagToDelete?.name ? '#EF4444' : '#444',
-                }}
-                autoFocus={true}
-              />
-            </View>
+            <Typography variant="body-14" color="white" className="leading-5">
+              Deleting "{tagToDelete?.name}" will permanently remove all focus sessions associated with it. This action cannot be undone.
+            </Typography>
           </View>
-          
+
           {/* Action buttons */}
           <View className="p-4 border-t border-gray-700 flex-row space-x-3">
             <Pressable
@@ -274,12 +240,7 @@ export const TagSelector: FC<TagSelectorProps> = ({
             </Pressable>
             <Pressable
               onPress={handleConfirmDelete}
-              disabled={confirmationText !== tagToDelete?.name}
-              className={`flex-1 rounded-2xl py-4 items-center ${
-                confirmationText === tagToDelete?.name 
-                  ? 'bg-red-600 active:opacity-80' 
-                  : 'bg-gray-500 opacity-50'
-              }`}
+              className="flex-1 rounded-2xl py-4 items-center bg-red-600 active:opacity-80"
             >
               <Typography variant="subtitle-16" color="white" className="font-semibold">
                 Delete Tag
