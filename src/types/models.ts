@@ -48,6 +48,7 @@ export interface FocusSession {
 export interface SessionTag {
   name: string; // This is now the primary key/identifier
   icon: string;
+  color: string; // Hex color string like '#6592E9'
   usageCount: number;
   isDefault?: boolean; // For built-in tags like 'work', 'study', etc.
 }

@@ -79,9 +79,7 @@ export class LiveActivityService {
         // No deepLinkUrl — tapping the live activity opens the app via default iOS
         // behavior without triggering Expo Router navigation to a nonexistent route.
         timerType: 'digital',
-        // Auto-end the activity when the timer expires instead of showing
-        // "Bonus Time" — bonus time is only meaningful for focus sessions.
-        autoEnd: true,
+        sessionType: 'unlock',
       };
 
       console.log('🎬 Starting Live Activity for unlock countdown:', {
@@ -390,25 +388,9 @@ export class LiveActivityService {
   static cleanupExpired(): void {
     if (!this.isAvailable()) return;
 
-    const now = Date.now();
-    const stopState: LiveActivity.LiveActivityState = {
-      title: 'Session Ended',
-      progressBar: { date: now },
-    };
-
-    // Note: expired focus activities are NOT cleaned up here — they stay
-    // alive to show the bonus time count-up until the user manually ends.
-
-    if (this.lastUnlockActivityId && this.unlockEndTimestamp && now >= this.unlockEndTimestamp) {
-      try {
-        LiveActivity.stopActivity(this.lastUnlockActivityId, stopState);
-        console.log('🧹 Cleaned up expired unlock activity:', this.lastUnlockActivityId);
-      } catch (e) {
-        // Already ended — ignore
-      }
-      this.lastUnlockActivityId = undefined;
-      this.unlockEndTimestamp = undefined;
-    }
+    // No-op: expired activities (both unlock and focus) stay alive so iOS
+    // continues to render their stale state (e.g. "Unblock Expired" or
+    // "Bonus Time") until the user manually dismisses them.
   }
 
   /**

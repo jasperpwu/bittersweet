@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState } from 'react-native';
+import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal } from '../../src/components/ui/EmojiPicker/EmojiPicker';
@@ -47,6 +47,12 @@ export default function FocusScreen() {
   const [editingTagName, setEditingTagName] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState('');
   const [newTagEmoji, setNewTagEmoji] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#6592E9');
+  const [showEditTagModal, setShowEditTagModal] = useState(false);
+  const [editingTag, setEditingTag] = useState<{ name: string; icon: string; color: string } | null>(null);
+  const [editTagName, setEditTagName] = useState('');
+  const [editTagEmoji, setEditTagEmoji] = useState('');
+  const [editTagColor, setEditTagColor] = useState('#6592E9');
   const [emojiPickerMode, setEmojiPickerMode] = useState<'edit' | 'new'>('edit');
   
   // Delete functionality
@@ -107,11 +113,15 @@ export default function FocusScreen() {
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    if (emojiPickerMode === 'edit' && editingTagName) {
-      // Update existing tag
+    if (emojiPickerMode === 'edit' && editingTag) {
+      // Set emoji in edit tag state (saved when user hits Save)
+      setEditTagEmoji(emoji);
+      setShowEmojiPicker(false);
+      setShowEditTagModal(true);
+    } else if (emojiPickerMode === 'edit' && editingTagName) {
+      // Legacy: direct emoji update from tag list
       updateTag(editingTagName, { icon: emoji });
       setEditingTagName(null);
-      // Close emoji picker and reopen tag modal
       setShowEmojiPicker(false);
       setShowTagModal(true);
     } else if (emojiPickerMode === 'new') {
@@ -125,17 +135,55 @@ export default function FocusScreen() {
   const handleCreateNewTag = () => {
     if (newTagName.trim() && newTagEmoji) {
       // Create tag using store action
+      const tagName = newTagName.trim();
       createTag({
-        name: newTagName.trim(),
+        name: tagName,
         icon: newTagEmoji,
+        color: newTagColor,
       });
-      
+
+      setSelectedTag(tagName);
       setShowNewTagModal(false);
       setNewTagName('');
       setNewTagEmoji('');
+      setNewTagColor('#6592E9');
     }
   };
   
+  const handleEditTag = (tag: any, event: any) => {
+    event.stopPropagation();
+    setEditingTag(tag);
+    setEditTagName(tag.name);
+    setEditTagEmoji(tag.icon || '');
+    setEditTagColor(tag.color || '#6592E9');
+    setShowTagModal(false);
+    setShowEditTagModal(true);
+  };
+
+  const handleEditTagEmojiPress = () => {
+    setShowEditTagModal(false);
+    setEmojiPickerMode('edit');
+    setShowEmojiPicker(true);
+  };
+
+  const handleSaveEditTag = () => {
+    if (editingTag && editTagName.trim()) {
+      const updates: any = {};
+      if (editTagName.trim() !== editingTag.name) updates.name = editTagName.trim();
+      if (editTagEmoji !== editingTag.icon) updates.icon = editTagEmoji;
+      if (editTagColor !== editingTag.color) updates.color = editTagColor;
+      if (Object.keys(updates).length > 0) {
+        updateTag(editingTag.name, updates);
+        if (selectedTag === editingTag.name && updates.name) {
+          setSelectedTag(updates.name);
+        }
+      }
+      setShowEditTagModal(false);
+      setEditingTag(null);
+      setShowTagModal(true);
+    }
+  };
+
   const handleDeleteTag = (tag: any, event: any) => {
     event.stopPropagation(); // Prevent tag selection when clicking delete
     setTagToDelete(tag);
@@ -771,8 +819,12 @@ export default function FocusScreen() {
               {availableTags.map((tag) => (
                 <View
                   key={tag.name}
-                  className={`mb-3 rounded-2xl p-4 pr-12 flex-row items-center relative ${selectedTag === tag.name ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'
+                  className={`mb-3 rounded-2xl p-4 pr-24 flex-row items-center relative ${selectedTag === tag.name ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'
                     }`}
+                  style={{
+                    borderLeftWidth: 4,
+                    borderLeftColor: tag.color || '#6592E9',
+                  }}
                 >
                   <Pressable
                     onPress={() => handleTagSelect(tag.name)}
@@ -805,16 +857,23 @@ export default function FocusScreen() {
                   </View>
                   </Pressable>
                   
-                  {/* Delete button */}
-                  <Pressable
-                    onPress={(event) => handleDeleteTag(tag, event)}
-                    className="absolute right-3 top-1/2 w-8 h-8 -mt-4 items-center justify-center rounded-full"
-                    style={{
-                      backgroundColor: 'rgba(237, 223, 223, 0.8)',
-                    }}
-                  >
-                    <Ionicons name="trash-outline" size={14} color="white" />
-                  </Pressable>
+                  {/* Edit & Delete buttons */}
+                  <View className="absolute right-3 top-1/2 flex-row" style={{ marginTop: -16, gap: 8 }}>
+                    <Pressable
+                      onPress={(event) => handleEditTag(tag, event)}
+                      className="w-8 h-8 items-center justify-center rounded-full"
+                      style={{ backgroundColor: 'rgba(200, 200, 200, 0.3)' }}
+                    >
+                      <Ionicons name="pencil-outline" size={14} color="white" />
+                    </Pressable>
+                    <Pressable
+                      onPress={(event) => handleDeleteTag(tag, event)}
+                      className="w-8 h-8 items-center justify-center rounded-full"
+                      style={{ backgroundColor: 'rgba(237, 223, 223, 0.8)' }}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="white" />
+                    </Pressable>
+                  </View>
                 </View>
               ))}
             </View>
@@ -919,119 +978,264 @@ export default function FocusScreen() {
         visible={showNewTagModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowNewTagModal(false)}
+        onRequestClose={() => {
+          setShowNewTagModal(false);
+          setNewTagName('');
+          setNewTagEmoji('');
+          setNewTagColor('#6592E9');
+        }}
       >
-        <View className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4">
-          <View className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
-            {/* Modal Header */}
-            <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
-              <Typography variant="headline-20" color="white">
-                Create New Tag
-              </Typography>
-              <Pressable
-                onPress={() => setShowNewTagModal(false)}
-                className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center"
-              >
-                <Ionicons name="close" size={20} color="#FFFFFF" />
-              </Pressable>
-            </View>
-
-            {/* New Tag Form */}
-            <View className="p-6">
-              {/* Emoji Selection */}
-              <View className="mb-6">
-                <Typography variant="body-14" color="white" className="mb-3">
-                  Choose Emoji
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable
+            className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4"
+            onPress={() => {
+              setShowNewTagModal(false);
+              setNewTagName('');
+              setNewTagEmoji('');
+              setNewTagColor('#6592E9');
+            }}
+          >
+            <Pressable onPress={() => {}} className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
+              {/* Modal Header */}
+              <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
+                <Typography variant="headline-20" color="white">
+                  Create New Tag
                 </Typography>
                 <Pressable
-                  onPress={handleNewTagEmojiPress}
-                  className="bg-gray-700 rounded-2xl p-6 items-center active:opacity-80 border-2 border-dashed border-gray-500"
+                  onPress={() => {
+                    setShowNewTagModal(false);
+                    setNewTagName('');
+                    setNewTagEmoji('');
+                    setNewTagColor('#6592E9');
+                  }}
+                  className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center"
                 >
-                  {newTagEmoji ? (
-                    <View className="items-center">
-                      <Text className="text-5xl mb-2">
-                        {newTagEmoji}
-                      </Text>
-                      <Typography variant="body-12" color="secondary">
-                        Tap to change
-                      </Typography>
-                    </View>
-                  ) : (
-                    <View className="items-center py-2">
-                      <Ionicons name="happy-outline" size={36} color="#6592E9" />
-                      <Typography variant="body-14" color="primary" className="mt-2 font-medium">
-                        Select Emoji
-                      </Typography>
-                      <Typography variant="body-12" color="secondary" className="mt-1">
-                        Tap to choose from collection
-                      </Typography>
-                    </View>
-                  )}
+                  <Ionicons name="close" size={20} color="#FFFFFF" />
                 </Pressable>
               </View>
 
-              {/* Tag Name Input */}
-              <View className="mb-6">
-                <Typography variant="body-14" color="white" className="mb-3">
-                  Tag Name
-                </Typography>
-                <TextInput
-                  value={newTagName}
-                  onChangeText={setNewTagName}
-                  placeholder="Enter tag name"
-                  placeholderTextColor="#666"
-                  style={{
-                    backgroundColor: '#2A2A2A',
-                    borderRadius: 12,
-                    padding: 16,
-                    fontSize: 16,
-                    color: '#FFFFFF',
-                    borderWidth: 1,
-                    borderColor: '#444',
-                  }}
-                  autoFocus={true}
-                />
-              </View>
-            </View>
+              {/* New Tag Form */}
+              <View className="p-6">
+                {/* Emoji + Name row */}
+                <View className="mb-6 flex-row items-center" style={{ gap: 12 }}>
+                  <Pressable
+                    onPress={handleNewTagEmojiPress}
+                    className="w-12 h-12 rounded-xl bg-gray-700 items-center justify-center border border-gray-500 active:opacity-80"
+                  >
+                    {newTagEmoji ? (
+                      <Text className="text-2xl">{newTagEmoji}</Text>
+                    ) : (
+                      <Ionicons name="happy-outline" size={24} color="#6592E9" />
+                    )}
+                  </Pressable>
+                  <TextInput
+                    value={newTagName}
+                    onChangeText={setNewTagName}
+                    placeholder="Tag name"
+                    placeholderTextColor="#666"
+                    className="flex-1"
+                    style={{
+                      backgroundColor: '#2A2A2A',
+                      borderRadius: 12,
+                      padding: 14,
+                      fontSize: 16,
+                      color: '#FFFFFF',
+                      borderWidth: 1,
+                      borderColor: '#444',
+                    }}
+                    autoFocus={true}
+                  />
+                </View>
 
-            {/* Action Buttons */}
-            <View className="p-4 border-t border-gray-700 flex-row space-x-3">
-              <Pressable
-                onPress={() => {
-                  setShowNewTagModal(false);
-                  setNewTagName('');
-                  setNewTagEmoji('');
-                }}
-                className="flex-1 bg-gray-600 rounded-2xl py-4 items-center active:opacity-80"
-              >
-                <Typography variant="subtitle-16" color="white">
-                  Cancel
-                </Typography>
-              </Pressable>
-              <Pressable
-                onPress={handleCreateNewTag}
-                disabled={!newTagName.trim() || !newTagEmoji}
-                className={`flex-1 rounded-2xl py-4 items-center ${newTagName.trim() && newTagEmoji ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'
-                  }`}
-              >
-                <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  Create Tag
-                </Typography>
-              </Pressable>
-            </View>
-          </View>
-        </View>
+                {/* Color Selection */}
+                <View>
+                  <Typography variant="body-14" color="white" className="mb-3">
+                    Color
+                  </Typography>
+                  <View className="flex-row flex-wrap" style={{ gap: 12 }}>
+                    {(['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'] as const).map((color) => (
+                      <Pressable
+                        key={color}
+                        onPress={() => setNewTagColor(color)}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: color,
+                          borderWidth: newTagColor === color ? 3 : 0,
+                          borderColor: '#FFFFFF',
+                        }}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View className="p-4 border-t border-gray-700 flex-row space-x-3">
+                <Pressable
+                  onPress={() => {
+                    setShowNewTagModal(false);
+                    setNewTagName('');
+                    setNewTagEmoji('');
+                    setNewTagColor('#6592E9');
+                  }}
+                  className="flex-1 bg-gray-600 rounded-2xl py-4 items-center active:opacity-80"
+                >
+                  <Typography variant="subtitle-16" color="white">
+                    Cancel
+                  </Typography>
+                </Pressable>
+                <Pressable
+                  onPress={handleCreateNewTag}
+                  disabled={!newTagName.trim() || !newTagEmoji}
+                  className={`flex-1 rounded-2xl py-4 items-center ${newTagName.trim() && newTagEmoji ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'
+                    }`}
+                >
+                  <Typography variant="subtitle-16" color="white" className="font-semibold">
+                    Create Tag
+                  </Typography>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
 
+
+      {/* Edit Tag Modal */}
+      <Modal
+        visible={showEditTagModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowEditTagModal(false);
+          setEditingTag(null);
+          setShowTagModal(true);
+        }}
+      >
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable
+            className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4"
+            onPress={() => {
+              setShowEditTagModal(false);
+              setEditingTag(null);
+              setShowTagModal(true);
+            }}
+          >
+            <Pressable onPress={() => {}} className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
+              <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
+                <Typography variant="headline-20" color="white">
+                  Edit Tag
+                </Typography>
+                <Pressable
+                  onPress={() => {
+                    setShowEditTagModal(false);
+                    setEditingTag(null);
+                    setShowTagModal(true);
+                  }}
+                  className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center"
+                >
+                  <Ionicons name="close" size={20} color="#FFFFFF" />
+                </Pressable>
+              </View>
+
+              <View className="p-6">
+                {/* Emoji + Name row */}
+                <View className="mb-6 flex-row items-center" style={{ gap: 12 }}>
+                  <Pressable
+                    onPress={handleEditTagEmojiPress}
+                    className="w-12 h-12 rounded-xl bg-gray-700 items-center justify-center border border-gray-500 active:opacity-80"
+                  >
+                    <Text className="text-2xl">{editTagEmoji || '🏷️'}</Text>
+                  </Pressable>
+                  <TextInput
+                    value={editTagName}
+                    onChangeText={setEditTagName}
+                    placeholder="Tag name"
+                    placeholderTextColor="#666"
+                    className="flex-1"
+                    style={{
+                      backgroundColor: '#2A2A2A',
+                      borderRadius: 12,
+                      padding: 14,
+                      fontSize: 16,
+                      color: '#FFFFFF',
+                      borderWidth: 1,
+                      borderColor: '#444',
+                    }}
+                  />
+                </View>
+
+                {/* Color Selection */}
+                <View>
+                  <Typography variant="body-14" color="white" className="mb-3">
+                    Color
+                  </Typography>
+                  <View className="flex-row flex-wrap" style={{ gap: 12 }}>
+                    {(['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'] as const).map((color) => (
+                      <Pressable
+                        key={color}
+                        onPress={() => setEditTagColor(color)}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: color,
+                          borderWidth: editTagColor === color ? 3 : 0,
+                          borderColor: '#FFFFFF',
+                        }}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </View>
+
+              <View className="p-4 border-t border-gray-700 flex-row space-x-3">
+                <Pressable
+                  onPress={() => {
+                    setShowEditTagModal(false);
+                    setEditingTag(null);
+                    setShowTagModal(true);
+                  }}
+                  className="flex-1 bg-gray-600 rounded-2xl py-4 items-center active:opacity-80"
+                >
+                  <Typography variant="subtitle-16" color="white">
+                    Cancel
+                  </Typography>
+                </Pressable>
+                <Pressable
+                  onPress={handleSaveEditTag}
+                  disabled={!editTagName.trim()}
+                  className={`flex-1 rounded-2xl py-4 items-center ${editTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}
+                >
+                  <Typography variant="subtitle-16" color="white" className="font-semibold">
+                    Save
+                  </Typography>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Emoji Picker */}
       <EmojiPickerModal
         visible={showEmojiPicker}
         onClose={() => {
           setShowEmojiPicker(false);
-          if (emojiPickerMode === 'edit') {
-            setEditingTagId(null);
+          if (emojiPickerMode === 'edit' && editingTag) {
+            // Return to edit tag modal
+            setShowEditTagModal(true);
+          } else if (emojiPickerMode === 'edit') {
+            setEditingTagName(null);
             setShowTagModal(true);
           } else {
             setShowNewTagModal(true);

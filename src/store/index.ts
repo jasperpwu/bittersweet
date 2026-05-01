@@ -1444,12 +1444,12 @@ export function initializeStore() {
     if (!state.focus.tags.allNames || state.focus.tags.allNames.length === 0) {
       console.log('🏷️ Initializing default tags...');
       const defaultTags = [
-        { name: 'Work', icon: '💼' },
-        { name: 'Study', icon: '📚' },
-        { name: 'Reading', icon: '📖' },
-        { name: 'Exercise', icon: '🏃' },
-        { name: 'Creative', icon: '🎨' },
-        { name: 'Personal', icon: '👤' },
+        { name: 'Work', icon: '💼', color: '#6592E9' },
+        { name: 'Study', icon: '📚', color: '#FFC107' },
+        { name: 'Reading', icon: '📖', color: '#FF9800' },
+        { name: 'Exercise', icon: '🏃', color: '#51BC6F' },
+        { name: 'Creative', icon: '🎨', color: '#9C27B0' },
+        { name: 'Personal', icon: '👤', color: '#2196F3' },
       ];
       
       defaultTags.forEach(tag => {
@@ -1457,7 +1457,22 @@ export function initializeStore() {
       });
     }
     
-    // Store is already using tagName for sessions, no migration needed
+    // Backfill color for existing tags that don't have one
+    const defaultColorMap: Record<string, string> = {
+      'Work': '#6592E9',
+      'Study': '#FFC107',
+      'Reading': '#FF9800',
+      'Exercise': '#51BC6F',
+      'Creative': '#9C27B0',
+      'Personal': '#2196F3',
+    };
+    const currentState = getStoreState();
+    for (const tagName of currentState.focus.tags.allNames) {
+      const tag = currentState.focus.tags.byName[tagName];
+      if (tag && !tag.color) {
+        currentState.focus.updateTag(tagName, { color: defaultColorMap[tagName] || '#6592E9' });
+      }
+    }
     
     console.log('✅ Store initialized successfully');
   } catch (error) {
