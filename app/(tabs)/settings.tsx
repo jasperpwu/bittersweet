@@ -6,7 +6,6 @@ import { Toggle } from '../../src/components/ui/Toggle';
 import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
-import { useBlocklist, useBlocklistActions, useFocus, useBlocklistEditCost } from '../../src/store';
 import { router } from 'expo-router';
 
 // --- Inline sub-components ---
@@ -113,10 +112,6 @@ export default function SettingsScreen() {
     requestNotificationPermissions,
     deviceInfo
   } = useDeviceIntegration();
-  const { settings: blocklistSettings } = useBlocklist();
-  const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
-  const { currentSession } = useFocus();
-  const blocklistEditCost = useBlocklistEditCost();
   const [notificationSheetVisible, setNotificationSheetVisible] = useState(false);
 
   // --- Handlers ---
@@ -176,37 +171,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleBlockList = async () => {
-    triggerHaptic('light');
-
-    // Lock blocklist editing during active focus sessions
-    if (currentSession.session !== null) {
-      Alert.alert(
-        'Blocklist Locked',
-        'You cannot edit the blocklist during a focus session. Complete your session first.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    const authorized = await checkAuthorizationStatus();
-    if (!authorized) {
-      const granted = await requestAuthorization();
-      if (granted) {
-        await checkAuthorizationStatus();
-        router.push('/(modals)/app-selection');
-      } else {
-        Alert.alert(
-          'Authorization Required',
-          'Family Controls permission is required to use app blocking features. Please enable it in Settings.',
-          [{ text: 'OK' }]
-        );
-      }
-    } else {
-      router.push('/(modals)/app-selection');
-    }
-  };
-
   const handleShareWithFriends = async () => {
     triggerHaptic('light');
     try {
@@ -228,16 +192,6 @@ export default function SettingsScreen() {
     console.log('Open help center');
   };
 
-  // Compute block list count
-  const getBlockedCount = () => {
-    const totalApps = blocklistSettings.blockedApps.applicationTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
-    const totalCategories = blocklistSettings.blockedApps.categoryTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
-    const totalDomains = blocklistSettings.blockedApps.webDomainTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
-    return Number(totalApps) + Number(totalCategories) + Number(totalDomains);
-  };
-
-  const blockedCount = getBlockedCount();
-
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
       {/* Header */}
@@ -258,8 +212,8 @@ export default function SettingsScreen() {
           </Typography>
         </View>
 
-        {/* Focus & Blocking */}
-        <SettingsSection title="Focus & Blocking">
+        {/* Notifications */}
+        <SettingsSection title="Notifications">
           <SettingsItem
             title="Notifications"
             subtitle="Sound & vibration settings"
@@ -278,14 +232,6 @@ export default function SettingsScreen() {
               triggerHaptic('light');
               setNotificationSheetVisible(true);
             }}
-          />
-          <SettingsItem
-            title="Block List"
-            subtitle={`Removing apps: ${blocklistEditCost.cost} 🍎`}
-            icon="ban-outline"
-            hasChevron
-            valueLabel={blockedCount > 0 ? `${blockedCount} blocked` : 'None'}
-            onPress={handleBlockList}
             isLast
           />
         </SettingsSection>

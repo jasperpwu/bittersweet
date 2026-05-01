@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal } from '../../src/components/ui/EmojiPicker/EmojiPicker';
 import { TimeScroller } from '../../src/components/focus';
 
-import { useFocus, useFocusActions, useRewards, useAppStore } from '../../src/store';
+import { useFocus, useFocusActions, useRewards, useAppStore, useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
+import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { FruitCounter } from '../../src/components/rewards';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
 import { FamilyControlsModule } from '../../src/modules/BitterSweetFamilyControls';
@@ -30,6 +31,11 @@ export default function FocusScreen() {
   const { tags } = useFocus();
   const { createTag, updateTag, deleteTag, startSession, completeSession, createCompletedSession } = useFocusActions();
   const rewards = useRewards();
+  const { settings: blocklistSettings } = useBlocklist();
+  const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
+  const { currentSession } = useFocus();
+  const blocklistEditCost = useBlocklistEditCost();
+  const { triggerHaptic } = useDeviceIntegration();
   const availableTags = tags.allNames.map(name => tags.byName[name]).filter(Boolean);
   
   const [selectedTime, setSelectedTime] = useState(10); // minutes; 0 => ∞
@@ -89,6 +95,46 @@ export default function FocusScreen() {
   const timerScale = useRef(new Animated.Value(0.94)).current;
   const timerTranslateY = useRef(new Animated.Value(6)).current;
   const tagsOpacity = useRef(new Animated.Value(1)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+
+  // Blocklist helpers
+  const getBlockedCount = () => {
+    const totalApps = blocklistSettings.blockedApps.applicationTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
+    const totalCategories = blocklistSettings.blockedApps.categoryTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
+    const totalDomains = blocklistSettings.blockedApps.webDomainTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
+    return Number(totalApps) + Number(totalCategories) + Number(totalDomains);
+  };
+  const blockedCount = getBlockedCount();
+
+  const handleBlockList = async () => {
+    triggerHaptic('light');
+
+    if (currentSession.session !== null) {
+      Alert.alert(
+        'Blocklist Locked',
+        'You cannot edit the blocklist during a focus session. Complete your session first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    const authorized = await checkAuthorizationStatus();
+    if (!authorized) {
+      const granted = await requestAuthorization();
+      if (granted) {
+        await checkAuthorizationStatus();
+        router.push('/(modals)/app-selection');
+      } else {
+        Alert.alert(
+          'Authorization Required',
+          'Family Controls permission is required to use app blocking features. Please enable it in Settings.',
+          [{ text: 'OK' }]
+        );
+      }
+    } else {
+      router.push('/(modals)/app-selection');
+    }
+  };
 
   const handleTagSelect = (tagName: string) => {
     setSelectedTag(tagName); // Single choice - set selected tag
@@ -420,6 +466,7 @@ export default function FocusScreen() {
       Animated.parallel([
         Animated.timing(scrollerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(headerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]).start(() => {
         setIsSessionActive(false);
         // Go straight to session summary
@@ -520,6 +567,7 @@ export default function FocusScreen() {
           // Switch visuals to timer mode immediately
           scrollerOpacity.setValue(0);
           tagsOpacity.setValue(0);
+          headerOpacity.setValue(0);
           timerOpacity.setValue(1);
           timerScale.setValue(1);
           timerTranslateY.setValue(0);
@@ -558,6 +606,7 @@ export default function FocusScreen() {
           // Switch visuals to timer mode immediately
           scrollerOpacity.setValue(0);
           tagsOpacity.setValue(0);
+          headerOpacity.setValue(0);
           timerOpacity.setValue(1);
           timerScale.setValue(1);
           timerTranslateY.setValue(0);
@@ -652,10 +701,11 @@ export default function FocusScreen() {
     timerScale.setValue(0.94);
     timerTranslateY.setValue(6);
 
-    // Fade out scroller and tags first to avoid layout shifts
+    // Fade out scroller, tags, and header (fruit counter + blocklist icon)
     Animated.parallel([
       Animated.timing(scrollerOpacity, { toValue: 0, duration: 140, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(tagsOpacity, { toValue: 0, duration: 140, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(headerOpacity, { toValue: 0, duration: 140, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start(() => {
       if (transitionCancelledRef.current) return;
       // Start the countdown immediately as the timer fades in, not after the spring settles
@@ -727,10 +777,26 @@ export default function FocusScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
-      {/* Fruit Counter - Top Right */}
-      <View className="absolute top-16 right-8 z-50">
+      {/* Header: Blocklist Icon (Left) + Fruit Counter (Right) */}
+      <Animated.View
+        style={{ opacity: headerOpacity }}
+        pointerEvents={isSessionActive ? 'none' : 'auto'}
+        className="absolute top-16 left-0 right-0 z-50 flex-row items-center justify-between px-8"
+      >
+        <Pressable
+          onPress={handleBlockList}
+          className="flex-row items-center active:opacity-70"
+          hitSlop={8}
+        >
+          <Ionicons name="ban-outline" size={22} color="#CACACA" />
+          {blockedCount > 0 && (
+            <View className="ml-1.5 bg-primary rounded-full px-1.5 py-0.5 min-w-[20px] items-center">
+              <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '600' }}>{blockedCount}</Text>
+            </View>
+          )}
+        </Pressable>
         <FruitCounter fruitCount={rewards.balance} size="small" />
-      </View>
+      </Animated.View>
 
       <View className="flex-1 items-center justify-center px-4">
         {/* Time Selector or Running Timer - stacked and crossfaded */}
