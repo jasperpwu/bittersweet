@@ -168,7 +168,7 @@ interface AppStore {
     // Actions
     checkAuthorizationStatus: () => Promise<boolean>;
     requestAuthorization: () => Promise<boolean>;
-    updateBlockedApps: (selection: FamilyActivitySelection, metadata?: { applicationCount?: number; categoryCount?: number; webDomainCount?: number }) => Promise<void>;
+    updateBlockedApps: (selection: FamilyActivitySelection, metadata?: { applicationCount?: number; categoryCount?: number; webDomainCount?: number }, chargeFruit?: boolean) => Promise<void>;
     updateSettings: (settings: Partial<BlocklistSettings>) => void;
     requestUnlock: (appTokens: any[], duration: number) => Promise<UnlockSession | null>;
     endUnlock: (sessionId: string) => void;
@@ -1012,40 +1012,43 @@ export const useAppStore = create<AppStore>()(
           }
         },
 
-        updateBlockedApps: async (selection: FamilyActivitySelection, metadata?: { applicationCount?: number; categoryCount?: number; webDomainCount?: number }) => {
+        updateBlockedApps: async (selection: FamilyActivitySelection, metadata?: { applicationCount?: number; categoryCount?: number; webDomainCount?: number }, chargeFruit?: boolean) => {
           try {
             console.log('📱 Store: updateBlockedApps called');
             console.log('📱 Store: selection token:', selection);
             console.log('📱 Store: metadata:', metadata);
+            console.log('📱 Store: chargeFruit:', chargeFruit);
 
-            // Charge fruit cost for editing blocklist (weekly escalation)
-            const editCost = get().blocklist.getBlocklistEditCost();
-            const currentBalance = get().rewards.balance;
-            console.log('📱 Store: Blocklist edit cost:', editCost, 'balance:', currentBalance);
+            if (chargeFruit) {
+              // Charge fruit cost for editing blocklist (weekly escalation)
+              const editCost = get().blocklist.getBlocklistEditCost();
+              const currentBalance = get().rewards.balance;
+              console.log('📱 Store: Blocklist edit cost:', editCost, 'balance:', currentBalance);
 
-            if (currentBalance < editCost) {
-              throw new Error(`Insufficient fruits. Need ${editCost} but have ${currentBalance}.`);
-            }
+              if (currentBalance < editCost) {
+                throw new Error(`Insufficient fruits. Need ${editCost} but have ${currentBalance}.`);
+              }
 
-            // Deduct cost
-            get().rewards.spendFruits(editCost, 'blocklist_edit', { editCost });
+              // Deduct cost
+              get().rewards.spendFruits(editCost, 'blocklist_edit', { editCost });
 
-            // Update edit history
-            const currentWeekStart = getWeekStart().toISOString();
-            const { editHistory } = get().blocklist;
-            const editsThisWeek = editHistory.weekStart === currentWeekStart
-              ? editHistory.editsThisWeek + 1
-              : 1; // new week, this is the first edit
+              // Update edit history
+              const currentWeekStart = getWeekStart().toISOString();
+              const { editHistory } = get().blocklist;
+              const editsThisWeek = editHistory.weekStart === currentWeekStart
+                ? editHistory.editsThisWeek + 1
+                : 1; // new week, this is the first edit
 
-            set((state) => ({
-              blocklist: {
-                ...state.blocklist,
-                editHistory: {
-                  weekStart: currentWeekStart,
-                  editsThisWeek,
+              set((state) => ({
+                blocklist: {
+                  ...state.blocklist,
+                  editHistory: {
+                    weekStart: currentWeekStart,
+                    editsThisWeek,
+                  },
                 },
-              },
-            }));
+              }));
+            }
 
             const currentState = get();
             const currentSelectionId = currentState.blocklist.currentSelectionId;

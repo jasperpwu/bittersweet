@@ -103,10 +103,6 @@ export default function JournalScreen() {
     opacity: withTiming(isSwiping.value ? 0.5 : 1, { duration: 100 }),
   }));
 
-  const handleAddSession = () => {
-    router.push('/(modals)/session-creation');
-  };
-
   const handleSessionPress = (sessionId: string) => {
     const session = sessions.byId[sessionId];
     if (!session) return;
@@ -182,10 +178,6 @@ export default function JournalScreen() {
       
       <Header
         title="Journal"
-        rightAction={{
-          icon: 'add',
-          onPress: handleAddSession,
-        }}
         useSafeArea={false}
       />
 

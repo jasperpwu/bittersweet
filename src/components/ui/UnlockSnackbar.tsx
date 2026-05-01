@@ -77,7 +77,9 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
   const [unlockReason, setUnlockReason] = useState('');
 
   const currentBalance = propBalance ?? balance;
-  const unlockOptions = [1, 5, 15, 30];
+  const unlockOptions = [1, 5, 15];
+  const useAllDuration = Math.floor(currentBalance / settings.unlockCostPerMinute);
+  const isUseAll = selectedDuration === useAllDuration && ![1, 5, 15].includes(useAllDuration);
 
   const handleUnlockClick = () => {
     const cost = selectedDuration * settings.unlockCostPerMinute;
@@ -301,7 +303,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
             Quick unlock:
           </Typography>
           <View className="flex-row">
-            {unlockOptions.slice(0, 4).map(duration => {
+            {unlockOptions.map(duration => {
               const cost = duration * settings.unlockCostPerMinute;
               const canAfford = currentBalance >= cost;
 
@@ -312,10 +314,32 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
                   cost={cost}
                   onSelect={() => setSelectedDuration(duration)}
                   disabled={!canAfford}
-                  isSelected={selectedDuration === duration}
+                  isSelected={selectedDuration === duration && !isUseAll}
                 />
               );
             })}
+            {/* Use All option */}
+            <Pressable
+              onPress={() => setSelectedDuration(useAllDuration)}
+              disabled={currentBalance < settings.unlockCostPerMinute}
+              className={`
+                px-3 py-2 rounded-lg border active:opacity-80 mr-2
+                ${isUseAll
+                  ? 'border-primary bg-primary/20'
+                  : 'border-gray-600 bg-gray-800'
+                }
+                ${currentBalance < settings.unlockCostPerMinute ? 'opacity-50' : ''}
+              `}
+            >
+              <View className="items-center">
+                <Typography variant="body-12" color="white">
+                  {useAllDuration}m
+                </Typography>
+                <Typography variant="tiny-10" color="primary">
+                  All 🍎
+                </Typography>
+              </View>
+            </Pressable>
           </View>
         </View>
 

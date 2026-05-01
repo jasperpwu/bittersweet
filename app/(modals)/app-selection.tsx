@@ -63,7 +63,17 @@ export default function AppSelectionScreen() {
     router.back();
   };
 
-  const executeSave = async () => {
+  // Check if the edit includes removing apps from the blocklist
+  const hasRemovals = () => {
+    const { applicationTokens, categoryTokens, webDomainTokens } = settings.blockedApps;
+    return (
+      selectionCounts.applicationCount < applicationTokens.length ||
+      selectionCounts.categoryCount < categoryTokens.length ||
+      selectionCounts.webDomainCount < webDomainTokens.length
+    );
+  };
+
+  const executeSave = async (chargeFruit: boolean = false) => {
     console.log('🔍 Save button pressed');
     console.log('🔍 Current state:');
     console.log('  - selectedApps:', selectedApps);
@@ -108,7 +118,7 @@ export default function AppSelectionScreen() {
       console.log('  - metadata:', metadata);
 
       // Pass the selectionId (or empty string to clear) and metadata to updateBlockedApps
-      await updateBlockedApps(selectionId || '', metadata);
+      await updateBlockedApps(selectionId || '', metadata, chargeFruit);
       console.log('✅ updateBlockedApps completed successfully');
       triggerHaptic('success');
 
@@ -125,12 +135,18 @@ export default function AppSelectionScreen() {
   };
 
   const handleSave = () => {
+    // Only charge fruits if the edit includes removing apps
+    if (!hasRemovals()) {
+      executeSave(false);
+      return;
+    }
+
     const { cost, canAfford, balance } = blocklistEditCost;
 
     if (!canAfford) {
       Alert.alert(
         'Not Enough Fruits',
-        `Editing the blocklist costs ${cost} 🍎 but you only have ${balance}. Focus more to earn fruits!`,
+        `Removing apps from the blocklist costs ${cost} 🍎 but you only have ${balance}. Focus more to earn fruits!`,
         [{ text: 'OK' }]
       );
       return;
@@ -138,10 +154,10 @@ export default function AppSelectionScreen() {
 
     Alert.alert(
       'Edit Blocklist',
-      `This will cost ${cost} 🍎. Continue?`,
+      `Removing apps from the blocklist costs ${cost} 🍎. Continue?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Confirm', onPress: () => executeSave() },
+        { text: 'Confirm', onPress: () => executeSave(true) },
       ]
     );
   };

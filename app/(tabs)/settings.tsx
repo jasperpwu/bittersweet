@@ -281,7 +281,7 @@ export default function SettingsScreen() {
           />
           <SettingsItem
             title="Block List"
-            subtitle={`Next edit: ${blocklistEditCost.cost} 🍎`}
+            subtitle={`Removing apps: ${blocklistEditCost.cost} 🍎`}
             icon="ban-outline"
             hasChevron
             valueLabel={blockedCount > 0 ? `${blockedCount} blocked` : 'None'}
