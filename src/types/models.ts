@@ -156,6 +156,7 @@ export interface UnlockSession {
   isActive: boolean;
   remainingTime?: number; // in seconds
   liveActivityId?: string; // iOS Live Activity ID for countdown display
+  notificationId?: string; // scheduled unlock expiration notification
 }
 
 export interface UnlockTransaction {
@@ -178,4 +179,3 @@ export interface BlocklistSettings {
     daysOfWeek: number[]; // 0-6, Sunday = 0
   };
 }
-

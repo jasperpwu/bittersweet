@@ -186,36 +186,67 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
             },
           }));
           console.log('🎬 Live Activity started for unlock session:', unlockSession.id);
+        }
 
-          // Schedule a local notification at unlock expiry. When it fires,
-          // iOS wakes the app and the notification listener in _layout.tsx
-          // dismisses the live activity immediately.
-          const secondsUntilExpiry = Math.max(1, Math.round((reblockTime.getTime() - Date.now()) / 1000));
-          Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'Unlock Expired',
-              body: `Your ${selectedDuration}m unlock has ended. Apps are blocked again.`,
-              sound: true,
-              data: {
-                type: 'unlock-expired',
-                liveActivityId,
-                unlockSessionId: unlockSession.id,
+        // Schedule a local notification at unlock expiry. When it fires,
+        // iOS wakes the app and the notification listener in _layout.tsx
+        // dismisses the live activity immediately.
+        const secondsUntilExpiry = Math.max(1, Math.round((reblockTime.getTime() - Date.now()) / 1000));
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: 'Unlock Expired',
+            body: `Your ${selectedDuration}m unlock has ended. Apps are blocked again.`,
+            sound: true,
+            data: {
+              type: 'unlock-expired',
+              liveActivityId,
+              unlockSessionId: unlockSession.id,
+            },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds: secondsUntilExpiry,
+          },
+        }).then(notificationId => {
+          const session = useAppStore.getState().blocklist.activeSessions.byId[unlockSession.id];
+          if (!session?.isActive) {
+            Notifications.cancelScheduledNotificationAsync(notificationId).catch((error) => {
+              console.error('Failed to cancel inactive unlock notification:', error);
+            });
+            return;
+          }
+
+          useAppStore.setState((state) => ({
+            blocklist: {
+              ...state.blocklist,
+              activeSessions: {
+                ...state.blocklist.activeSessions,
+                byId: {
+                  ...state.blocklist.activeSessions.byId,
+                  [unlockSession.id]: {
+                    ...state.blocklist.activeSessions.byId[unlockSession.id],
+                    notificationId,
+                  },
+                },
               },
             },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-              seconds: secondsUntilExpiry,
-            },
-          });
+          }));
+        }).catch(error => {
+          console.error('Failed to schedule unlock expiration notification:', error);
+        });
 
-          // Also schedule JS dismissal for when the app is in foreground
-          const msUntilExpiry = reblockTime.getTime() - Date.now();
-          setTimeout(() => {
-            console.log('⏰ Unlock expired — dismissing Live Activity:', liveActivityId);
+        // Also schedule JS dismissal for when the app is in foreground
+        const msUntilExpiry = reblockTime.getTime() - Date.now();
+        setTimeout(() => {
+          const session = useAppStore.getState().blocklist.activeSessions.byId[unlockSession.id];
+          if (!session?.isActive) return;
+
+          console.log('⏰ Unlock expired — dismissing Live Activity:', liveActivityId);
+          if (liveActivityId) {
             LiveActivityService.stopUnlockCountdown(liveActivityId, 'expired');
-            useAppStore.getState().blocklist.endUnlock(unlockSession.id);
-          }, msUntilExpiry);
-        }
+          }
+          useAppStore.getState().blocklist.endUnlock(unlockSession.id);
+        }, msUntilExpiry);
 
         // Stop any existing monitoring first to avoid "excessive activities" error
         try {

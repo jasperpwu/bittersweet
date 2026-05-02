@@ -9,6 +9,7 @@ import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
 import { FocusGoal } from './types';
 import { persistenceConfig } from './middleware/persistence';
+import * as Notifications from 'expo-notifications';
 
 interface AppStore {
   // Focus sessions and tags
@@ -1266,6 +1267,12 @@ export const useAppStore = create<AppStore>()(
               LiveActivityService.stopUnlockCountdown(session.liveActivityId, reason);
             }
 
+            if (session.notificationId) {
+              Notifications.cancelScheduledNotificationAsync(session.notificationId).catch((error) => {
+                console.error('Failed to cancel unlock expiration notification:', error);
+              });
+            }
+
             set((state) => ({
               blocklist: {
                 ...state.blocklist,
@@ -1273,7 +1280,7 @@ export const useAppStore = create<AppStore>()(
                   ...state.blocklist.activeSessions,
                   byId: {
                     ...state.blocklist.activeSessions.byId,
-                    [sessionId]: { ...session, isActive: false, remainingTime: 0 }
+                    [sessionId]: { ...session, isActive: false, remainingTime: 0, notificationId: undefined }
                   }
                 }
               }
