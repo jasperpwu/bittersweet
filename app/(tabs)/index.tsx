@@ -885,14 +885,24 @@ export default function FocusScreen() {
 
       <View className="flex-1 items-center justify-center px-4">
         {/* Time Selector or Running Timer - stacked and crossfaded */}
-        <View style={{ height: 240, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+        <View style={{ height: 300, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
           <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 0 : scrollerOpacity, width: '100%', zIndex: 0 }} pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
             <TimeScroller
               selectedTime={selectedTime}
               onTimeChange={handleTimeChange}
             />
           </Animated.View>
-          <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 1 : timerOpacity, transform: [{ scale: isUnlockActive ? 1 : timerScale }, { translateY: isUnlockActive ? 0 : timerTranslateY }], zIndex: 100 }}>
+          <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 1 : timerOpacity, transform: [{ scale: isUnlockActive ? 1 : timerScale }, { translateY: isUnlockActive ? 0 : timerTranslateY }], zIndex: 100, alignItems: 'center' }}>
+            {isBonusTime && !isUnlockActive && (
+              <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
+                <Text style={{ color: '#4CAF7C', fontSize: 20, lineHeight: 26, fontFamily: 'Poppins-SemiBold', textAlign: 'center' }}>
+                  Bonus time!
+                </Text>
+                <Text style={{ color: '#CACACA', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
+                  fruits are earned twice as fast during this time
+                </Text>
+              </View>
+            )}
             <Animated.Text
               style={{ fontSize: 96, lineHeight: 120, color: timerTextColor, fontFamily: 'Poppins-Bold', textAlign: 'center' }}
             >
