@@ -7,8 +7,6 @@ import Animated, {
   useSharedValue,
   withSpring,
   runOnJS,
-  interpolate,
-  Extrapolate,
 } from 'react-native-reanimated';
 import { Typography } from '../Typography';
 
@@ -46,9 +44,10 @@ export const Slider: FC<SliderProps> = ({
 
   // Calculate initial position
   React.useEffect(() => {
-    const percentage = (value - minimumValue) / (maximumValue - minimumValue);
+    const range = maximumValue - minimumValue;
+    const percentage = range > 0 ? (value - minimumValue) / range : 0;
     translateX.value = percentage * trackWidth;
-  }, [value, minimumValue, maximumValue, trackWidth]);
+  }, [value, minimumValue, maximumValue, trackWidth, translateX]);
 
   const updateValue = useCallback((newValue: number) => {
     onValueChange(newValue);
@@ -58,17 +57,18 @@ export const Slider: FC<SliderProps> = ({
     onSlidingComplete?.(finalValue);
   }, [onSlidingComplete]);
 
-  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-    onStart: () => {
+  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent, { startX: number }>({
+    onStart: (_, context: { startX: number }) => {
       isSliding.value = true;
       scale.value = withSpring(1.2);
+      context.startX = translateX.value;
     },
-    onActive: (event) => {
-      const newTranslateX = Math.max(0, Math.min(trackWidth, event.translationX + translateX.value));
+    onActive: (event, context: { startX: number }) => {
+      const newTranslateX = Math.max(0, Math.min(trackWidth, event.translationX + context.startX));
       translateX.value = newTranslateX;
 
       // Calculate new value
-      const percentage = newTranslateX / trackWidth;
+      const percentage = trackWidth > 0 ? newTranslateX / trackWidth : 0;
       const rawValue = minimumValue + percentage * (maximumValue - minimumValue);
       const steppedValue = Math.round(rawValue / step) * step;
       const clampedValue = Math.max(minimumValue, Math.min(maximumValue, steppedValue));
@@ -80,7 +80,8 @@ export const Slider: FC<SliderProps> = ({
       scale.value = withSpring(1);
 
       // Snap to final position
-      const percentage = (value - minimumValue) / (maximumValue - minimumValue);
+      const range = maximumValue - minimumValue;
+      const percentage = range > 0 ? (value - minimumValue) / range : 0;
       translateX.value = withSpring(percentage * trackWidth);
 
       runOnJS(completeSliding)(value);

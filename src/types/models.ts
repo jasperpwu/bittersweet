@@ -29,7 +29,10 @@ export interface FocusSession {
   // Timing
   startTime: Date;
   endTime: Date; // Now required - end time of the session
-  duration: number; // duration in minutes
+  duration: number; // adjusted duration in minutes, kept for existing analytics/UI
+  initialSetDuration?: number; // originally selected duration in minutes
+  actualDuration?: number; // elapsed duration in minutes before user adjustment
+  adjustedDuration?: number; // user-adjusted duration in minutes
 
   isPaused: boolean;
   pausedAt?: Date;

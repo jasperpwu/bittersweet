@@ -69,6 +69,7 @@ interface AppStore {
     // Actions
     createSession: (sessionData: CreateSessionInput) => FocusSession;
     updateSession: (id: string, updates: Partial<FocusSession>) => void;
+    adjustSessionDuration: (id: string, adjustedDuration: number) => void;
     deleteSession: (id: string) => void;
     startSession: (id: string) => void;
     pauseSession: () => void;
@@ -245,6 +246,9 @@ export const useAppStore = create<AppStore>()(
             startTime: sessionData.startTime,
             endTime: sessionData.endTime,
             duration: duration,
+            initialSetDuration: duration,
+            actualDuration: duration,
+            adjustedDuration: duration,
             isPaused: false,
             totalPauseTime: 0,
             tagName: sessionData.tagName,
@@ -323,6 +327,66 @@ export const useAppStore = create<AppStore>()(
             return state;
           });
         },
+
+        adjustSessionDuration: (sessionId, adjustedDuration) => {
+          const session = get().focus.sessions.byId[sessionId];
+          if (!session) return;
+
+          const actualDuration = session.actualDuration ?? session.duration;
+          const previousAdjustedDuration = session.adjustedDuration ?? session.duration;
+          const nextAdjustedDuration = Math.max(0, Math.min(actualDuration, Math.round(adjustedDuration)));
+          const previousFruits = Math.floor(previousAdjustedDuration / 5);
+          const nextFruits = Math.floor(nextAdjustedDuration / 5);
+          const fruitDelta = nextFruits - previousFruits;
+
+          set((state) => ({
+            focus: {
+              ...state.focus,
+              sessions: {
+                ...state.focus.sessions,
+                byId: {
+                  ...state.focus.sessions.byId,
+                  [sessionId]: {
+                    ...session,
+                    initialSetDuration: session.initialSetDuration ?? session.duration,
+                    actualDuration,
+                    adjustedDuration: nextAdjustedDuration,
+                    duration: nextAdjustedDuration,
+                    updatedAt: new Date(),
+                  }
+                }
+              }
+            },
+            rewards: fruitDelta === 0 ? state.rewards : {
+              ...state.rewards,
+              balance: state.rewards.balance + fruitDelta,
+              totalEarned: state.rewards.totalEarned + fruitDelta,
+              transactions: [
+                ...state.rewards.transactions,
+                {
+                  id: generateId(),
+                  amount: fruitDelta,
+                  source: 'focus_session_adjustment',
+                  metadata: {
+                    sessionId,
+                    previousAdjustedDuration,
+                    adjustedDuration: nextAdjustedDuration,
+                    actualDuration,
+                  },
+                  type: 'earn',
+                  timestamp: new Date(),
+                }
+              ]
+            }
+          }));
+
+          if (fruitDelta !== 0) {
+            const newBalance = get().rewards.balance;
+            FamilyControlsModule.updateShieldBalance(newBalance).catch((error) => {
+              console.error('Failed to update shield balance after session adjustment:', error);
+            });
+          }
+        },
         
         deleteSession: (sessionId) => {
           console.log('🗑️ Deleting session:', sessionId);
@@ -346,8 +410,7 @@ export const useAppStore = create<AppStore>()(
             let fruitsToDeduct = 0;
             const removedTransactions = state.rewards.transactions.filter((transaction: any) => 
               transaction.metadata?.sessionId === sessionId && 
-              transaction.type === 'earn' && 
-              transaction.source === 'focus_session'
+              transaction.type === 'earn'
             );
             
             removedTransactions.forEach((transaction: any) => {
@@ -492,6 +555,9 @@ export const useAppStore = create<AppStore>()(
             startTime: params.startTime,
             endTime: params.endTime,
             duration: params.duration,
+            initialSetDuration: params.targetDuration,
+            actualDuration: params.duration,
+            adjustedDuration: params.duration,
             isPaused: false,
             totalPauseTime: 0,
             tagName: params.tagName,
@@ -1339,6 +1405,7 @@ export const useBlocklist = () => useAppStore((state) => state.blocklist);
 export const useFocusActions = () => useAppStore((state) => ({
   createSession: state.focus.createSession,
   updateSession: state.focus.updateSession,
+  adjustSessionDuration: state.focus.adjustSessionDuration,
   deleteSession: state.focus.deleteSession,
   startSession: state.focus.startSession,
   pauseSession: state.focus.pauseSession,
