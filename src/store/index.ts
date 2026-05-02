@@ -171,7 +171,7 @@ interface AppStore {
     updateBlockedApps: (selection: FamilyActivitySelection, metadata?: { applicationCount?: number; categoryCount?: number; webDomainCount?: number }, chargeFruit?: boolean) => Promise<void>;
     updateSettings: (settings: Partial<BlocklistSettings>) => void;
     requestUnlock: (appTokens: any[], duration: number) => Promise<UnlockSession | null>;
-    endUnlock: (sessionId: string) => void;
+    endUnlock: (sessionId: string, reason?: 'expired' | 'manual') => void;
     checkActiveUnlocks: () => void;
     getBlocklistEditCost: () => number;
   };
@@ -1255,7 +1255,7 @@ export const useAppStore = create<AppStore>()(
           }
         },
 
-        endUnlock: (sessionId: string) => {
+        endUnlock: (sessionId: string, reason: 'expired' | 'manual' = 'expired') => {
           console.log('🔒 Ending unlock session:', sessionId);
           const session = get().blocklist.activeSessions.byId[sessionId];
 
@@ -1263,7 +1263,7 @@ export const useAppStore = create<AppStore>()(
             // Stop Live Activity if it exists
             if (session.liveActivityId) {
               console.log('🛑 Stopping Live Activity for session:', sessionId);
-              LiveActivityService.stopUnlockCountdown(session.liveActivityId, 'expired');
+              LiveActivityService.stopUnlockCountdown(session.liveActivityId, reason);
             }
 
             set((state) => ({

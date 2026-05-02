@@ -32,7 +32,7 @@ export default function FocusScreen() {
   const { tags } = useFocus();
   const { createTag, updateTag, deleteTag, startSession, completeSession, createCompletedSession } = useFocusActions();
   const rewards = useRewards();
-  const { settings: blocklistSettings } = useBlocklist();
+  const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
   const { currentSession } = useFocus();
   const blocklistEditCost = useBlocklistEditCost();
@@ -73,6 +73,7 @@ export default function FocusScreen() {
   const [isInfinite, setIsInfinite] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [unlockRemainingSeconds, setUnlockRemainingSeconds] = useState(0);
   const [isBonusTime, setIsBonusTime] = useState(false);
   const [bonusSeconds, setBonusSeconds] = useState(0);
   // Refs to capture bonus state at stop time (before state resets) for saveSessionAndNavigate
@@ -83,6 +84,7 @@ export default function FocusScreen() {
   const sessionStartTimeRef = useRef<number | null>(null); // Unix ms when session started (for infinite mode)
   const scheduledNotificationRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const unlockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transitionCancelledRef = useRef(false);
   // Refs to keep current values accessible in the AppState handler (which has [] deps)
   const selectedTimeRef = useRef(selectedTime);
@@ -106,6 +108,20 @@ export default function FocusScreen() {
     return Number(totalApps) + Number(totalCategories) + Number(totalDomains);
   };
   const blockedCount = getBlockedCount();
+  const activeUnlockSession = activeSessions.allIds
+    .map(id => activeSessions.byId[id])
+    .filter(session => session?.isActive)
+    .sort((a, b) => {
+      const aEnd = a.endTime instanceof Date ? a.endTime.getTime() : new Date(a.endTime).getTime();
+      const bEnd = b.endTime instanceof Date ? b.endTime.getTime() : new Date(b.endTime).getTime();
+      return bEnd - aEnd;
+    })[0] || null;
+  const activeUnlockEndTimeMs = activeUnlockSession
+    ? activeUnlockSession.endTime instanceof Date
+      ? activeUnlockSession.endTime.getTime()
+      : new Date(activeUnlockSession.endTime).getTime()
+    : null;
+  const isUnlockActive = !!activeUnlockSession && !isSessionActive;
 
   const handleBlockList = async () => {
     triggerHaptic('light');
@@ -259,36 +275,50 @@ export default function FocusScreen() {
     // Tag modal remains open
   };
 
+  const stopUnlockSession = (sessionId: string, refundUnusedTime: boolean) => {
+    const store = useAppStore.getState();
+    const session = store.blocklist.activeSessions.byId[sessionId];
+    if (!session?.isActive) return;
+
+    const nowMs = Date.now();
+    const endTimeMs = session.endTime instanceof Date ? session.endTime.getTime() : new Date(session.endTime).getTime();
+    const remainingMs = Math.max(0, endTimeMs - nowMs);
+    const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+    const refundAmount = Math.min(
+      session.cost,
+      remainingMinutes * store.blocklist.settings.unlockCostPerMinute
+    );
+
+    if (refundUnusedTime && refundAmount > 0) {
+      store.rewards.earnFruits(refundAmount, 'unlock_refund', {
+        sessionId,
+        refundedMinutes: remainingMinutes,
+      });
+      console.log(`🍎 Refunded ${refundAmount} fruits for ${remainingMinutes} unused unlock minute(s)`);
+    }
+
+    if (store.blocklist.currentSelectionId) {
+      blockSelection({ activitySelectionId: store.blocklist.currentSelectionId });
+      try { stopMonitoring([`reblock-${store.blocklist.currentSelectionId}`]); } catch { /* ignore */ }
+    }
+
+    store.blocklist.endUnlock(sessionId, refundUnusedTime ? 'manual' : 'expired');
+  };
+
+  const handleStopUnlock = () => {
+    if (!activeUnlockSession) return;
+    triggerHaptic('light');
+    stopUnlockSession(activeUnlockSession.id, true);
+  };
+
   const startTimer = () => {
     // End any active unlock sessions — re-block apps and refund remaining time
     const store = useAppStore.getState();
-    const { activeSessions, currentSelectionId } = store.blocklist;
-    const nowMs = Date.now();
+    const { activeSessions } = store.blocklist;
     activeSessions.allIds.forEach(id => {
       const session = activeSessions.byId[id];
       if (!session?.isActive) return;
-
-      // Calculate remaining minutes and refund fruits (1 fruit per minute)
-      const endTimeMs = session.endTime instanceof Date ? session.endTime.getTime() : new Date(session.endTime).getTime();
-      const remainingMs = endTimeMs - nowMs;
-      const remainingMinutes = Math.max(0, Math.floor(remainingMs / (60 * 1000)));
-      if (remainingMinutes > 0) {
-        store.rewards.earnFruits(remainingMinutes, 'unlock_refund', {
-          sessionId: id,
-          refundedMinutes: remainingMinutes,
-        });
-        console.log(`🍎 Refunded ${remainingMinutes} fruits for remaining unlock time`);
-      }
-
-      // Re-block the apps immediately
-      if (currentSelectionId) {
-        blockSelection({ activitySelectionId: currentSelectionId });
-        // Stop the scheduled re-block monitor (no longer needed)
-        try { stopMonitoring([`reblock-${currentSelectionId}`]); } catch (e) { /* ignore */ }
-      }
-
-      // End the unlock session (stops live activity, marks inactive)
-      store.blocklist.endUnlock(id);
+      stopUnlockSession(id, true);
       console.log('🔒 Ended unlock session for focus start:', id);
     });
 
@@ -521,8 +551,42 @@ export default function FocusScreen() {
   }, []);
 
   useEffect(() => {
+    if (unlockTimerRef.current) {
+      clearInterval(unlockTimerRef.current as any);
+      unlockTimerRef.current = null;
+    }
+
+    if (!activeUnlockSession?.isActive || !activeUnlockEndTimeMs) {
+      setUnlockRemainingSeconds(0);
+      return;
+    }
+
+    const syncUnlockRemaining = () => {
+      const remaining = Math.max(0, Math.ceil((activeUnlockEndTimeMs - Date.now()) / 1000));
+      setUnlockRemainingSeconds(remaining);
+
+      if (remaining === 0 && unlockTimerRef.current) {
+        clearInterval(unlockTimerRef.current as any);
+        unlockTimerRef.current = null;
+        useAppStore.getState().blocklist.checkActiveUnlocks();
+      }
+    };
+
+    syncUnlockRemaining();
+    unlockTimerRef.current = setInterval(syncUnlockRemaining, 1000);
+
+    return () => {
+      if (unlockTimerRef.current) {
+        clearInterval(unlockTimerRef.current as any);
+        unlockTimerRef.current = null;
+      }
+    };
+  }, [activeUnlockSession?.id, activeUnlockSession?.isActive, activeUnlockEndTimeMs]);
+
+  useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current as any);
+      if (unlockTimerRef.current) clearInterval(unlockTimerRef.current as any);
       // Clean up Live Activity when component unmounts
       const activityId = liveActivityIdRef.current;
       if (activityId) {
@@ -676,6 +740,11 @@ export default function FocusScreen() {
   }, []);
 
   const handleStartFocus = () => {
+    if (isUnlockActive) {
+      handleStopUnlock();
+      return;
+    }
+
     // If running or transitioning, treat as Stop/Cancel with animation
     if (isRunning || isSessionActive) {
       stopWithAnimation();
@@ -691,7 +760,7 @@ export default function FocusScreen() {
     // If no tag selected (shouldn't happen with default), select first
     if (!selectedTag) {
       if (availableTags.length > 0) {
-        setSelectedTag(availableTags[0].id);
+        setSelectedTag(availableTags[0].name);
       }
       return;
     }
@@ -712,7 +781,7 @@ export default function FocusScreen() {
     timerScale.setValue(0.94);
     timerTranslateY.setValue(6);
 
-    // Fade out scroller, tags, and header (fruit counter + blocklist icon)
+    // Fade out scroller, tags, and the blocklist icon.
     Animated.parallel([
       Animated.timing(scrollerOpacity, { toValue: 0, duration: 140, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(tagsOpacity, { toValue: 0, duration: 140, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
@@ -744,6 +813,8 @@ export default function FocusScreen() {
   const displayTime = isBonusTime
     ? `+${formatTime(bonusSeconds)}`
     : isInfinite ? formatTime(elapsedSeconds) : formatTime(remainingSeconds);
+  const timerDisplayTime = isUnlockActive ? formatTime(unlockRemainingSeconds) : displayTime;
+  const timerTextColor = isBonusTime && !isUnlockActive ? '#4CAF7C' : '#FFFFFF';
 
   const selectedTagName = selectedTag ? availableTags.find(tag => tag.name === selectedTag)?.name : null;
 
@@ -789,47 +860,50 @@ export default function FocusScreen() {
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
       {/* Header: Blocklist Icon (Left) + Fruit Counter (Right) */}
-      <Animated.View
-        style={{ opacity: headerOpacity }}
-        pointerEvents={isSessionActive ? 'none' : 'auto'}
+      <View
         className="absolute top-16 left-0 right-0 z-50 flex-row items-center justify-between px-8"
       >
-        <Pressable
-          onPress={handleBlockList}
-          className="flex-row items-center active:opacity-70"
-          hitSlop={8}
+        <Animated.View
+          style={{ opacity: isUnlockActive ? 0 : headerOpacity }}
+          pointerEvents={isSessionActive || isUnlockActive ? 'none' : 'auto'}
         >
-          <Ionicons name="ban-outline" size={22} color="#CACACA" />
-          {blockedCount > 0 && (
-            <View className="ml-1.5 bg-primary rounded-full px-1.5 py-0.5 min-w-[20px] items-center">
-              <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '600' }}>{blockedCount}</Text>
-            </View>
-          )}
-        </Pressable>
+          <Pressable
+            onPress={handleBlockList}
+            className="flex-row items-center active:opacity-70"
+            hitSlop={8}
+          >
+            <Ionicons name="ban-outline" size={22} color="#CACACA" />
+            {blockedCount > 0 && (
+              <View className="ml-1.5 bg-primary rounded-full px-1.5 py-0.5 min-w-[20px] items-center">
+                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '600' }}>{blockedCount}</Text>
+              </View>
+            )}
+          </Pressable>
+        </Animated.View>
         <FruitCounter fruitCount={rewards.balance} size="small" />
-      </Animated.View>
+      </View>
 
       <View className="flex-1 items-center justify-center px-4">
         {/* Time Selector or Running Timer - stacked and crossfaded */}
         <View style={{ height: 240, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
-          <Animated.View style={{ position: 'absolute', opacity: scrollerOpacity, width: '100%', zIndex: 0 }} pointerEvents={isRunning ? 'none' : 'auto'}>
+          <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 0 : scrollerOpacity, width: '100%', zIndex: 0 }} pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
             <TimeScroller
               selectedTime={selectedTime}
               onTimeChange={handleTimeChange}
             />
           </Animated.View>
-          <Animated.View style={{ position: 'absolute', opacity: timerOpacity, transform: [{ scale: timerScale }, { translateY: timerTranslateY }], zIndex: 100 }}>
+          <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 1 : timerOpacity, transform: [{ scale: isUnlockActive ? 1 : timerScale }, { translateY: isUnlockActive ? 0 : timerTranslateY }], zIndex: 100 }}>
             <Animated.Text
-              style={{ fontSize: 96, lineHeight: 120, color: isBonusTime ? '#4CAF7C' : '#FFFFFF', fontFamily: 'Poppins-Bold', textAlign: 'center' }}
+              style={{ fontSize: 96, lineHeight: 120, color: timerTextColor, fontFamily: 'Poppins-Bold', textAlign: 'center' }}
             >
-              {displayTime}
+              {timerDisplayTime}
             </Animated.Text>
           </Animated.View>
         </View>
 
         {/* Focus Button (kept mounted, fade only) */}
         <View style={{ width: '100%', marginBottom: 64, minHeight: 96, justifyContent: 'center' }}>
-          <Animated.View style={{ opacity: tagsOpacity }} pointerEvents={isRunning ? 'none' : 'auto'}>
+          <Animated.View style={{ opacity: isUnlockActive ? 0 : tagsOpacity }} pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
             <Pressable
               onPress={() => setShowTagModal(true)}
               className="bg-gray-700 rounded-2xl py-4 px-6 flex-row items-center justify-between active:opacity-80"
@@ -863,9 +937,16 @@ export default function FocusScreen() {
             className="font-semibold"
             style={{ color: '#1B1C30' }}
           >
-            {isSessionActive ? 'Stop' : (availableTags.length === 0 ? 'Create Tag First' : 'Start Focus')}
+            {isUnlockActive
+              ? 'Stop Unlocked'
+              : isSessionActive ? 'Stop Focus' : (availableTags.length === 0 ? 'Create Tag First' : 'Start Focus')}
           </Typography>
         </Pressable>
+        {isUnlockActive && (
+          <Typography variant="body-12" color="secondary" className="text-center mt-3">
+            unused time will be returned as fruits
+          </Typography>
+        )}
       </View>
 
       {/* Tag Selection Modal */}
@@ -1074,7 +1155,7 @@ export default function FocusScreen() {
                   {/* Warning content */}
                   <View className="p-4">
                     <Typography variant="body-14" color="white" className="leading-5">
-                      Deleting "{tagToDelete?.name}" will permanently remove all associated focus sessions. This cannot be undone.
+                      Deleting {tagToDelete?.name ? `"${tagToDelete.name}"` : 'this tag'} will permanently remove all associated focus sessions. This cannot be undone.
                     </Typography>
                   </View>
 
