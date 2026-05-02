@@ -23,6 +23,7 @@ type PersistedSession = {
   targetDuration: number; // minutes
   tagName: string;
   isInfinite: boolean;
+  liveActivityId?: string; // iOS Live Activity ID to stop after app restart
   notificationId?: string; // scheduled completion notification
 };
 
@@ -307,6 +308,8 @@ export default function FocusScreen() {
 
     // Start Live Activity for the focus timer (service will reuse existing
     // activity if one is still around, ensuring at most one is shown)
+    let liveActivityId: string | undefined;
+
     if (infinite) {
       // Infinite mode: no end time — use a count-up live activity
       sessionEndTimeRef.current = null;
@@ -315,6 +318,7 @@ export default function FocusScreen() {
         selectedTag || 'Focus'
       );
       if (activityId) {
+        liveActivityId = activityId;
         liveActivityIdRef.current = activityId;
         console.log('🎬 Live Activity started for infinite focus session:', activityId);
       } else {
@@ -329,6 +333,7 @@ export default function FocusScreen() {
         selectedTag || 'Focus'
       );
       if (activityId) {
+        liveActivityId = activityId;
         liveActivityIdRef.current = activityId;
         console.log('🎬 Live Activity started for focus session:', activityId);
       } else {
@@ -381,6 +386,7 @@ export default function FocusScreen() {
       targetDuration: isDevTimer ? 1 : selectedTime,
       tagName: selectedTag || 'Focus',
       isInfinite: infinite,
+      liveActivityId,
     } satisfies PersistedSession));
 
     if (timerRef.current) clearInterval(timerRef.current as any);
@@ -545,6 +551,9 @@ export default function FocusScreen() {
         if (persisted.notificationId) {
           scheduledNotificationRef.current = persisted.notificationId;
         }
+        if (persisted.liveActivityId) {
+          liveActivityIdRef.current = persisted.liveActivityId;
+        }
 
         // Restore shield to focus-session mode (block unlocking)
         const currentBalance = useAppStore.getState().rewards.balance;
@@ -572,13 +581,15 @@ export default function FocusScreen() {
           timerScale.setValue(1);
           timerTranslateY.setValue(0);
 
-          // Restart the live activity so the lock screen widget is back
-          const activityId = LiveActivityService.startFocusTimerInfinite(
-            new Date(persisted.startTime),
-            persisted.tagName
-          );
-          if (activityId) {
-            liveActivityIdRef.current = activityId;
+          if (!persisted.liveActivityId) {
+            // Older persisted sessions did not store the activity ID.
+            const activityId = LiveActivityService.startFocusTimerInfinite(
+              new Date(persisted.startTime),
+              persisted.tagName
+            );
+            if (activityId) {
+              liveActivityIdRef.current = activityId;
+            }
           }
 
           // Start elapsed count-up interval

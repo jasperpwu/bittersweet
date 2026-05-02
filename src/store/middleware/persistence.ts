@@ -231,6 +231,7 @@ export const persistenceConfig = {
     blocklist: {
       settings: state.blocklist.settings,
       currentSelectionId: state.blocklist.currentSelectionId,
+      activeSessions: state.blocklist.activeSessions,
       isAuthorized: state.blocklist.isAuthorized,
       authorizationStatus: state.blocklist.authorizationStatus,
     },
@@ -305,6 +306,18 @@ export const persistenceConfig = {
       
       if (state.focus.currentWeekStart && !(state.focus.currentWeekStart instanceof Date)) {
         state.focus.currentWeekStart = new Date(state.focus.currentWeekStart);
+      }
+
+      // Restore dates in persisted unlock sessions so expiration checks work
+      if (state.blocklist?.activeSessions?.byId) {
+        Object.values(state.blocklist.activeSessions.byId).forEach((session: any) => {
+          if (session.startTime && !(session.startTime instanceof Date)) {
+            session.startTime = new Date(session.startTime);
+          }
+          if (session.endTime && !(session.endTime instanceof Date)) {
+            session.endTime = new Date(session.endTime);
+          }
+        });
       }
       
       // Verify that all action functions are still available after rehydration

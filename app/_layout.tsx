@@ -19,6 +19,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
 import { LiveActivityService } from '../src/services/LiveActivityService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppStore } from '../src/store';
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
@@ -51,7 +52,14 @@ export default function RootLayout() {
   // Initialize Device Activity Listener
   const { isListening } = useDeviceActivityListener();
 
-
+  const checkExpiredUnlockSessions = (trigger: string) => {
+    try {
+      console.log(`⏰ Checking expired unlock sessions (${trigger})`);
+      useAppStore.getState().blocklist.checkActiveUnlocks();
+    } catch (error) {
+      console.error('❌ Failed to check expired unlock sessions:', error);
+    }
+  };
 
   // Initialize stores and global error handling
   useEffect(() => {
@@ -71,8 +79,12 @@ export default function RootLayout() {
 
       // Dismiss the live activity when the unlock session expires
       const data = notification.request.content.data;
-      if (data?.type === 'unlock-expired' && data.liveActivityId) {
-        LiveActivityService.stopUnlockCountdown(data.liveActivityId as string, 'expired');
+      if (data?.type === 'unlock-expired') {
+        if (data.unlockSessionId) {
+          useAppStore.getState().blocklist.endUnlock(data.unlockSessionId as string);
+        } else if (data.liveActivityId) {
+          LiveActivityService.stopUnlockCountdown(data.liveActivityId as string, 'expired');
+        }
       }
     });
 
@@ -89,6 +101,12 @@ export default function RootLayout() {
       notificationSubscription.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (isHydrated) {
+      checkExpiredUnlockSessions('mount');
+    }
+  }, [isHydrated]);
 
   // Check if app was opened from shield (both on mount and app foreground)
   const checkShieldOpening = async (trigger: string) => {
@@ -154,6 +172,7 @@ export default function RootLayout() {
         // background, so if a focus session's timer expired while the phone was
         // locked, stopActivity was never called. This is the safety net.
         LiveActivityService.cleanupExpired();
+        checkExpiredUnlockSessions('foreground');
       }
 
       appState.current = nextAppState;
