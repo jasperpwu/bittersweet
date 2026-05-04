@@ -249,12 +249,9 @@ export default function JournalScreen() {
                 onValueChange={setAdjustedDuration}
                 width={Math.min(screenWidth - 96, 320)}
               />
-              <View className="items-center mt-3">
-                <Typography variant="headline-24" color="white">
-                  {formatDuration(adjustedDuration)}
-                </Typography>
-                <Typography variant="body-12" color="secondary" className="mt-1">
-                  Actual: {formatDuration(selectedActualDuration)} • Initial: {formatDuration(selectedInitialDuration)}
+              <View className="items-center mt-2">
+                <Typography variant="body-14" color="secondary">
+                  Adjusted duration: {formatDuration(adjustedDuration)}
                 </Typography>
               </View>
             </View>
@@ -290,19 +287,19 @@ export default function JournalScreen() {
 
             <View className="flex-row gap-3">
               <Pressable
+                onPress={handleSessionDelete}
+                className="flex-1 rounded-xl py-3 items-center justify-center active:opacity-80"
+              >
+                <Typography variant="subtitle-14-semibold" style={{ color: '#EF4444' }}>
+                  Delete
+                </Typography>
+              </Pressable>
+              <Pressable
                 onPress={handleSessionDone}
                 className="flex-1 bg-white rounded-xl py-3 items-center active:opacity-80"
               >
                 <Typography variant="subtitle-14-semibold" style={{ color: '#1B1C30' }}>
                   Done
-                </Typography>
-              </Pressable>
-              <Pressable
-                onPress={handleSessionDelete}
-                className="flex-1 border border-red-500 rounded-xl py-3 items-center active:opacity-80"
-              >
-                <Typography variant="subtitle-14-semibold" style={{ color: '#EF4444' }}>
-                  Delete
                 </Typography>
               </Pressable>
             </View>

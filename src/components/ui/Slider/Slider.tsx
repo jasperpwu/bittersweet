@@ -117,14 +117,13 @@ export const Slider: FC<SliderProps> = ({
       )}
 
       <View style={{ width }} className="h-12 justify-center">
-        <Animated.View style={trackStyle}>
+        <Animated.View style={[trackStyle, { justifyContent: 'center' }]}>
           {/* Track Background */}
           <View 
             className="bg-dark-border rounded-full"
             style={{ 
-              width: trackWidth + thumbSize, 
+              width: width, 
               height: 4,
-              marginHorizontal: thumbSize / 2,
             }} 
           />
 
@@ -135,7 +134,6 @@ export const Slider: FC<SliderProps> = ({
               {
                 position: 'absolute',
                 height: 4,
-                marginLeft: thumbSize / 2,
                 borderRadius: 2,
                 backgroundColor: '#6592E9',
               },

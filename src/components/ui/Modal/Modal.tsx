@@ -31,7 +31,7 @@ export const Modal: FC<ModalProps> = ({
         />
         <View
           className={`
-            bg-white dark:bg-dark-bg rounded-2xl p-6 shadow-xl
+            bg-dark-bg rounded-2xl p-6 shadow-xl border border-dark-border
             ${size === 'small' ? 'w-80' : 
               size === 'large' ? 'w-full max-w-lg' : 
               size === 'fullscreen' ? 'w-full h-full rounded-none' : 'w-full max-w-md'
