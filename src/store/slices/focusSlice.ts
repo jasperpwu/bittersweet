@@ -19,6 +19,14 @@ import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/
 export type { FocusSession } from '../../types/models';
 export type { ChartDataPoint, TimePeriod } from '../types';
 
+const calculateFruitsForDuration = (duration: number, targetDuration: number = duration): number => {
+  const earnedMinutes = Math.max(0, Math.floor(duration));
+  const regularMinutes = Math.min(earnedMinutes, Math.max(0, Math.floor(targetDuration)));
+  const bonusMinutes = Math.max(0, earnedMinutes - regularMinutes);
+
+  return Math.floor(regularMinutes / 5) + Math.floor(bonusMinutes / 5) * 2;
+};
+
 // Focus slice interface
 interface FocusSlice {
   // Normalized State
@@ -146,10 +154,11 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
   
   // Calculate fruits earned based on session duration and completion
   const calculateFruitsEarned = (session: FocusSession): number => {
-    if (session.status !== 'completed') return 0;
+    const sessionWithStatus = session as FocusSession & { status?: string; targetDuration?: number };
+    if (sessionWithStatus.status !== 'completed') return 0;
     
-    // Award 1 fruit for every complete 5-minute interval
-    return Math.floor(session.duration / 5);
+    // Bonus time earns twice as fast once the target duration is exceeded.
+    return calculateFruitsForDuration(session.duration, sessionWithStatus.targetDuration ?? session.duration);
   };
   
   // Start timer for current session

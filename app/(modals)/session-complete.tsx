@@ -3,7 +3,7 @@ import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollV
 import { router, useLocalSearchParams } from 'expo-router';
 import { Typography } from '../../src/components/ui';
 import { FruitCounter } from '../../src/components/rewards';
-import { useFocus, useFocusActions } from '../../src/store';
+import { calculateFruitsEarnedForDuration, useFocus, useFocusActions } from '../../src/store';
 
 export default function SessionCompleteModal() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
@@ -25,7 +25,10 @@ export default function SessionCompleteModal() {
   }
 
   const tag = session.tagName ? tags.byName[session.tagName] : null;
-  const fruitsEarned = Math.floor(session.duration / 5);
+  const fruitsEarned = calculateFruitsEarnedForDuration(
+    session.duration,
+    session.initialSetDuration ?? session.duration
+  );
 
   const formatDuration = (minutes: number) => {
     const h = Math.floor(minutes / 60);

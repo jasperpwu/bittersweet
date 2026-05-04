@@ -14,7 +14,7 @@ import { Header } from '../../src/components/ui/Header';
 import { Modal, Slider, Typography } from '../../src/components/ui';
 import { DateSelector, Timeline } from '../../src/components/journal';
 import { FruitCounter } from '../../src/components/rewards';
-import { useFocus, useFocusActions } from '../../src/store';
+import { calculateFruitsEarnedForDuration, useFocus, useFocusActions } from '../../src/store';
 import { generateExtendedWeekDates } from '../../src/utils/dateUtils';
 import { FocusSession } from '../../src/types/models';
 
@@ -150,8 +150,12 @@ export default function JournalScreen() {
 
   const selectedActualDuration = selectedSession?.actualDuration ?? selectedSession?.duration ?? 0;
   const selectedInitialDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
-  const currentFruits = Math.floor((selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0) / 5);
-  const adjustedFruits = Math.floor(adjustedDuration / 5);
+  const selectedTargetDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
+  const currentFruits = calculateFruitsEarnedForDuration(
+    selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0,
+    selectedTargetDuration
+  );
+  const adjustedFruits = calculateFruitsEarnedForDuration(adjustedDuration, selectedTargetDuration);
   const fruitDelta = adjustedFruits - currentFruits;
 
   // Convert store sessions to component format and filter for selected date
