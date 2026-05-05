@@ -10,8 +10,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from '../../src/components/ui/StatusBar';
+import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../../src/components/ui/Header';
-import { Modal, Slider, Typography } from '../../src/components/ui';
+import { Modal, Slider, Typography, TimePicker } from '../../src/components/ui';
+import { TagSelector } from '../../src/components/focus/TagSelector';
 import { DateSelector, Timeline } from '../../src/components/journal';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions } from '../../src/store';
@@ -24,8 +26,65 @@ export default function JournalScreen() {
   const [scrollToSessionId, setScrollToSessionId] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
   const [adjustedDuration, setAdjustedDuration] = useState(0);
-  const { sessions } = useFocus();
-  const { adjustSessionDuration, deleteSession } = useFocusActions();
+  const { sessions, tags } = useFocus();
+  const { adjustSessionDuration, deleteSession, createCompletedSession } = useFocusActions();
+
+  // Manual Entry State
+  const [isManualEntryModalVisible, setIsManualEntryModalVisible] = useState(false);
+  const [manualStartTime, setManualStartTime] = useState(() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - 25);
+    return d;
+  });
+  const [manualEndTime, setManualEndTime] = useState(new Date());
+  const [manualTag, setManualTag] = useState<string>('');
+  const [manualEntryError, setManualEntryError] = useState<string | null>(null);
+
+  const openManualEntryModal = () => {
+    const end = new Date();
+    const start = new Date(end);
+    start.setMinutes(start.getMinutes() - 25);
+    setManualStartTime(start);
+    setManualEndTime(end);
+    setManualTag('');
+    setManualEntryError(null);
+    setIsManualEntryModalVisible(true);
+  };
+
+  const closeManualEntryModal = () => {
+    setIsManualEntryModalVisible(false);
+  };
+
+  const handleManualEntrySave = () => {
+    if (!manualTag) {
+      setManualEntryError('Please select a tag');
+      return;
+    }
+
+    const finalStart = new Date(selectedDate);
+    finalStart.setHours(manualStartTime.getHours(), manualStartTime.getMinutes(), 0, 0);
+
+    const finalEnd = new Date(selectedDate);
+    finalEnd.setHours(manualEndTime.getHours(), manualEndTime.getMinutes(), 0, 0);
+
+    if (finalEnd <= finalStart) {
+      setManualEntryError('End time must be after start time');
+      return;
+    }
+
+    const duration = Math.round((finalEnd.getTime() - finalStart.getTime()) / (1000 * 60));
+
+    createCompletedSession({
+      startTime: finalStart,
+      endTime: finalEnd,
+      duration: duration,
+      targetDuration: duration,
+      tagName: manualTag,
+      isManualEntry: true,
+    });
+
+    closeManualEntryModal();
+  };
 
   // Handle navigation from session creation
   useEffect(() => {
@@ -151,11 +210,12 @@ export default function JournalScreen() {
   const selectedActualDuration = selectedSession?.actualDuration ?? selectedSession?.duration ?? 0;
   const selectedInitialDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
   const selectedTargetDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
-  const currentFruits = calculateFruitsEarnedForDuration(
+  const isManual = selectedSession?.isManualEntry;
+  const currentFruits = isManual ? 0 : calculateFruitsEarnedForDuration(
     selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0,
     selectedTargetDuration
   );
-  const adjustedFruits = calculateFruitsEarnedForDuration(adjustedDuration, selectedTargetDuration);
+  const adjustedFruits = isManual ? 0 : calculateFruitsEarnedForDuration(adjustedDuration, selectedTargetDuration);
   const fruitDelta = adjustedFruits - currentFruits;
 
   // Convert store sessions to component format and filter for selected date
@@ -182,6 +242,7 @@ export default function JournalScreen() {
           adjustedDuration: adjustedSessionDuration,
           tagName: session.tagName || '',
           notes: session.notes,
+          isManualEntry: session.isManualEntry,
         };
       })
       .filter(session => {
@@ -203,6 +264,11 @@ export default function JournalScreen() {
       <Header
         title="Journal"
         useSafeArea={false}
+        rightAction={{
+          icon: 'add',
+          onPress: openManualEntryModal,
+          accessibilityLabel: 'Add manual focus session'
+        }}
       />
 
       <View className="flex-1">
@@ -233,7 +299,7 @@ export default function JournalScreen() {
         {selectedSession && (
           <View>
             <Typography variant="headline-20" color="white" className="mb-1">
-              Focus Session
+              {isManual ? 'Focus Session (Manual)' : 'Focus Session'}
             </Typography>
 
             <Typography variant="body-14" color="secondary" className="mb-5">
@@ -256,23 +322,32 @@ export default function JournalScreen() {
               </View>
             </View>
 
-            <View className="bg-gray-700 rounded-xl p-4 mb-5">
-              <View className="flex-row items-center justify-between">
-                <Typography variant="body-12" color="secondary">
-                  Fruits after adjustment
-                </Typography>
-                <FruitCounter fruitCount={adjustedFruits} size="small" />
+            {!isManual ? (
+              <View className="bg-gray-700 rounded-xl p-4 mb-5">
+                <View className="flex-row items-center justify-between">
+                  <Typography variant="body-12" color="secondary">
+                    Fruits after adjustment
+                  </Typography>
+                  <FruitCounter fruitCount={adjustedFruits} size="small" />
+                </View>
+                {fruitDelta !== 0 && (
+                  <Typography
+                    variant="body-12"
+                    color={fruitDelta > 0 ? 'success' : 'error'}
+                    className="mt-2"
+                  >
+                    {fruitDelta > 0 ? '+' : ''}{fruitDelta} fruit change
+                  </Typography>
+                )}
               </View>
-              {fruitDelta !== 0 && (
-                <Typography
-                  variant="body-12"
-                  color={fruitDelta > 0 ? 'success' : 'error'}
-                  className="mt-2"
-                >
-                  {fruitDelta > 0 ? '+' : ''}{fruitDelta} fruit change
+            ) : (
+              <View className="bg-[#2A2B42] rounded-xl p-4 mb-5 flex-row items-start">
+                <Ionicons name="information-circle-outline" size={20} color="#6592E9" className="mr-2" />
+                <Typography variant="body-12" color="secondary" className="flex-1 ml-2">
+                  No fruits are associated with Manual Focus sessions.
                 </Typography>
-              )}
-            </View>
+              </View>
+            )}
 
             {selectedSession.notes && (
               <View className="bg-gray-700 rounded-xl p-4 mb-5">
@@ -305,6 +380,83 @@ export default function JournalScreen() {
             </View>
           </View>
         )}
+      </Modal>
+
+      {/* Manual Entry Modal */}
+      <Modal isVisible={isManualEntryModalVisible} onClose={closeManualEntryModal} size="large">
+        <View>
+          <Typography variant="headline-20" color="white" className="mb-4">
+            Add Focus Session
+          </Typography>
+
+          <View className="mb-5">
+            <Typography variant="subtitle-14-medium" color="white" className="mb-2">
+              Time Range (for {selectedDate.toLocaleDateString()})
+            </Typography>
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-1 mr-2">
+                <TimePicker
+                  value={manualStartTime}
+                  onChange={setManualStartTime}
+                  label="Start Time"
+                />
+              </View>
+              <View className="flex-1 ml-2">
+                <TimePicker
+                  value={manualEndTime}
+                  onChange={setManualEndTime}
+                  label="End Time"
+                />
+              </View>
+            </View>
+            
+            <Typography variant="subtitle-14-medium" color="white" className="mb-2 mt-2">
+              Tag
+            </Typography>
+            <View className="mb-4">
+              <TagSelector
+                tags={tags.allNames.map(name => tags.byName[name]).filter(Boolean)}
+                selectedTags={manualTag ? [manualTag] : []}
+                onTagSelect={setManualTag}
+                maxSelections={1}
+              />
+            </View>
+
+            {manualEntryError && (
+              <Typography variant="body-14" color="error" className="mb-4">
+                {manualEntryError}
+              </Typography>
+            )}
+
+            <View className="bg-[#2A2B42] rounded-xl p-4 mb-6">
+              <View className="flex-row items-start">
+                <Ionicons name="information-circle-outline" size={20} color="#6592E9" className="mr-2" />
+                <Typography variant="body-12" color="secondary" className="flex-1 ml-2">
+                  Sessions added manually do not grant fruit bonuses and are for tracking purposes only.
+                </Typography>
+              </View>
+            </View>
+
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={closeManualEntryModal}
+                className="flex-1 bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80"
+              >
+                <Typography variant="subtitle-14-semibold" color="white">
+                  Cancel
+                </Typography>
+              </Pressable>
+              <Pressable
+                onPress={handleManualEntrySave}
+                className="flex-1 bg-[#6592E9] rounded-xl py-3 items-center justify-center active:opacity-80"
+              >
+                <Typography variant="subtitle-14-semibold" color="white">
+                  Save Session
+                </Typography>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );

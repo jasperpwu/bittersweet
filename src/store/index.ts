@@ -75,7 +75,7 @@ interface AppStore {
     pauseSession: () => void;
     resumeSession: () => void;
     completeSession: (id?: string) => void;
-    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagName: string; notes?: string }) => FocusSession;
+    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagName: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
     
     // View actions
     setSelectedDate: (date: Date) => void;
@@ -344,8 +344,8 @@ export const useAppStore = create<AppStore>()(
           const previousAdjustedDuration = session.adjustedDuration ?? session.duration;
           const nextAdjustedDuration = Math.max(0, Math.min(actualDuration, Math.round(adjustedDuration)));
           const targetDuration = session.initialSetDuration ?? session.duration;
-          const previousFruits = calculateFruitsEarnedForDuration(previousAdjustedDuration, targetDuration);
-          const nextFruits = calculateFruitsEarnedForDuration(nextAdjustedDuration, targetDuration);
+          const previousFruits = session.isManualEntry ? 0 : calculateFruitsEarnedForDuration(previousAdjustedDuration, targetDuration);
+          const nextFruits = session.isManualEntry ? 0 : calculateFruitsEarnedForDuration(nextAdjustedDuration, targetDuration);
           const fruitDelta = nextFruits - previousFruits;
 
           set((state) => ({
@@ -555,7 +555,7 @@ export const useAppStore = create<AppStore>()(
           }
         },
         
-        createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagName: string; notes?: string }) => {
+        createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagName: string; notes?: string; isManualEntry?: boolean }) => {
           console.log('📝 Creating completed session:', params);
           const sessionId = generateId();
 
@@ -573,6 +573,7 @@ export const useAppStore = create<AppStore>()(
             notes: params.notes,
             createdAt: new Date(),
             updatedAt: new Date(),
+            isManualEntry: params.isManualEntry,
           };
 
           set((state) => ({
@@ -607,7 +608,7 @@ export const useAppStore = create<AppStore>()(
           }
 
           // Calculate and award fruits (bonus time earns twice as fast)
-          const fruitsEarned = calculateFruitsEarnedForDuration(params.duration, params.targetDuration);
+          const fruitsEarned = params.isManualEntry ? 0 : calculateFruitsEarnedForDuration(params.duration, params.targetDuration);
           if (fruitsEarned > 0) {
             get().rewards.earnFruits(fruitsEarned, 'focus_session', {
               sessionId: sessionId,

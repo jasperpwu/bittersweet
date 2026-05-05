@@ -185,7 +185,7 @@ export const TagSelector: FC<TagSelectorProps> = ({
       >
         {tags.map((tag, index) => {
           const selected = isTagSelected(tag.name);
-          const disabled = !selected && !canSelectMore;
+          const disabled = !selected && (maxSelections === 1 ? false : !canSelectMore);
           const isDragging = draggingIndex === index;
           
           return (

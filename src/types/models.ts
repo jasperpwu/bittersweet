@@ -42,6 +42,7 @@ export interface FocusSession {
   tagName: string; // Required single tag name for each session
 
   liveActivityId?: string; // iOS Live Activity ID for timer display
+  isManualEntry?: boolean; // Whether the session was added manually without timer
 
   // Metadata
   createdAt: Date;

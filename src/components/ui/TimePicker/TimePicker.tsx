@@ -1,5 +1,5 @@
 import React, { FC, useState } from 'react';
-import { View, Pressable, Platform } from 'react-native';
+import { View, Pressable, Platform, Modal } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../Typography';
@@ -20,6 +20,12 @@ export const TimePicker: FC<TimePickerProps> = ({
   disabled = false,
 }) => {
   const [showPicker, setShowPicker] = useState(false);
+  const [tempValue, setTempValue] = useState(value);
+
+  // Sync temp value when picker opens
+  React.useEffect(() => {
+    if (showPicker) setTempValue(value);
+  }, [showPicker, value]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
@@ -32,11 +38,23 @@ export const TimePicker: FC<TimePickerProps> = ({
   const handleTimeChange = (event: any, selectedTime?: Date) => {
     if (Platform.OS === 'android') {
       setShowPicker(false);
+      if (selectedTime) {
+        onChange(selectedTime);
+      }
+    } else {
+      if (selectedTime) {
+        setTempValue(selectedTime);
+      }
     }
-    
-    if (selectedTime) {
-      onChange(selectedTime);
-    }
+  };
+
+  const handleConfirm = () => {
+    setShowPicker(false);
+    onChange(tempValue);
+  };
+
+  const handleCancel = () => {
+    setShowPicker(false);
   };
 
   const handlePress = () => {
@@ -85,14 +103,46 @@ export const TimePicker: FC<TimePickerProps> = ({
       )}
 
       {showPicker && (
-        <DateTimePicker
-          value={value}
-          mode="time"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleTimeChange}
-          textColor="#FFFFFF"
-          accentColor="#6592E9"
-        />
+        Platform.OS === 'ios' ? (
+          <Modal transparent visible={showPicker} animationType="fade">
+            <View className="flex-1 bg-black/60 justify-center items-center px-6">
+              <View className="bg-dark-bg rounded-3xl p-6 w-full max-w-sm border border-dark-border">
+                <Typography variant="headline-20" color="white" className="mb-4 text-center">
+                  Select Time
+                </Typography>
+                <DateTimePicker
+                  value={tempValue}
+                  mode="time"
+                  display="spinner"
+                  onChange={handleTimeChange}
+                  textColor="#FFFFFF"
+                  accentColor="#6592E9"
+                />
+                <View className="flex-row justify-end mt-6 gap-3">
+                  <Pressable 
+                    onPress={handleCancel} 
+                    className="flex-1 bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80"
+                  >
+                    <Typography variant="subtitle-14-semibold" color="white">Cancel</Typography>
+                  </Pressable>
+                  <Pressable 
+                    onPress={handleConfirm} 
+                    className="flex-1 bg-[#6592E9] rounded-xl py-3 items-center justify-center active:opacity-80"
+                  >
+                    <Typography variant="subtitle-14-semibold" color="white">Confirm</Typography>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={value}
+            mode="time"
+            display="default"
+            onChange={handleTimeChange}
+          />
+        )
       )}
     </View>
   );

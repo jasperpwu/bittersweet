@@ -51,7 +51,7 @@ interface FocusSlice {
   resumeSession: () => void;
   completeSession: () => void;
   cancelSession: () => void;
-  createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string }) => void;
+  createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string; isManualEntry?: boolean }) => void;
   
   // Tag Management
   addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => Tag;
@@ -496,7 +496,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       }
     },
 
-    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string }) => {
+    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string; isManualEntry?: boolean }) => {
       const completedSession: FocusSession = {
         id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         startTime: params.startTime,
@@ -510,10 +510,11 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         notes: params.notes,
         createdAt: new Date(),
         updatedAt: new Date(),
+        isManualEntry: params.isManualEntry,
       };
 
       // Calculate fruits earned
-      const fruitsEarned = calculateFruitsEarned(completedSession);
+      const fruitsEarned = params.isManualEntry ? 0 : calculateFruitsEarned(completedSession);
       completedSession.fruitsEarned = fruitsEarned;
 
       set((state: any) => {
