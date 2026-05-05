@@ -4,6 +4,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import { createJSONStorage, persist, PersistOptions } from 'zustand/middleware';
 
 // Storage version for migration support
@@ -135,36 +136,48 @@ class OptimizedStorage {
   private compressionEnabled = true;
   private batchWrites = new Map<string, any>();
   private batchTimeout: NodeJS.Timeout | null = null;
-  
+
+  constructor() {
+    // Flush pending writes immediately when app goes to background
+    AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        this.flushBatchWrites();
+      }
+    });
+  }
+
   async getItem(name: string): Promise<string | null> {
     try {
       const item = await AsyncStorage.getItem(name);
-      
+
       if (item && this.compressionEnabled) {
         // Simple compression detection and decompression could be added here
         return item;
       }
-      
+
       return item;
     } catch (error) {
       console.error('Storage getItem error:', error);
-      return null;
+      // Re-throw so zustand's rehydration .catch() fires and onRehydrateStorage
+      // receives the error. Returning null here would silently make zustand think
+      // there's no persisted state, causing it to overwrite storage with defaults.
+      throw error;
     }
   }
-  
+
   async setItem(name: string, value: string): Promise<void> {
     // Batch writes to improve performance
     this.batchWrites.set(name, value);
-    
+
     if (this.batchTimeout) {
       clearTimeout(this.batchTimeout);
     }
-    
+
     this.batchTimeout = setTimeout(async () => {
       await this.flushBatchWrites();
     }, 100); // Batch writes for 100ms
   }
-  
+
   async removeItem(name: string): Promise<void> {
     try {
       await AsyncStorage.removeItem(name);
@@ -172,10 +185,15 @@ class OptimizedStorage {
       console.error('Storage removeItem error:', error);
     }
   }
-  
-  private async flushBatchWrites(): Promise<void> {
+
+  async flushBatchWrites(): Promise<void> {
     if (this.batchWrites.size === 0) return;
-    
+
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+      this.batchTimeout = null;
+    }
+
     try {
       const writes: [string, string][] = [];
       this.batchWrites.forEach((value, key) => {
@@ -260,8 +278,8 @@ export const persistenceConfig = {
   onRehydrateStorage: () => (state: any, error: any) => {
     if (error) {
       console.error('❌ Store rehydration error:', error);
-      // Clear corrupted storage and start fresh
-      AsyncStorage.removeItem(STORAGE_KEY).catch(console.error);
+      // Do NOT delete storage here — the data may still be valid on next launch.
+      // Deleting causes permanent data loss for transient errors (memory pressure, etc.)
       return;
     }
 
@@ -299,6 +317,34 @@ export const persistenceConfig = {
         };
       }
       
+      // Restore rewards slice if missing
+      if (!state.rewards) {
+        console.warn('Rewards slice missing after rehydration, initializing...');
+        state.rewards = {
+          balance: 0,
+          totalEarned: 0,
+          totalSpent: 0,
+          transactions: [],
+          unlockableApps: [],
+        };
+      }
+
+      // Restore blocklist slice if missing
+      if (!state.blocklist) {
+        console.warn('Blocklist slice missing after rehydration, initializing...');
+        state.blocklist = {
+          settings: {
+            blockedApps: { applicationTokens: [], categoryTokens: [], webDomainTokens: [] },
+            unlockCostPerMinute: 1,
+            scheduleEnabled: false,
+          },
+          currentSelectionId: null,
+          activeSessions: { byId: {}, allIds: [] },
+          isAuthorized: false,
+          authorizationStatus: 0,
+        };
+      }
+
       // Restore dates in focus
       if (state.focus.selectedDate && !(state.focus.selectedDate instanceof Date)) {
         state.focus.selectedDate = new Date(state.focus.selectedDate);
@@ -387,18 +433,13 @@ export const persistenceConfig = {
     });
     } catch (error) {
       console.error('❌ Error during state merge:', error);
-      // Return current state if merge fails
-      return currentState;
+      // Return persisted state merged shallowly rather than losing all data
+      return { ...currentState, ...persistedState };
     }
 
-    // Validate data integrity
-    try {
-      validateStateIntegrity(merged);
-    } catch (error) {
-      console.error('❌ State validation failed:', error);
-      return currentState;
-    }
-    
+    // Validate data integrity (non-fatal — logs warnings but doesn't discard data)
+    validateStateIntegrity(merged);
+
     return merged;
   },
 };
@@ -412,10 +453,11 @@ function setupPostHydration(state: any) {
   setupEventListeners();
 }
 
-// Validate state integrity after hydration
+// Validate state integrity after hydration (non-throwing — logs warnings only)
 function validateStateIntegrity(state: any) {
   if (!state || typeof state !== 'object') {
-    throw new Error('State is not a valid object');
+    console.warn('⚠️ State is not a valid object');
+    return;
   }
 
   const issues: string[] = [];
@@ -425,7 +467,7 @@ function validateStateIntegrity(state: any) {
   if (!state.rewards) issues.push('Missing rewards slice');
   if (!state.settings) issues.push('Missing settings slice');
   if (!state.ui) issues.push('Missing ui slice');
-  
+
   // Check normalized structures
   const normalizedSlices = ['focus', 'rewards'];
   normalizedSlices.forEach(sliceName => {
@@ -443,10 +485,9 @@ function validateStateIntegrity(state: any) {
       });
     }
   });
-  
+
   if (issues.length > 0) {
     console.warn('⚠️ State integrity issues found:', issues);
-    // Could implement automatic fixes here
   }
 }
 
