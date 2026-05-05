@@ -7,6 +7,7 @@ import { SettingsSlice, AppSettings } from '../types';
 import { createEventEmitter, STORE_EVENTS } from '../utils/eventBus';
 
 const defaultSettings: AppSettings = {
+  hasSeenOnboarding: false,
   theme: 'system',
   language: 'en',
   notifications: {

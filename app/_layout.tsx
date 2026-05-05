@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import '../global.css';
 
-import { Stack } from 'expo-router';
+import { Stack, router, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from '../src/hooks/useFonts';
 import { View, Text } from 'react-native';
@@ -14,7 +14,6 @@ import { useEffect, useRef, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
 import { AppState, AppStateStatus } from 'react-native';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
 import { LiveActivityService } from '../src/services/LiveActivityService';
@@ -192,6 +191,21 @@ export default function RootLayout() {
   }
 
   const isReady = fontsLoaded && isHydrated;
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (isReady) {
+      const { useUnifiedStore } = require('../src/store/unified-store');
+      const hasSeenOnboarding = useUnifiedStore.getState().preferences?.hasSeenOnboarding;
+      
+      if (!hasSeenOnboarding && pathname !== '/onboarding') {
+        // Small delay to ensure router is ready
+        setTimeout(() => {
+          router.replace('/onboarding');
+        }, 50);
+      }
+    }
+  }, [isReady, pathname]);
 
   return (
     <ErrorBoundary>
@@ -201,6 +215,7 @@ export default function RootLayout() {
             <>
               <Stack>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
                 <Stack.Screen
                   name="(modals)/session-creation"
                   options={{

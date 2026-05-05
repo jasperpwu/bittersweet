@@ -21,6 +21,7 @@ interface DeviceInfo {
 }
 
 interface AppPreferences {
+  hasSeenOnboarding: boolean;
   theme: 'light' | 'dark' | 'system';
   language: string;
   notifications: NotificationSettings;
@@ -121,6 +122,7 @@ const getDeviceInfo = async (): Promise<DeviceInfo> => {
 };
 
 const createDefaultPreferences = (): AppPreferences => ({
+  hasSeenOnboarding: false,
   theme: 'system',
   language: 'en',
   notifications: {
