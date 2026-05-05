@@ -47,6 +47,7 @@ export const STORAGE_KEYS = {
   appSettings: 'app_settings',
   onboardingCompleted: 'onboarding_completed',
   lastSyncTime: 'last_sync_time',
+  blocklistTipAcknowledged: 'blocklist_tip_acknowledged',
 } as const;
 
 // Theme Constants

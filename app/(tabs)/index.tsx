@@ -14,6 +14,7 @@ import { blockSelection, stopMonitoring } from 'react-native-device-activity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
+import { STORAGE_KEYS } from '../../src/config/constants';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
 
@@ -65,7 +66,10 @@ export default function FocusScreen() {
   // Delete functionality
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<any>(null);
-  
+
+  // Blocklist tip modal
+  const [showBlocklistTip, setShowBlocklistTip] = useState(false);
+  const blocklistTipAcknowledgedRef = useRef<boolean | null>(null);
 
   // Session + timer state
   const [isSessionActive, setIsSessionActive] = useState(false); // true during transition or running
@@ -123,18 +127,7 @@ export default function FocusScreen() {
     : null;
   const isUnlockActive = !!activeUnlockSession && !isSessionActive;
 
-  const handleBlockList = async () => {
-    triggerHaptic('light');
-
-    if (currentSession.session !== null) {
-      Alert.alert(
-        'Blocklist Locked',
-        'You cannot edit the blocklist during a focus session. Complete your session first.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
+  const proceedToBlockList = async () => {
     const authorized = await checkAuthorizationStatus();
     if (!authorized) {
       const granted = await requestAuthorization();
@@ -151,6 +144,39 @@ export default function FocusScreen() {
     } else {
       router.push('/(modals)/app-selection');
     }
+  };
+
+  const handleBlockList = async () => {
+    triggerHaptic('light');
+
+    if (currentSession.session !== null) {
+      Alert.alert(
+        'Blocklist Locked',
+        'You cannot edit the blocklist during a focus session. Complete your session first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Check if tip has been acknowledged
+    if (blocklistTipAcknowledgedRef.current === null) {
+      const acknowledged = await AsyncStorage.getItem(STORAGE_KEYS.blocklistTipAcknowledged);
+      blocklistTipAcknowledgedRef.current = acknowledged === 'true';
+    }
+
+    if (!blocklistTipAcknowledgedRef.current) {
+      setShowBlocklistTip(true);
+      return;
+    }
+
+    await proceedToBlockList();
+  };
+
+  const handleBlocklistTipUnderstood = async () => {
+    setShowBlocklistTip(false);
+    blocklistTipAcknowledgedRef.current = true;
+    await AsyncStorage.setItem(STORAGE_KEYS.blocklistTipAcknowledged, 'true');
+    await proceedToBlockList();
   };
 
   const handleTagSelect = (tagName: string) => {
@@ -873,6 +899,7 @@ export default function FocusScreen() {
             hitSlop={8}
           >
             <Ionicons name="ban-outline" size={22} color="#CACACA" />
+            <Text style={{ color: '#CACACA', fontSize: 13, fontWeight: '500', marginLeft: 6 }}>Block List</Text>
             {blockedCount > 0 && (
               <View className="ml-1.5 bg-primary rounded-full px-1.5 py-0.5 min-w-[20px] items-center">
                 <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '600' }}>{blockedCount}</Text>
@@ -1340,6 +1367,42 @@ export default function FocusScreen() {
 
 
       {/* Emoji Picker */}
+      {/* Blocklist Tip Modal */}
+      <Modal
+        visible={showBlocklistTip}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowBlocklistTip(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50 justify-center items-center px-6"
+          onPress={() => setShowBlocklistTip(false)}
+        >
+          <Pressable onPress={() => {}} className="bg-dark-bg rounded-2xl w-full max-w-sm overflow-hidden p-6">
+            <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600', marginBottom: 12 }}>
+              Block List
+            </Text>
+            <Text style={{ color: '#AAAAAA', fontSize: 14, lineHeight: 20, marginBottom: 24 }}>
+              This is where you add apps that are unnecessary for achieving your goals and also distracting.{'\n\n'}Adding apps will not cost fruits, but removing picked apps can incur a fruit cost that accumulates and resets weekly.
+            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+              <Pressable
+                onPress={() => setShowBlocklistTip(false)}
+                style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
+              >
+                <Text style={{ color: '#888888', fontSize: 15, fontWeight: '500' }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleBlocklistTipUnderstood}
+                style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, backgroundColor: '#6592E9' }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Understood</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <EmojiPickerModal
         visible={showEmojiPicker}
         onClose={() => {
