@@ -10,7 +10,7 @@ const ONBOARDING_DATA = [
   {
     id: '1',
     title: 'Focus and Plant',
-    description: 'Stay focused to grow your tree and later enjoy the fruits of your labor.',
+    description: 'Stay focused to grow your tree and later enjoy the fruits of your hard work.',
     iconName: 'leaf-outline',
     iconColor: '#51BC6F',
   },
@@ -42,11 +42,11 @@ export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   
-  const completeOnboarding = () => {
+  const completeOnboarding = async () => {
     // Set hasSeenOnboarding to true in the store
     const updatePreferences = useUnifiedStore.getState().updatePreferences;
     if (updatePreferences) {
-      updatePreferences({ hasSeenOnboarding: true });
+      await updatePreferences({ hasSeenOnboarding: true });
     }
     // Navigate to the main tabs
     router.replace('/(tabs)');

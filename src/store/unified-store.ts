@@ -196,14 +196,7 @@ export const useUnifiedStore = create<UnifiedStore>()(
         },
         
         updatePreferences: async (updates) => {
-          set((state) => ({
-            loading: { ...state.loading, preferences: true },
-          }));
-          
           try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
             const updatedPreferences = {
               ...get().preferences,
               ...updates,
@@ -216,19 +209,13 @@ export const useUnifiedStore = create<UnifiedStore>()(
                 ...updates.focus,
               },
             };
-            
-            set((state) => ({
-              preferences: updatedPreferences,
-              loading: { ...state.loading, preferences: false },
-            }));
-            
+
+            set({ preferences: updatedPreferences });
+
             if (__DEV__) {
               console.log('✅ Preferences updated');
             }
           } catch (error) {
-            set((state) => ({
-              loading: { ...state.loading, preferences: false },
-            }));
             const errorMessage = error instanceof Error ? error.message : 'Preferences update failed';
             get().addError(errorMessage);
             throw error;
