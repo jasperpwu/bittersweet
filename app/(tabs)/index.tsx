@@ -893,13 +893,22 @@ export default function FocusScreen() {
             />
           </Animated.View>
           <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 1 : timerOpacity, transform: [{ scale: isUnlockActive ? 1 : timerScale }, { translateY: isUnlockActive ? 0 : timerTranslateY }], zIndex: 100, alignItems: 'center' }}>
+            {isRunning && !isBonusTime && !isUnlockActive && (
+              <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
+                <Text style={{ color: '#CACACA', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
+                  🍎 5 min of focus = 1 fruit
+                </Text>
+              </View>
+            )}
             {isBonusTime && !isUnlockActive && (
               <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
                 <Text style={{ color: '#4CAF7C', fontSize: 20, lineHeight: 26, fontFamily: 'Poppins-SemiBold', textAlign: 'center' }}>
                   Bonus time!
                 </Text>
                 <Text style={{ color: '#CACACA', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
-                  fruits are earned twice as fast during this time
+                  {bonusSeconds < 600
+                    ? 'fruits are earned double for the first 10 min'
+                    : 'double fruits ended — earning at normal rate'}
                 </Text>
               </View>
             )}

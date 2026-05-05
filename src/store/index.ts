@@ -195,12 +195,16 @@ const generateId = () => {
   return `${timestamp}-${randomStr}`;
 };
 
+export const BONUS_DOUBLE_CAP_MINUTES = 10;
+
 export const calculateFruitsEarnedForDuration = (duration: number, targetDuration: number = duration) => {
   const earnedMinutes = Math.max(0, Math.floor(duration));
   const regularMinutes = Math.min(earnedMinutes, Math.max(0, Math.floor(targetDuration)));
   const bonusMinutes = Math.max(0, earnedMinutes - regularMinutes);
+  const doubledBonusMinutes = Math.min(bonusMinutes, BONUS_DOUBLE_CAP_MINUTES);
+  const normalBonusMinutes = Math.max(0, bonusMinutes - BONUS_DOUBLE_CAP_MINUTES);
 
-  return Math.floor(regularMinutes / 5) + Math.floor(bonusMinutes / 5) * 2;
+  return Math.floor(regularMinutes / 5) + Math.floor(doubledBonusMinutes / 5) * 2 + Math.floor(normalBonusMinutes / 5);
 };
 
 export const useAppStore = create<AppStore>()(
