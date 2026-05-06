@@ -19,16 +19,12 @@ import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/
 export type { FocusSession } from '../../types/models';
 export type { ChartDataPoint, TimePeriod } from '../types';
 
-const BONUS_DOUBLE_CAP_MINUTES = 10;
-
 const calculateFruitsForDuration = (duration: number, targetDuration: number = duration): number => {
   const earnedMinutes = Math.max(0, Math.floor(duration));
-  const regularMinutes = Math.min(earnedMinutes, Math.max(0, Math.floor(targetDuration)));
-  const bonusMinutes = Math.max(0, earnedMinutes - regularMinutes);
-  const doubledBonusMinutes = Math.min(bonusMinutes, BONUS_DOUBLE_CAP_MINUTES);
-  const normalBonusMinutes = Math.max(0, bonusMinutes - BONUS_DOUBLE_CAP_MINUTES);
-
-  return Math.floor(regularMinutes / 5) + Math.floor(doubledBonusMinutes / 5) * 2 + Math.floor(normalBonusMinutes / 5);
+  const countedMinutes = Math.min(earnedMinutes, Math.max(0, Math.floor(targetDuration)));
+  const baseFruits = Math.floor(countedMinutes / 5);
+  const completionBonus = earnedMinutes >= Math.floor(targetDuration) && targetDuration > 0 ? 1 : 0;
+  return baseFruits + completionBonus;
 };
 
 // Focus slice interface

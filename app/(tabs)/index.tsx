@@ -923,19 +923,17 @@ export default function FocusScreen() {
             {isRunning && !isBonusTime && !isUnlockActive && (
               <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
                 <Text style={{ color: '#CACACA', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
-                  🍎 5 min of focus = 1 fruit
+                  5 min = 1 🍎. Finish session to get 1 extra bonus 🍎!
                 </Text>
               </View>
             )}
             {isBonusTime && !isUnlockActive && (
               <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
                 <Text style={{ color: '#4CAF7C', fontSize: 20, lineHeight: 26, fontFamily: 'Poppins-SemiBold', textAlign: 'center' }}>
-                  Bonus time!
+                  Session complete!
                 </Text>
                 <Text style={{ color: '#CACACA', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
-                  {bonusSeconds < 600
-                    ? 'fruits are earned double for the first 10 min'
-                    : 'double fruits ended — earning at normal rate'}
+                  bonus 🍎 earned
                 </Text>
               </View>
             )}

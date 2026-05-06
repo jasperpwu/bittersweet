@@ -195,16 +195,14 @@ const generateId = () => {
   return `${timestamp}-${randomStr}`;
 };
 
-export const BONUS_DOUBLE_CAP_MINUTES = 10;
-
 export const calculateFruitsEarnedForDuration = (duration: number, targetDuration: number = duration) => {
   const earnedMinutes = Math.max(0, Math.floor(duration));
-  const regularMinutes = Math.min(earnedMinutes, Math.max(0, Math.floor(targetDuration)));
-  const bonusMinutes = Math.max(0, earnedMinutes - regularMinutes);
-  const doubledBonusMinutes = Math.min(bonusMinutes, BONUS_DOUBLE_CAP_MINUTES);
-  const normalBonusMinutes = Math.max(0, bonusMinutes - BONUS_DOUBLE_CAP_MINUTES);
-
-  return Math.floor(regularMinutes / 5) + Math.floor(doubledBonusMinutes / 5) * 2 + Math.floor(normalBonusMinutes / 5);
+  // Only count minutes up to the target duration for fruit earning
+  const countedMinutes = Math.min(earnedMinutes, Math.max(0, Math.floor(targetDuration)));
+  const baseFruits = Math.floor(countedMinutes / 5);
+  // +1 bonus fruit for completing the full set duration
+  const completionBonus = earnedMinutes >= Math.floor(targetDuration) && targetDuration > 0 ? 1 : 0;
+  return baseFruits + completionBonus;
 };
 
 export const useAppStore = create<AppStore>()(
@@ -300,7 +298,7 @@ export const useAppStore = create<AppStore>()(
             }
           }
           
-          // Calculate and award fruits (bonus time earns twice as fast)
+          // Calculate and award fruits (+1 bonus for completing set duration)
           const fruitsEarned = calculateFruitsEarnedForDuration(duration);
           if (fruitsEarned > 0) {
             get().rewards.earnFruits(fruitsEarned, 'focus_session', {
@@ -531,7 +529,7 @@ export const useAppStore = create<AppStore>()(
               // Session is already completed, no need to update status
               // Duration is already set when creating the session
               
-              // Calculate and award fruits (bonus time earns twice as fast)
+              // Calculate and award fruits (+1 bonus for completing set duration)
               const fruitsEarned = calculateFruitsEarnedForDuration(actualDuration, session.initialSetDuration ?? actualDuration);
               if (fruitsEarned > 0) {
                 get().rewards.earnFruits(fruitsEarned, 'focus_session', {
@@ -611,7 +609,7 @@ export const useAppStore = create<AppStore>()(
             }
           }
 
-          // Calculate and award fruits (bonus time earns twice as fast)
+          // Calculate and award fruits (+1 bonus for completing set duration)
           const fruitsEarned = params.isManualEntry ? 0 : calculateFruitsEarnedForDuration(params.duration, params.targetDuration);
           if (fruitsEarned > 0) {
             get().rewards.earnFruits(fruitsEarned, 'focus_session', {
