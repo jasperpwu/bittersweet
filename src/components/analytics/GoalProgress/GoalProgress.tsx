@@ -59,8 +59,10 @@ export const GoalProgress: FC<GoalProgressProps> = ({
     [goals, safeSessions, tagMap]
   );
 
-  // Early return after all hooks are called
-  if (!goals || goals.length === 0) return null;
+  // Show placeholder when no goals exist
+  if (!goals || goals.length === 0) {
+    return <GoalEmptyPlaceholder />;
+  }
 
   // Process goals to calculate progress
   const processedGoals: ProcessedGoal[] = goals.map(goal => {
@@ -433,6 +435,116 @@ const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
             </Typography>
           )}
         </View>
+      </View>
+    </View>
+  );
+};
+
+// ---------- Empty State Placeholder ----------
+
+const GoalEmptyPlaceholder: FC = () => {
+  // Sample placeholder data to show what streaks look like
+  const placeholderStreaks = [
+    true, true, false, true, true, true, false,
+    true, false, true, true, false, false, true,
+    true, true, true, false, true, true, false,
+    false, true, true, true, false, true, true,
+    true, false,
+  ];
+
+  return (
+    <View className="px-5 mb-6">
+      {/* Header */}
+      <View className="flex-row items-center justify-between mb-4">
+        <Typography variant="subtitle-16" color="white">
+          Goals
+        </Typography>
+      </View>
+
+      {/* Placeholder Goal Card */}
+      <View className="bg-dark-bg border border-dark-border rounded-xl p-4 mb-3 opacity-40">
+        <View className="flex-row items-center">
+          {/* Placeholder Circle */}
+          <View className="relative mr-4">
+            <Svg width={60} height={60} className="transform -rotate-90">
+              <Circle
+                cx={30}
+                cy={30}
+                r={27}
+                stroke="rgba(255, 255, 255, 0.2)"
+                strokeWidth={6}
+                fill="transparent"
+              />
+              <Circle
+                cx={30}
+                cy={30}
+                r={27}
+                stroke="#6592E9"
+                strokeWidth={6}
+                fill="transparent"
+                strokeDasharray={2 * Math.PI * 27}
+                strokeDashoffset={2 * Math.PI * 27 * 0.35}
+                strokeLinecap="round"
+              />
+            </Svg>
+            <View className="absolute inset-0 items-center justify-center">
+              <Typography variant="body-12" className="text-white font-poppins-semibold">
+                65%
+              </Typography>
+            </View>
+          </View>
+
+          {/* Placeholder Content */}
+          <View className="flex-1">
+            <Typography variant="body-14" className="text-white font-poppins-semibold mb-1">
+              Daily Coding Goal
+            </Typography>
+            <Typography variant="body-12" className="text-gray-300">
+              1h 18m / 2h 0m
+            </Typography>
+          </View>
+
+          <Typography variant="body-12" className="text-gray-400">
+            42m left
+          </Typography>
+        </View>
+      </View>
+
+      {/* Placeholder Streak Calendar */}
+      <View className="bg-dark-bg border border-dark-border rounded-xl p-4 mb-4 opacity-40">
+        <View className="flex-row items-center justify-between mb-3">
+          <Typography variant="body-12" color="secondary">
+            Last 30 days
+          </Typography>
+          <Typography variant="body-12" color="primary">
+            19/30 hit
+          </Typography>
+        </View>
+        {/* Day headers */}
+        <View className="flex-row mb-1">
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+            <View key={i} className="flex-1 items-center">
+              <Typography variant="tiny-10" color="secondary">{d}</Typography>
+            </View>
+          ))}
+        </View>
+        {/* Streak grid */}
+        <View className="flex-row flex-wrap">
+          {placeholderStreaks.map((hit, i) => (
+            <View key={i} className="items-center justify-center" style={{ width: '14.28%', aspectRatio: 1 }}>
+              <View
+                className={`w-5 h-5 rounded-sm ${hit ? 'bg-[#6592E9]' : 'bg-dark-border'}`}
+              />
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Call to action */}
+      <View className="items-center py-2">
+        <Typography variant="body-14" color="secondary" className="text-center">
+          Tap the top right 🎯 to create new goals
+        </Typography>
       </View>
     </View>
   );
