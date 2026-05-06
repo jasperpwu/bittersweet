@@ -42,6 +42,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({ isVisible, onClose }
     period: 'daily' | 'weekly' | 'monthly';
     tagNames: string[];
     isRepeating: boolean;
+    showTotalHours: boolean;
   }) => {
     const goalPayload = {
       name: goalData.name,
@@ -49,6 +50,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({ isVisible, onClose }
       period: goalData.period,
       tagNames: goalData.tagNames,
       isRepeating: goalData.isRepeating,
+      showTotalHours: goalData.showTotalHours,
     };
 
     if (editingGoal) {

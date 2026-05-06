@@ -183,6 +183,15 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
   });
 
   const hitCount = results.filter(r => r.hit).length;
+  const totalMinutesAll = results.reduce((sum, r) => sum + r.totalMinutes, 0);
+
+  const formatTotalHours = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${mins}m`;
+  };
 
   if (goal.period === 'daily') {
     // Month calendar grid — 7 columns (Sun–Sat)
@@ -222,6 +231,13 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
             </View>
           ))}
         </View>
+        {(goal as any).showTotalHours && (
+          <View className="mt-3 pt-3 border-t border-dark-border items-center">
+            <Typography variant="body-14" className="text-white font-poppins-semibold">
+              ⏱️ {formatTotalHours(totalMinutesAll)} total
+            </Typography>
+          </View>
+        )}
       </View>
     );
   }
@@ -264,6 +280,13 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
             ))}
           </View>
         ))}
+        {(goal as any).showTotalHours && (
+          <View className="mt-3 pt-3 border-t border-dark-border items-center">
+            <Typography variant="body-14" className="text-white font-poppins-semibold">
+              ⏱️ {formatTotalHours(totalMinutesAll)} total
+            </Typography>
+          </View>
+        )}
       </View>
     );
   }
@@ -291,6 +314,13 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
           </View>
         ))}
       </View>
+      {(goal as any).showTotalHours && (
+        <View className="mt-3 pt-3 border-t border-dark-border items-center">
+          <Typography variant="body-14" className="text-white font-poppins-semibold">
+            ⏱️ {formatTotalHours(totalMinutesAll)} total
+          </Typography>
+        </View>
+      )}
     </View>
   );
 };
@@ -537,6 +567,11 @@ const GoalEmptyPlaceholder: FC = () => {
               />
             </View>
           ))}
+        </View>
+        <View className="mt-3 pt-3 border-t border-dark-border items-center">
+          <Typography variant="body-14" className="text-white font-poppins-semibold">
+            ⏱️ 38h 30m total
+          </Typography>
         </View>
       </View>
 

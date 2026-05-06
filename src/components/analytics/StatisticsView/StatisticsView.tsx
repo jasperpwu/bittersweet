@@ -66,12 +66,7 @@ export const StatisticsView: FC<StatisticsViewProps> = ({
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 20 }}
     >
-      {/* Focus Sessions Chart */}
-      <FocusSessionsChart
-        data={chartData}
-        period={period}
-        onPeriodChange={onPeriodChange}
-      />
+      {/* Focus Sessions Chart - hidden for now */}
 
     </ScrollView>
   );
