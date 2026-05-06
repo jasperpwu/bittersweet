@@ -27,17 +27,36 @@ export const generateWeekDates = (): Date[] => {
 export const generateExtendedWeekDates = (startDate: Date = new Date()): Date[] => {
   const dates = [];
   const start = new Date(startDate);
-  
+
   // Start from 3 days ago to show more context
   start.setDate(start.getDate() - 3);
-  
+
   // Generate 14 days (2 weeks) for better scrolling
   for (let i = 0; i < 14; i++) {
     const date = new Date(start);
     date.setDate(start.getDate() + i);
     dates.push(date);
   }
-  
+
+  return dates;
+};
+
+/**
+ * Generate Sun-Sat week dates for the week containing the given date
+ */
+export const getWeekForDate = (date: Date): Date[] => {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - day);
+  sunday.setHours(0, 0, 0, 0);
+
+  const dates: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const weekDay = new Date(sunday);
+    weekDay.setDate(sunday.getDate() + i);
+    dates.push(weekDay);
+  }
   return dates;
 };
 
