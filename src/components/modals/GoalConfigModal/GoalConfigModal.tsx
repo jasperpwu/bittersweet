@@ -39,14 +39,16 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({ isVisible, onClose }
   const handleCreateGoal = (goalData: {
     name: string;
     targetMinutes: number;
-    period: 'daily' | 'weekly' | 'yearly';
+    period: 'daily' | 'weekly' | 'monthly';
     tagNames: string[];
+    isRepeating: boolean;
   }) => {
     const goalPayload = {
       name: goalData.name,
       targetMinutes: goalData.targetMinutes,
       period: goalData.period,
       tagNames: goalData.tagNames,
+      isRepeating: goalData.isRepeating,
     };
 
     if (editingGoal) {
@@ -187,7 +189,6 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({ isVisible, onClose }
                           targetMinutes: goal.targetMinutes,
                           period: goal.period,
                           tagNames: getGoalTagNames(goal),
-                          currentProgress: goal.currentProgress,
                           isActive: goal.isActive,
                         }}
                         onEdit={handleEditGoal}

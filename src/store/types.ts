@@ -95,9 +95,10 @@ export interface FocusGoal extends BaseEntity {
   userId: string;
   name: string;
   targetMinutes: number;
-  period: 'daily' | 'weekly' | 'yearly';
+  period: 'daily' | 'weekly' | 'monthly';
   tagId: string; // empty array means "all tags"
   isActive: boolean;
+  isRepeating: boolean;
   currentProgress: number;
   lastResetDate: Date;
 }

@@ -736,15 +736,25 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       return get().focus.currentSession.session;
     },
 
-    // Goal Selectors
+    // Goal Selectors (with migration of legacy 'yearly' → 'monthly' and default isRepeating)
     getGoalById: (id: string) => {
       const goals = get().focus.goals;
-      return goals.byId[id];
+      const goal = goals.byId[id];
+      if (!goal) return undefined;
+      const migrated = { ...goal };
+      if ((migrated.period as string) === 'yearly') migrated.period = 'monthly';
+      if (migrated.isRepeating === undefined) migrated.isRepeating = true;
+      return migrated;
     },
 
     getAllGoals: () => {
       const goals = get().focus.goals;
-      return goals.allIds.map(id => goals.byId[id]).filter(Boolean);
+      return goals.allIds.map(id => goals.byId[id]).filter(Boolean).map(goal => {
+        const migrated = { ...goal };
+        if ((migrated.period as string) === 'yearly') migrated.period = 'monthly';
+        if (migrated.isRepeating === undefined) migrated.isRepeating = true;
+        return migrated;
+      });
     },
 
     getActiveGoals: () => {
@@ -752,7 +762,13 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       return goals.allIds
         .map(id => goals.byId[id])
         .filter(Boolean)
-        .filter(goal => goal.isActive);
+        .filter(goal => goal.isActive)
+        .map(goal => {
+          const migrated = { ...goal };
+          if ((migrated.period as string) === 'yearly') migrated.period = 'monthly';
+          if (migrated.isRepeating === undefined) migrated.isRepeating = true;
+          return migrated;
+        });
     },
     
     // Analytics

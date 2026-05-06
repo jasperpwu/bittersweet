@@ -10,7 +10,7 @@ import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Typography } from '../../ui/Typography';
 import { FocusGoal } from '../../../store/types';
 import { useFocus } from '../../../store';
-import { calculateGoalProgress } from '../../../utils/goalProgress';
+import { calculateGoalProgress, getHistoricalPeriodRanges } from '../../../utils/goalProgress';
 
 interface GoalProgressProps {
   goals: FocusGoal[];
@@ -24,22 +24,23 @@ interface ProcessedGoal extends FocusGoal {
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-export const GoalProgress: FC<GoalProgressProps> = ({ 
-  goals, 
-  currentPeriodProgress 
+export const GoalProgress: FC<GoalProgressProps> = ({
+  goals,
+  currentPeriodProgress
 }) => {
-  const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'weekly' | 'yearly' | 'all'>('all');
-  
+  const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'all'>('all');
+  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+
   // Get tags and sessions from store for real data
   const { tags, sessions } = useFocus();
 
   // Extract sessions array from normalized state
-  const safeSessions = (sessions && sessions.allIds && sessions.byId) 
-    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean) 
+  const safeSessions = (sessions && sessions.allIds && sessions.byId)
+    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean)
     : [];
 
   // Create tag map for name/ID conversion
-  const tagMap = useMemo(() => 
+  const tagMap = useMemo(() =>
     (tags && tags.allNames && tags.byName ? tags.allNames : []).reduce((map, name) => {
       if (tags && tags.byName) {
         const tag = tags.byName[name];
@@ -53,8 +54,8 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   );
 
   // Calculate fresh goal progress from current session data
-  const freshGoalProgress = useMemo(() => 
-    calculateGoalProgress(goals || [], safeSessions, tagMap), 
+  const freshGoalProgress = useMemo(() =>
+    calculateGoalProgress(goals || [], safeSessions, tagMap),
     [goals, safeSessions, tagMap]
   );
 
@@ -66,7 +67,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
     // Use freshly calculated progress from actual sessions
     const currentProgress = freshGoalProgress[goal.id] || 0;
     const percentage = Math.min((currentProgress / goal.targetMinutes) * 100, 100);
-    
+
     return {
       ...goal,
       currentProgress,
@@ -75,8 +76,8 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   });
 
   // Filter goals by selected period
-  const filteredGoals = selectedPeriod === 'all' 
-    ? processedGoals 
+  const filteredGoals = selectedPeriod === 'all'
+    ? processedGoals
     : processedGoals.filter(goal => goal.period === selectedPeriod);
 
   // Group goals by period for display
@@ -86,17 +87,10 @@ export const GoalProgress: FC<GoalProgressProps> = ({
     return acc;
   }, {} as Record<string, ProcessedGoal[]>);
 
-  const formatTime = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
+  const handleGoalPress = (goal: ProcessedGoal) => {
+    if (goal.isRepeating) {
+      setExpandedGoalId(prev => prev === goal.id ? null : goal.id);
     }
-    return `${mins}m`;
-  };
-
-  const getPeriodLabel = (period: string): string => {
-    return period.charAt(0).toUpperCase() + period.slice(1);
   };
 
   return (
@@ -107,7 +101,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
           Goals
         </Typography>
         <View className="flex-row space-x-2">
-          {(['all', 'daily', 'weekly', 'yearly'] as const).map((period) => (
+          {(['all', 'daily', 'weekly', 'monthly'] as const).map((period) => (
             <Pressable
               key={period}
               onPress={() => setSelectedPeriod(period)}
@@ -132,7 +126,21 @@ export const GoalProgress: FC<GoalProgressProps> = ({
         <View key={period} className="mb-4">
           <View className="space-y-3">
             {periodGoals.map((goal) => (
-              <GoalProgressItem key={goal.id} goal={goal} tags={tags} />
+              <View key={goal.id}>
+                <Pressable
+                  onPress={() => handleGoalPress(goal)}
+                  disabled={!goal.isRepeating}
+                >
+                  <GoalProgressItem goal={goal} tags={tags} />
+                </Pressable>
+                {goal.isRepeating && expandedGoalId === goal.id && (
+                  <GoalConsistencyCalendar
+                    goal={goal}
+                    sessions={safeSessions}
+                    tagMap={tagMap}
+                  />
+                )}
+              </View>
             ))}
           </View>
         </View>
@@ -140,6 +148,152 @@ export const GoalProgress: FC<GoalProgressProps> = ({
     </View>
   );
 };
+
+// ---------- Consistency Calendar ----------
+
+interface GoalConsistencyCalendarProps {
+  goal: ProcessedGoal;
+  sessions: any[];
+  tagMap: Record<string, { id: string; name: string }>;
+}
+
+const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessions, tagMap }) => {
+  const periodCounts: Record<string, number> = { daily: 30, weekly: 12, monthly: 12 };
+  const count = periodCounts[goal.period] || 12;
+  const ranges = getHistoricalPeriodRanges(goal.period, count);
+
+  // Compute hit/miss for each range
+  const results = ranges.map(range => {
+    const rangeSessions = sessions.filter(s => {
+      const d = new Date(s.startTime);
+      return d >= range.periodStart && d <= range.periodEnd;
+    });
+
+    // Filter by goal's tags
+    const goalTagNames = (goal as any).tagNames || [];
+    const relevant = goalTagNames.length === 0
+      ? rangeSessions
+      : rangeSessions.filter(s => goalTagNames.includes((s as any).tagName));
+
+    const totalMinutes = relevant.reduce((sum, s) => sum + s.duration, 0);
+    const hit = totalMinutes >= goal.targetMinutes;
+    return { ...range, hit, totalMinutes };
+  });
+
+  const hitCount = results.filter(r => r.hit).length;
+
+  if (goal.period === 'daily') {
+    // Month calendar grid — 7 columns (Sun–Sat)
+    // Pad the first row so days align to their weekday
+    const firstDay = results[0]?.periodStart.getDay() ?? 0;
+    const paddedResults = [...Array(firstDay).fill(null), ...results];
+
+    return (
+      <View className="bg-dark-bg border border-dark-border rounded-xl p-4 mt-2">
+        <View className="flex-row items-center justify-between mb-3">
+          <Typography variant="body-12" color="secondary">
+            Last 30 days
+          </Typography>
+          <Typography variant="body-12" color="primary">
+            {hitCount}/{count} hit
+          </Typography>
+        </View>
+        {/* Day headers */}
+        <View className="flex-row mb-1">
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+            <View key={i} className="flex-1 items-center">
+              <Typography variant="tiny-10" color="secondary">{d}</Typography>
+            </View>
+          ))}
+        </View>
+        {/* Grid */}
+        <View className="flex-row flex-wrap">
+          {paddedResults.map((r, i) => (
+            <View key={i} className="items-center justify-center" style={{ width: '14.28%', aspectRatio: 1 }}>
+              {r ? (
+                <View
+                  className={`w-5 h-5 rounded-sm ${r.hit ? 'bg-green-500' : 'bg-dark-border'}`}
+                />
+              ) : (
+                <View className="w-5 h-5" />
+              )}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (goal.period === 'monthly') {
+    // Monthly — two rows of 6 blocks, taller with labels
+    const topRow = results.slice(0, 6);
+    const bottomRow = results.slice(6);
+
+    const formatMinutes = (m: number) => {
+      const h = Math.floor(m / 60);
+      return h > 0 ? `${h}h` : `${m}m`;
+    };
+
+    return (
+      <View className="bg-dark-bg border border-dark-border rounded-xl p-4 mt-2">
+        <View className="flex-row items-center justify-between mb-3">
+          <Typography variant="body-12" color="secondary">
+            Last 12 months
+          </Typography>
+          <Typography variant="body-12" color="primary">
+            {hitCount}/{count} hit
+          </Typography>
+        </View>
+        {[topRow, bottomRow].map((row, rowIdx) => (
+          <View key={rowIdx} className={`flex-row justify-between ${rowIdx === 0 ? 'mb-2' : ''}`}>
+            {row.map((r, i) => (
+              <View key={i} className="items-center" style={{ flex: 1 }}>
+                <View
+                  className={`rounded-sm mb-1 ${r.hit ? 'bg-green-500' : 'bg-dark-border'}`}
+                  style={{ width: 28, height: 28 }}
+                />
+                <Typography variant="tiny-10" color="secondary" className="text-center">
+                  {r.label}
+                </Typography>
+                <Typography variant="tiny-10" color={r.hit ? 'primary' : 'secondary'} className="text-center">
+                  {formatMinutes(r.totalMinutes)}
+                </Typography>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  // Weekly — horizontal row of blocks
+  return (
+    <View className="bg-dark-bg border border-dark-border rounded-xl p-4 mt-2">
+      <View className="flex-row items-center justify-between mb-3">
+        <Typography variant="body-12" color="secondary">
+          Last {count} weeks
+        </Typography>
+        <Typography variant="body-12" color="primary">
+          {hitCount}/{count} hit
+        </Typography>
+      </View>
+      <View className="flex-row justify-between">
+        {results.map((r, i) => (
+          <View key={i} className="items-center" style={{ flex: 1 }}>
+            <View
+              className={`w-5 h-5 rounded-sm mb-1 ${r.hit ? 'bg-green-500' : 'bg-dark-border'}`}
+            />
+            <Typography variant="tiny-10" color="secondary" className="text-center">
+              {r.label}
+            </Typography>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+// ---------- Goal Progress Item ----------
 
 interface GoalProgressItemProps {
   goal: ProcessedGoal;
@@ -198,7 +352,7 @@ const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
                 <Stop offset="100%" stopColor="#6592E9" />
               </LinearGradient>
             </Defs>
-            
+
             {/* Background Circle */}
             <Circle
               cx={size / 2}
@@ -208,7 +362,7 @@ const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
               strokeWidth={strokeWidth}
               fill="transparent"
             />
-            
+
             {/* Progress Circle */}
             <AnimatedCircle
               cx={size / 2}
@@ -222,11 +376,11 @@ const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
               animatedProps={animatedProps}
             />
           </Svg>
-          
+
           {/* Center Content */}
           <View className="absolute inset-0 items-center justify-center">
-            <Typography 
-              variant="body-12" 
+            <Typography
+              variant="body-12"
               className="text-white font-poppins-semibold"
             >
               {Math.round(goal.percentage)}%
@@ -236,23 +390,30 @@ const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
 
         {/* Content */}
         <View className="flex-1">
-          <Typography 
-            variant="body-14" 
-            className="text-white font-poppins-semibold mb-1"
-          >
-            {goal.name}
-          </Typography>
-          
-          <Typography 
-            variant="body-12" 
+          <View className="flex-row items-center mb-1">
+            <Typography
+              variant="body-14"
+              className="text-white font-poppins-semibold"
+            >
+              {goal.name}
+            </Typography>
+            {goal.isRepeating && (
+              <Typography variant="tiny-10" className="text-primary ml-2">
+                🔁
+              </Typography>
+            )}
+          </View>
+
+          <Typography
+            variant="body-12"
             className="text-gray-300 mb-1"
           >
             {formatTime(goal.currentProgress)} / {formatTime(goal.targetMinutes)}
           </Typography>
-          
+
           {((goal as any).tagNames || []).length > 0 && (
-            <Typography 
-              variant="tiny-10" 
+            <Typography
+              variant="tiny-10"
               className="text-gray-400"
             >
               {getTagNames((goal as any).tagNames || [])}

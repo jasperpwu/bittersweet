@@ -8,9 +8,8 @@ interface FocusGoalItemProps {
     id: string;
     name: string;
     targetMinutes: number;
-    period: 'daily' | 'weekly' | 'yearly';
+    period: 'daily' | 'weekly' | 'monthly';
     tagNames: string[];
-    currentProgress: number;
     isActive: boolean;
   };
   onEdit?: (goalId: string) => void;
@@ -25,14 +24,11 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
   const formatTime = (minutes: number): string => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    if (hours > 0) {
+    if (hours > 0 && mins > 0) {
       return `${hours}h ${mins}m`;
     }
+    if (hours > 0) return `${hours}h`;
     return `${mins}m`;
-  };
-
-  const getProgressPercentage = (current: number, target: number): number => {
-    return Math.min((current / target) * 100, 100);
   };
 
   const getPeriodLabel = (period: string): string => {
@@ -41,14 +37,16 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
 
   return (
     <Card className="p-4">
-      <View className="flex-row items-center justify-between mb-2">
-        <Typography variant="body-14" color="white">
-          {goal.name}
-        </Typography>
-        <View className="flex-row items-center space-x-2">
-          <Typography variant="body-12" color="secondary">
-            {getPeriodLabel(goal.period)}
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1 mr-3">
+          <Typography variant="body-14" color="white">
+            {goal.name}
           </Typography>
+          <Typography variant="body-12" color="secondary" className="mt-1">
+            {getPeriodLabel(goal.period)} · {formatTime(goal.targetMinutes)}
+          </Typography>
+        </View>
+        <View className="flex-row items-center space-x-2">
           {(onEdit || onDelete) && (
             <View className="flex-row">
               {onEdit && (
@@ -75,39 +73,10 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
           )}
         </View>
       </View>
-      
-      <View className="flex-row items-center mb-2">
-        <Typography variant="body-14" color="secondary">
-          Target: {formatTime(goal.targetMinutes)}
-        </Typography>
-        <Typography variant="body-14" color="secondary" className="ml-4">
-          Progress: {formatTime(goal.currentProgress)}
-        </Typography>
-      </View>
-
-      {/* Progress Bar */}
-      <View className="bg-dark-border rounded-full h-2 mb-2">
-        <View
-          className="bg-primary rounded-full h-2"
-          style={{
-            width: `${getProgressPercentage(goal.currentProgress, goal.targetMinutes)}%`
-          }}
-        />
-      </View>
-
-      {/* Progress Text */}
-      <View className="flex-row items-center justify-between mb-2">
-        <Typography variant="body-12" color="secondary">
-          {Math.round(getProgressPercentage(goal.currentProgress, goal.targetMinutes))}% complete
-        </Typography>
-        <Typography variant="body-12" color="secondary">
-          {formatTime(goal.targetMinutes - goal.currentProgress)} remaining
-        </Typography>
-      </View>
 
       {/* Tags */}
       {goal.tagNames.length > 0 && (
-        <View className="flex-row flex-wrap">
+        <View className="flex-row flex-wrap mt-2">
           {goal.tagNames.map((tag) => (
             <View
               key={tag}

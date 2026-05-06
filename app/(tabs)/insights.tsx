@@ -218,7 +218,7 @@ export default function InsightsScreen() {
           className="p-2 active:opacity-70"
         >
           <Typography variant="headline-18" color="secondary">
-            ⚙️
+            🎯
           </Typography>
         </Pressable>
       </View>
