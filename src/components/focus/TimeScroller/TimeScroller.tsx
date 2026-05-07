@@ -155,11 +155,16 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
     return () => scrollX.removeListener(listenerId);
   }, [scrollX]);
 
-  const handleScrollBegin = () => {
+  const handleScrollBeginDrag = () => {
     isUserScrollingRef.current = true;
   };
 
-  const handleScrollEnd = (event: any) => {
+  // Only finalize on momentum end — with snapToInterval the snap animation
+  // always triggers onMomentumScrollEnd, so this is the reliable "settled" event.
+  // Handling onScrollEndDrag too would update state before the snap animation
+  // finishes, causing a feedback loop (jiggle) between programmatic scrollTo
+  // and the native snap.
+  const handleMomentumScrollEnd = (event: any) => {
     const scrollXVal = event.nativeEvent.contentOffset.x;
     const snappedIndex = Math.round(scrollXVal / TICK_SPACING);
     const clampedIndex = Math.max(0, Math.min(TIME_VALUES.length - 1, snappedIndex));
@@ -202,9 +207,8 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
           ref={scrollViewRef as any}
           horizontal
           showsHorizontalScrollIndicator={false}
-          onScrollBeginDrag={handleScrollBegin}
-          onMomentumScrollEnd={handleScrollEnd}
-          onScrollEndDrag={handleScrollEnd}
+          onScrollBeginDrag={handleScrollBeginDrag}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
           onScroll={onScroll}
           scrollEventThrottle={16}
           decelerationRate="fast"
