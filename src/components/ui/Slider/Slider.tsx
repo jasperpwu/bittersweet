@@ -21,6 +21,7 @@ interface SliderProps {
   label?: string;
   unit?: string;
   width?: number;
+  thumbSize?: number;
 }
 
 export const Slider: FC<SliderProps> = ({
@@ -34,13 +35,14 @@ export const Slider: FC<SliderProps> = ({
   label,
   unit = '',
   width = 280,
+  thumbSize: thumbSizeProp = 26,
 }) => {
   const translateX = useSharedValue(0);
   const isSliding = useSharedValue(false);
   const scale = useSharedValue(1);
 
-  const trackWidth = width - 24; // Account for thumb size
-  const thumbSize = 24;
+  const thumbSize = thumbSizeProp;
+  const trackWidth = width - thumbSize; // Account for thumb size
 
   // Calculate initial position
   React.useEffect(() => {
@@ -140,8 +142,8 @@ export const Slider: FC<SliderProps> = ({
             ]}
           />
 
-          {/* Thumb */}
-          <PanGestureHandler onGestureEvent={gestureHandler} enabled={!disabled}>
+          {/* Thumb - outer view provides a larger 44pt hit area */}
+          <PanGestureHandler onGestureEvent={gestureHandler} enabled={!disabled} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
             <Animated.View
               style={[
                 thumbStyle,

@@ -2,56 +2,17 @@ import React, { useState } from 'react';
 import {
   View,
   Pressable,
-  Animated,
-  Alert
+  Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { Typography } from './Typography';
+import { Slider } from './Slider';
 import { useBlocklist, useBlocklistActions, useRewards, useAppStore } from '../../store';
 import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
 import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
 import { LiveActivityService } from '../../services/LiveActivityService';
 import { UnlockReasonModal } from '../modals/UnlockReasonModal';
 import * as Notifications from 'expo-notifications';
-
-interface UnlockOptionProps {
-  duration: number;
-  cost: number;
-  onSelect: () => void;
-  disabled?: boolean;
-  isSelected?: boolean;
-}
-
-const UnlockOption: React.FC<UnlockOptionProps> = ({
-  duration,
-  cost,
-  onSelect,
-  disabled = false,
-  isSelected = false
-}) => {
-  return (
-    <Pressable
-      onPress={onSelect}
-      disabled={disabled}
-      className={`
-        px-3 py-2 rounded-lg border active:opacity-80 mr-2
-        ${isSelected
-          ? 'border-primary bg-primary/20'
-          : 'border-gray-600 bg-gray-800'
-        }
-        ${disabled ? 'opacity-50' : ''}
-      `}
-    >
-      <View className="items-center">
-        <Typography variant="body-12" color="white">
-          {duration}m
-        </Typography>
-        <Typography variant="tiny-10" color="primary">
-          {cost} 🍎
-        </Typography>
-      </View>
-    </Pressable>
-  );
-};
 
 interface UnlockSnackbarProps {
   visible: boolean;
@@ -71,15 +32,16 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
   const { settings, currentSelectionId } = useBlocklist();
   const { requestUnlock } = useBlocklistActions();
 
-  const [selectedDuration, setSelectedDuration] = useState(1);
+  const { width: screenWidth } = useWindowDimensions();
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [unlockReason, setUnlockReason] = useState('');
 
   const currentBalance = propBalance ?? balance;
-  const unlockOptions = [1, 5, 15];
-  const useAllDuration = Math.floor(currentBalance / settings.unlockCostPerMinute);
-  const isUseAll = selectedDuration === useAllDuration && ![1, 5, 15].includes(useAllDuration);
+  const maxFruits = Math.min(currentBalance, 20);
+  const maxDuration = Math.max(1, Math.floor(maxFruits / settings.unlockCostPerMinute));
+  const [selectedDuration, setSelectedDuration] = useState(1);
+  const sliderWidth = screenWidth - 80; // 40px padding on each side (mx-4 + px-6)
 
   const handleUnlockClick = () => {
     const cost = selectedDuration * settings.unlockCostPerMinute;
@@ -328,49 +290,23 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
           </Pressable>
         </View>
 
-        {/* Quick unlock options */}
+        {/* Unlock duration slider */}
         <View className="mb-4">
-          <Typography variant="body-14" color="secondary" className="mb-3">
-            Quick unlock:
-          </Typography>
-          <View className="flex-row">
-            {unlockOptions.map(duration => {
-              const cost = duration * settings.unlockCostPerMinute;
-              const canAfford = currentBalance >= cost;
-
-              return (
-                <UnlockOption
-                  key={duration}
-                  duration={duration}
-                  cost={cost}
-                  onSelect={() => setSelectedDuration(duration)}
-                  disabled={!canAfford}
-                  isSelected={selectedDuration === duration && !isUseAll}
-                />
-              );
-            })}
-            {/* Use All option */}
-            <Pressable
-              onPress={() => setSelectedDuration(useAllDuration)}
-              disabled={currentBalance < settings.unlockCostPerMinute}
-              className={`
-                px-3 py-2 rounded-lg border active:opacity-80 mr-2
-                ${isUseAll
-                  ? 'border-primary bg-primary/20'
-                  : 'border-gray-600 bg-gray-800'
-                }
-                ${currentBalance < settings.unlockCostPerMinute ? 'opacity-50' : ''}
-              `}
-            >
-              <View className="items-center">
-                <Typography variant="body-12" color="white">
-                  {useAllDuration}m
-                </Typography>
-                <Typography variant="tiny-10" color="primary">
-                  All 🍎
-                </Typography>
-              </View>
-            </Pressable>
+          <Slider
+            value={selectedDuration}
+            minimumValue={1}
+            maximumValue={maxDuration}
+            step={1}
+            onValueChange={setSelectedDuration}
+            label="Unlock for"
+            unit="m"
+            width={sliderWidth}
+            thumbSize={26}
+          />
+          <View className="items-center mt-1">
+            <Typography variant="body-12" color="primary">
+              Cost: {selectedDuration * settings.unlockCostPerMinute} 🍎
+            </Typography>
           </View>
         </View>
 
