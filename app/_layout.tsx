@@ -16,6 +16,7 @@ import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { AppState, AppStateStatus } from 'react-native';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
+import { UnlockToast } from '../src/components/ui/UnlockToast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '../src/store';
@@ -251,6 +252,9 @@ export default function RootLayout() {
                 }}
                 appName="App" // You can make this dynamic later
               />
+
+              {/* Unlock/lock toast notification */}
+              <UnlockToast />
             </>
           ) : (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1B1C30' }}>

@@ -20,10 +20,8 @@ export const UnlockReasonModal: FC<UnlockReasonModalProps> = ({
   const [reason, setReason] = useState('');
 
   const handleConfirm = () => {
-    if (reason.trim().length > 0) {
-      onConfirm(reason.trim());
-      setReason(''); // Reset
-    }
+    onConfirm(reason.trim());
+    setReason(''); // Reset
   };
 
   const handleCancel = () => {
@@ -63,7 +61,7 @@ export const UnlockReasonModal: FC<UnlockReasonModalProps> = ({
 
             {/* Reason Input */}
             <Input
-              label="Reason (Max 10 characters)"
+              label="Message (Optional, max 10 characters)"
               value={reason}
               onChangeText={handleReasonChange}
               placeholder="e.g., Check msg"
@@ -73,7 +71,7 @@ export const UnlockReasonModal: FC<UnlockReasonModalProps> = ({
             />
 
             <Typography variant="tiny-10" color="secondary" className="mb-6 text-center">
-              {reason.length}/10 characters
+              ""
             </Typography>
 
             {/* Buttons */}
@@ -88,7 +86,6 @@ export const UnlockReasonModal: FC<UnlockReasonModalProps> = ({
               <Button
                 variant="primary"
                 onPress={handleConfirm}
-                disabled={reason.trim().length === 0}
                 className="flex-1"
               >
                 Unlock

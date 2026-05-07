@@ -12,6 +12,7 @@ import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
 import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
 import { LiveActivityService } from '../../services/LiveActivityService';
 import { UnlockReasonModal } from '../modals/UnlockReasonModal';
+import { showUnlockToast } from './UnlockToast';
 import * as Notifications from 'expo-notifications';
 
 interface UnlockSnackbarProps {
@@ -226,17 +227,9 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
         });
 
         triggerHaptic('success');
-        Alert.alert(
-          'Apps Unlocked!',
-          `Your blocked apps are now unlocked for ${selectedDuration} minute${selectedDuration !== 1 ? 's' : ''}. They will automatically be blocked again at ${reblockTime.toLocaleTimeString()}.`,
-          [
-            {
-              text: 'OK',
-              onPress: onDismiss
-            }
-          ]
-        );
         setIsUnlocking(false);
+        onDismiss();
+        showUnlockToast(`Unlocked for ${selectedDuration}m`, 'success');
       } else {
         throw new Error('Failed to create unlock session');
       }
