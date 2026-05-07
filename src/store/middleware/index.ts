@@ -3,10 +3,9 @@
  * Addresses Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createJSONStorage, persist, devtools } from 'zustand/middleware';
+import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { RootStore, StoreError, PersistConfig, DevtoolsConfig } from '../types';
+import { StoreError, DevtoolsConfig } from '../types';
 
 /**
  * Performance monitoring middleware
@@ -118,91 +117,6 @@ export const loggingMiddleware = <T>(config: any) => (set: any, get: any, api: a
 };
 
 /**
- * Create persistence configuration
- */
-export function createPersistenceConfig(): PersistConfig {
-  return {
-    name: 'bittersweet-store',
-    storage: createJSONStorage(() => AsyncStorage),
-    partialize: (state: RootStore) => ({
-      focus: {
-        sessions: state.focus.sessions,
-        tags: state.focus.tags,
-        settings: state.focus.settings,
-        selectedDate: state.focus.selectedDate,
-        viewMode: state.focus.viewMode,
-      } as Partial<typeof state.focus>,
-      rewards: {
-        balance: state.rewards.balance,
-        totalEarned: state.rewards.totalEarned,
-        totalSpent: state.rewards.totalSpent,
-        transactions: state.rewards.transactions,
-        unlockableApps: state.rewards.unlockableApps,
-      } as Partial<typeof state.rewards>,
-      settings: state.settings,
-      // UI state is not persisted
-    } as Partial<RootStore>),
-    version: 1,
-    migrate: (persistedState: any, version: number) => {
-      if (version === 0) {
-        // Migration from legacy store structure
-        return migrateLegacyStore(persistedState);
-      }
-      
-      // Restore Date objects from strings
-      if (persistedState) {
-        // Restore selectedDate as Date object
-        if (persistedState.focus?.selectedDate) {
-          persistedState.focus.selectedDate = new Date(persistedState.focus.selectedDate);
-        }
-        
-        // Restore dates in focus
-        if (persistedState.focus?.currentWeekStart) {
-          persistedState.focus.currentWeekStart = new Date(persistedState.focus.currentWeekStart);
-        }
-        
-        // Restore dates in focus sessions
-        if (persistedState.focus?.sessions?.byId) {
-          Object.values(persistedState.focus.sessions.byId).forEach((session: any) => {
-            if (session.startTime) session.startTime = new Date(session.startTime);
-            if (session.endTime) session.endTime = new Date(session.endTime);
-            if (session.createdAt) session.createdAt = new Date(session.createdAt);
-            if (session.updatedAt) session.updatedAt = new Date(session.updatedAt);
-          });
-        }
-        
-        // Restore dates in tasks
-        if (persistedState.tasks?.tasks?.byId) {
-          Object.values(persistedState.tasks.tasks.byId).forEach((task: any) => {
-            if (task.date) task.date = new Date(task.date);
-            if (task.startTime) task.startTime = new Date(task.startTime);
-            if (task.createdAt) task.createdAt = new Date(task.createdAt);
-            if (task.updatedAt) task.updatedAt = new Date(task.updatedAt);
-            if (task.progress?.completedAt) task.progress.completedAt = new Date(task.progress.completedAt);
-          });
-        }
-      }
-      
-      return persistedState;
-    },
-    onRehydrateStorage: () => (state) => {
-      if (state) {
-        // Mark store as hydrated
-        state.ui.isHydrated = true;
-        
-        // Ensure selectedDate is always a Date object
-        if (state.focus && (!state.focus.selectedDate || !(state.focus.selectedDate instanceof Date))) {
-          state.focus.selectedDate = new Date();
-          console.log('🔧 Fixed selectedDate to be a Date object');
-        }
-        
-        console.log('✅ Store rehydrated successfully');
-      }
-    },
-  };
-}
-
-/**
  * Create devtools configuration
  */
 export function createDevtoolsConfig(): DevtoolsConfig {
@@ -221,55 +135,6 @@ export function createDevtoolsConfig(): DevtoolsConfig {
       return action;
     },
   };
-}
-
-/**
- * Migrate legacy store data
- */
-function migrateLegacyStore(persistedState: any): any {
-  console.log('🔄 Migrating legacy store data...');
-  
-  try {
-    // Handle migration from old store structure
-    const migratedState: any = {};
-    
-    // Migrate focus data if it exists
-    if (persistedState.focus) {
-      migratedState.focus = {
-        sessions: persistedState.focus.sessions || { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        tags: persistedState.focus.tags || { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        currentSession: persistedState.focus.currentSession || { session: null, isRunning: false, remainingTime: 0, startedAt: null },
-        selectedDate: persistedState.focus.selectedDate || new Date(),
-        viewMode: persistedState.focus.viewMode || 'day',
-        currentWeekStart: persistedState.focus.currentWeekStart || new Date(),
-        settings: persistedState.focus.settings || {
-          defaultDuration: 25,
-          breakDuration: 5,
-          longBreakDuration: 15,
-          sessionsUntilLongBreak: 4,
-          soundEnabled: true,
-          vibrationEnabled: true,
-          autoStartBreaks: false,
-          autoStartSessions: false,
-        },
-      };
-    }
-    
-    // Migrate tasks data if it exists
-    if (persistedState.tasks) {
-      migratedState.tasks = {
-        tasks: persistedState.tasks.tasks || { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        selectedDate: persistedState.tasks.selectedDate || new Date(),
-        viewMode: persistedState.tasks.viewMode || 'day',
-      };
-    }
-    
-    console.log('✅ Legacy store migration completed');
-    return migratedState;
-  } catch (error) {
-    console.error('❌ Legacy store migration failed:', error);
-    return {};
-  }
 }
 
 /**
@@ -324,7 +189,6 @@ export function createAsyncAction<T, P>(
  */
 export function createStoreMiddleware() {
   return {
-    persist: createPersistenceConfig(),
     devtools: createDevtoolsConfig(),
     performance: performanceMiddleware,
     errorHandling: errorHandlingMiddleware,

@@ -5,142 +5,24 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
-import { createJSONStorage, persist, PersistOptions } from 'zustand/middleware';
+import { createJSONStorage } from 'zustand/middleware';
 
-// Storage version for migration support
-export const STORAGE_VERSION = 2;
+export const STORAGE_VERSION = 1;
 export const STORAGE_KEY = 'bittersweet-store';
-
-// Helper function to ensure dates are properly converted
-const ensureDate = (date: any): Date => {
-  if (!date) return new Date();
-  if (date instanceof Date) return date;
-  if (typeof date === 'string' || typeof date === 'number') return new Date(date);
-  return new Date();
-};
-
-// Helper function to safely access nested objects
-const safeGet = (obj: any, path: string, defaultValue: any = {}) => {
-  try {
-    const keys = path.split('.');
-    let result = obj;
-    for (const key of keys) {
-      if (result == null || typeof result !== 'object') return defaultValue;
-      result = result[key];
-    }
-    return result ?? defaultValue;
-  } catch {
-    return defaultValue;
-  }
-};
-
-// Migration functions for different versions
-const migrations = {
-  1: (state: any) => {
-    // Migration from version 0 to 1
-    console.log('🔄 Migrating store from version 0 to 1');
-
-    if (!state || typeof state !== 'object') {
-      console.warn('Invalid state during migration, returning default');
-      return {};
-    }
-
-    // Handle legacy homeSlice data
-    const homeSlice = safeGet(state, 'homeSlice', {});
-    if (homeSlice && Object.keys(homeSlice).length > 0) {
-      const { user, dailyGoals, ...rest } = homeSlice;
-      
-      // Migrate user data to settings
-      if (user) {
-        state.settings = {
-          ...state.settings,
-          user: {
-            ...user,
-            createdAt: ensureDate(user.createdAt),
-            updatedAt: ensureDate(user.updatedAt),
-          }
-        };
-      }
-      
-      // Migrate daily goals to focus settings
-      if (dailyGoals) {
-        state.focus.settings = {
-          ...state.focus.settings,
-          dailyGoals: dailyGoals.map((goal: any) => ({
-            ...goal,
-            createdAt: ensureDate(goal.createdAt),
-            updatedAt: ensureDate(goal.updatedAt),
-          }))
-        };
-      }
-      
-      // Remove old homeSlice
-      delete state.homeSlice;
-    }
-    
-    return state;
-  },
-  
-  2: (state: any) => {
-    // Migration from version 1 to 2
-    console.log('🔄 Migrating store from version 1 to 2');
-    
-    // Add new fields introduced in version 2
-    if (state.focus && !state.focus.stats) {
-      state.focus.stats = {
-        totalSessions: 0,
-        totalFocusTime: 0,
-        currentStreak: 0,
-        longestStreak: 0,
-        averageSessionLength: 0,
-        completionRate: 0,
-      };
-    }
-    
-    // Ensure all slices have proper normalized structure
-    const slices = ['focus', 'rewards'];
-    slices.forEach(sliceName => {
-      if (state[sliceName]) {
-        Object.keys(state[sliceName]).forEach(key => {
-          if (key.endsWith('s') && Array.isArray(state[sliceName][key])) {
-            // Convert array to normalized structure
-            const items = state[sliceName][key];
-            const byId: Record<string, any> = {};
-            const allIds: string[] = [];
-            
-            items.forEach((item: any) => {
-              if (item.id) {
-                byId[item.id] = item;
-                allIds.push(item.id);
-              }
-            });
-            
-            state[sliceName][key] = {
-              byId,
-              allIds,
-              loading: false,
-              error: null,
-              lastUpdated: new Date(),
-            };
-          }
-        });
-      }
-    });
-    
-    return state;
-  },
-};
 
 // Optimized storage implementation
 class OptimizedStorage {
-  private compressionEnabled = true;
   private batchWrites = new Map<string, any>();
   private batchTimeout: NodeJS.Timeout | null = null;
+  private firstWriteTime: number | null = null;
+  private static readonly DEBOUNCE_MS = 100;
+  private static readonly MAX_DELAY_MS = 2000;
 
   constructor() {
-    // Flush pending writes immediately when app goes to background
     AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'background' || nextState === 'inactive') {
+      // Flush when going to background (prevent loss on suspend)
+      // and when returning to active (recover after crash/force-kill)
+      if (nextState === 'background' || nextState === 'inactive' || nextState === 'active') {
         this.flushBatchWrites();
       }
     });
@@ -148,14 +30,7 @@ class OptimizedStorage {
 
   async getItem(name: string): Promise<string | null> {
     try {
-      const item = await AsyncStorage.getItem(name);
-
-      if (item && this.compressionEnabled) {
-        // Simple compression detection and decompression could be added here
-        return item;
-      }
-
-      return item;
+      return await AsyncStorage.getItem(name);
     } catch (error) {
       console.error('Storage getItem error:', error);
       // Re-throw so zustand's rehydration .catch() fires and onRehydrateStorage
@@ -166,16 +41,27 @@ class OptimizedStorage {
   }
 
   async setItem(name: string, value: string): Promise<void> {
-    // Batch writes to improve performance
     this.batchWrites.set(name, value);
 
+    // Track when the first write in this batch was queued
+    if (this.firstWriteTime === null) {
+      this.firstWriteTime = Date.now();
+    }
+
+    // If we've been deferring writes for too long, flush immediately
+    if (Date.now() - this.firstWriteTime >= OptimizedStorage.MAX_DELAY_MS) {
+      await this.flushBatchWrites();
+      return;
+    }
+
+    // Otherwise reset the debounce timer
     if (this.batchTimeout) {
       clearTimeout(this.batchTimeout);
     }
 
     this.batchTimeout = setTimeout(async () => {
       await this.flushBatchWrites();
-    }, 100); // Batch writes for 100ms
+    }, OptimizedStorage.DEBOUNCE_MS);
   }
 
   async removeItem(name: string): Promise<void> {
@@ -193,14 +79,15 @@ class OptimizedStorage {
       clearTimeout(this.batchTimeout);
       this.batchTimeout = null;
     }
+    this.firstWriteTime = null;
 
     try {
       const writes: [string, string][] = [];
       this.batchWrites.forEach((value, key) => {
         writes.push([key, value]);
       });
-      await AsyncStorage.multiSet(writes);
       this.batchWrites.clear();
+      await AsyncStorage.multiSet(writes);
     } catch (error) {
       console.error('Storage batch write error:', error);
       // Fallback to individual writes
@@ -254,25 +141,7 @@ export const persistenceConfig = {
       authorizationStatus: state.blocklist.authorizationStatus,
     },
     settings: state.settings,
-    ui: state.ui,
   }),
-  
-  // Migration function
-  migrate: (persistedState: any, version: number) => {
-    console.log(`🔄 Migrating store from version ${version} to ${STORAGE_VERSION}`);
-    
-    let migratedState = persistedState;
-    
-    // Apply migrations sequentially
-    for (let v = version + 1; v <= STORAGE_VERSION; v++) {
-      if (migrations[v as keyof typeof migrations]) {
-        migratedState = migrations[v as keyof typeof migrations](migratedState);
-      }
-    }
-    
-    console.log('✅ Store migration completed');
-    return migratedState;
-  },
   
   // Hydration callback
   onRehydrateStorage: () => (state: any, error: any) => {
@@ -365,25 +234,11 @@ export const persistenceConfig = {
           }
         });
       }
-      
-      // Verify that all action functions are still available after rehydration
-      if (process.env.NODE_ENV === 'development') {
-        const requiredActions = ['setSelectedDate', 'setViewMode', 'goToPreviousWeek', 'goToNextWeek'];
-        const missingActions = requiredActions.filter(action => typeof state.focus[action] !== 'function');
-        if (missingActions.length > 0) {
-          console.error('❌ Missing focus actions after rehydration:', missingActions);
-        } else {
-          console.log('✅ All focus actions preserved after rehydration');
-        }
-      }
-      
+
       // Mark as hydrated
       if (state.ui) {
         state.ui.isHydrated = true;
       }
-      
-      // Perform post-hydration setup  
-      // setupPostHydration(state); // Remove recursion
     }
   },
   
@@ -410,11 +265,6 @@ export const persistenceConfig = {
     try {
       // Merge only data properties, not functions
       Object.keys(persistedState).forEach(sliceKey => {
-      if (sliceKey === 'ui') {
-        // UI state is never persisted
-        return;
-      }
-      
       const persistedSlice = persistedState[sliceKey];
       const currentSlice = currentState[sliceKey];
       
@@ -443,15 +293,6 @@ export const persistenceConfig = {
     return merged;
   },
 };
-
-// Post-hydration setup
-function setupPostHydration(state: any) {
-  // Clean up expired data
-  cleanupExpiredData(state);
-  
-  // Initialize event listeners
-  setupEventListeners();
-}
 
 // Validate state integrity after hydration (non-throwing — logs warnings only)
 function validateStateIntegrity(state: any) {
@@ -491,96 +332,9 @@ function validateStateIntegrity(state: any) {
   }
 }
 
-// Helper functions for stats calculation
-function calculateCurrentStreak(sessions: any[]): number {
-  if (sessions.length === 0) return 0;
-  
-  const sortedSessions = sessions
-    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-  
-  let streak = 0;
-  let currentDate = new Date();
-  currentDate.setHours(0, 0, 0, 0);
-  
-  for (const session of sortedSessions) {
-    const sessionDate = new Date(session.startTime);
-    sessionDate.setHours(0, 0, 0, 0);
-    
-    const daysDiff = Math.floor((currentDate.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff === streak) {
-      streak++;
-    } else if (daysDiff > streak) {
-      break;
-    }
-  }
-  
-  return streak;
-}
-
-function calculateLongestStreak(sessions: any[]): number {
-  if (sessions.length === 0) return 0;
-  
-  const sessionDates = sessions
-    .map(s => {
-      const date = new Date(s.startTime);
-      date.setHours(0, 0, 0, 0);
-      return date.getTime();
-    })
-    .filter((date, index, arr) => arr.indexOf(date) === index)
-    .sort((a, b) => a - b);
-  
-  let longestStreak = 1;
-  let currentStreak = 1;
-  
-  for (let i = 1; i < sessionDates.length; i++) {
-    const daysDiff = (sessionDates[i] - sessionDates[i - 1]) / (1000 * 60 * 60 * 24);
-    
-    if (daysDiff === 1) {
-      currentStreak++;
-      longestStreak = Math.max(longestStreak, currentStreak);
-    } else {
-      currentStreak = 1;
-    }
-  }
-  
-  return longestStreak;
-}
-
-// Clean up expired data
-function cleanupExpiredData(state: any) {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  
-  // Clean up old error logs
-  if (state.ui?.errors && Array.isArray(state.ui.errors) && state.ui.errors.length > 0) {
-    state.ui.errors = state.ui.errors.filter(
-      (error: any) => error.timestamp && new Date(error.timestamp) > thirtyDaysAgo
-    );
-  }
-  
-  // Clean up old transactions (keep last 100)
-  if (state.rewards?.transactions && Array.isArray(state.rewards.transactions) && state.rewards.transactions.length > 100) {
-    const sortedTransactions = state.rewards.transactions
-      .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 100);
-    
-    state.rewards.transactions = sortedTransactions;
-  }
-}
-
-// Setup event listeners for persistence optimization
-function setupEventListeners() {
-  // Listen for app state changes to optimize persistence
-  // This would be implemented with react-native's AppState
-}
-
 // Export utilities for testing and debugging
 export const persistenceUtils = {
   validateStateIntegrity,
-  calculateCurrentStreak,
-  calculateLongestStreak,
-  cleanupExpiredData,
   STORAGE_VERSION,
   STORAGE_KEY,
 };
