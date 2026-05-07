@@ -84,7 +84,7 @@ index fd8eea7..85a7d4b 100644
 +        .activitySystemActionForegroundColor(Color.black)
 +        .applyWidgetURL(from: context.attributes.deepLinkUrl)
 +      } else if context.isStale {
-+        // Focus session expired — show bonus time count-up
++        // Focus session expired — show extended time count-up
 +        VStack(alignment: .leading) {
 +          HStack(alignment: .center) {
 +            VStack(alignment: .leading, spacing: 2) {
@@ -92,7 +92,7 @@ index fd8eea7..85a7d4b 100644
 +                .font(.title2)
 +                .fontWeight(.semibold)
 +                .foregroundStyle(Color(hex: context.attributes.titleColor ?? "#8B4513"))
-+              Text("Bonus Time")
++              Text("Extended Time")
                  .font(.title3)
                  .foregroundStyle(Color(hex: context.attributes.subtitleColor ?? "#8B4513").opacity(0.7))
              }
