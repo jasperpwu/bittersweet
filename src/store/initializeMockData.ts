@@ -112,22 +112,18 @@ export const shouldInitializeMockData = (): boolean => {
  * Waits for store to be properly hydrated before checking
  */
 export const autoInitializeMockData = () => {
-  if (shouldInitializeMockData()) {
-    // Wait for store hydration before initializing
-    const checkAndInit = () => {
-      const state = useAppStore.getState();
-      
-      // Check if store is hydrated (persistence middleware loaded)
-      if (state.ui?.isHydrated !== false) {
-        console.log('🔧 Store is hydrated, checking for mock data initialization...');
-        initializeStoreWithMockData();
-      } else {
-        console.log('⏳ Store not yet hydrated, waiting...');
-        setTimeout(checkAndInit, 500);
-      }
-    };
-    
-    // Small initial delay to ensure persistence middleware is set up
-    setTimeout(checkAndInit, 1000);
+  if (!shouldInitializeMockData()) return;
+
+  const doInit = () => {
+    console.log('🔧 Store is hydrated, checking for mock data initialization...');
+    initializeStoreWithMockData();
+  };
+
+  // Use zustand persist's hasHydrated API for a reliable hydration check
+  if (useAppStore.persist.hasHydrated()) {
+    doInit();
+  } else {
+    // Wait for hydration to finish via the official callback
+    useAppStore.persist.onFinishHydration(doInit);
   }
 };

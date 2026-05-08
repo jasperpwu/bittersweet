@@ -852,7 +852,7 @@ export const useAppStore = create<AppStore>()(
       
       // UI state
       ui: {
-        isHydrated: true,
+        isHydrated: false,
         modals: {},
         loading: { global: false, actions: {} },
         errors: [],
@@ -1518,13 +1518,14 @@ export const getStoreState = () => useAppStore.getState();
 export const subscribeToStore = useAppStore.subscribe;
 
 /**
- * Store initialization
+ * Populate default tags and backfill missing colors.
+ * Must only be called AFTER the persist middleware has finished rehydrating
+ * so we don't overwrite real user data with defaults.
  */
-export function initializeStore() {
+function populateDefaults() {
   try {
-    console.log('🔧 Initializing store...');
     const state = getStoreState();
-    
+
     // Initialize default tags if none exist
     console.log('🔧 Checking tags state:', state.focus.tags);
     if (!state.focus.tags.allNames || state.focus.tags.allNames.length === 0) {
@@ -1537,12 +1538,12 @@ export function initializeStore() {
         { name: 'Creative', icon: '🎨', color: '#9C27B0' },
         { name: 'Personal', icon: '👤', color: '#2196F3' },
       ];
-      
+
       defaultTags.forEach(tag => {
         state.focus.createTag({ ...tag, isDefault: true });
       });
     }
-    
+
     // Backfill color for existing tags that don't have one
     const defaultColorMap: Record<string, string> = {
       'Work': '#6592E9',
@@ -1559,11 +1560,27 @@ export function initializeStore() {
         currentState.focus.updateTag(tagName, { color: defaultColorMap[tagName] || '#6592E9' });
       }
     }
-    
+
     console.log('✅ Store initialized successfully');
   } catch (error) {
     console.error('❌ Error initializing store:', error);
-    throw error;
+  }
+}
+
+/**
+ * Store initialization — waits for persist rehydration before populating defaults.
+ * This prevents default tags from being written to storage before real user data
+ * has been loaded, which was the root cause of the data-nuke bug.
+ */
+export function initializeStore() {
+  console.log('🔧 Initializing store...');
+
+  if (useAppStore.persist.hasHydrated()) {
+    populateDefaults();
+  } else {
+    useAppStore.persist.onFinishHydration(() => {
+      populateDefaults();
+    });
   }
 }
 

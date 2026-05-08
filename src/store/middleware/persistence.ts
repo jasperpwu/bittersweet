@@ -1,5 +1,5 @@
 /**
- * Optimized persistence middleware with versioning support
+ * Optimized persistence middleware
  * Addresses Requirements: 5.4, 7.1, 7.4, 8.1, 8.4, 8.5
  */
 
@@ -7,12 +7,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { createJSONStorage } from 'zustand/middleware';
 
-export const STORAGE_VERSION = 1;
 export const STORAGE_KEY = 'bittersweet-store';
 
-// Optimized storage implementation
+// Optimized storage implementation with empty-state write guard
 class OptimizedStorage {
-  private batchWrites = new Map<string, any>();
+  private batchWrites = new Map<string, string>();
   private batchTimeout: NodeJS.Timeout | null = null;
   private firstWriteTime: number | null = null;
   private static readonly DEBOUNCE_MS = 100;
@@ -30,7 +29,27 @@ class OptimizedStorage {
 
   async getItem(name: string): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem(name);
+      const raw = await AsyncStorage.getItem(name);
+
+      // One-time migration: if storage has a non-zero version, it's from an old
+      // format. Clear it so zustand starts fresh (no existing users to preserve).
+      if (raw && name === STORAGE_KEY) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed?.version && parsed.version !== 0) {
+            console.warn(`⚠️ Clearing legacy storage (version ${parsed.version} → 0)`);
+            await AsyncStorage.removeItem(name);
+            return null;
+          }
+        } catch {
+          // Corrupted JSON — clear it
+          console.warn('⚠️ Clearing corrupted storage');
+          await AsyncStorage.removeItem(name);
+          return null;
+        }
+      }
+
+      return raw;
     } catch (error) {
       console.error('Storage getItem error:', error);
       // Re-throw so zustand's rehydration .catch() fires and onRehydrateStorage
@@ -41,6 +60,15 @@ class OptimizedStorage {
   }
 
   async setItem(name: string, value: string): Promise<void> {
+    // Empty-state write guard: prevent writing empty defaults over real data
+    if (name === STORAGE_KEY) {
+      const blocked = await this.isEmptyStateOverwrite(value);
+      if (blocked) {
+        console.warn('⚠️ BLOCKED: Attempted to write empty state over existing data. This prevents data loss.');
+        return;
+      }
+    }
+
     this.batchWrites.set(name, value);
 
     // Track when the first write in this batch was queued
@@ -81,26 +109,76 @@ class OptimizedStorage {
     }
     this.firstWriteTime = null;
 
+    // Capture writes BEFORE clearing so fallback can use them
+    const writes: [string, string][] = [];
+    this.batchWrites.forEach((value, key) => {
+      writes.push([key, value]);
+    });
+
     try {
-      const writes: [string, string][] = [];
-      this.batchWrites.forEach((value, key) => {
-        writes.push([key, value]);
-      });
-      this.batchWrites.clear();
       await AsyncStorage.multiSet(writes);
+      // Only clear AFTER successful write
+      this.batchWrites.clear();
     } catch (error) {
       console.error('Storage batch write error:', error);
-      // Fallback to individual writes
+      // Clear the batch since we captured writes above
+      this.batchWrites.clear();
+      // Fallback to individual writes using the captured array
       const promises: Promise<void>[] = [];
-      this.batchWrites.forEach((value, key) => {
+      for (const [key, value] of writes) {
         promises.push(
           AsyncStorage.setItem(key, value).catch((individualError) => {
             console.error(`Storage individual write error for ${key}:`, individualError);
           })
         );
-      });
+      }
       await Promise.all(promises);
-      this.batchWrites.clear();
+    }
+  }
+
+  /**
+   * Checks if the proposed write is empty defaults that would overwrite real data.
+   * Returns true if the write should be BLOCKED.
+   */
+  private async isEmptyStateOverwrite(newValue: string): Promise<boolean> {
+    try {
+      const parsed = JSON.parse(newValue);
+      // Extract the state object (zustand persist wraps it in { state, version })
+      const newState = parsed?.state || parsed;
+
+      // Check if the new state looks empty (no user data)
+      const hasNoSessions = !newState?.focus?.sessions?.allIds?.length;
+      const hasNoTags = !newState?.focus?.tags?.allNames?.length;
+      const hasNoBalance = !newState?.rewards?.balance && !newState?.rewards?.totalEarned;
+
+      if (!hasNoSessions || !hasNoTags || !hasNoBalance) {
+        // New state has data, allow the write
+        return false;
+      }
+
+      // New state appears empty — check if storage currently has real data
+      const existing = await AsyncStorage.getItem(STORAGE_KEY);
+      if (!existing) {
+        // No existing data, allow writing empty state (first run)
+        return false;
+      }
+
+      const existingParsed = JSON.parse(existing);
+      const existingState = existingParsed?.state || existingParsed;
+
+      const existingHasSessions = (existingState?.focus?.sessions?.allIds?.length || 0) > 0;
+      const existingHasTags = (existingState?.focus?.tags?.allNames?.length || 0) > 0;
+      const existingHasBalance = (existingState?.rewards?.balance || 0) > 0 || (existingState?.rewards?.totalEarned || 0) > 0;
+
+      if (existingHasSessions || existingHasTags || existingHasBalance) {
+        // Storage has real data but we're trying to write empty state — BLOCK
+        return true;
+      }
+
+      return false;
+    } catch {
+      // If we can't parse, allow the write (don't block on errors)
+      return false;
     }
   }
 }
@@ -108,12 +186,12 @@ class OptimizedStorage {
 // Create optimized storage instance
 const optimizedStorage = new OptimizedStorage();
 
-// Persistence configuration with selective persistence and versioning
+// Persistence configuration with selective persistence
 export const persistenceConfig = {
   name: STORAGE_KEY,
   storage: createJSONStorage(() => optimizedStorage),
-  version: STORAGE_VERSION,
-  
+  // version 0 (zustand default) — no migrations needed, no version-mismatch nuke
+
   // Selective persistence - only persist necessary data
   partialize: (state: any) => ({
     focus: {
@@ -142,7 +220,7 @@ export const persistenceConfig = {
     },
     settings: state.settings,
   }),
-  
+
   // Hydration callback
   onRehydrateStorage: () => (state: any, error: any) => {
     if (error) {
@@ -154,13 +232,13 @@ export const persistenceConfig = {
 
     if (state) {
       console.log('✅ Store rehydrated successfully');
-      
+
       // Restore focus slice
       if (!state.focus) {
         console.warn('Focus slice missing after rehydration, initializing...');
         state.focus = {
           sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-          tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+          tags: { byName: {}, allNames: [], loading: false, error: null, lastUpdated: null },
           currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },
           selectedDate: new Date(),
           viewMode: 'day',
@@ -185,7 +263,7 @@ export const persistenceConfig = {
           },
         };
       }
-      
+
       // Restore rewards slice if missing
       if (!state.rewards) {
         console.warn('Rewards slice missing after rehydration, initializing...');
@@ -218,7 +296,7 @@ export const persistenceConfig = {
       if (state.focus.selectedDate && !(state.focus.selectedDate instanceof Date)) {
         state.focus.selectedDate = new Date(state.focus.selectedDate);
       }
-      
+
       if (state.focus.currentWeekStart && !(state.focus.currentWeekStart instanceof Date)) {
         state.focus.currentWeekStart = new Date(state.focus.currentWeekStart);
       }
@@ -241,11 +319,11 @@ export const persistenceConfig = {
       }
     }
   },
-  
+
   // Skip hydration for certain conditions
   skipHydration: false,
-  
-  // Merge function for handling conflicts
+
+  // Merge function for handling conflicts — does NOT mutate currentState
   merge: (persistedState: any, currentState: any) => {
     // Safety checks
     if (!persistedState || typeof persistedState !== 'object') {
@@ -258,29 +336,31 @@ export const persistenceConfig = {
       return persistedState;
     }
 
-    // Custom merge logic to handle conflicts
-    // IMPORTANT: Only merge data, preserve all functions from currentState
-    const merged = { ...currentState };
+    // Build a new merged object without mutating currentState
+    const merged: any = { ...currentState };
 
     try {
-      // Merge only data properties, not functions
       Object.keys(persistedState).forEach(sliceKey => {
-      const persistedSlice = persistedState[sliceKey];
-      const currentSlice = currentState[sliceKey];
-      
-      if (persistedSlice && currentSlice && typeof persistedSlice === 'object') {
-        // Merge data properties while preserving functions
-        Object.keys(persistedSlice).forEach(key => {
-          const persistedValue = persistedSlice[key];
-          const currentValue = currentSlice[key];
-          
-          // Only merge non-function properties
-          if (typeof currentValue !== 'function' && typeof persistedValue !== 'function') {
-            currentSlice[key] = persistedValue;
-          }
-        });
-      }
-    });
+        const persistedSlice = persistedState[sliceKey];
+        const currentSlice = currentState[sliceKey];
+
+        if (persistedSlice && currentSlice && typeof persistedSlice === 'object') {
+          // Create a NEW slice object — never mutate currentSlice
+          const mergedSlice = { ...currentSlice };
+
+          Object.keys(persistedSlice).forEach(key => {
+            const persistedValue = persistedSlice[key];
+            const currentValue = currentSlice[key];
+
+            // Only merge non-function properties
+            if (typeof currentValue !== 'function' && typeof persistedValue !== 'function') {
+              mergedSlice[key] = persistedValue;
+            }
+          });
+
+          merged[sliceKey] = mergedSlice;
+        }
+      });
     } catch (error) {
       console.error('❌ Error during state merge:', error);
       // Return persisted state merged shallowly rather than losing all data
@@ -335,6 +415,5 @@ function validateStateIntegrity(state: any) {
 // Export utilities for testing and debugging
 export const persistenceUtils = {
   validateStateIntegrity,
-  STORAGE_VERSION,
   STORAGE_KEY,
 };
