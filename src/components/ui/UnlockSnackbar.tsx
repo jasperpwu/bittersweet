@@ -12,7 +12,7 @@ import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
 import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
 import { LiveActivityService } from '../../services/LiveActivityService';
 import { UnlockReasonModal } from '../modals/UnlockReasonModal';
-import { showUnlockToast } from './UnlockToast';
+import { showToast } from './Toast';
 import * as Notifications from 'expo-notifications';
 
 interface UnlockSnackbarProps {
@@ -229,7 +229,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
         triggerHaptic('success');
         setIsUnlocking(false);
         onDismiss();
-        showUnlockToast(`Unlocked for ${selectedDuration}m`, 'success');
+        showToast(`Unlocked for ${selectedDuration}m`, 'success');
       } else {
         throw new Error('Failed to create unlock session');
       }

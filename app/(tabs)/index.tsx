@@ -8,7 +8,7 @@ import { TimeScroller } from '../../src/components/focus';
 import { useFocus, useFocusActions, useRewards, useAppStore, useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { FruitCounter } from '../../src/components/rewards';
-import { showUnlockToast } from '../../src/components/ui/UnlockToast';
+import { showToast } from '../../src/components/ui/Toast';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
 import { FamilyControlsModule } from '../../src/modules/BitterSweetFamilyControls';
 import { blockSelection, stopMonitoring } from 'react-native-device-activity';
@@ -336,7 +336,7 @@ export default function FocusScreen() {
     if (!activeUnlockSession) return;
     triggerHaptic('light');
     stopUnlockSession(activeUnlockSession.id, true);
-    showUnlockToast('Unlock stopped', 'neutral');
+    showToast('Unlock stopped', 'neutral');
   };
 
   const startTimer = () => {

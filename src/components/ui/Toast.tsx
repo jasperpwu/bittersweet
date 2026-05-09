@@ -11,26 +11,27 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Typography } from './Typography';
 
-type ToastVariant = 'success' | 'neutral';
+type ToastVariant = 'success' | 'neutral' | 'error';
 
 interface ToastRequest {
   message: string;
   variant: ToastVariant;
 }
 
-// Global listener that the rendered UnlockToast subscribes to
+// Global listener that the rendered Toast subscribes to
 let toastListener: ((request: ToastRequest) => void) | null = null;
 
-export function showUnlockToast(message: string, variant: ToastVariant = 'success') {
+export function showToast(message: string, variant: ToastVariant = 'success') {
   toastListener?.({ message, variant });
 }
 
 const variantClasses: Record<ToastVariant, string> = {
   success: 'bg-green-600',
   neutral: 'bg-gray-700',
+  error: 'bg-red-600',
 };
 
-export const UnlockToast: React.FC = () => {
+export const Toast: React.FC = () => {
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState<ToastRequest | null>(null);
   const translateY = useSharedValue(-80);

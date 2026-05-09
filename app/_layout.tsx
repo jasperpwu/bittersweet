@@ -16,7 +16,7 @@ import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { AppState, AppStateStatus } from 'react-native';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
-import { UnlockToast } from '../src/components/ui/UnlockToast';
+import { Toast } from '../src/components/ui/Toast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '../src/store';
@@ -217,15 +217,7 @@ export default function RootLayout() {
               <Stack>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
-                <Stack.Screen
-                  name="(modals)/session-creation"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                    gestureEnabled: true,
-                  }}
-                />
-                <Stack.Screen
+<Stack.Screen
                   name="(modals)/session-complete"
                   options={{
                     headerShown: false,
@@ -254,7 +246,7 @@ export default function RootLayout() {
               />
 
               {/* Unlock/lock toast notification */}
-              <UnlockToast />
+              <Toast />
             </>
           ) : (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1B1C30' }}>

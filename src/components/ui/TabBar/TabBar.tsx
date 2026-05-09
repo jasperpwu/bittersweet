@@ -18,7 +18,6 @@ const TabIcon: FC<{ name: string; focused: boolean }> = ({ name, focused }) => {
     focus: '🎯', // Focus
     insights: '📊', // Statistics
     settings: '⚙️', // Settings
-    'session-creation': '➕', // Add new session
   };
 
   return (

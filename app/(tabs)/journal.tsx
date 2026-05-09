@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withSequence,
   runOnJS,
   Easing,
   FadeIn,
@@ -21,6 +22,7 @@ import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions } from '../../src/store';
 import { isToday } from '../../src/utils/dateUtils';
 import { FocusSession } from '../../src/types/models';
+import { showToast } from '../../src/components/ui/Toast';
 
 export default function JournalScreen() {
   const params = useLocalSearchParams();
@@ -42,12 +44,43 @@ export default function JournalScreen() {
   const [manualTag, setManualTag] = useState<string>('');
   const [manualEntryError, setManualEntryError] = useState<string | null>(null);
 
+  // Shake animation for manual entry modal
+  const manualEntryShakeX = useSharedValue(0);
+  const manualEntryShakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: manualEntryShakeX.value }],
+  }));
+  const triggerManualEntryShake = useCallback(() => {
+    manualEntryShakeX.value = withSequence(
+      withTiming(-10, { duration: 50 }),
+      withTiming(10, { duration: 50 }),
+      withTiming(-10, { duration: 50 }),
+      withTiming(10, { duration: 50 }),
+      withTiming(0, { duration: 50 }),
+    );
+  }, [manualEntryShakeX]);
+
   const openManualEntryModal = () => {
-    const end = new Date();
-    const start = new Date(end);
-    start.setMinutes(start.getMinutes() - 25);
+    const now = new Date();
+    const twentyFiveMinAgo = new Date(now.getTime() - 25 * 60 * 1000);
+
+    // Find the latest session endTime that falls before "now" (any date)
+    let latestEndTime: Date | null = null;
+    (sessions.allIds || []).forEach(id => {
+      const session = sessions.byId?.[id];
+      if (!session?.endTime) return;
+      const end = new Date(session.endTime);
+      if (end <= now && (!latestEndTime || end > latestEndTime)) {
+        latestEndTime = end;
+      }
+    });
+
+    // Use whichever is later: last session end or 25 min ago (avoid overlap)
+    const start = latestEndTime && latestEndTime > twentyFiveMinAgo
+      ? latestEndTime
+      : twentyFiveMinAgo;
+
     setManualStartTime(start);
-    setManualEndTime(end);
+    setManualEndTime(now);
     setManualTag('');
     setManualEntryError(null);
     setIsManualEntryModalVisible(true);
@@ -71,6 +104,24 @@ export default function JournalScreen() {
 
     if (finalEnd <= finalStart) {
       setManualEntryError('End time must be after start time');
+      return;
+    }
+
+    // Check overlap with existing sessions
+    const newStart = finalStart.getTime();
+    const newEnd = finalEnd.getTime();
+    const hasOverlap = (sessions.allIds || []).some(id => {
+      const session = sessions.byId?.[id];
+      if (!session?.startTime || !session?.endTime) return false;
+      const existingStart = new Date(session.startTime).getTime();
+      const existingEnd = new Date(session.endTime).getTime();
+      return newStart < existingEnd && existingStart < newEnd;
+    });
+
+    if (hasOverlap) {
+      setManualEntryError('Time overlaps with another focus session');
+      triggerManualEntryShake();
+      showToast('Time overlaps with another focus session', 'error');
       return;
     }
 
@@ -436,7 +487,7 @@ export default function JournalScreen() {
 
       {/* Manual Entry Modal */}
       <Modal isVisible={isManualEntryModalVisible} onClose={closeManualEntryModal} size="large">
-        <View>
+        <Animated.View style={manualEntryShakeStyle}>
           <Typography variant="headline-20" color="white" className="mb-4">
             Add Focus Session
           </Typography>
@@ -508,7 +559,7 @@ export default function JournalScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+        </Animated.View>
       </Modal>
     </View>
   );
