@@ -68,10 +68,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="insights"
         options={{
-          title: 'Statistics',
+          title: 'Goals',
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <Ionicons name="bar-chart-outline" size={24} color={color} />
+              <Ionicons name="trophy-outline" size={24} color={color} />
               {focused && (
                 <View 
                   style={{

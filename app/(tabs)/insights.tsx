@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { View, SafeAreaView, Pressable } from 'react-native';
+import { useState, useMemo, useCallback } from 'react';
+import { View, SafeAreaView, Pressable, Alert } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
 import { GoalProgress } from '../../src/components/analytics/GoalProgress';
@@ -14,10 +14,11 @@ export default function InsightsScreen() {
   const [currentView, setCurrentView] = useState<ViewMode>('statistics');
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('weekly');
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
 
   // Get data from focus store
   const { sessions, tags } = useFocus();
-  const { getActiveGoals } = useFocusActions();
+  const { getActiveGoals, deleteGoal } = useFocusActions();
   
   // Extract sessions array from normalized state
   const safeSessions = (sessions && sessions.allIds && sessions.byId) 
@@ -190,6 +191,30 @@ export default function InsightsScreen() {
     deleteSession(sessionId);
   };
 
+  const handleEditGoal = useCallback((goalId: string) => {
+    setEditingGoalId(goalId);
+    setShowGoalModal(true);
+  }, []);
+
+  const handleDeleteGoal = useCallback((goalId: string) => {
+    const goal = storeGoals.find(g => g.id === goalId);
+    const goalName = goal?.name ?? 'this goal';
+
+    Alert.alert(
+      'Delete goal?',
+      `Delete "${goalName}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteGoal(goalId),
+        },
+      ],
+      { cancelable: true }
+    );
+  }, [storeGoals, deleteGoal]);
+
   return (
     <SafeAreaView className="flex-1 bg-dark-bg">
       {/* Header */}
@@ -206,7 +231,7 @@ export default function InsightsScreen() {
             </Pressable>
           )}
           <Typography variant="headline-24" color="white">
-            {currentView === 'statistics' ? 'Statistics' : 'History'}
+            {currentView === 'statistics' ? 'Goals' : 'History'}
           </Typography>
         </View>
         
@@ -225,9 +250,11 @@ export default function InsightsScreen() {
       {currentView === 'statistics' ? (
         <View className="flex-1">
           {/* Goal Progress Section */}
-          <GoalProgress 
+          <GoalProgress
             goals={storeGoals}
             currentPeriodProgress={goalProgress}
+            onEditGoal={handleEditGoal}
+            onDeleteGoal={handleDeleteGoal}
           />
           
           {/* Statistics View */}
@@ -246,7 +273,11 @@ export default function InsightsScreen() {
       {/* Goal Configuration Modal */}
       <GoalConfigModal
         isVisible={showGoalModal}
-        onClose={() => setShowGoalModal(false)}
+        onClose={() => {
+          setShowGoalModal(false);
+          setEditingGoalId(null);
+        }}
+        editingGoalId={editingGoalId}
       />
     </SafeAreaView>
   );
