@@ -31,8 +31,8 @@ type PersistedSession = {
 
 export default function FocusScreen() {
   // Get tags from store
-  const { tags } = useFocus();
-  const { createTag, updateTag, deleteTag, startSession, completeSession, createCompletedSession } = useFocusActions();
+  const { tags, lastSelectedTagId } = useFocus();
+  const { createTag, updateTag, deleteTag, startSession, completeSession, createCompletedSession, setLastSelectedTagId } = useFocusActions();
   const rewards = useRewards();
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
@@ -44,10 +44,11 @@ export default function FocusScreen() {
   const [selectedTime, setSelectedTime] = useState(10); // minutes; 0 => ∞
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
-  // Set default tag to first available tag on mount
+  // Restore last selected tag or fall back to first available tag
   useEffect(() => {
     if (availableTags.length > 0 && !selectedTag) {
-      setSelectedTag(availableTags[0].id);
+      const lastTagExists = lastSelectedTagId && tags.byId[lastSelectedTagId];
+      setSelectedTag(lastTagExists ? lastSelectedTagId : availableTags[0].id);
     }
   }, [availableTags, selectedTag]);
   const [showTagModal, setShowTagModal] = useState(false);
@@ -181,8 +182,9 @@ export default function FocusScreen() {
   };
 
   const handleTagSelect = (tagId: string) => {
-    setSelectedTag(tagId); // Single choice - set selected tag ID
-    setShowTagModal(false); // Close modal immediately
+    setSelectedTag(tagId);
+    setLastSelectedTagId(tagId);
+    setShowTagModal(false);
   };
 
   const handleEmojiPress = (tagId: string) => {
@@ -232,6 +234,7 @@ export default function FocusScreen() {
       });
 
       setSelectedTag(newTag.id);
+      setLastSelectedTagId(newTag.id);
       setShowNewTagModal(false);
       setNewTagName('');
       setNewTagEmoji('');
@@ -284,7 +287,9 @@ export default function FocusScreen() {
       // If deleted tag was selected, reset selection
       if (selectedTag === tagToDelete.id) {
         const remainingTags = availableTags.filter(t => t.id !== tagToDelete.id);
-        setSelectedTag(remainingTags.length > 0 ? remainingTags[0].id : null);
+        const fallbackId = remainingTags.length > 0 ? remainingTags[0].id : null;
+        setSelectedTag(fallbackId);
+        setLastSelectedTagId(fallbackId);
       }
       setShowDeleteModal(false);
       setTagToDelete(null);

@@ -85,6 +85,8 @@ interface AppStore {
     goToCurrentWeek: () => void;
     
     // Tag management
+    lastSelectedTagId: string | null;
+    setLastSelectedTagId: (tagId: string | null) => void;
     createTag: (tag: Omit<SessionTag, 'id' | 'usageCount'>) => SessionTag;
     updateTag: (id: string, updates: Partial<SessionTag>) => void;
     deleteTag: (id: string) => void;
@@ -734,6 +736,12 @@ export const useAppStore = create<AppStore>()(
         },
         
         // Tag management
+        lastSelectedTagId: null as string | null,
+        setLastSelectedTagId: (tagId: string | null) => {
+          set((state) => ({
+            focus: { ...state.focus, lastSelectedTagId: tagId }
+          }));
+        },
         createTag: (tagData) => {
           console.log('🏷️ Creating tag:', tagData);
           const tagId = generateId();
@@ -1410,6 +1418,7 @@ export const useFocusActions = () => useAppStore((state) => ({
   goToPreviousWeek: state.focus.goToPreviousWeek,
   goToNextWeek: state.focus.goToNextWeek,
   goToCurrentWeek: state.focus.goToCurrentWeek,
+  setLastSelectedTagId: state.focus.setLastSelectedTagId,
   createTag: state.focus.createTag,
   updateTag: state.focus.updateTag,
   deleteTag: state.focus.deleteTag,
