@@ -1,6 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform, Alert, LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal, EMOJI_CATEGORIES } from '../../src/components/ui/EmojiPicker/EmojiPicker';
 import { TimeScroller } from '../../src/components/focus';
@@ -19,6 +21,178 @@ import { STORAGE_KEYS } from '../../src/config/constants';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
 
+const ROW_HEIGHT = 84; // row height (72px) + margin-bottom (12px from mb-3)
+const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 0.8 };
+
+type DraggableTagRowProps = {
+  tag: { id: string; name: string; icon?: string; color?: string };
+  index: number;
+  selectedTag: string | null;
+  lastDuration: number;
+  isDragging: boolean;
+  dragOriginalIndex: number;
+  dragTargetIndex: number;
+  onSelect: (id: string) => void;
+  onEdit: (tag: any, event: any) => void;
+  onDelete: (tag: any, event: any) => void;
+  onDragStart: (index: number) => void;
+  onDragMove: (translationY: number) => void;
+  onDragEnd: () => void;
+};
+
+function DraggableTagRow({
+  tag, index, selectedTag, lastDuration, isDragging, dragOriginalIndex, dragTargetIndex,
+  onSelect, onEdit, onDelete, onDragStart, onDragMove, onDragEnd,
+}: DraggableTagRowProps) {
+  const isBeingDragged = isDragging && dragOriginalIndex === index;
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const zIndex = useSharedValue(0);
+  const displacement = useSharedValue(0);
+  const gestureActive = useSharedValue(false);
+
+  // Reset shared values when drag ends and array has reordered
+  React.useEffect(() => {
+    if (!isDragging) {
+      translateY.value = withSpring(0, SPRING_CONFIG);
+      displacement.value = 0; // instant reset — array reorder handles final positions
+    }
+  }, [isDragging]);
+
+  // Animate displacement for non-dragged items to make room
+  React.useEffect(() => {
+    if (!isDragging || isBeingDragged) {
+      return;
+    }
+
+    const orig = dragOriginalIndex;
+    const target = dragTargetIndex;
+    let shift = 0;
+
+    if (orig < target && index > orig && index <= target) {
+      shift = -ROW_HEIGHT; // shift up to fill the gap
+    } else if (orig > target && index >= target && index < orig) {
+      shift = ROW_HEIGHT; // shift down to fill the gap
+    }
+
+    displacement.value = withSpring(shift, SPRING_CONFIG);
+  }, [isDragging, isBeingDragged, dragOriginalIndex, dragTargetIndex, index]);
+
+  const panGesture = Gesture.Pan()
+    .activateAfterLongPress(250)
+    .onStart(() => {
+      gestureActive.value = true;
+      scale.value = withSpring(1.03, SPRING_CONFIG);
+      zIndex.value = 100;
+      runOnJS(onDragStart)(index);
+    })
+    .onUpdate((e) => {
+      translateY.value = e.translationY;
+      runOnJS(onDragMove)(e.translationY);
+    })
+    .onEnd(() => {
+      gestureActive.value = false;
+      // Don't reset translateY here — let the useEffect handle it
+      // after the array reorders, so the item doesn't snap back first
+      scale.value = withSpring(1, SPRING_CONFIG);
+      zIndex.value = 0;
+      runOnJS(onDragEnd)();
+    })
+    .onFinalize(() => {
+      if (gestureActive.value) {
+        // Gesture was cancelled (not ended normally) — reset everything
+        translateY.value = withSpring(0, SPRING_CONFIG);
+        gestureActive.value = false;
+      }
+      scale.value = withSpring(1, SPRING_CONFIG);
+      zIndex.value = 0;
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: isBeingDragged ? translateY.value : displacement.value },
+      { scale: scale.value },
+    ],
+    zIndex: zIndex.value,
+  }));
+
+  const isSelected = selectedTag === tag.id;
+
+  return (
+    <GestureDetector gesture={panGesture}>
+      <Reanimated.View
+        style={[
+          animatedStyle,
+          isBeingDragged && {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.4,
+            shadowRadius: 12,
+            elevation: 12,
+          },
+        ]}
+      >
+        <View
+          className={`mb-3 rounded-2xl p-4 pr-24 flex-row items-center relative ${isSelected ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'}`}
+          style={[
+            {
+              borderLeftWidth: 4,
+              borderLeftColor: tag.color || '#6592E9',
+            },
+            isSelected && {
+              shadowColor: tag.color || '#6592E9',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.35,
+              shadowRadius: 8,
+              elevation: 8,
+              transform: [{ scale: 1.02 }],
+            },
+          ]}
+        >
+          <Pressable
+            onPress={() => onSelect(tag.id)}
+            className="flex-1 flex-row items-center"
+          >
+            <View className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 border border-gray-500">
+              <Text className="text-xl">{tag.icon || '\uD83C\uDFF7\uFE0F'}</Text>
+            </View>
+            <View className="flex-1">
+              <Typography
+                variant="subtitle-16"
+                color="white"
+                className={isSelected ? 'font-semibold' : ''}
+              >
+                {tag.name}
+              </Typography>
+              <Typography variant="body-12" color={isSelected ? 'primary' : 'secondary'} className="mt-1">
+                {lastDuration === 0 ? '\u221E' : `${lastDuration} min`}
+              </Typography>
+            </View>
+          </Pressable>
+
+          {/* Edit & Delete buttons */}
+          <View className="absolute right-0 top-0 bottom-0 flex-row">
+            <Pressable
+              onPress={(event) => onEdit(tag, event)}
+              className="w-12 items-center justify-center active:opacity-60"
+              style={{ backgroundColor: 'rgba(200, 200, 200, 0.15)' }}
+            >
+              <Ionicons name="pencil-outline" size={16} color="white" />
+            </Pressable>
+            <Pressable
+              onPress={(event) => onDelete(tag, event)}
+              className="w-12 items-center justify-center rounded-r-2xl active:opacity-60"
+              style={{ backgroundColor: 'rgba(239, 68, 68, 0.25)' }}
+            >
+              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+            </Pressable>
+          </View>
+        </View>
+      </Reanimated.View>
+    </GestureDetector>
+  );
+}
+
 type PersistedSession = {
   startTime: number; // Unix ms
   endTime: number;   // Unix ms
@@ -32,7 +206,7 @@ type PersistedSession = {
 export default function FocusScreen() {
   // Get tags from store
   const { tags, lastSelectedTagId, lastDurationByTagId } = useFocus();
-  const { createTag, updateTag, deleteTag, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag } = useFocusActions();
+  const { createTag, updateTag, deleteTag, reorderTags, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag } = useFocusActions();
   const rewards = useRewards();
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
@@ -70,6 +244,65 @@ export default function FocusScreen() {
   // Delete functionality
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<any>(null);
+
+  // Drag-to-reorder state
+  const [dragOrderIds, setDragOrderIds] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOriginalIdx, setDragOriginalIdx] = useState(-1);
+  const [dragTargetIdx, setDragTargetIdx] = useState(-1);
+  const dragOriginalIdxRef = useRef(-1);
+  const dragTargetIdxRef = useRef(-1);
+
+  // Sync dragOrderIds with store when modal opens
+  useEffect(() => {
+    if (showTagModal) {
+      setDragOrderIds(tags.allIds);
+    }
+  }, [showTagModal, tags.allIds]);
+
+  const dragOrderRef = useRef<string[]>([]);
+  dragOrderRef.current = dragOrderIds;
+
+  const handleDragStart = useCallback((index: number) => {
+    setIsDragging(true);
+    setDragOriginalIdx(index);
+    setDragTargetIdx(index);
+    dragOriginalIdxRef.current = index;
+    dragTargetIdxRef.current = index;
+  }, []);
+
+  const handleDragMove = useCallback((translationY: number) => {
+    const origIdx = dragOriginalIdxRef.current;
+    const total = dragOrderRef.current.length;
+    const offset = Math.round(translationY / ROW_HEIGHT);
+    const newTarget = Math.max(0, Math.min(total - 1, origIdx + offset));
+
+    if (newTarget !== dragTargetIdxRef.current) {
+      dragTargetIdxRef.current = newTarget;
+      setDragTargetIdx(newTarget);
+    }
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    const orig = dragOriginalIdxRef.current;
+    const target = dragTargetIdxRef.current;
+
+    if (orig !== target && orig >= 0 && target >= 0) {
+      const newOrder = [...dragOrderRef.current];
+      const [moved] = newOrder.splice(orig, 1);
+      newOrder.splice(target, 0, moved);
+      setDragOrderIds(newOrder);
+      reorderTags(newOrder);
+    }
+
+    setIsDragging(false);
+    setDragOriginalIdx(-1);
+    setDragTargetIdx(-1);
+    dragOriginalIdxRef.current = -1;
+    dragTargetIdxRef.current = -1;
+  }, [reorderTags]);
+
+  const orderedTags = dragOrderIds.map(id => tags.byId[id]).filter(Boolean);
 
   // Blocklist tip modal
   const [showBlocklistTip, setShowBlocklistTip] = useState(false);
@@ -1007,72 +1240,26 @@ export default function FocusScreen() {
             </View>
 
             {/* Tags List */}
-            <View className="p-4">
-              {availableTags.map((tag) => (
-                <View
+            <ScrollView className="p-4" style={{ maxHeight: 400 }} scrollEnabled={!isDragging}>
+              {orderedTags.map((tag, index) => (
+                <DraggableTagRow
                   key={tag.id}
-                  className={`mb-3 rounded-2xl p-4 pr-24 flex-row items-center relative ${selectedTag === tag.id ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'
-                    }`}
-                  style={[
-                    {
-                      borderLeftWidth: 4,
-                      borderLeftColor: tag.color || '#6592E9',
-                    },
-                    selectedTag === tag.id && {
-                      shadowColor: tag.color || '#6592E9',
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.35,
-                      shadowRadius: 8,
-                      elevation: 8,
-                      transform: [{ scale: 1.02 }],
-                    },
-                  ]}
-                >
-                  <Pressable
-                    onPress={() => handleTagSelect(tag.id)}
-                    className="flex-1 flex-row items-center"
-                  >
-                  <View
-                    className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 border border-gray-500"
-                  >
-                    <Text className="text-xl">
-                      {tag.icon || '🏷️'}
-                    </Text>
-                  </View>
-                  <View className="flex-1">
-                    <Typography
-                      variant="subtitle-16"
-                      color="white"
-                      className={selectedTag === tag.id ? 'font-semibold' : ''}
-                    >
-                      {tag.name}
-                    </Typography>
-                    <Typography variant="body-12" color={selectedTag === tag.id ? 'primary' : 'secondary'} className="mt-1">
-                      {(lastDurationByTagId[tag.id] ?? 15) === 0 ? '∞' : `${lastDurationByTagId[tag.id] ?? 15} min`}
-                    </Typography>
-                  </View>
-                  </Pressable>
-                  
-                  {/* Edit & Delete buttons */}
-                  <View className="absolute right-0 top-0 bottom-0 flex-row">
-                    <Pressable
-                      onPress={(event) => handleEditTag(tag, event)}
-                      className="w-12 items-center justify-center active:opacity-60"
-                      style={{ backgroundColor: 'rgba(200, 200, 200, 0.15)' }}
-                    >
-                      <Ionicons name="pencil-outline" size={16} color="white" />
-                    </Pressable>
-                    <Pressable
-                      onPress={(event) => handleDeleteTag(tag, event)}
-                      className="w-12 items-center justify-center rounded-r-2xl active:opacity-60"
-                      style={{ backgroundColor: 'rgba(239, 68, 68, 0.25)' }}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                    </Pressable>
-                  </View>
-                </View>
+                  tag={tag}
+                  index={index}
+                  selectedTag={selectedTag}
+                  lastDuration={lastDurationByTagId[tag.id] ?? 15}
+                  isDragging={isDragging}
+                  dragOriginalIndex={dragOriginalIdx}
+                  dragTargetIndex={dragTargetIdx}
+                  onSelect={handleTagSelect}
+                  onEdit={handleEditTag}
+                  onDelete={handleDeleteTag}
+                  onDragStart={handleDragStart}
+                  onDragMove={handleDragMove}
+                  onDragEnd={handleDragEnd}
+                />
               ))}
-            </View>
+            </ScrollView>
 
             {/* New Tag Button */}
             <View className="p-4 border-t border-gray-700">

@@ -92,7 +92,8 @@ interface AppStore {
     createTag: (tag: Omit<SessionTag, 'id' | 'usageCount'>) => SessionTag;
     updateTag: (id: string, updates: Partial<SessionTag>) => void;
     deleteTag: (id: string) => void;
-    
+    reorderTags: (orderedIds: string[]) => void;
+
     // Goal management
     addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
     updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
@@ -852,8 +853,20 @@ export const useAppStore = create<AppStore>()(
             console.log(`✅ Tag ${tag.name} and ${sessionsToDelete.length} sessions deleted`);
           }
         },
+
+        reorderTags: (orderedIds) => {
+          set((state) => ({
+            focus: {
+              ...state.focus,
+              tags: {
+                ...state.focus.tags,
+                allIds: orderedIds,
+              }
+            }
+          }));
+        },
       },
-      
+
       // UI state
       ui: {
         isHydrated: false,
@@ -1438,6 +1451,7 @@ export const useFocusActions = () => useAppStore((state) => ({
   createTag: state.focus.createTag,
   updateTag: state.focus.updateTag,
   deleteTag: state.focus.deleteTag,
+  reorderTags: state.focus.reorderTags,
   addGoal: state.focus.addGoal,
   updateGoal: state.focus.updateGoal,
   deleteGoal: state.focus.deleteGoal,
