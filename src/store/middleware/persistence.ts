@@ -273,6 +273,7 @@ export const persistenceConfig = {
       settings: state.blocklist.settings,
       currentSelectionId: state.blocklist.currentSelectionId,
       activeSessions: state.blocklist.activeSessions,
+      lastUnlockDuration: state.blocklist.lastUnlockDuration,
       isAuthorized: state.blocklist.isAuthorized,
       authorizationStatus: state.blocklist.authorizationStatus,
     },

@@ -167,6 +167,9 @@ interface AppStore {
       editsThisWeek: number;
     };
 
+    // Last unlock duration (for pre-filling slider)
+    lastUnlockDuration: number | null;
+
     // Runtime state
     isAuthorized: boolean;
     authorizationStatus: 0 | 1 | 2 | 3; // 0=notDetermined, 1=denied, 2=approved, 3=unknown
@@ -1039,6 +1042,7 @@ export const useAppStore = create<AppStore>()(
           weekStart: getWeekStart().toISOString(),
           editsThisWeek: 0,
         },
+        lastUnlockDuration: null,
         isAuthorized: false,
         authorizationStatus: 0, // 0 = notDetermined
         lastAuthCheck: null,
@@ -1326,6 +1330,7 @@ export const useAppStore = create<AppStore>()(
             set((state) => ({
               blocklist: {
                 ...state.blocklist,
+                lastUnlockDuration: duration,
                 activeSessions: {
                   byId: { ...state.blocklist.activeSessions.byId, [sessionId]: unlockSession },
                   allIds: [...state.blocklist.activeSessions.allIds, sessionId]

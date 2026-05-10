@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Pressable,
@@ -41,7 +41,16 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
   const currentBalance = propBalance ?? balance;
   const maxFruits = Math.min(currentBalance, 20);
   const maxDuration = Math.max(1, Math.floor(maxFruits / settings.unlockCostPerMinute));
-  const [selectedDuration, setSelectedDuration] = useState(1);
+  const lastUnlockDuration = useBlocklist().lastUnlockDuration;
+  const initialDuration = lastUnlockDuration ? Math.min(lastUnlockDuration, maxDuration) : 1;
+  const [selectedDuration, setSelectedDuration] = useState(initialDuration);
+
+  // Re-clamp if maxDuration shrinks below selectedDuration (e.g., balance changed)
+  useEffect(() => {
+    if (selectedDuration > maxDuration) {
+      setSelectedDuration(maxDuration);
+    }
+  }, [maxDuration]);
   const sliderWidth = screenWidth - 80; // 40px padding on each side (mx-4 + px-6)
 
   const handleUnlockClick = () => {
