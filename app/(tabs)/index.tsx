@@ -23,7 +23,7 @@ type PersistedSession = {
   startTime: number; // Unix ms
   endTime: number;   // Unix ms
   targetDuration: number; // minutes
-  tagName: string;
+  tagId: string;
   isInfinite: boolean;
   liveActivityId?: string; // iOS Live Activity ID to stop after app restart
   notificationId?: string; // scheduled completion notification
@@ -39,7 +39,7 @@ export default function FocusScreen() {
   const { currentSession } = useFocus();
   const blocklistEditCost = useBlocklistEditCost();
   const { triggerHaptic } = useDeviceIntegration();
-  const availableTags = tags.allNames.map(name => tags.byName[name]).filter(Boolean);
+  const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean);
   
   const [selectedTime, setSelectedTime] = useState(10); // minutes; 0 => ∞
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export default function FocusScreen() {
   // Set default tag to first available tag on mount
   useEffect(() => {
     if (availableTags.length > 0 && !selectedTag) {
-      setSelectedTag(availableTags[0].name);
+      setSelectedTag(availableTags[0].id);
     }
   }, [availableTags, selectedTag]);
   const [showTagModal, setShowTagModal] = useState(false);
@@ -58,7 +58,7 @@ export default function FocusScreen() {
   const [newTagEmoji, setNewTagEmoji] = useState('');
   const [newTagColor, setNewTagColor] = useState('#6592E9');
   const [showEditTagModal, setShowEditTagModal] = useState(false);
-  const [editingTag, setEditingTag] = useState<{ name: string; icon: string; color: string } | null>(null);
+  const [editingTag, setEditingTag] = useState<{ id: string; name: string; icon: string; color: string } | null>(null);
   const [editTagName, setEditTagName] = useState('');
   const [editTagEmoji, setEditTagEmoji] = useState('');
   const [editTagColor, setEditTagColor] = useState('#6592E9');
@@ -180,16 +180,16 @@ export default function FocusScreen() {
     await proceedToBlockList();
   };
 
-  const handleTagSelect = (tagName: string) => {
-    setSelectedTag(tagName); // Single choice - set selected tag
+  const handleTagSelect = (tagId: string) => {
+    setSelectedTag(tagId); // Single choice - set selected tag ID
     setShowTagModal(false); // Close modal immediately
   };
 
-  const handleEmojiPress = (tagName: string) => {
-    console.log('🎯 Emoji button pressed for tag:', tagName);
+  const handleEmojiPress = (tagId: string) => {
+    console.log('🎯 Emoji button pressed for tag:', tagId);
     // Close the tag modal first, then show emoji picker
     setShowTagModal(false);
-    setEditingTagName(tagName);
+    setEditingTagName(tagId);
     setEmojiPickerMode('edit');
     setShowEmojiPicker(true);
     console.log('🎯 showEmojiPicker set to true');
@@ -224,15 +224,14 @@ export default function FocusScreen() {
 
   const handleCreateNewTag = () => {
     if (newTagName.trim() && newTagEmoji) {
-      // Create tag using store action
-      const tagName = newTagName.trim();
-      createTag({
-        name: tagName,
+      // Create tag using store action — returns the created tag with its ID
+      const newTag = createTag({
+        name: newTagName.trim(),
         icon: newTagEmoji,
         color: newTagColor,
       });
 
-      setSelectedTag(tagName);
+      setSelectedTag(newTag.id);
       setShowNewTagModal(false);
       setNewTagName('');
       setNewTagEmoji('');
@@ -242,7 +241,7 @@ export default function FocusScreen() {
   
   const handleEditTag = (tag: any, event: any) => {
     event.stopPropagation();
-    setEditingTag(tag);
+    setEditingTag({ id: tag.id, name: tag.name, icon: tag.icon, color: tag.color });
     setEditTagName(tag.name);
     setEditTagEmoji(tag.icon || '');
     setEditTagColor(tag.color || '#6592E9');
@@ -264,10 +263,7 @@ export default function FocusScreen() {
       if (editTagEmoji !== editingTag.icon) updates.icon = editTagEmoji;
       if (editTagColor !== editingTag.color) updates.color = editTagColor;
       if (Object.keys(updates).length > 0) {
-        updateTag(editingTag.name, updates);
-        if (selectedTag === editingTag.name && updates.name) {
-          setSelectedTag(updates.name);
-        }
+        updateTag(editingTag.id, updates);
       }
       setShowEditTagModal(false);
       setEditingTag(null);
@@ -284,11 +280,11 @@ export default function FocusScreen() {
   
   const handleConfirmDelete = () => {
     if (tagToDelete) {
-      deleteTag(tagToDelete.name);
+      deleteTag(tagToDelete.id);
       // If deleted tag was selected, reset selection
-      if (selectedTag === tagToDelete.name) {
-        const remainingTags = availableTags.filter(t => t.name !== tagToDelete.name);
-        setSelectedTag(remainingTags.length > 0 ? remainingTags[0].name : null);
+      if (selectedTag === tagToDelete.id) {
+        const remainingTags = availableTags.filter(t => t.id !== tagToDelete.id);
+        setSelectedTag(remainingTags.length > 0 ? remainingTags[0].id : null);
       }
       setShowDeleteModal(false);
       setTagToDelete(null);
@@ -371,9 +367,10 @@ export default function FocusScreen() {
     if (infinite) {
       // Infinite mode: no end time — use a count-up live activity
       sessionEndTimeRef.current = null;
+      const selectedTagName = selectedTag ? tags.byId[selectedTag]?.name || 'Focus' : 'Focus';
       const activityId = LiveActivityService.startFocusTimerInfinite(
         new Date(),
-        selectedTag || 'Focus'
+        selectedTagName
       );
       if (activityId) {
         liveActivityId = activityId;
@@ -385,10 +382,11 @@ export default function FocusScreen() {
     } else {
       const endTime = new Date(Date.now() + timerSeconds * 1000);
       sessionEndTimeRef.current = endTime.getTime();
+      const selectedTagNameForTimer = selectedTag ? tags.byId[selectedTag]?.name || 'Focus' : 'Focus';
       const activityId = LiveActivityService.startFocusTimer(
         endTime,
         isDevTimer ? 1 : selectedTime,
-        selectedTag || 'Focus'
+        selectedTagNameForTimer
       );
       if (activityId) {
         liveActivityId = activityId;
@@ -410,7 +408,7 @@ export default function FocusScreen() {
           title: 'Focus Session Complete',
           body: isDevTimer
             ? `Your 5s dev test session is done!`
-            : `Your ${selectedTime}m ${selectedTag || 'focus'} session is done!`,
+            : `Your ${selectedTime}m ${selectedTag ? tags.byId[selectedTag]?.name || 'focus' : 'focus'} session is done!`,
           sound: true,
         },
         trigger: {
@@ -442,7 +440,7 @@ export default function FocusScreen() {
       startTime: now,
       endTime: infinite ? 0 : now + timerSeconds * 1000,
       targetDuration: isDevTimer ? 1 : selectedTime,
-      tagName: selectedTag || 'Focus',
+      tagId: selectedTag || 'Focus',
       isInfinite: infinite,
       liveActivityId,
     } satisfies PersistedSession));
@@ -658,7 +656,7 @@ export default function FocusScreen() {
           const elapsed = Math.floor((now - persisted.startTime) / 1000);
 
           setSelectedTime(0);
-          setSelectedTag(persisted.tagName);
+          setSelectedTag(persisted.tagId);
           setElapsedSeconds(elapsed);
           setIsInfinite(true);
           setIsRunning(true);
@@ -675,9 +673,10 @@ export default function FocusScreen() {
 
           if (!persisted.liveActivityId) {
             // Older persisted sessions did not store the activity ID.
+            const recoveredTagName = useAppStore.getState().focus.tags.byId[persisted.tagId]?.name || 'Focus';
             const activityId = LiveActivityService.startFocusTimerInfinite(
               new Date(persisted.startTime),
-              persisted.tagName
+              recoveredTagName
             );
             if (activityId) {
               liveActivityIdRef.current = activityId;
@@ -695,7 +694,7 @@ export default function FocusScreen() {
         if (now >= persisted.endTime) {
           // Session expired while app was killed — resume in bonus time mode
           setSelectedTime(persisted.targetDuration);
-          setSelectedTag(persisted.tagName);
+          setSelectedTag(persisted.tagId);
           setRemainingSeconds(0);
           setIsInfinite(false);
           setIsRunning(true);
@@ -725,7 +724,7 @@ export default function FocusScreen() {
           const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
 
           setSelectedTime(persisted.targetDuration);
-          setSelectedTag(persisted.tagName);
+          setSelectedTag(persisted.tagId);
           setRemainingSeconds(remainingSec);
           setIsInfinite(false);
           setIsRunning(true);
@@ -788,7 +787,7 @@ export default function FocusScreen() {
     // If no tag selected (shouldn't happen with default), select first
     if (!selectedTag) {
       if (availableTags.length > 0) {
-        setSelectedTag(availableTags[0].name);
+        setSelectedTag(availableTags[0].id);
       }
       return;
     }
@@ -844,7 +843,8 @@ export default function FocusScreen() {
   const timerDisplayTime = isUnlockActive ? formatTime(unlockRemainingSeconds) : displayTime;
   const timerTextColor = isBonusTime && !isUnlockActive ? '#4CAF7C' : '#FFFFFF';
 
-  const selectedTagName = selectedTag ? availableTags.find(tag => tag.name === selectedTag)?.name : null;
+  const selectedTagObj = selectedTag ? tags.byId[selectedTag] : null;
+  const selectedTagName = selectedTagObj?.name || null;
 
   const saveSessionAndNavigate = (notes?: string, includeBonusTime: boolean = true) => {
     const wasBonus = stoppedInBonusRef.current;
@@ -875,7 +875,7 @@ export default function FocusScreen() {
         endTime,
         duration: Math.max(1, actualDuration),
         targetDuration: isInfinite ? Math.max(1, actualDuration) : baseMinutes,
-        tagName: selectedTag!,
+        tagId: selectedTag!,
         notes: notes || undefined,
       });
 
@@ -1025,8 +1025,8 @@ export default function FocusScreen() {
             <View className="p-4">
               {availableTags.map((tag) => (
                 <View
-                  key={tag.name}
-                  className={`mb-3 rounded-2xl p-4 pr-24 flex-row items-center relative ${selectedTag === tag.name ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'
+                  key={tag.id}
+                  className={`mb-3 rounded-2xl p-4 pr-24 flex-row items-center relative ${selectedTag === tag.id ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'
                     }`}
                   style={{
                     borderLeftWidth: 4,
@@ -1034,13 +1034,13 @@ export default function FocusScreen() {
                   }}
                 >
                   <Pressable
-                    onPress={() => handleTagSelect(tag.name)}
+                    onPress={() => handleTagSelect(tag.id)}
                     className="flex-1 flex-row items-center"
                   >
                   <Pressable
                     onPress={(e) => {
                       e.stopPropagation();
-                      handleEmojiPress(tag.name);
+                      handleEmojiPress(tag.id);
                     }}
                     className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 active:bg-gray-500 border border-gray-500"
                   >
@@ -1052,11 +1052,11 @@ export default function FocusScreen() {
                     <Typography
                       variant="subtitle-16"
                       color="white"
-                      className={selectedTag === tag.name ? 'font-semibold' : ''}
+                      className={selectedTag === tag.id ? 'font-semibold' : ''}
                     >
                       {tag.name}
                     </Typography>
-                    {selectedTag === tag.name && (
+                    {selectedTag === tag.id && (
                       <Typography variant="body-12" color="primary" className="mt-1">
                         Selected
                       </Typography>

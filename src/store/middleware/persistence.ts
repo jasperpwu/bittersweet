@@ -31,18 +31,11 @@ class OptimizedStorage {
     try {
       const raw = await AsyncStorage.getItem(name);
 
-      // One-time migration: if storage has a non-zero version, it's from an old
-      // format. Clear it so zustand starts fresh (no existing users to preserve).
+      // Validate JSON is parseable; clear if corrupted
       if (raw && name === STORAGE_KEY) {
         try {
-          const parsed = JSON.parse(raw);
-          if (parsed?.version && parsed.version !== 0) {
-            console.warn(`⚠️ Clearing legacy storage (version ${parsed.version} → 0)`);
-            await AsyncStorage.removeItem(name);
-            return null;
-          }
+          JSON.parse(raw);
         } catch {
-          // Corrupted JSON — clear it
           console.warn('⚠️ Clearing corrupted storage');
           await AsyncStorage.removeItem(name);
           return null;
@@ -148,7 +141,7 @@ class OptimizedStorage {
 
       // Check if the new state looks empty (no user data)
       const hasNoSessions = !newState?.focus?.sessions?.allIds?.length;
-      const hasNoTags = !newState?.focus?.tags?.allNames?.length;
+      const hasNoTags = !newState?.focus?.tags?.allIds?.length;
       const hasNoBalance = !newState?.rewards?.balance && !newState?.rewards?.totalEarned;
 
       if (!hasNoSessions || !hasNoTags || !hasNoBalance) {
@@ -167,7 +160,7 @@ class OptimizedStorage {
       const existingState = existingParsed?.state || existingParsed;
 
       const existingHasSessions = (existingState?.focus?.sessions?.allIds?.length || 0) > 0;
-      const existingHasTags = (existingState?.focus?.tags?.allNames?.length || 0) > 0;
+      const existingHasTags = (existingState?.focus?.tags?.allIds?.length || 0) > 0;
       const existingHasBalance = (existingState?.rewards?.balance || 0) > 0 || (existingState?.rewards?.totalEarned || 0) > 0;
 
       if (existingHasSessions || existingHasTags || existingHasBalance) {
@@ -190,7 +183,70 @@ const optimizedStorage = new OptimizedStorage();
 export const persistenceConfig = {
   name: STORAGE_KEY,
   storage: createJSONStorage(() => optimizedStorage),
-  // version 0 (zustand default) — no migrations needed, no version-mismatch nuke
+  version: 1,
+  migrate: (persistedState: any, version: number) => {
+    if (version === 0) {
+      console.log('🔄 Migrating store from v0 → v1 (tag IDs)...');
+      const state = persistedState;
+
+      // 1. Migrate tags: byName → byId, add id field
+      const nameToId: Record<string, string> = {};
+      if (state?.focus?.tags?.byName) {
+        const byId: Record<string, any> = {};
+        const allIds: string[] = [];
+        const byName = state.focus.tags.byName;
+        const allNames: string[] = state.focus.tags.allNames || Object.keys(byName);
+
+        for (const name of allNames) {
+          const tag = byName[name];
+          if (!tag) continue;
+          const id = `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`;
+          nameToId[name] = id;
+          byId[id] = { ...tag, id };
+          allIds.push(id);
+        }
+
+        state.focus.tags = {
+          ...state.focus.tags,
+          byId,
+          allIds,
+        };
+        // Remove old keys
+        delete state.focus.tags.byName;
+        delete state.focus.tags.allNames;
+      }
+
+      // 2. Migrate sessions: tagName → tagId
+      if (state?.focus?.sessions?.byId) {
+        for (const sessionId of Object.keys(state.focus.sessions.byId)) {
+          const session = state.focus.sessions.byId[sessionId];
+          if (session && 'tagName' in session) {
+            session.tagId = nameToId[session.tagName] || session.tagName;
+            delete session.tagName;
+          }
+        }
+      }
+
+      // 3. Migrate goals: tagNames → tagIds
+      if (state?.focus?.goals?.byId) {
+        for (const goalId of Object.keys(state.focus.goals.byId)) {
+          const goal = state.focus.goals.byId[goalId];
+          if (goal && 'tagNames' in goal) {
+            goal.tagIds = (goal.tagNames || []).map((name: string) => nameToId[name] || name);
+            delete goal.tagNames;
+          }
+          // Also migrate singular tagId (if it was a tag name, not a real ID)
+          if (goal && 'tagId' in goal && typeof goal.tagId === 'string' && !goal.tagIds) {
+            goal.tagIds = goal.tagId ? [nameToId[goal.tagId] || goal.tagId] : [];
+            delete goal.tagId;
+          }
+        }
+      }
+
+      console.log('✅ Store migration v0 → v1 complete');
+    }
+    return persistedState;
+  },
 
   // Selective persistence - only persist necessary data
   partialize: (state: any) => ({
@@ -238,7 +294,7 @@ export const persistenceConfig = {
         console.warn('Focus slice missing after rehydration, initializing...');
         state.focus = {
           sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-          tags: { byName: {}, allNames: [], loading: false, error: null, lastUpdated: null },
+          tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
           currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },
           selectedDate: new Date(),
           viewMode: 'day',

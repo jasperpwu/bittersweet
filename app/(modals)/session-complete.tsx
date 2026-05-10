@@ -24,7 +24,7 @@ export default function SessionCompleteModal() {
     );
   }
 
-  const tag = session.tagName ? tags.byName[session.tagName] : null;
+  const tag = session.tagId ? tags.byId[session.tagId] : null;
   const fruitsEarned = calculateFruitsEarnedForDuration(
     session.duration,
     session.initialSetDuration ?? session.duration
@@ -69,7 +69,7 @@ export default function SessionCompleteModal() {
               {tag?.icon || '🏷️'}
             </Typography>
             <Typography variant="headline-20" color="white">
-              {tag?.name || session.tagName}
+              {tag?.name || 'Focus Session'}
             </Typography>
           </View>
 

@@ -12,6 +12,7 @@ import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Typography } from '../../ui/Typography';
 
 interface Tag {
+  id: string;
   name: string;
   icon: string;
   usageCount: number;
@@ -20,10 +21,10 @@ interface Tag {
 
 interface TagSelectorProps {
   tags: Tag[];
-  selectedTags: string[];
-  onTagSelect: (tagName: string) => void;
+  selectedTags: string[]; // tag IDs
+  onTagSelect: (tagId: string) => void;
   maxSelections?: number;
-  onTagDelete?: (tagName: string) => void;
+  onTagDelete?: (tagId: string) => void;
   onTagReorder?: (reorderedTags: Tag[]) => void;
 }
 
@@ -40,7 +41,7 @@ export const TagSelector: FC<TagSelectorProps> = ({
   const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   
-  const isTagSelected = (tagName: string) => selectedTags.includes(tagName);
+  const isTagSelected = (tagId: string) => selectedTags.includes(tagId);
   
   const canSelectMore = maxSelections ? selectedTags.length < maxSelections : true;
   
@@ -52,7 +53,7 @@ export const TagSelector: FC<TagSelectorProps> = ({
   
   const handleConfirmDelete = () => {
     if (tagToDelete && onTagDelete) {
-      onTagDelete(tagToDelete.name);
+      onTagDelete(tagToDelete.id);
       setShowDeleteModal(false);
       setTagToDelete(null);
     }
@@ -184,18 +185,18 @@ export const TagSelector: FC<TagSelectorProps> = ({
         contentContainerStyle={{ paddingRight: 16 }}
       >
         {tags.map((tag, index) => {
-          const selected = isTagSelected(tag.name);
+          const selected = isTagSelected(tag.id);
           const disabled = !selected && (maxSelections === 1 ? false : !canSelectMore);
           const isDragging = draggingIndex === index;
-          
+
           return (
             <DraggableTag
-              key={tag.name}
+              key={tag.id}
               tag={tag}
               index={index}
               selected={selected}
               disabled={disabled}
-              onSelect={() => onTagSelect(tag.name)}
+              onSelect={() => onTagSelect(tag.id)}
               onDelete={onTagDelete ? handleDeletePress : undefined}
               onReorder={handleReorder}
               isDragging={isDragging}

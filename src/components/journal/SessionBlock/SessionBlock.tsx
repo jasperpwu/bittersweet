@@ -7,6 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Typography } from '../../ui/Typography';
 import { FocusSession } from '../../../types/models';
+import { useFocus } from '../../../store';
 
 interface SessionBlockProps {
   session: FocusSession;
@@ -17,21 +18,6 @@ interface SessionBlockProps {
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-// Tag colors mapping
-const tagColors = {
-  Reading: '#51BC6F',
-  Sport: '#FF9800',
-  Music: '#9C27B0',
-  Meditation: '#4CAF50',
-  Code: '#EF786C',
-  IT: '#6592E9',
-  Work: '#6592E9',
-  Study: '#FFC107',
-  Exercise: '#FF9800',
-  Personal: '#9E9E9E',
-  Focus: '#6592E9',
-} as const;
 
 const formatTime = (date: Date) => {
   return date.toLocaleTimeString('en-US', {
@@ -65,12 +51,15 @@ export const SessionBlock: FC<SessionBlockProps> = ({
     scale.value = 1;
   };
 
+  const { tags } = useFocus();
+
   // Calculate block height based on duration
   const blockHeight = Math.max(session.duration * pixelsPerMinute, 1);
-  
-  // Get tag color (use tagName or default)
-  const primaryTag = session.tagName || 'Focus';
-  const sessionColor = tagColors[primaryTag as keyof typeof tagColors] || '#6592E9';
+
+  // Get tag dynamically from store
+  const tag = tags.byId[session.tagId];
+  const sessionColor = tag?.color || '#6592E9';
+  const tagName = tag?.name || 'Focus Session';
 
   return (
     <AnimatedPressable
@@ -106,7 +95,7 @@ export const SessionBlock: FC<SessionBlockProps> = ({
             numberOfLines={1}
             style={blockHeight <= 40 ? undefined : { marginBottom: blockHeight > 60 ? 4 : 2 }}
           >
-            {session.tagName || 'Focus Session'}
+            {tagName}
           </Typography>
           {blockHeight <= 40 && (
             <Typography

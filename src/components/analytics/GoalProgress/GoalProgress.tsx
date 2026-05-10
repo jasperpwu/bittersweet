@@ -41,11 +41,11 @@ export const GoalProgress: FC<GoalProgressProps> = ({
 
   // Create tag map for name/ID conversion
   const tagMap = useMemo(() =>
-    (tags && tags.allNames && tags.byName ? tags.allNames : []).reduce((map, name) => {
-      if (tags && tags.byName) {
-        const tag = tags.byName[name];
+    (tags && tags.allIds && tags.byId ? tags.allIds : []).reduce((map, id) => {
+      if (tags && tags.byId) {
+        const tag = tags.byId[id];
         if (tag) {
-          map[name] = { id: name, name: tag.name };
+          map[id] = { id: tag.id, name: tag.name };
         }
       }
       return map;
@@ -172,10 +172,10 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
     });
 
     // Filter by goal's tags
-    const goalTagNames = (goal as any).tagNames || [];
-    const relevant = goalTagNames.length === 0
+    const goalTagIds = (goal as any).tagIds || [];
+    const relevant = goalTagIds.length === 0
       ? rangeSessions
-      : rangeSessions.filter(s => goalTagNames.includes((s as any).tagName));
+      : rangeSessions.filter(s => goalTagIds.includes((s as any).tagId));
 
     const totalMinutes = relevant.reduce((sum, s) => sum + s.duration, 0);
     const hit = totalMinutes >= goal.targetMinutes;
@@ -329,7 +329,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
 interface GoalProgressItemProps {
   goal: ProcessedGoal;
-  tags: { byName: Record<string, any>; allNames: string[] };
+  tags: { byId: Record<string, any>; allIds: string[] };
 }
 
 const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
@@ -366,9 +366,9 @@ const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
     return `${mins}m`;
   };
 
-  const getTagNames = (tagNames: string[]): string => {
-    return tagNames
-      .map(name => tags.byName[name]?.name || name)
+  const getTagNames = (tagIds: string[]): string => {
+    return tagIds
+      .map(id => tags.byId[id]?.name || id)
       .join(', ');
   };
 
@@ -443,12 +443,12 @@ const GoalProgressItem: FC<GoalProgressItemProps> = ({ goal, tags }) => {
             {formatTime(goal.currentProgress)} / {formatTime(goal.targetMinutes)}
           </Typography>
 
-          {((goal as any).tagNames || []).length > 0 && (
+          {((goal as any).tagIds || []).length > 0 && (
             <Typography
               variant="tiny-10"
               className="text-gray-400"
             >
-              {getTagNames((goal as any).tagNames || [])}
+              {getTagNames((goal as any).tagIds || [])}
             </Typography>
           )}
         </View>

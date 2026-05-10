@@ -23,12 +23,12 @@ interface AppStore {
       lastUpdated: Date | null;
     };
     
-    // Tags for organizing sessions (keyed by tag name)
-    tags: { 
-      byName: Record<string, SessionTag>; 
-      allNames: string[]; 
-      loading: boolean; 
-      error: string | null; 
+    // Tags for organizing sessions (keyed by tag ID)
+    tags: {
+      byId: Record<string, SessionTag>;
+      allIds: string[];
+      loading: boolean;
+      error: string | null;
       lastUpdated: Date | null;
     };
     
@@ -75,7 +75,7 @@ interface AppStore {
     pauseSession: () => void;
     resumeSession: () => void;
     completeSession: (id?: string) => void;
-    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagName: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
+    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
     
     // View actions
     setSelectedDate: (date: Date) => void;
@@ -85,9 +85,9 @@ interface AppStore {
     goToCurrentWeek: () => void;
     
     // Tag management
-    createTag: (tag: Omit<SessionTag, 'usageCount'>) => void;
-    updateTag: (name: string, updates: Partial<SessionTag>) => void;
-    deleteTag: (name: string) => void;
+    createTag: (tag: Omit<SessionTag, 'id' | 'usageCount'>) => SessionTag;
+    updateTag: (id: string, updates: Partial<SessionTag>) => void;
+    deleteTag: (id: string) => void;
     
     // Goal management
     addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -212,12 +212,12 @@ export const useAppStore = create<AppStore>()(
       // Focus state (merged with tasks)
       focus: {
         sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-        tags: { 
-          byName: {}, 
-          allNames: [], 
-          loading: false, 
-          error: null, 
-          lastUpdated: null 
+        tags: {
+          byId: {},
+          allIds: [],
+          loading: false,
+          error: null,
+          lastUpdated: null
         },
         goals: { 
           byId: {}, 
@@ -261,12 +261,12 @@ export const useAppStore = create<AppStore>()(
             adjustedDuration: duration,
             isPaused: false,
             totalPauseTime: 0,
-            tagName: sessionData.tagName,
+            tagId: sessionData.tagId,
             notes: sessionData.notes,
             createdAt: new Date(),
             updatedAt: new Date(),
           };
-          
+
           set((state) => ({
             focus: {
               ...state.focus,
@@ -277,20 +277,20 @@ export const useAppStore = create<AppStore>()(
               }
             }
           }));
-          
+
           // Update tag usage count
-          const tagName = sessionData.tagName;
-          if (tagName) {
-            const tag = get().focus.tags.byName[tagName];
+          const tagId = sessionData.tagId;
+          if (tagId) {
+            const tag = get().focus.tags.byId[tagId];
             if (tag) {
               set((state) => ({
                 focus: {
                   ...state.focus,
                   tags: {
                     ...state.focus.tags,
-                    byName: {
-                      ...state.focus.tags.byName,
-                      [tagName]: { ...tag, usageCount: tag.usageCount + 1 }
+                    byId: {
+                      ...state.focus.tags.byId,
+                      [tagId]: { ...tag, usageCount: tag.usageCount + 1 }
                     }
                   }
                 }
@@ -557,7 +557,7 @@ export const useAppStore = create<AppStore>()(
           }
         },
         
-        createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagName: string; notes?: string; isManualEntry?: boolean }) => {
+        createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string; isManualEntry?: boolean }) => {
           console.log('📝 Creating completed session:', params);
           const sessionId = generateId();
 
@@ -571,7 +571,7 @@ export const useAppStore = create<AppStore>()(
             adjustedDuration: params.duration,
             isPaused: false,
             totalPauseTime: 0,
-            tagName: params.tagName,
+            tagId: params.tagId,
             notes: params.notes,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -590,18 +590,18 @@ export const useAppStore = create<AppStore>()(
           }));
 
           // Update tag usage count
-          const tagName = params.tagName;
-          if (tagName) {
-            const tag = get().focus.tags.byName[tagName];
+          const tagId = params.tagId;
+          if (tagId) {
+            const tag = get().focus.tags.byId[tagId];
             if (tag) {
               set((state) => ({
                 focus: {
                   ...state.focus,
                   tags: {
                     ...state.focus.tags,
-                    byName: {
-                      ...state.focus.tags.byName,
-                      [tagName]: { ...tag, usageCount: tag.usageCount + 1 }
+                    byId: {
+                      ...state.focus.tags.byId,
+                      [tagId]: { ...tag, usageCount: tag.usageCount + 1 }
                     }
                   }
                 }
@@ -736,87 +736,68 @@ export const useAppStore = create<AppStore>()(
         // Tag management
         createTag: (tagData) => {
           console.log('🏷️ Creating tag:', tagData);
+          const tagId = generateId();
           const tag: SessionTag = {
             ...tagData,
+            id: tagId,
             usageCount: 0,
           };
-          
+
           set((state) => ({
             focus: {
               ...state.focus,
               tags: {
                 ...state.focus.tags,
-                byName: { ...state.focus.tags.byName, [tag.name]: tag },
-                allNames: [...state.focus.tags.allNames, tag.name],
+                byId: { ...state.focus.tags.byId, [tagId]: tag },
+                allIds: [...state.focus.tags.allIds, tagId],
               }
             }
           }));
+          return tag;
         },
-        
-        updateTag: (tagName, updates) => {
-          console.log('🏷️ Updating tag:', tagName, updates);
+
+        updateTag: (tagId, updates) => {
+          console.log('🏷️ Updating tag:', tagId, updates);
           set((state) => {
-            const existingTag = state.focus.tags.byName[tagName];
+            const existingTag = state.focus.tags.byId[tagId];
             if (existingTag) {
-              // If the name is being changed, we need to update the key
-              const updatedTag = { ...existingTag, ...updates };
-              const newTagName = updates.name || tagName;
-              
-              if (newTagName !== tagName) {
-                // Name changed - remove old key and add with new key
-                const { [tagName]: removed, ...remainingTags } = state.focus.tags.byName;
-                return {
-                  focus: {
-                    ...state.focus,
-                    tags: {
-                      ...state.focus.tags,
-                      byName: {
-                        ...remainingTags,
-                        [newTagName]: updatedTag
-                      },
-                      allNames: state.focus.tags.allNames.map(name => name === tagName ? newTagName : name)
+              const updatedTag = { ...existingTag, ...updates, id: tagId }; // id is immutable
+              return {
+                focus: {
+                  ...state.focus,
+                  tags: {
+                    ...state.focus.tags,
+                    byId: {
+                      ...state.focus.tags.byId,
+                      [tagId]: updatedTag
                     }
                   }
-                };
-              } else {
-                // Name unchanged - just update in place
-                return {
-                  focus: {
-                    ...state.focus,
-                    tags: {
-                      ...state.focus.tags,
-                      byName: {
-                        ...state.focus.tags.byName,
-                        [tagName]: updatedTag
-                      }
-                    }
-                  }
-                };
-              }
+                }
+              };
             }
             return state;
           });
         },
-        
-        deleteTag: (tagName) => {
-          console.log('🗑️ Deleting tag:', tagName);
-          const tag = get().focus.tags.byName[tagName];
-          
+
+        deleteTag: (tagId) => {
+          console.log('🗑️ Deleting tag:', tagId);
+          const tag = get().focus.tags.byId[tagId];
+
           if (tag) {
             // Find all sessions associated with this tag
             const sessions = get().focus.sessions;
             const sessionsToDelete = sessions.allIds
               .map(sessionId => sessions.byId[sessionId])
               .filter(Boolean)
-              .filter(session => session.tagName === tagName);
-            
-            console.log(`🗑️ Deleting tag ${tagName} and ${sessionsToDelete.length} associated sessions`);
-            
+              .filter(session => session.tagId === tagId);
+
+            console.log(`🗑️ Deleting tag ${tag.name} and ${sessionsToDelete.length} associated sessions`);
+
             set((state) => {
               // Delete all sessions associated with this tag
               const remainingSessions = { ...state.focus.sessions.byId };
               const remainingSessionIds = [...state.focus.sessions.allIds];
-              
+
               sessionsToDelete.forEach(session => {
                 delete remainingSessions[session.id];
                 const index = remainingSessionIds.indexOf(session.id);
@@ -824,10 +805,10 @@ export const useAppStore = create<AppStore>()(
                   remainingSessionIds.splice(index, 1);
                 }
               });
-              
+
               // Delete the tag
-              const { [tagName]: removed, ...remainingTags } = state.focus.tags.byName;
-              
+              const { [tagId]: removed, ...remainingTags } = state.focus.tags.byId;
+
               return {
                 focus: {
                   ...state.focus,
@@ -838,14 +819,14 @@ export const useAppStore = create<AppStore>()(
                   },
                   tags: {
                     ...state.focus.tags,
-                    byName: remainingTags,
-                    allNames: state.focus.tags.allNames.filter(name => name !== tagName),
+                    byId: remainingTags,
+                    allIds: state.focus.tags.allIds.filter(id => id !== tagId),
                   }
                 }
               };
             });
-            
-            console.log(`✅ Tag ${tagName} and ${sessionsToDelete.length} sessions deleted`);
+
+            console.log(`✅ Tag ${tag.name} and ${sessionsToDelete.length} sessions deleted`);
           }
         },
       },
@@ -1505,8 +1486,8 @@ export const useFocusSelectors = () => useAppStore((state) => ({
     });
   },
   getActiveSession: () => state.focus.currentSession.session,
-  getTagByName: (name: string) => state.focus.tags.byName[name],
-  getAllTags: () => Object.values(state.focus.tags.byName),
+  getTagById: (id: string) => state.focus.tags.byId[id],
+  getAllTags: () => Object.values(state.focus.tags.byId),
   getCompletedSessions: () => Object.values(state.focus.sessions.byId)
       .filter(Boolean),
 }));
@@ -1528,7 +1509,7 @@ function populateDefaults() {
 
     // Initialize default tags if none exist
     console.log('🔧 Checking tags state:', state.focus.tags);
-    if (!state.focus.tags.allNames || state.focus.tags.allNames.length === 0) {
+    if (!state.focus.tags.allIds || state.focus.tags.allIds.length === 0) {
       console.log('🏷️ Initializing default tags...');
       const defaultTags = [
         { name: 'Work', icon: '💼', color: '#6592E9' },
@@ -1554,10 +1535,10 @@ function populateDefaults() {
       'Personal': '#2196F3',
     };
     const currentState = getStoreState();
-    for (const tagName of currentState.focus.tags.allNames) {
-      const tag = currentState.focus.tags.byName[tagName];
+    for (const tagId of currentState.focus.tags.allIds) {
+      const tag = currentState.focus.tags.byId[tagId];
       if (tag && !tag.color) {
-        currentState.focus.updateTag(tagName, { color: defaultColorMap[tagName] || '#6592E9' });
+        currentState.focus.updateTag(tagId, { color: defaultColorMap[tag.name] || '#6592E9' });
       }
     }
 

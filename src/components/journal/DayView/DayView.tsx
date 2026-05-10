@@ -3,6 +3,7 @@ import { View, ScrollView, Pressable } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { TimeEntry } from '../TimeEntry';
 import { FocusSession } from '../../../types/models';
+import { useFocus } from '../../../store';
 
 interface DayViewProps {
   selectedDate: Date;
@@ -23,6 +24,7 @@ export const DayView: FC<DayViewProps> = ({
   onViewModeChange,
   onDateChange,
 }) => {
+  const { tags } = useFocus();
   // Generate hourly time slots for the day (6 AM to 11 PM)
   const timeSlots = useMemo(() => {
     const slots = [];
@@ -45,16 +47,21 @@ export const DayView: FC<DayViewProps> = ({
         const sessionDate = new Date(session.startTime);
         return sessionDate.toDateString() === selectedDate.toDateString();
       })
-      .map(session => ({
-        id: session.id,
-        startTime: new Date(session.startTime),
-        endTime: new Date(session.endTime),
-        duration: session.duration,
-        category: session.tagName || 'Focus',
-        tags: [session.tagName || 'Focus'],
-        description: session.notes,
-        isManualEntry: true, // All journal entries are manual for now
-      }))
+      .map(session => {
+        const sessionTag = tags.byId[session.tagId];
+        const displayName = sessionTag?.name || 'Focus';
+        return {
+          id: session.id,
+          startTime: new Date(session.startTime),
+          endTime: new Date(session.endTime),
+          duration: session.duration,
+          category: displayName,
+          tags: [displayName],
+          description: session.notes,
+          isManualEntry: true, // All journal entries are manual for now
+          tagId: session.tagId,
+        };
+      })
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   }, [sessions, selectedDate]);
 
@@ -194,7 +201,7 @@ export const DayView: FC<DayViewProps> = ({
                             startTime: session.startTime,
                             endTime: session.endTime,
                             duration: session.duration,
-                            tagName: session.tagName,
+                            tagId: session.tagId,
                             notes: session.description,
                           }) : undefined}
                           onDelete={onSessionDelete}

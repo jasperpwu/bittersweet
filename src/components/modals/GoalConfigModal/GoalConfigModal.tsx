@@ -40,7 +40,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({ isVisible, onClose }
     name: string;
     targetMinutes: number;
     period: 'daily' | 'weekly' | 'monthly';
-    tagNames: string[];
+    tagIds: string[];
     isRepeating: boolean;
     showTotalHours: boolean;
   }) => {
@@ -48,7 +48,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({ isVisible, onClose }
       name: goalData.name,
       targetMinutes: goalData.targetMinutes,
       period: goalData.period,
-      tagNames: goalData.tagNames,
+      tagIds: goalData.tagIds,
       isRepeating: goalData.isRepeating,
       showTotalHours: goalData.showTotalHours,
     };
@@ -76,10 +76,10 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({ isVisible, onClose }
     setShowGoalForm(true);
   };
 
-  const getGoalTagNames = (goal: unknown) => {
-    const tagNames = (goal as { tagNames?: unknown }).tagNames;
-    return Array.isArray(tagNames)
-      ? tagNames.filter((tagName): tagName is string => typeof tagName === 'string')
+  const getGoalTagIds = (goal: unknown) => {
+    const tagIds = (goal as { tagIds?: unknown }).tagIds;
+    return Array.isArray(tagIds)
+      ? tagIds.filter((tagId): tagId is string => typeof tagId === 'string')
       : [];
   };
 
@@ -190,7 +190,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({ isVisible, onClose }
                           name: goal.name,
                           targetMinutes: goal.targetMinutes,
                           period: goal.period,
-                          tagNames: getGoalTagNames(goal),
+                          tagIds: getGoalTagIds(goal),
                           isActive: goal.isActive,
                         }}
                         onEdit={handleEditGoal}

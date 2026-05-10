@@ -2,6 +2,7 @@ import React, { FC } from 'react';
 import { View, Pressable } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { Card } from '../../ui/Card';
+import { useFocus } from '../../../store';
 
 interface FocusGoalItemProps {
   goal: {
@@ -9,7 +10,7 @@ interface FocusGoalItemProps {
     name: string;
     targetMinutes: number;
     period: 'daily' | 'weekly' | 'monthly';
-    tagNames: string[];
+    tagIds: string[];
     isActive: boolean;
   };
   onEdit?: (goalId: string) => void;
@@ -21,6 +22,7 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { tags } = useFocus();
   const formatTime = (minutes: number): string => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -75,18 +77,21 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
       </View>
 
       {/* Tags */}
-      {goal.tagNames.length > 0 && (
+      {goal.tagIds.length > 0 && (
         <View className="flex-row flex-wrap mt-2">
-          {goal.tagNames.map((tag) => (
-            <View
-              key={tag}
-              className="bg-primary/20 rounded-full px-2 py-1 mr-2 mt-1"
-            >
-              <Typography variant="tiny-10" className="text-primary">
-                {tag}
-              </Typography>
-            </View>
-          ))}
+          {goal.tagIds.map((tagId) => {
+            const tag = tags.byId[tagId];
+            return (
+              <View
+                key={tagId}
+                className="bg-primary/20 rounded-full px-2 py-1 mr-2 mt-1"
+              >
+                <Typography variant="tiny-10" className="text-primary">
+                  {tag?.name || tagId}
+                </Typography>
+              </View>
+            );
+          })}
         </View>
       )}
     </Card>

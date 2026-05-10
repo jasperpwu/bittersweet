@@ -132,7 +132,7 @@ export default function JournalScreen() {
       endTime: finalEnd,
       duration: duration,
       targetDuration: duration,
-      tagName: manualTag,
+      tagId: manualTag,
       isManualEntry: true,
     });
 
@@ -307,7 +307,7 @@ export default function JournalScreen() {
           initialSetDuration: session.initialSetDuration ?? session.duration,
           actualDuration: session.actualDuration ?? Math.round((new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60)),
           adjustedDuration: adjustedSessionDuration,
-          tagName: session.tagName || '',
+          tagId: session.tagId || '',
           notes: session.notes,
           isManualEntry: session.isManualEntry,
         };
@@ -518,7 +518,7 @@ export default function JournalScreen() {
             </Typography>
             <View className="mb-4">
               <TagSelector
-                tags={tags.allNames.map(name => tags.byName[name]).filter(Boolean)}
+                tags={tags.allIds.map(id => tags.byId[id]).filter(Boolean)}
                 selectedTags={manualTag ? [manualTag] : []}
                 onTagSelect={setManualTag}
                 maxSelections={1}

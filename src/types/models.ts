@@ -39,7 +39,7 @@ export interface FocusSession {
   resumedAt?: Date;
   totalPauseTime: number; // in seconds
 
-  tagName: string; // Required single tag name for each session
+  tagId: string; // Required single tag ID for each session
 
   liveActivityId?: string; // iOS Live Activity ID for timer display
   isManualEntry?: boolean; // Whether the session was added manually without timer
@@ -50,7 +50,8 @@ export interface FocusSession {
 }
 
 export interface SessionTag {
-  name: string; // This is now the primary key/identifier
+  id: string; // Stable unique identifier
+  name: string;
   icon: string;
   color: string; // Hex color string like '#6592E9'
   usageCount: number;
@@ -126,7 +127,7 @@ export interface ApiError {
 
 // Input types for creating sessions
 export interface CreateSessionInput {
-  tagName: string; // Required single tag name
+  tagId: string; // Required single tag ID
   startTime: Date;
   endTime: Date;
   notes?: string;

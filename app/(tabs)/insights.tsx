@@ -28,12 +28,12 @@ export default function InsightsScreen() {
   const storeGoals = getActiveGoals() || [];
   
   // Create tag map for goal progress calculation
-  const tagMap = useMemo(() => 
-    (tags && tags.allNames && tags.byName ? tags.allNames : []).reduce((map, name) => {
-      if (tags && tags.byName) {
-        const tag = tags.byName[name];
+  const tagMap = useMemo(() =>
+    (tags && tags.allIds && tags.byId ? tags.allIds : []).reduce((map, id) => {
+      if (tags && tags.byId) {
+        const tag = tags.byId[id];
         if (tag) {
-          map[name] = { id: name, name: tag.name };
+          map[id] = { id: tag.id, name: tag.name };
         }
       }
       return map;
@@ -47,37 +47,35 @@ export default function InsightsScreen() {
     console.log('Deleting session:', sessionId);
   };
   
-  // Tag color mapping
-  const tagColorMap: Record<string, string> = {
-    'Work': '#6592E9',
-    'Study': '#FFC107',
-    'Reading': '#51BC6F',
-    'Exercise': '#FF9800',
-    'Sport': '#FF9800',
-    'Meditation': '#4CAF50',
-    'Code': '#EF786C',
-    'IT': '#2196F3',
-    'Music': '#9C27B0',
-    'Personal': '#9E9E9E',
-    'Focus': '#6592E9',
-  };
-
-  const getTagColor = (tagName: string): string => {
-    return tagColorMap[tagName] || '#6592E9';
+  const getTagColor = (tagIdOrName: string): string => {
+    // Try looking up by ID first, then fall back
+    const tag = tags?.byId?.[tagIdOrName];
+    if (tag) return tag.color || '#6592E9';
+    // Fallback: search by name (for legacy chart segments)
+    if (tags?.allIds) {
+      for (const id of tags.allIds) {
+        const t = tags.byId[id];
+        if (t?.name === tagIdOrName) return t.color || '#6592E9';
+      }
+    }
+    return '#6592E9';
   };
 
   // Build segments from sessions in a time range
   const buildSegments = (rangeSessions: typeof safeSessions): ChartSegment[] => {
     const tagTotals: Record<string, number> = {};
     rangeSessions.forEach(session => {
-      const key = (session as any).tagName || (session as any).tagId || 'Other';
-      tagTotals[key] = (tagTotals[key] || 0) + session.duration;
+      const tagId = (session as any).tagId || 'Other';
+      tagTotals[tagId] = (tagTotals[tagId] || 0) + session.duration;
     });
-    return Object.entries(tagTotals).map(([name, value]) => ({
-      tagName: name,
-      value,
-      color: getTagColor(name),
-    }));
+    return Object.entries(tagTotals).map(([id, value]) => {
+      const tag = tags?.byId?.[id];
+      return {
+        tagName: tag?.name || id,
+        value,
+        color: tag?.color || getTagColor(id),
+      };
+    });
   };
 
   // Generate chart data from sessions
