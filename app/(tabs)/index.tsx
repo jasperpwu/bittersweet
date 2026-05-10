@@ -1141,6 +1141,11 @@ export default function FocusScreen() {
           <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 1 : timerOpacity, transform: [{ scale: isUnlockActive ? 1 : timerScale }, { translateY: isUnlockActive ? 0 : timerTranslateY }], zIndex: 100, alignItems: 'center' }}>
             {isRunning && !isBonusTime && !isUnlockActive && (
               <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
+                {selectedTagName && (
+                  <Text style={{ color: '#FFFFFF', fontSize: 24, lineHeight: 28, fontFamily: 'Poppins-SemiBold', textAlign: 'center', marginBottom: 4 }}>
+                    {selectedTagObj?.icon ? `${selectedTagObj.icon} ` : ''}{selectedTagName}
+                  </Text>
+                )}
                 <Text style={{ color: '#CACACA', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
                   5 min = 1 🍎. Finish session to get 1 extra bonus 🍎!
                 </Text>
