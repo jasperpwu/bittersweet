@@ -520,7 +520,7 @@ export default function FocusScreen() {
     const nowMs = Date.now();
     const endTimeMs = session.endTime instanceof Date ? session.endTime.getTime() : new Date(session.endTime).getTime();
     const remainingMs = Math.max(0, endTimeMs - nowMs);
-    const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+    const remainingMinutes = Math.floor(remainingMs / (60 * 1000));
     const refundAmount = Math.min(
       session.cost,
       remainingMinutes * store.blocklist.settings.unlockCostPerMinute
@@ -1072,13 +1072,11 @@ export default function FocusScreen() {
     const bonusMinutes = Math.floor(savedBonusSeconds / 60);
     const actualDuration = wasBonus
       ? baseMinutes + (includeBonusTime ? bonusMinutes : 0)
-      : isInfinite ? Math.floor(elapsedSeconds / 60) : baseMinutes - Math.floor(remainingSeconds / 60);
+      : isInfinite ? Math.floor(elapsedSeconds / 60) : Math.floor((baseSeconds - remainingSeconds) / 60);
 
-    // Only create session if duration is meaningful (1+ minutes, dev timer,
-    // or any infinite session with at least 1 second elapsed)
-    const hasMinimumDuration = actualDuration >= 1
-      || isDevTimer
-      || (isInfinite && elapsedSeconds >= 1);
+    // Only create session if duration is meaningful (1+ minutes or dev timer)
+    // Stopping within the first minute cancels the session
+    const hasMinimumDuration = actualDuration >= 1 || isDevTimer;
 
     if (hasMinimumDuration) {
       const totalSeconds = wasBonus
@@ -1098,6 +1096,8 @@ export default function FocusScreen() {
 
       // Navigate to session complete modal
       router.push({ pathname: '/(modals)/session-complete', params: { sessionId: session.id } });
+    } else {
+      showToast('Session cancelled', 'neutral');
     }
   };
 
