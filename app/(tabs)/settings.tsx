@@ -236,6 +236,30 @@ export default function SettingsScreen() {
           />
         </SettingsSection>
 
+        {/* Focus */}
+        <SettingsSection title="Focus">
+          <SettingsItem
+            title="Timer Picker Style"
+            subtitle="Choose how you set the timer duration"
+            icon="timer-outline"
+            hasChevron
+            valueLabel={preferences.focus.timerPickerStyle === 'wheel' ? 'Wheel' : 'Scroller'}
+            onPress={async () => {
+              const current = preferences.focus.timerPickerStyle ?? 'scroller';
+              const next = current === 'scroller' ? 'wheel' : 'scroller';
+              try {
+                await updatePreferences({
+                  focus: { ...preferences.focus, timerPickerStyle: next },
+                });
+                triggerHaptic('light');
+              } catch (error) {
+                console.error('Failed to update timer picker style:', error);
+              }
+            }}
+            isLast
+          />
+        </SettingsSection>
+
         {/* Appearance */}
         <SettingsSection title="Appearance">
           <SettingsItem

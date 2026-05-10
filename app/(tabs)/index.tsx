@@ -5,9 +5,10 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal, EMOJI_CATEGORIES } from '../../src/components/ui/EmojiPicker/EmojiPicker';
-import { TimeScroller } from '../../src/components/focus';
+import { TimeScroller, WheelTimePicker } from '../../src/components/focus';
 
 import { useFocus, useFocusActions, useRewards, useAppStore, useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
+import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { FruitCounter } from '../../src/components/rewards';
 import { showToast } from '../../src/components/ui/Toast';
@@ -213,6 +214,8 @@ export default function FocusScreen() {
   const { currentSession } = useFocus();
   const blocklistEditCost = useBlocklistEditCost();
   const { triggerHaptic } = useDeviceIntegration();
+  const { preferences } = useAppSettings();
+  const timerPickerStyle = preferences.focus.timerPickerStyle ?? 'scroller';
   const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean);
   
   const [selectedTime, setSelectedTime] = useState(15); // minutes; 0 => ∞
@@ -1133,10 +1136,17 @@ export default function FocusScreen() {
         {/* Time Selector or Running Timer - stacked and crossfaded */}
         <View style={{ height: 300, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
           <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 0 : scrollerOpacity, width: '100%', zIndex: 0 }} pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
-            <TimeScroller
-              selectedTime={selectedTime}
-              onTimeChange={handleTimeChange}
-            />
+            {timerPickerStyle === 'wheel' ? (
+              <WheelTimePicker
+                selectedTime={selectedTime}
+                onTimeChange={handleTimeChange}
+              />
+            ) : (
+              <TimeScroller
+                selectedTime={selectedTime}
+                onTimeChange={handleTimeChange}
+              />
+            )}
           </Animated.View>
           <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 1 : timerOpacity, transform: [{ scale: isUnlockActive ? 1 : timerScale }, { translateY: isUnlockActive ? 0 : timerTranslateY }], zIndex: 100, alignItems: 'center' }}>
             {isRunning && !isBonusTime && !isUnlockActive && (

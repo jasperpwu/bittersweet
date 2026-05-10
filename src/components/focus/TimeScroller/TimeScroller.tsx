@@ -9,10 +9,30 @@ interface TimeScrollerProps {
 
 const { width: screenWidth } = Dimensions.get('window');
 const TICK_SPACING = 100;
+
+// Graduated time values up to 8 hours:
+// 5-min steps: 0–60, 15-min steps: 75–120, 30-min steps: 150–240, 60-min steps: 300–480
+const BASE_TIME_VALUES = [
+  0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,
+  75, 90, 105, 120,
+  150, 180, 210, 240,
+  300, 360, 420, 480,
+];
+
 // -1 is a dev-only sentinel for "5 seconds" test mode
 const TIME_VALUES = __DEV__
-  ? [-1, ...Array.from({ length: 13 }, (_, i) => i * 5)]  // -1, 0, 5, 10, ... 60
-  : Array.from({ length: 13 }, (_, i) => i * 5);           // 0, 5, 10, ... 60
+  ? [-1, ...BASE_TIME_VALUES]
+  : BASE_TIME_VALUES;
+
+/** Format minutes for display: values < 60 show as number, >= 60 show as e.g. 1h, 1h15, 2h30 */
+const formatTickLabel = (minutes: number): string => {
+  if (minutes === -1) return '5s';
+  if (minutes === 0) return '\u221E'; // ∞
+  if (minutes < 60) return String(minutes);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h${m}`;
+};
 
 const FONT_BOLD = 'Poppins-Bold';
 
@@ -73,7 +93,7 @@ const TickItem: FC<{
         <Animated.Text
           style={{
             color: '#FFFFFF',
-            fontSize: 56,
+            fontSize: time >= 60 ? 36 : 56,
             fontFamily: FONT_BOLD,
             textAlign: 'center',
             paddingBottom: 100,
@@ -81,7 +101,7 @@ const TickItem: FC<{
             transform: [{ scale }],
           }}
         >
-          {time === -1 ? '5s' : time === 0 ? '∞' : time}
+          {formatTickLabel(time)}
         </Animated.Text>
       </View>
 

@@ -7,6 +7,7 @@ interface BottomSheetProps {
   onClose: () => void;
   children: ReactNode;
   height?: number;
+  showHandle?: boolean;
 }
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -16,6 +17,7 @@ export const BottomSheet: FC<BottomSheetProps> = ({
   onClose,
   children,
   height = screenHeight * 0.8,
+  showHandle = true,
 }) => {
   const insets = useSafeAreaInsets();
   const slideAnim = React.useRef(new Animated.Value(height)).current;
@@ -81,9 +83,11 @@ export const BottomSheet: FC<BottomSheetProps> = ({
           }}
         >
           {/* Handle */}
-          <View className="items-center py-3">
-            <View className="w-12 h-1 bg-gray-400 rounded-full" />
-          </View>
+          {showHandle && (
+            <View className="items-center py-3">
+              <View className="w-12 h-1 bg-gray-400 rounded-full" />
+            </View>
+          )}
           
           {/* Content */}
           <View className="flex-1 px-6">

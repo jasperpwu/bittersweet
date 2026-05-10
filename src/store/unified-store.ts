@@ -46,6 +46,7 @@ interface FocusSettings {
   vibrationEnabled: boolean;
   autoStartBreaks: boolean;
   autoStartSessions: boolean;
+  timerPickerStyle: 'scroller' | 'wheel';
 }
 
 interface AppStats {
@@ -142,6 +143,7 @@ const createDefaultPreferences = (): AppPreferences => ({
     vibrationEnabled: true,
     autoStartBreaks: false,
     autoStartSessions: false,
+    timerPickerStyle: 'scroller',
   },
 });
 
