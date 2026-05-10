@@ -10,7 +10,7 @@ interface EmojiPickerModalProps {
   title?: string;
 }
 
-const EMOJI_CATEGORIES = {
+export const EMOJI_CATEGORIES = {
   'General': ['🏃', '💻', '📖', '🧹', '🧠', '🎨', '🎵', '✍️', '🧘', '💪', '🍳', '🛠️', '📷', '🌱', '💤'],
   'Sports': ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏓', '🏸', '🥊', '🥋', '⛳', '🏊', '🚴', '🧗', '⛷️', '🏋️', '🤸'],
   'Music': ['🎹', '🎸', '🎻', '🥁', '🎷', '🎺', '🪕', '🪗', '🎤'],

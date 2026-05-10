@@ -260,6 +260,7 @@ export const persistenceConfig = {
       currentWeekStart: state.focus.currentWeekStart,
       settings: state.focus.settings,
       lastSelectedTagId: state.focus.lastSelectedTagId,
+      lastDurationByTagId: state.focus.lastDurationByTagId,
     },
     rewards: {
       balance: state.rewards.balance,

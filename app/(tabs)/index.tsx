@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui';
-import { EmojiPickerModal } from '../../src/components/ui/EmojiPicker/EmojiPicker';
+import { EmojiPickerModal, EMOJI_CATEGORIES } from '../../src/components/ui/EmojiPicker/EmojiPicker';
 import { TimeScroller } from '../../src/components/focus';
 
 import { useFocus, useFocusActions, useRewards, useAppStore, useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
@@ -31,8 +31,8 @@ type PersistedSession = {
 
 export default function FocusScreen() {
   // Get tags from store
-  const { tags, lastSelectedTagId } = useFocus();
-  const { createTag, updateTag, deleteTag, startSession, completeSession, createCompletedSession, setLastSelectedTagId } = useFocusActions();
+  const { tags, lastSelectedTagId, lastDurationByTagId } = useFocus();
+  const { createTag, updateTag, deleteTag, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag } = useFocusActions();
   const rewards = useRewards();
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
@@ -41,20 +41,22 @@ export default function FocusScreen() {
   const { triggerHaptic } = useDeviceIntegration();
   const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean);
   
-  const [selectedTime, setSelectedTime] = useState(10); // minutes; 0 => ∞
+  const [selectedTime, setSelectedTime] = useState(15); // minutes; 0 => ∞
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   // Restore last selected tag or fall back to first available tag
   useEffect(() => {
     if (availableTags.length > 0 && !selectedTag) {
       const lastTagExists = lastSelectedTagId && tags.byId[lastSelectedTagId];
-      setSelectedTag(lastTagExists ? lastSelectedTagId : availableTags[0].id);
+      const restoredTagId = lastTagExists ? lastSelectedTagId : availableTags[0].id;
+      setSelectedTag(restoredTagId);
+      // Restore last used duration for this tag (default 15 min)
+      setSelectedTime(lastDurationByTagId[restoredTagId] ?? 15);
     }
   }, [availableTags, selectedTag]);
   const [showTagModal, setShowTagModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showNewTagModal, setShowNewTagModal] = useState(false);
-  const [editingTagName, setEditingTagName] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState('');
   const [newTagEmoji, setNewTagEmoji] = useState('');
   const [newTagColor, setNewTagColor] = useState('#6592E9');
@@ -63,7 +65,7 @@ export default function FocusScreen() {
   const [editTagName, setEditTagName] = useState('');
   const [editTagEmoji, setEditTagEmoji] = useState('');
   const [editTagColor, setEditTagColor] = useState('#6592E9');
-  const [emojiPickerMode, setEmojiPickerMode] = useState<'edit' | 'new'>('edit');
+  const [showEditEmojiGrid, setShowEditEmojiGrid] = useState(false);
   
   // Delete functionality
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -184,44 +186,20 @@ export default function FocusScreen() {
   const handleTagSelect = (tagId: string) => {
     setSelectedTag(tagId);
     setLastSelectedTagId(tagId);
+    // Restore last used duration for this tag (default 15 min)
+    setSelectedTime(lastDurationByTagId[tagId] ?? 15);
     setShowTagModal(false);
-  };
-
-  const handleEmojiPress = (tagId: string) => {
-    console.log('🎯 Emoji button pressed for tag:', tagId);
-    // Close the tag modal first, then show emoji picker
-    setShowTagModal(false);
-    setEditingTagName(tagId);
-    setEmojiPickerMode('edit');
-    setShowEmojiPicker(true);
-    console.log('🎯 showEmojiPicker set to true');
   };
 
   const handleNewTagEmojiPress = () => {
     setShowNewTagModal(false);
-    setEmojiPickerMode('new');
     setShowEmojiPicker(true);
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    if (emojiPickerMode === 'edit' && editingTag) {
-      // Set emoji in edit tag state (saved when user hits Save)
-      setEditTagEmoji(emoji);
-      setShowEmojiPicker(false);
-      setShowTagModal(true);
-      setShowEditTagModal(true);
-    } else if (emojiPickerMode === 'edit' && editingTagName) {
-      // Legacy: direct emoji update from tag list
-      updateTag(editingTagName, { icon: emoji });
-      setEditingTagName(null);
-      setShowEmojiPicker(false);
-      setShowTagModal(true);
-    } else if (emojiPickerMode === 'new') {
-      // Set emoji for new tag
-      setNewTagEmoji(emoji);
-      setShowEmojiPicker(false);
-      setShowNewTagModal(true);
-    }
+    setNewTagEmoji(emoji);
+    setShowEmojiPicker(false);
+    setShowNewTagModal(true);
   };
 
   const handleCreateNewTag = () => {
@@ -253,10 +231,7 @@ export default function FocusScreen() {
   };
 
   const handleEditTagEmojiPress = () => {
-    setShowEditTagModal(false);
-    setShowTagModal(false);
-    setEmojiPickerMode('edit');
-    setShowEmojiPicker(true);
+    setShowEditEmojiGrid(prev => !prev);
   };
 
   const handleSaveEditTag = () => {
@@ -270,6 +245,7 @@ export default function FocusScreen() {
       }
       setShowEditTagModal(false);
       setEditingTag(null);
+      setShowEditEmojiGrid(false);
       // Tag modal remains open
     }
   };
@@ -832,6 +808,9 @@ export default function FocusScreen() {
 
   const handleTimeChange = (time: number) => {
     setSelectedTime(time);
+    if (selectedTag) {
+      setLastDurationForTag(selectedTag, time);
+    }
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -1007,11 +986,12 @@ export default function FocusScreen() {
         animationType="fade"
         onRequestClose={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
       >
-        <Pressable
-          className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4"
-          onPress={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
-        >
-          <Pressable onPress={() => {}} className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
+        <View className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4">
+          <Pressable
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
+          />
+          <View className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
             {/* Modal Header */}
             <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
               <Typography variant="headline-20" color="white">
@@ -1033,26 +1013,32 @@ export default function FocusScreen() {
                   key={tag.id}
                   className={`mb-3 rounded-2xl p-4 pr-24 flex-row items-center relative ${selectedTag === tag.id ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'
                     }`}
-                  style={{
-                    borderLeftWidth: 4,
-                    borderLeftColor: tag.color || '#6592E9',
-                  }}
+                  style={[
+                    {
+                      borderLeftWidth: 4,
+                      borderLeftColor: tag.color || '#6592E9',
+                    },
+                    selectedTag === tag.id && {
+                      shadowColor: tag.color || '#6592E9',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.35,
+                      shadowRadius: 8,
+                      elevation: 8,
+                      transform: [{ scale: 1.02 }],
+                    },
+                  ]}
                 >
                   <Pressable
                     onPress={() => handleTagSelect(tag.id)}
                     className="flex-1 flex-row items-center"
                   >
-                  <Pressable
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleEmojiPress(tag.id);
-                    }}
-                    className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 active:bg-gray-500 border border-gray-500"
+                  <View
+                    className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 border border-gray-500"
                   >
                     <Text className="text-xl">
                       {tag.icon || '🏷️'}
                     </Text>
-                  </Pressable>
+                  </View>
                   <View className="flex-1">
                     <Typography
                       variant="subtitle-16"
@@ -1061,11 +1047,9 @@ export default function FocusScreen() {
                     >
                       {tag.name}
                     </Typography>
-                    {selectedTag === tag.id && (
-                      <Typography variant="body-12" color="primary" className="mt-1">
-                        Selected
-                      </Typography>
-                    )}
+                    <Typography variant="body-12" color={selectedTag === tag.id ? 'primary' : 'secondary'} className="mt-1">
+                      {(lastDurationByTagId[tag.id] ?? 15) === 0 ? '∞' : `${lastDurationByTagId[tag.id] ?? 15} min`}
+                    </Typography>
                   </View>
                   </Pressable>
                   
@@ -1108,7 +1092,7 @@ export default function FocusScreen() {
             {/* Edit Tag Overlay - appears within tag modal */}
             {showEditTagModal && (
               <View className="absolute inset-0 bg-black bg-opacity-70 rounded-3xl flex-1 justify-center items-center p-4">
-                <Pressable onPress={() => {}} className="bg-gray-800 rounded-2xl w-full max-w-xs overflow-hidden">
+                <View className="bg-gray-800 rounded-2xl w-full max-w-xs overflow-hidden">
                   {/* Edit Header */}
                   <View className="p-4 border-b border-gray-700">
                     <Typography variant="headline-18" color="white">
@@ -1168,10 +1152,37 @@ export default function FocusScreen() {
                     </View>
                   </View>
 
+                  {/* Inline Emoji Picker */}
+                  {showEditEmojiGrid && (
+                    <ScrollView style={{ maxHeight: 200 }} className="px-4 pb-2 border-t border-gray-700" nestedScrollEnabled>
+                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
+                        <View key={category} className="mt-3">
+                          <Typography variant="body-12" color="secondary" className="mb-2">
+                            {category}
+                          </Typography>
+                          <View className="flex-row flex-wrap" style={{ gap: 6 }}>
+                            {emojis.map((emoji, index) => (
+                              <Pressable
+                                key={index}
+                                onPress={() => {
+                                  setEditTagEmoji(emoji);
+                                  setShowEditEmojiGrid(false);
+                                }}
+                                className="w-10 h-10 items-center justify-center rounded-lg bg-gray-700 active:bg-gray-600"
+                              >
+                                <Text className="text-xl">{emoji}</Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
+
                   {/* Action buttons */}
                   <View className="p-3 border-t border-gray-700 flex-row space-x-2">
                     <Pressable
-                      onPress={() => { setShowEditTagModal(false); setEditingTag(null); }}
+                      onPress={() => { setShowEditTagModal(false); setEditingTag(null); setShowEditEmojiGrid(false); }}
                       className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
                     >
                       <Typography variant="body-14" color="white">
@@ -1188,7 +1199,7 @@ export default function FocusScreen() {
                       </Typography>
                     </Pressable>
                   </View>
-                </Pressable>
+                </View>
               </View>
             )}
 
@@ -1232,8 +1243,8 @@ export default function FocusScreen() {
                 </Pressable>
               </View>
             )}
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* New Tag Creation Modal */}
@@ -1412,18 +1423,10 @@ export default function FocusScreen() {
         visible={showEmojiPicker}
         onClose={() => {
           setShowEmojiPicker(false);
-          if (emojiPickerMode === 'edit' && editingTag) {
-            // Return to edit tag modal
-            setShowEditTagModal(true);
-          } else if (emojiPickerMode === 'edit') {
-            setEditingTagName(null);
-            setShowTagModal(true);
-          } else {
-            setShowNewTagModal(true);
-          }
+          setShowNewTagModal(true);
         }}
         onEmojiSelect={handleEmojiSelect}
-        title={emojiPickerMode === 'edit' ? 'Change Emoji' : 'Choose Emoji for New Tag'}
+        title="Choose Emoji for New Tag"
       />
 
 

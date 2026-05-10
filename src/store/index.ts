@@ -87,6 +87,8 @@ interface AppStore {
     // Tag management
     lastSelectedTagId: string | null;
     setLastSelectedTagId: (tagId: string | null) => void;
+    lastDurationByTagId: Record<string, number>;
+    setLastDurationForTag: (tagId: string, duration: number) => void;
     createTag: (tag: Omit<SessionTag, 'id' | 'usageCount'>) => SessionTag;
     updateTag: (id: string, updates: Partial<SessionTag>) => void;
     deleteTag: (id: string) => void;
@@ -742,6 +744,15 @@ export const useAppStore = create<AppStore>()(
             focus: { ...state.focus, lastSelectedTagId: tagId }
           }));
         },
+        lastDurationByTagId: {} as Record<string, number>,
+        setLastDurationForTag: (tagId: string, duration: number) => {
+          set((state) => ({
+            focus: {
+              ...state.focus,
+              lastDurationByTagId: { ...state.focus.lastDurationByTagId, [tagId]: duration }
+            }
+          }));
+        },
         createTag: (tagData) => {
           console.log('🏷️ Creating tag:', tagData);
           const tagId = generateId();
@@ -817,9 +828,13 @@ export const useAppStore = create<AppStore>()(
               // Delete the tag
               const { [tagId]: removed, ...remainingTags } = state.focus.tags.byId;
 
+              // Remove last duration entry for this tag
+              const { [tagId]: _removedDuration, ...remainingDurations } = state.focus.lastDurationByTagId;
+
               return {
                 focus: {
                   ...state.focus,
+                  lastDurationByTagId: remainingDurations,
                   sessions: {
                     ...state.focus.sessions,
                     byId: remainingSessions,
@@ -1419,6 +1434,7 @@ export const useFocusActions = () => useAppStore((state) => ({
   goToNextWeek: state.focus.goToNextWeek,
   goToCurrentWeek: state.focus.goToCurrentWeek,
   setLastSelectedTagId: state.focus.setLastSelectedTagId,
+  setLastDurationForTag: state.focus.setLastDurationForTag,
   createTag: state.focus.createTag,
   updateTag: state.focus.updateTag,
   deleteTag: state.focus.deleteTag,
