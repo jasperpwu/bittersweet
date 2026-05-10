@@ -11,7 +11,6 @@ import { useBlocklist, useBlocklistActions, useRewards, useAppStore } from '../.
 import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
 import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
 import { LiveActivityService } from '../../services/LiveActivityService';
-import { UnlockReasonModal } from '../modals/UnlockReasonModal';
 import { showToast } from './Toast';
 import * as Notifications from 'expo-notifications';
 
@@ -35,8 +34,6 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
 
   const { width: screenWidth } = useWindowDimensions();
   const [isUnlocking, setIsUnlocking] = useState(false);
-  const [showReasonModal, setShowReasonModal] = useState(false);
-  const [unlockReason, setUnlockReason] = useState('');
 
   const currentBalance = propBalance ?? balance;
   const maxFruits = Math.min(currentBalance, 20);
@@ -53,7 +50,9 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
   }, [maxDuration]);
   const sliderWidth = screenWidth - 80; // 40px padding on each side (mx-4 + px-6)
 
-  const handleUnlockClick = () => {
+  const handleUnlock = async () => {
+    if (isUnlocking) return;
+
     const cost = selectedDuration * settings.unlockCostPerMinute;
 
     if (currentBalance < cost) {
@@ -66,15 +65,6 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
       return;
     }
 
-    // Show reason modal
-    setShowReasonModal(true);
-  };
-
-  const handleUnlock = async (reason: string) => {
-    if (isUnlocking) return;
-
-    setUnlockReason(reason);
-    setShowReasonModal(false);
     setIsUnlocking(true);
     triggerHaptic('light');
 
@@ -138,7 +128,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
 
       if (unlockSession) {
         // Start Live Activity for countdown display with reason
-        const liveActivityId = LiveActivityService.startUnlockCountdown(reblockTime, selectedDuration, reason);
+        const liveActivityId = LiveActivityService.startUnlockCountdown(reblockTime, selectedDuration);
 
         // Persist the Live Activity ID in the store so endUnlock can stop it
         if (liveActivityId) {
@@ -324,7 +314,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
           </Pressable>
 
           <Pressable
-            onPress={handleUnlockClick}
+            onPress={handleUnlock}
             disabled={isUnlocking || currentBalance < (selectedDuration * settings.unlockCostPerMinute)}
             className={`
               flex-1 py-3 rounded-xl active:opacity-80
@@ -344,14 +334,6 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
         </View>
 
       </View>
-
-      {/* Unlock Reason Modal */}
-      <UnlockReasonModal
-        visible={showReasonModal}
-        onClose={() => setShowReasonModal(false)}
-        onConfirm={handleUnlock}
-        onCancel={() => setShowReasonModal(false)}
-      />
     </View>
   );
 };
