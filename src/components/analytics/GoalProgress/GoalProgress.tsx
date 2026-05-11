@@ -18,6 +18,34 @@ interface ProcessedGoal extends FocusGoal {
   percentage: number;
 }
 
+const GOAL_THRESHOLD_PERCENT = 84;
+const GOAL_OVERFLOW_PERCENT = 100 - GOAL_THRESHOLD_PERCENT;
+
+const getGoalBarSegments = (currentMinutes: number, targetMinutes: number) => {
+  if (targetMinutes <= 0) {
+    return {
+      progressWidth: 0,
+      exceededWidth: 0,
+    };
+  }
+
+  const progressWidth = Math.min(
+    (currentMinutes / targetMinutes) * GOAL_THRESHOLD_PERCENT,
+    GOAL_THRESHOLD_PERCENT
+  );
+  const exceededWidth = currentMinutes > targetMinutes
+    ? Math.min(
+      ((currentMinutes - targetMinutes) / targetMinutes) * GOAL_THRESHOLD_PERCENT,
+      GOAL_OVERFLOW_PERCENT
+    )
+    : 0;
+
+  return {
+    progressWidth,
+    exceededWidth,
+  };
+};
+
 export const GoalProgress: FC<GoalProgressProps> = ({
   goals,
   currentPeriodProgress: _currentPeriodProgress,
@@ -66,7 +94,9 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   // Process goals to calculate progress
   const processedGoals: ProcessedGoal[] = goals.map(goal => {
     const currentProgress = freshGoalProgress[goal.id] || 0;
-    const percentage = Math.min((currentProgress / goal.targetMinutes) * 100, 100);
+    const percentage = goal.targetMinutes > 0
+      ? (currentProgress / goal.targetMinutes) * 100
+      : 0;
 
     return {
       ...goal,
@@ -241,6 +271,9 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   };
 
   const tagIds = (goal as any).tagIds || [];
+  const hasExceededGoal = goal.currentProgress > goal.targetMinutes;
+  const exceededMinutes = Math.max(goal.currentProgress - goal.targetMinutes, 0);
+  const { progressWidth, exceededWidth } = getGoalBarSegments(goal.currentProgress, goal.targetMinutes);
 
   return (
     <View className="bg-dark-bg border border-dark-border rounded-xl px-4 py-3">
@@ -272,7 +305,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
           </View>
 
           <View className="flex-row items-center mt-0.5">
-            <Typography variant="body-12" className="text-gray-300">
+            <Typography variant="body-12" className="text-white font-poppins-medium">
               {formatTime(goal.currentProgress)} / {formatTime(goal.targetMinutes)}
             </Typography>
             {tagIds.length > 0 && (
@@ -286,8 +319,11 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
         {/* Status */}
         <View className="items-end">
           {goal.percentage >= 100 ? (
-            <Typography variant="body-12" className="text-green-400">
-              ✓
+            <Typography
+              variant="body-12"
+              className={hasExceededGoal ? 'text-orange-400' : 'text-green-400'}
+            >
+              {hasExceededGoal ? `+${formatTime(exceededMinutes)}` : '✓'}
             </Typography>
           ) : (
             <Typography variant="body-12" className="text-gray-400">
@@ -298,10 +334,27 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
       </View>
 
       {/* Progress bar */}
-      <View className="mt-2 h-1.5 rounded-full bg-dark-border overflow-hidden">
+      <View className="mt-2 h-2 rounded-full bg-dark-border overflow-hidden relative">
         <View
-          className="h-full rounded-full bg-primary"
-          style={{ width: `${Math.min(goal.percentage, 100)}%` }}
+          className="h-full bg-primary"
+          style={{ width: `${progressWidth}%` }}
+        />
+        {exceededWidth > 0 && (
+          <View
+            className="h-full bg-orange-500 absolute top-0"
+            style={{
+              left: `${GOAL_THRESHOLD_PERCENT}%`,
+              width: `${exceededWidth}%`,
+            }}
+          />
+        )}
+        <View
+          className="absolute top-0 bottom-0 bg-white"
+          style={{
+            left: `${GOAL_THRESHOLD_PERCENT}%`,
+            width: 2,
+            opacity: 0.9,
+          }}
         />
       </View>
     </View>
@@ -524,7 +577,7 @@ const GoalEmptyPlaceholder: FC = () => {
             <Typography variant="body-14" className="text-white font-poppins-semibold mb-0.5">
               Monthly Study Goal
             </Typography>
-            <Typography variant="body-12" className="text-gray-200">
+            <Typography variant="body-12" className="text-white font-poppins-medium">
               28h 48m / 40h 0m
             </Typography>
           </View>
@@ -532,10 +585,18 @@ const GoalEmptyPlaceholder: FC = () => {
             11h 12m left
           </Typography>
         </View>
-        <View className="mt-2 h-1.5 rounded-full bg-dark-border overflow-hidden">
+        <View className="mt-2 h-2 rounded-full bg-dark-border overflow-hidden relative">
           <View
-            className="h-full rounded-full bg-primary"
-            style={{ width: '72%' }}
+            className="h-full bg-primary"
+            style={{ width: `${72 * (GOAL_THRESHOLD_PERCENT / 100)}%` }}
+          />
+          <View
+            className="absolute top-0 bottom-0 bg-white"
+            style={{
+              left: `${GOAL_THRESHOLD_PERCENT}%`,
+              width: 2,
+              opacity: 0.9,
+            }}
           />
         </View>
       </View>
