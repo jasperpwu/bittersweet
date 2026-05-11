@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist b/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist
+index 045057a..5215ae0 100644
+--- a/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist
++++ b/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist
+@@ -3,8 +3,10 @@
+ <plist version="1.0">
+ <dict>
++	<key>UIUserInterfaceStyle</key>
++	<string>Dark</string>
+ 	<key>REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP</key>
+   <string>$(REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP)</string>
+ 	<key>NSExtension</key>
+ 	<dict>
+ 		<key>NSExtensionPointIdentifier</key>
+ 		<string>com.apple.ManagedSettingsUI.shield-configuration-service</string>

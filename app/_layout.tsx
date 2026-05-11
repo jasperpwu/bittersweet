@@ -61,6 +61,22 @@ export default function RootLayout() {
     }
   };
 
+  const syncShieldConfiguration = async (trigger: string) => {
+    try {
+      const store = useAppStore.getState();
+      const currentSelectionId = store.blocklist.currentSelectionId;
+      if (!currentSelectionId) {
+        return;
+      }
+
+      console.log(`🛡️ Syncing shield configuration (${trigger})`);
+      const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
+      await FamilyControlsModule.updateShieldBalance(store.rewards.balance);
+    } catch (error) {
+      console.error('❌ Failed to sync shield configuration:', error);
+    }
+  };
+
   // Initialize stores and global error handling
   useEffect(() => {
     initializeUnifiedStore();
@@ -70,23 +86,25 @@ export default function RootLayout() {
     Notifications.requestPermissionsAsync();
 
     // Handle incoming notifications (vibration + unlock expiry dismissal)
-    const notificationSubscription = Notifications.addNotificationReceivedListener((notification) => {
-      const { useUnifiedStore } = require('../src/store/unified-store');
-      const vibrationEnabled = useUnifiedStore.getState().preferences.notifications.vibration;
-      if (vibrationEnabled) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+    const notificationSubscription = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        const { useUnifiedStore } = require('../src/store/unified-store');
+        const vibrationEnabled = useUnifiedStore.getState().preferences.notifications.vibration;
+        if (vibrationEnabled) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
 
-      // Dismiss the live activity when the unlock session expires
-      const data = notification.request.content.data;
-      if (data?.type === 'unlock-expired') {
-        if (data.unlockSessionId) {
-          useAppStore.getState().blocklist.endUnlock(data.unlockSessionId as string);
-        } else if (data.liveActivityId) {
-          LiveActivityService.stopUnlockCountdown(data.liveActivityId as string, 'expired');
+        // Dismiss the live activity when the unlock session expires
+        const data = notification.request.content.data;
+        if (data?.type === 'unlock-expired') {
+          if (data.unlockSessionId) {
+            useAppStore.getState().blocklist.endUnlock(data.unlockSessionId as string);
+          } else if (data.liveActivityId) {
+            LiveActivityService.stopUnlockCountdown(data.liveActivityId as string, 'expired');
+          }
         }
       }
-    });
+    );
 
     // Debug: Clear storage if needed (change to true if needed)
     if (__DEV__ && false) {
@@ -105,6 +123,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (isHydrated) {
       checkExpiredUnlockSessions('mount');
+      syncShieldConfiguration('mount');
     }
   }, [isHydrated]);
 
@@ -173,6 +192,7 @@ export default function RootLayout() {
         // locked, stopActivity was never called. This is the safety net.
         LiveActivityService.cleanupExpired();
         checkExpiredUnlockSessions('foreground');
+        syncShieldConfiguration('foreground');
       }
 
       appState.current = nextAppState;
@@ -198,7 +218,7 @@ export default function RootLayout() {
     if (isReady) {
       const { useUnifiedStore } = require('../src/store/unified-store');
       const hasSeenOnboarding = useUnifiedStore.getState().preferences?.hasSeenOnboarding;
-      
+
       if (!hasSeenOnboarding && pathname !== '/onboarding') {
         // Small delay to ensure router is ready
         setTimeout(() => {
@@ -216,8 +236,11 @@ export default function RootLayout() {
             <>
               <Stack>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
-<Stack.Screen
+                <Stack.Screen
+                  name="onboarding"
+                  options={{ headerShown: false, gestureEnabled: false }}
+                />
+                <Stack.Screen
                   name="(modals)/session-complete"
                   options={{
                     headerShown: false,
@@ -249,7 +272,13 @@ export default function RootLayout() {
               <Toast />
             </>
           ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1B1C30' }}>
+            <View
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#1B1C30',
+              }}>
               <Text style={{ color: '#FFFFFF' }}>Loading...</Text>
             </View>
           )}

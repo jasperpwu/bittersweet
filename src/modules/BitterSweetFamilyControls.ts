@@ -8,7 +8,7 @@ import type {
   ShieldActions,
   AuthorizationStatusType,
   DeviceActivityEvent,
-  DeviceActivitySchedule
+  DeviceActivitySchedule,
 } from 'react-native-device-activity';
 
 // MARK: - Shield Configuration Constants
@@ -46,7 +46,6 @@ interface BitterSweetAuthorizationChangedEvent {
 // MARK: - Main Module Interface
 
 class BitterSweetFamilyControlsModule {
-
   // MARK: - Shield Configuration Methods
 
   /**
@@ -54,9 +53,11 @@ class BitterSweetFamilyControlsModule {
    * @param fruitBalance - Current fruit balance
    * @param focusSessionActive - Whether a focus session is currently running
    */
-  async configureShield(fruitBalance: number, focusSessionActive: boolean = false): Promise<boolean> {
+  async configureShield(
+    fruitBalance: number,
+    focusSessionActive: boolean = false
+  ): Promise<boolean> {
     try {
-
       // Configure shield appearance (using official library interface)
       const shieldConfig: ShieldConfiguration = focusSessionActive
         ? {
@@ -88,25 +89,25 @@ class BitterSweetFamilyControlsModule {
       const shieldActions: ShieldActions = focusSessionActive
         ? {
             primary: {
-              behavior: 'close'
+              behavior: 'close',
             },
             secondary: {
-              behavior: 'close'
-            }
+              behavior: 'close',
+            },
           }
         : {
             primary: {
               behavior: 'defer',
               actions: [
-                  {
-                    type: "openAppWithBundleId",
-                    bundleId: "com.path2us.bittersweet"
-                  }
-              ]
+                {
+                  type: 'openAppWithBundleId',
+                  bundleId: 'com.path2us.bittersweet',
+                },
+              ],
             },
             secondary: {
-              behavior: 'close'
-            }
+              behavior: 'close',
+            },
           };
 
       // Store configuration in UserDefaults for the shield extensions
@@ -117,7 +118,7 @@ class BitterSweetFamilyControlsModule {
       console.log('✅ Shield configuration updated:', {
         fruitBalance,
         shieldConfig,
-        shieldActions
+        shieldActions,
       });
 
       // Debug: Verify configuration was stored
@@ -158,7 +159,6 @@ class BitterSweetFamilyControlsModule {
    */
   async clearShieldConfiguration(): Promise<boolean> {
     try {
-
       ReactNativeDeviceActivity.userDefaultsRemove(SHIELD_CONFIGURATION_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(SHIELD_ACTIONS_KEY);
 
@@ -184,7 +184,8 @@ class BitterSweetFamilyControlsModule {
       const currentStatus = await this.getAuthorizationStatus();
       console.log('📊 Current authorization status:', currentStatus);
 
-      if (currentStatus === 2) { // 2 = approved
+      if (currentStatus === 2) {
+        // 2 = approved
         console.log('✅ Already authorized');
         return true;
       }
@@ -195,7 +196,9 @@ class BitterSweetFamilyControlsModule {
       return status === 2; // 2 = approved
     } catch (error) {
       console.error('❌ Authorization failed:', error);
-      console.error('💡 Hint: Another app might have Family Controls authorization. Only one app can have it at a time.');
+      console.error(
+        '💡 Hint: Another app might have Family Controls authorization. Only one app can have it at a time.'
+      );
       console.error('💡 Check Settings > Screen Time for other apps with permissions.');
       return false;
     }
@@ -207,7 +210,6 @@ class BitterSweetFamilyControlsModule {
    */
   async getAuthorizationStatus(): Promise<AuthorizationStatusType> {
     try {
-
       console.log('🔍 Calling ReactNativeDeviceActivity.getAuthorizationStatus()...');
       const status = ReactNativeDeviceActivity.getAuthorizationStatus();
       console.log('🔍 Received status:', status, 'type:', typeof status);
@@ -228,7 +230,9 @@ class BitterSweetFamilyControlsModule {
    * @returns Promise<FamilyActivitySelection> - Selected apps/categories
    */
   async presentFamilyActivityPicker(): Promise<FamilyActivitySelection> {
-    console.warn('presentFamilyActivityPicker is deprecated. Use DeviceActivitySelectionView component instead');
+    console.warn(
+      'presentFamilyActivityPicker is deprecated. Use DeviceActivitySelectionView component instead'
+    );
     return '';
   }
 
@@ -241,7 +245,6 @@ class BitterSweetFamilyControlsModule {
    */
   async applyRestrictions(selectionId: FamilyActivitySelection): Promise<boolean> {
     try {
-
       if (!selectionId || selectionId.trim() === '') {
         console.log('No apps selected for restriction');
         return true;
@@ -292,8 +295,6 @@ class BitterSweetFamilyControlsModule {
     }
   }
 
-
-
   // MARK: - Monitoring Methods
 
   /**
@@ -303,7 +304,6 @@ class BitterSweetFamilyControlsModule {
    */
   async startMonitoring(selection: FamilyActivitySelection): Promise<boolean> {
     try {
-
       if (!selection || selection.trim() === '') {
         console.log('No apps selected for monitoring');
         return true;
@@ -314,7 +314,7 @@ class BitterSweetFamilyControlsModule {
       const schedule: DeviceActivitySchedule = {
         intervalStart: { hour: 0, minute: 0, second: 0 },
         intervalEnd: { hour: 23, minute: 59, second: 59 },
-        repeats: true
+        repeats: true,
       };
 
       // Create events for monitoring with the selection ID
@@ -322,8 +322,8 @@ class BitterSweetFamilyControlsModule {
         {
           eventName: 'appBlocking',
           familyActivitySelection: selection, // This should be the selection ID
-          threshold: { minute: 1 } // Example threshold
-        }
+          threshold: { minute: 1 }, // Example threshold
+        },
       ];
 
       await ReactNativeDeviceActivity.startMonitoring(monitoringName, schedule, events);
@@ -342,7 +342,6 @@ class BitterSweetFamilyControlsModule {
    */
   async stopMonitoring(): Promise<boolean> {
     try {
-
       // Stop monitoring using react-native-device-activity
       ReactNativeDeviceActivity.stopMonitoring();
 
@@ -360,11 +359,10 @@ class BitterSweetFamilyControlsModule {
    * Add listener for app launch blocked events
    * Note: react-native-device-activity handles blocking automatically via shields
    */
-  addAppLaunchBlockedListener(
-    listener: (event: BitterSweetAppLaunchBlockedEvent) => void
-  ): { remove: () => void } {
+  addAppLaunchBlockedListener(listener: (event: BitterSweetAppLaunchBlockedEvent) => void): {
+    remove: () => void;
+  } {
     try {
-
       // Use react-native-device-activity's event listener
       const subscription = ReactNativeDeviceActivity.onDeviceActivityMonitorEvent((event: any) => {
         // Transform the event to match our AppLaunchBlockedEvent interface
@@ -372,7 +370,7 @@ class BitterSweetFamilyControlsModule {
           appName: event.appName || 'Unknown App',
           bundleIdentifier: event.bundleIdentifier || '',
           appTokens: event.appTokens || [],
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
         listener(transformedEvent);
       });
@@ -434,7 +432,9 @@ class BitterSweetFamilyControlsModule {
 
       // UserDefaults is now the only method for shield communication
 
-      console.log('ℹ️ [SHIELD_DEBUG] Shield detection: No indicators found - likely normal app launch');
+      console.log(
+        'ℹ️ [SHIELD_DEBUG] Shield detection: No indicators found - likely normal app launch'
+      );
       return false;
     } catch (error) {
       console.error('❌ [SHIELD_DEBUG] Failed to check shield opening:', error);
@@ -448,10 +448,15 @@ class BitterSweetFamilyControlsModule {
    */
   async checkUnlockRequest(): Promise<boolean> {
     try {
-      console.log('📡 [USERDEFAULTS_DEBUG] Attempting to read UserDefaults key:', PENDING_MAIN_APP_ACTION_KEY);
+      console.log(
+        '📡 [USERDEFAULTS_DEBUG] Attempting to read UserDefaults key:',
+        PENDING_MAIN_APP_ACTION_KEY
+      );
 
       // Try to read the UserDefaults value
-      const pendingAction = ReactNativeDeviceActivity.userDefaultsGet(PENDING_MAIN_APP_ACTION_KEY) as any;
+      const pendingAction = ReactNativeDeviceActivity.userDefaultsGet(
+        PENDING_MAIN_APP_ACTION_KEY
+      ) as any;
 
       console.log('📡 [USERDEFAULTS_DEBUG] Raw UserDefaults value:', pendingAction);
       console.log('📡 [USERDEFAULTS_DEBUG] Value type:', typeof pendingAction);
@@ -459,11 +464,17 @@ class BitterSweetFamilyControlsModule {
       console.log('📡 [USERDEFAULTS_DEBUG] Value is undefined:', pendingAction === undefined);
 
       if (pendingAction && typeof pendingAction === 'object') {
-        console.log('📡 [USERDEFAULTS_DEBUG] ✅ Found pending action from shield extension:', JSON.stringify(pendingAction, null, 2));
+        console.log(
+          '📡 [USERDEFAULTS_DEBUG] ✅ Found pending action from shield extension:',
+          JSON.stringify(pendingAction, null, 2)
+        );
         console.log('📡 [USERDEFAULTS_DEBUG] Action type:', pendingAction.action);
         console.log('📡 [USERDEFAULTS_DEBUG] Bundle ID:', pendingAction.bundleId);
         console.log('📡 [USERDEFAULTS_DEBUG] Shield ID:', pendingAction.shieldId);
-        console.log('📡 [USERDEFAULTS_DEBUG] Timestamp:', pendingAction.timestamp ? new Date(pendingAction.timestamp * 1000) : 'none');
+        console.log(
+          '📡 [USERDEFAULTS_DEBUG] Timestamp:',
+          pendingAction.timestamp ? new Date(pendingAction.timestamp * 1000) : 'none'
+        );
         console.log('📡 [USERDEFAULTS_DEBUG] Source:', pendingAction.source);
 
         // Clear the pending action
@@ -471,19 +482,31 @@ class BitterSweetFamilyControlsModule {
         ReactNativeDeviceActivity.userDefaultsRemove(PENDING_MAIN_APP_ACTION_KEY);
 
         // Check if this is the primary button action (unlock request)
-        const isUnlockAction = pendingAction.action === 'primaryButtonTapped' &&
-                              pendingAction.source === 'shieldExtension';
+        const isUnlockAction =
+          pendingAction.action === 'primaryButtonTapped' &&
+          pendingAction.source === 'shieldExtension';
 
         console.log('📡 [USERDEFAULTS_DEBUG] Is unlock action check:');
-        console.log('📡 [USERDEFAULTS_DEBUG] - pendingAction.action === "primaryButtonTapped":', pendingAction.action === 'primaryButtonTapped');
-        console.log('📡 [USERDEFAULTS_DEBUG] - pendingAction.source === "shieldExtension":', pendingAction.source === 'shieldExtension');
+        console.log(
+          '📡 [USERDEFAULTS_DEBUG] - pendingAction.action === "primaryButtonTapped":',
+          pendingAction.action === 'primaryButtonTapped'
+        );
+        console.log(
+          '📡 [USERDEFAULTS_DEBUG] - pendingAction.source === "shieldExtension":',
+          pendingAction.source === 'shieldExtension'
+        );
         console.log('📡 [USERDEFAULTS_DEBUG] - Final isUnlockAction:', isUnlockAction);
 
         if (isUnlockAction) {
-          console.log('✅ [USERDEFAULTS_DEBUG] Confirmed unlock action from shield (primaryButtonTapped)');
+          console.log(
+            '✅ [USERDEFAULTS_DEBUG] Confirmed unlock action from shield (primaryButtonTapped)'
+          );
           return true;
         } else {
-          console.log('ℹ️ [USERDEFAULTS_DEBUG] Action found but not primary button unlock action:', pendingAction.action);
+          console.log(
+            'ℹ️ [USERDEFAULTS_DEBUG] Action found but not primary button unlock action:',
+            pendingAction.action
+          );
         }
       } else {
         console.log('📡 [USERDEFAULTS_DEBUG] ❌ No pending action found or invalid format');
@@ -495,9 +518,6 @@ class BitterSweetFamilyControlsModule {
       return false;
     }
   }
-
-
-
 
   // MARK: - Debug Methods
 
@@ -528,7 +548,7 @@ class BitterSweetFamilyControlsModule {
         'PendingMainAppAction',
         'pending_main_app_action',
         'shieldCommunication',
-        'shieldAction'
+        'shieldAction',
       ];
 
       for (const key of alternativeKeys) {
@@ -593,5 +613,5 @@ export type {
   AuthorizationStatusType as BitterSweetAuthorizationStatus,
   BitterSweetAppLaunchBlockedEvent,
   BitterSweetUnlockSessionExpiredEvent,
-  BitterSweetAuthorizationChangedEvent
+  BitterSweetAuthorizationChangedEvent,
 };

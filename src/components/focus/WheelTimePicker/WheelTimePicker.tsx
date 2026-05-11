@@ -1,5 +1,13 @@
 import { FC, useRef, useState, useCallback, useEffect } from 'react';
-import { View, ScrollView, Pressable, Text, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import {
+  View,
+  ScrollView,
+  Pressable,
+  Text,
+  Animated,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../../ui/Typography';
 import { BottomSheet } from '../../ui/BottomSheet';
@@ -15,6 +23,7 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => i); // 0–59
 const ITEM_HEIGHT = 48;
 const VISIBLE_ITEMS = 5;
 const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
+const SHEET_HEIGHT = 420;
 const FONT_BOLD = 'Poppins-Bold';
 
 /** Format a total-minutes value into a display string like "0m", "1h30m", "8h" */
@@ -66,8 +75,7 @@ const WheelItem: FC<{
           textAlign: 'center',
           opacity,
           transform: [{ scale }],
-        }}
-      >
+        }}>
         {display}
       </Animated.Text>
     </View>
@@ -117,7 +125,7 @@ const WheelColumn: FC<{
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     },
-    [scrollY, values],
+    [scrollY, values]
   );
 
   const handleMomentumScrollEnd = useCallback(
@@ -132,14 +140,18 @@ const WheelColumn: FC<{
       lastSnappedRef.current = value;
       isUserScrollingRef.current = false;
     },
-    [values, selectedValue, onValueChange],
+    [values, selectedValue, onValueChange]
   );
 
   const paddingVertical = (PICKER_HEIGHT - ITEM_HEIGHT) / 2;
 
   return (
     <View style={{ flex: 1 }}>
-      <Typography variant="body-12" color="secondary" className="mb-2" style={{ textAlign: 'center' }}>
+      <Typography
+        variant="body-12"
+        color="secondary"
+        className="mb-2"
+        style={{ textAlign: 'center' }}>
         {label}
       </Typography>
       <View style={{ height: PICKER_HEIGHT, overflow: 'hidden', width: '100%' }}>
@@ -175,8 +187,7 @@ const WheelColumn: FC<{
           onMomentumScrollEnd={handleMomentumScrollEnd}
           onScroll={handleScroll}
           scrollEventThrottle={16}
-          contentContainerStyle={{ paddingVertical }}
-        >
+          contentContainerStyle={{ paddingVertical }}>
           {values.map((v, idx) => {
             const display = formatValue ? formatValue(v) : String(v);
             return <WheelItem key={v} index={idx} display={display} scrollY={scrollY} />;
@@ -187,10 +198,7 @@ const WheelColumn: FC<{
   );
 };
 
-export const WheelTimePicker: FC<WheelTimePickerProps> = ({
-  selectedTime,
-  onTimeChange,
-}) => {
+export const WheelTimePicker: FC<WheelTimePickerProps> = ({ selectedTime, onTimeChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [pendingHours, setPendingHours] = useState(Math.floor(selectedTime / 60));
   const [pendingMinutes, setPendingMinutes] = useState(selectedTime % 60);
@@ -234,8 +242,7 @@ export const WheelTimePicker: FC<WheelTimePickerProps> = ({
             fontSize: 64,
             fontFamily: 'Poppins-Bold',
             textAlign: 'center',
-          }}
-        >
+          }}>
           {formatDisplay(selectedTime)}
         </Text>
       </Pressable>
@@ -244,38 +251,38 @@ export const WheelTimePicker: FC<WheelTimePickerProps> = ({
       <BottomSheet
         isVisible={isOpen}
         onClose={() => setIsOpen(false)}
-        height={460}
-        showHandle={false}
-      >
-        <Typography variant="headline-20" color="white" className="mb-4">
-          Set Duration
-        </Typography>
-
-        <View style={{ flexDirection: 'row', flex: 1, marginHorizontal: -24 }}>
-          <WheelColumn
-            values={HOURS}
-            selectedValue={pendingHours}
-            onValueChange={handleHourChange}
-            label="Hours"
-          />
-          <WheelColumn
-            values={MINUTES}
-            selectedValue={pendingMinutes}
-            onValueChange={handleMinuteChange}
-            label="Minutes"
-            formatValue={(v) => String(v).padStart(2, '0')}
-          />
-        </View>
-
-        {/* Confirm button */}
-        <Pressable
-          onPress={handleConfirm}
-          className="mt-4 mb-2 bg-primary rounded-2xl py-3 items-center active:opacity-80"
-        >
-          <Typography variant="subtitle-16" color="white">
-            Confirm
+        height={SHEET_HEIGHT}
+        showHandle={false}>
+        <View style={{ paddingTop: 24 }}>
+          <Typography variant="headline-20" color="white" className="mb-3">
+            Set Duration
           </Typography>
-        </Pressable>
+
+          <View style={{ flexDirection: 'row', marginHorizontal: -24 }}>
+            <WheelColumn
+              values={HOURS}
+              selectedValue={pendingHours}
+              onValueChange={handleHourChange}
+              label="Hours"
+            />
+            <WheelColumn
+              values={MINUTES}
+              selectedValue={pendingMinutes}
+              onValueChange={handleMinuteChange}
+              label="Minutes"
+              formatValue={(v) => String(v).padStart(2, '0')}
+            />
+          </View>
+
+          {/* Confirm button */}
+          <Pressable
+            onPress={handleConfirm}
+            className="mb-2 mt-2 items-center rounded-2xl bg-primary py-3 active:opacity-80">
+            <Typography variant="subtitle-16" color="white">
+              Confirm
+            </Typography>
+          </Pressable>
+        </View>
       </BottomSheet>
     </View>
   );
