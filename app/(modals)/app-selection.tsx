@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   SafeAreaView,
@@ -6,8 +6,9 @@ import {
   Alert
 } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
-import { useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
+import { useBlocklist, useBlocklistActions } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
+import { showToast } from '../../src/components/ui/Toast';
 import { router } from 'expo-router';
 import { DeviceActivitySelectionView, DeviceActivitySelectionViewPersisted, getFamilyActivitySelectionId, setFamilyActivitySelectionId } from 'react-native-device-activity';
 import { Stack } from 'expo-router';
@@ -15,12 +16,16 @@ import { Stack } from 'expo-router';
 export default function AppSelectionScreen() {
   const { triggerHaptic } = useDeviceIntegration();
   const { updateBlockedApps } = useBlocklistActions();
-  const { settings } = useBlocklist();
-  const blocklistEditCost = useBlocklistEditCost();
+  const { settings, currentSelectionId } = useBlocklist();
+
+  // Capture whether this is initial setup at mount time
+  const [isInitialSetup] = useState(() => currentSelectionId === null);
 
   // Initialize with current stored selection if any
   const [selectedApps, setSelectedApps] = useState<string | null>(null);
   const [hasSelection, setHasSelection] = useState(false);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+  const isFirstSelectionEvent = useRef(!isInitialSetup); // skip first event when editing existing blocklist
   const [selectionCounts, setSelectionCounts] = useState({
     applicationCount: 0,
     categoryCount: 0,
@@ -61,16 +66,6 @@ export default function AppSelectionScreen() {
   const handleClose = () => {
     triggerHaptic('light');
     router.back();
-  };
-
-  // Check if the edit includes removing apps from the blocklist
-  const hasRemovals = () => {
-    const { applicationTokens, categoryTokens, webDomainTokens } = settings.blockedApps;
-    return (
-      selectionCounts.applicationCount < applicationTokens.length ||
-      selectionCounts.categoryCount < categoryTokens.length ||
-      selectionCounts.webDomainCount < webDomainTokens.length
-    );
   };
 
   const executeSave = async (chargeFruit: boolean = false) => {
@@ -135,36 +130,25 @@ export default function AppSelectionScreen() {
   };
 
   const handleSave = () => {
-    // Only charge fruits if the edit includes removing apps
-    if (!hasRemovals()) {
-      executeSave(false);
+    if (!isInitialSetup && !hasUserEdited) {
+      showToast('No updates made to block list', 'neutral');
+      router.back();
       return;
     }
-
-    const { cost, canAfford, balance } = blocklistEditCost;
-
-    if (!canAfford) {
-      Alert.alert(
-        'Not Enough Fruits',
-        `Removing apps from the blocklist costs ${cost} 🍎 but you only have ${balance}. Focus more to earn fruits!`,
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Edit Blocklist',
-      `Removing apps from the blocklist costs ${cost} 🍎. Continue?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Confirm', onPress: () => executeSave(true) },
-      ]
-    );
+    // Charge fruit only if: not initial setup AND user actually changed the selection
+    executeSave(!isInitialSetup && hasUserEdited);
   };
 
   const handleSelectionChange = (event: any) => {
     console.log('🔍 App selection changed (Persisted)');
     console.log('🔍 Event type:', typeof event);
+
+    // Skip the initial event fired when the picker loads an existing selection
+    if (isFirstSelectionEvent.current) {
+      isFirstSelectionEvent.current = false;
+    } else {
+      setHasUserEdited(true);
+    }
 
     // DeviceActivitySelectionViewPersisted uses a different event structure
     if (event && event.nativeEvent) {

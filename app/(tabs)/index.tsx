@@ -309,6 +309,7 @@ export default function FocusScreen() {
 
   // Blocklist tip modal
   const [showBlocklistTip, setShowBlocklistTip] = useState(false);
+  const [showEditCostModal, setShowEditCostModal] = useState(false);
   const blocklistTipAcknowledgedRef = useRef<boolean | null>(null);
 
   // Session + timer state
@@ -410,6 +411,13 @@ export default function FocusScreen() {
       return;
     }
 
+    // If blocklist already set up, show edit cost modal before proceeding
+    const store = useAppStore.getState();
+    if (store.blocklist.currentSelectionId !== null) {
+      setShowEditCostModal(true);
+      return;
+    }
+
     await proceedToBlockList();
   };
 
@@ -417,6 +425,14 @@ export default function FocusScreen() {
     setShowBlocklistTip(false);
     blocklistTipAcknowledgedRef.current = true;
     await AsyncStorage.setItem(STORAGE_KEYS.blocklistTipAcknowledged, 'true');
+
+    // If blocklist already set up, show edit cost modal before proceeding
+    const store = useAppStore.getState();
+    if (store.blocklist.currentSelectionId !== null) {
+      setShowEditCostModal(true);
+      return;
+    }
+
     await proceedToBlockList();
   };
 
@@ -1623,7 +1639,7 @@ export default function FocusScreen() {
               Block List
             </Text>
             <Text style={{ color: '#AAAAAA', fontSize: 14, lineHeight: 20, marginBottom: 24 }}>
-              This is where you add apps that are unnecessary for achieving your goals and also distracting.{'\n\n'}Adding apps will not cost fruits, but removing picked apps can incur a fruit cost that accumulates and resets weekly.
+              This is where you add apps that are unnecessary for achieving your goals and also distracting.{'\n\n'}Your first setup is free. After that, each edit costs fruits — starting at 1 and doubling each time, resetting weekly.
             </Text>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
               <Pressable
@@ -1637,6 +1653,60 @@ export default function FocusScreen() {
                 style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, backgroundColor: '#6592E9' }}
               >
                 <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Understood</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Edit Cost Confirmation Modal */}
+      <Modal
+        visible={showEditCostModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditCostModal(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50 justify-center items-center px-6"
+          onPress={() => setShowEditCostModal(false)}
+        >
+          <Pressable onPress={() => {}} className="bg-dark-bg rounded-2xl w-full max-w-sm overflow-hidden p-6">
+            <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600', marginBottom: 12 }}>
+              Edit Block List
+            </Text>
+            <Text style={{ color: '#AAAAAA', fontSize: 14, lineHeight: 20, marginBottom: 15 }}>
+              Editing the blocklist is a thoughtful process. The cost starts at 1 fruit and doubles with each edit, resetting weekly.
+            </Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500', marginBottom: 15 }}>
+              This edit will cost {blocklistEditCost.cost} 🍎
+            </Text>
+            {!blocklistEditCost.canAfford && (
+              <Text style={{ color: '#E57373', fontSize: 13, marginBottom: 24 }}>
+                {"You don't have enough fruits. Focus more to earn!"}
+              </Text>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+              <Pressable
+                onPress={() => setShowEditCostModal(false)}
+                style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
+              >
+                <Text style={{ color: '#888888', fontSize: 15, fontWeight: '500' }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  setShowEditCostModal(false);
+                  await proceedToBlockList();
+                }}
+                disabled={!blocklistEditCost.canAfford}
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                  backgroundColor: '#6592E9',
+                  opacity: blocklistEditCost.canAfford ? 1 : 0.5,
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Confirm</Text>
               </Pressable>
             </View>
           </Pressable>
