@@ -15,7 +15,7 @@ interface TimelineProps {
 const TIME_COLUMN_WIDTH = 70;
 
 // Timeline configuration - showing full day
-const START_HOUR = 6; // 6:00 AM
+const START_HOUR = 0; // 12:00 AM
 const END_HOUR = 23; // 11:00 PM
 const TOTAL_HOURS = END_HOUR - START_HOUR + 1;
 const HOUR_HEIGHT = 80;
@@ -60,11 +60,7 @@ export const Timeline: FC<TimelineProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
   // Filter sessions for the visible time range and sort by start time
   const sortedSessions = useMemo(() => {
-    return sessions
-      .filter(session => {
-        const sessionHour = session.startTime.getHours();
-        return sessionHour >= START_HOUR && sessionHour <= END_HOUR;
-      })
+    return [...sessions]
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   }, [sessions]);
 

@@ -15,7 +15,7 @@ import Animated, {
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from '../../src/components/ui/StatusBar';
 import { Ionicons } from '@expo/vector-icons';
-import { Modal, Slider, Typography, TimePicker } from '../../src/components/ui';
+import { Modal, Slider, Typography, TimePicker, DatePicker } from '../../src/components/ui';
 import { TagSelector } from '../../src/components/focus/TagSelector';
 import { DateSelector, Timeline } from '../../src/components/journal';
 import { FruitCounter } from '../../src/components/rewards';
@@ -41,6 +41,7 @@ export default function JournalScreen() {
     return d;
   });
   const [manualEndTime, setManualEndTime] = useState(new Date());
+  const [manualDate, setManualDate] = useState(new Date());
   const [manualTag, setManualTag] = useState<string>('');
   const [manualEntryError, setManualEntryError] = useState<string | null>(null);
 
@@ -81,6 +82,7 @@ export default function JournalScreen() {
 
     setManualStartTime(start);
     setManualEndTime(now);
+    setManualDate(selectedDate);
     setManualTag('');
     setManualEntryError(null);
     setIsManualEntryModalVisible(true);
@@ -96,10 +98,10 @@ export default function JournalScreen() {
       return;
     }
 
-    const finalStart = new Date(selectedDate);
+    const finalStart = new Date(manualDate);
     finalStart.setHours(manualStartTime.getHours(), manualStartTime.getMinutes(), 0, 0);
 
-    const finalEnd = new Date(selectedDate);
+    const finalEnd = new Date(manualDate);
     finalEnd.setHours(manualEndTime.getHours(), manualEndTime.getMinutes(), 0, 0);
 
     if (finalEnd <= finalStart) {
@@ -144,6 +146,8 @@ export default function JournalScreen() {
       isManualEntry: true,
     });
 
+    // Navigate the journal calendar to the session's date so the user can see it
+    setSelectedDate(new Date(manualDate));
     closeManualEntryModal();
   };
 
@@ -501,8 +505,17 @@ export default function JournalScreen() {
           </Typography>
 
           <View className="mb-5">
+            <View className="mb-4">
+              <DatePicker
+                value={manualDate}
+                onChange={setManualDate}
+                label="Date"
+                maximumDate={new Date()}
+              />
+            </View>
+
             <Typography variant="subtitle-14-medium" color="white" className="mb-2">
-              Time Range (for {selectedDate.toLocaleDateString()})
+              Time Range
             </Typography>
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-1 mr-2">
