@@ -252,7 +252,7 @@ export const WheelTimePicker: FC<WheelTimePickerProps> = ({ selectedTime, onTime
         isVisible={isOpen}
         onClose={() => setIsOpen(false)}
         height={SHEET_HEIGHT}
-        showHandle={false}>
+>
         <View style={{ paddingTop: 24 }}>
           <Typography variant="headline-20" color="white" className="mb-3">
             Set Duration

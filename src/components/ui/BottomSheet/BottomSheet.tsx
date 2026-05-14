@@ -1,5 +1,14 @@
-import React, { FC, ReactNode, useEffect } from 'react';
-import { Modal, View, Pressable, Animated, Dimensions } from 'react-native';
+import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { Modal, View, Pressable, Dimensions, StyleSheet } from 'react-native';
+import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BottomSheetProps {
@@ -11,90 +20,142 @@ interface BottomSheetProps {
 }
 
 const { height: screenHeight } = Dimensions.get('window');
+const DISMISS_THRESHOLD = 100;
 
 export const BottomSheet: FC<BottomSheetProps> = ({
   isVisible,
   onClose,
   children,
   height = screenHeight * 0.8,
-  showHandle = true,
 }) => {
   const insets = useSafeAreaInsets();
-  const slideAnim = React.useRef(new Animated.Value(height)).current;
-  const opacityAnim = React.useRef(new Animated.Value(0)).current;
+  const translateY = useSharedValue(height);
+  const contextY = useSharedValue(0);
+  const [modalVisible, setModalVisible] = useState(false);
+  const dismissedByGesture = useRef(false);
+
+  const sheetHeight = height + insets.bottom;
+
+  const notifyClose = useCallback(() => {
+    dismissedByGesture.current = true;
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     if (isVisible) {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: height,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      dismissedByGesture.current = false;
+      setModalVisible(true);
+      translateY.value = height;
+      translateY.value = withTiming(0, { duration: 300 });
+    } else if (modalVisible) {
+      if (dismissedByGesture.current) {
+        setModalVisible(false);
+        dismissedByGesture.current = false;
+      } else {
+        translateY.value = withTiming(height, { duration: 250 }, (finished) => {
+          if (finished) {
+            runOnJS(setModalVisible)(false);
+          }
+        });
+      }
     }
-  }, [isVisible, slideAnim, opacityAnim, height]);
+  }, [isVisible]);
 
-  if (!isVisible) return null;
+  const animateOutAndClose = useCallback(() => {
+    translateY.value = withTiming(height, { duration: 250 }, (finished) => {
+      if (finished) {
+        runOnJS(notifyClose)();
+      }
+    });
+  }, [translateY, height, notifyClose]);
 
+  const panGesture = Gesture.Pan()
+    .activeOffsetY(10)
+    .failOffsetY(-10)
+    .onStart(() => {
+      contextY.value = translateY.value;
+    })
+    .onUpdate((event) => {
+      translateY.value = Math.max(0, contextY.value + event.translationY);
+    })
+    .onEnd((event) => {
+      if (
+        translateY.value > DISMISS_THRESHOLD ||
+        event.velocityY > 500
+      ) {
+        translateY.value = withTiming(height, { duration: 250 }, (finished) => {
+          if (finished) {
+            runOnJS(notifyClose)();
+          }
+        });
+      } else {
+        translateY.value = withTiming(0, { duration: 200 });
+      }
+    });
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      translateY.value,
+      [0, height],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  // Always keep Modal mounted — toggling visible instead of unmounting
+  // avoids iOS native modal stack flash when multiple Modals are used.
   return (
     <Modal
-      visible={isVisible}
+      visible={modalVisible}
       transparent
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={animateOutAndClose}
       statusBarTranslucent
     >
-      {/* Backdrop */}
-      <Animated.View 
-        className="flex-1 bg-black/50"
-        style={{ opacity: opacityAnim }}
-      >
-        <Pressable 
-          className="flex-1" 
-          onPress={onClose}
-        />
-        
-        {/* Bottom Sheet */}
+      <GestureHandlerRootView style={styles.flex}>
+        {/* Backdrop */}
         <Animated.View
-          className="bg-dark-bg rounded-t-3xl"
-          style={{
-            height: height + insets.bottom,
-            transform: [{ translateY: slideAnim }],
-            paddingBottom: insets.bottom,
-          }}
+          className="flex-1 bg-black/50"
+          style={backdropStyle}
         >
-          {/* Handle */}
-          {showHandle && (
-            <View className="items-center py-3">
-              <View className="w-12 h-1 bg-gray-400 rounded-full" />
-            </View>
-          )}
-          
-          {/* Content */}
-          <View className="flex-1 px-6">
-            {children}
-          </View>
+          <Pressable
+            className="flex-1"
+            onPress={animateOutAndClose}
+          />
         </Animated.View>
-      </Animated.View>
+
+        {/* Bottom Sheet */}
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            className="absolute left-0 right-0 bottom-0 bg-dark-bg rounded-t-3xl"
+            style={[
+              {
+                height: sheetHeight,
+                paddingBottom: insets.bottom,
+              },
+              sheetStyle,
+            ]}
+          >
+            {/* Handle */}
+            <View className="items-center py-3">
+              <View className="w-10 h-[5px] bg-gray-500 rounded-full" />
+            </View>
+
+            {/* Content */}
+            <View className="flex-1 px-6">
+              {children}
+            </View>
+          </Animated.View>
+        </GestureDetector>
+      </GestureHandlerRootView>
     </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+});
