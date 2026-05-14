@@ -22,7 +22,7 @@ import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions } from '../../src/store';
 import { isToday } from '../../src/utils/dateUtils';
 import { FocusSession } from '../../src/types/models';
-import { showToast } from '../../src/components/ui/Toast';
+
 
 export default function JournalScreen() {
   const params = useLocalSearchParams();
@@ -103,7 +103,16 @@ export default function JournalScreen() {
     finalEnd.setHours(manualEndTime.getHours(), manualEndTime.getMinutes(), 0, 0);
 
     if (finalEnd <= finalStart) {
-      setManualEntryError('End time must be after start time');
+      setManualEntryError('Start time must be before end time');
+      triggerManualEntryShake();
+      return;
+    }
+
+    // Check if end time is in the future
+    const now = new Date();
+    if (finalEnd > now) {
+      setManualEntryError('Cannot create manual session for future time');
+      triggerManualEntryShake();
       return;
     }
 
@@ -121,7 +130,6 @@ export default function JournalScreen() {
     if (hasOverlap) {
       setManualEntryError('Time overlaps with another focus session');
       triggerManualEntryShake();
-      showToast('Time overlaps with another focus session', 'error');
       return;
     }
 
