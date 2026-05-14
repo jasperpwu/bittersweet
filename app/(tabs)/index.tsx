@@ -320,12 +320,13 @@ export default function FocusScreen() {
   const [unlockRemainingSeconds, setUnlockRemainingSeconds] = useState(0);
   const [isBonusTime, setIsBonusTime] = useState(false);
   const [bonusSeconds, setBonusSeconds] = useState(0);
-  // Refs to capture bonus state at stop time (before state resets) for saveSessionAndNavigate
+  // Refs to capture session state at stop time (before state resets) for saveSessionAndNavigate
   const stoppedInBonusRef = useRef(false);
   const stoppedBonusSecondsRef = useRef(0);
+  const stoppedSessionStartTimeRef = useRef<number | null>(null);
   const liveActivityIdRef = useRef<string | undefined>(undefined);
   const sessionEndTimeRef = useRef<number | null>(null); // Unix ms when session should end
-  const sessionStartTimeRef = useRef<number | null>(null); // Unix ms when session started (for infinite mode)
+  const sessionStartTimeRef = useRef<number | null>(null); // Unix ms when session started
   const scheduledNotificationRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unlockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -570,9 +571,11 @@ export default function FocusScreen() {
     setIsInfinite(infinite);
     setIsRunning(true);
 
+    const now = Date.now();
+    sessionStartTimeRef.current = now;
+
     if (infinite) {
       setElapsedSeconds(0);
-      sessionStartTimeRef.current = Date.now();
     } else {
       setRemainingSeconds(timerSeconds);
     }
@@ -652,10 +655,10 @@ export default function FocusScreen() {
     });
 
     // Persist active session so it survives app kills
-    const now = Date.now();
+    const persistNow = Date.now();
     AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
-      startTime: now,
-      endTime: infinite ? 0 : now + timerSeconds * 1000,
+      startTime: persistNow,
+      endTime: infinite ? 0 : persistNow + timerSeconds * 1000,
       targetDuration: isDevTimer ? 1 : selectedTime,
       tagId: selectedTag || 'Focus',
       isInfinite: infinite,
@@ -709,9 +712,10 @@ export default function FocusScreen() {
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = null;
     const wasBonusTime = isBonusTime;
-    // Capture bonus info for saveSessionAndNavigate (called later from notes modal)
+    // Capture session info for saveSessionAndNavigate (called later from animation callback)
     stoppedInBonusRef.current = isBonusTime;
     stoppedBonusSecondsRef.current = bonusSeconds;
+    stoppedSessionStartTimeRef.current = sessionStartTimeRef.current;
     setIsRunning(false);
     setIsBonusTime(false);
     setBonusSeconds(0);
@@ -916,6 +920,7 @@ export default function FocusScreen() {
           setIsInfinite(false);
           setIsRunning(true);
           setIsSessionActive(true);
+          sessionStartTimeRef.current = persisted.startTime;
           sessionEndTimeRef.current = persisted.endTime;
 
           const bonus = Math.floor((now - persisted.endTime) / 1000);
@@ -946,6 +951,7 @@ export default function FocusScreen() {
           setIsInfinite(false);
           setIsRunning(true);
           setIsSessionActive(true);
+          sessionStartTimeRef.current = persisted.startTime;
           sessionEndTimeRef.current = persisted.endTime;
 
           // Switch visuals to timer mode immediately (no animation needed on recovery)
@@ -1069,24 +1075,40 @@ export default function FocusScreen() {
   const saveSessionAndNavigate = (notes?: string, includeBonusTime: boolean = true) => {
     const wasBonus = stoppedInBonusRef.current;
     const savedBonusSeconds = stoppedBonusSecondsRef.current;
+    const sessionStart = stoppedSessionStartTimeRef.current;
     const isDevTimer = selectedTime === -1;
     const baseMinutes = isDevTimer ? 1 : selectedTime;
     const baseSeconds = isDevTimer ? 5 : selectedTime * 60;
-    const bonusMinutes = Math.floor(savedBonusSeconds / 60);
-    const actualDuration = wasBonus
-      ? baseMinutes + (includeBonusTime ? bonusMinutes : 0)
-      : isInfinite ? Math.floor(elapsedSeconds / 60) : Math.floor((baseSeconds - remainingSeconds) / 60);
+
+    // Use wall-clock time from refs (immune to state race conditions after rehydration)
+    const now = Date.now();
+    const totalElapsedSeconds = sessionStart ? Math.floor((now - sessionStart) / 1000) : 0;
+
+    let actualDuration: number;
+    let totalSeconds: number;
+
+    if (wasBonus) {
+      // Session completed its target duration and entered bonus time
+      const bonusMinutes = Math.floor(savedBonusSeconds / 60);
+      actualDuration = baseMinutes + (includeBonusTime ? bonusMinutes : 0);
+      totalSeconds = baseSeconds + (includeBonusTime ? savedBonusSeconds : 0);
+    } else if (sessionStart) {
+      // Session stopped before completion — use wall-clock elapsed time
+      actualDuration = Math.floor(totalElapsedSeconds / 60);
+      totalSeconds = totalElapsedSeconds;
+    } else {
+      // Fallback: derive from state (original logic, for safety)
+      actualDuration = isInfinite ? Math.floor(elapsedSeconds / 60) : Math.floor((baseSeconds - remainingSeconds) / 60);
+      totalSeconds = isInfinite ? elapsedSeconds : (baseSeconds - remainingSeconds);
+    }
 
     // Only create session if duration is meaningful (1+ minutes or dev timer)
     // Stopping within the first minute cancels the session
     const hasMinimumDuration = actualDuration >= 1 || isDevTimer;
 
     if (hasMinimumDuration) {
-      const totalSeconds = wasBonus
-        ? baseSeconds + (includeBonusTime ? savedBonusSeconds : 0)
-        : isInfinite ? elapsedSeconds : (baseSeconds - remainingSeconds);
-      const startTime = new Date(Date.now() - totalSeconds * 1000);
-      const endTime = new Date();
+      const startTime = sessionStart ? new Date(sessionStart) : new Date(now - totalSeconds * 1000);
+      const endTime = new Date(now);
 
       const session = createCompletedSession({
         startTime,
