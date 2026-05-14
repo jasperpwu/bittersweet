@@ -205,6 +205,7 @@ const GoalRowSwipeable: FC<GoalRowSwipeableProps> = ({
   onSwipeOpen,
 }) => {
   const swipeableRef = useRef<any>(null);
+  const didSwipe = useRef(false);
 
   const renderRightActions = () => (
     <View className="flex-row items-center ml-2">
@@ -233,14 +234,29 @@ const GoalRowSwipeable: FC<GoalRowSwipeableProps> = ({
     </View>
   );
 
+  const handlePress = () => {
+    if (didSwipe.current) {
+      didSwipe.current = false;
+      return;
+    }
+    onPress();
+  };
+
   return (
     <Swipeable
       ref={swipeableRef}
       renderRightActions={renderRightActions}
       overshootRight={false}
-      onSwipeableWillOpen={() => onSwipeOpen?.(swipeableRef.current)}
+      onSwipeableWillOpen={() => {
+        didSwipe.current = true;
+        onSwipeOpen?.(swipeableRef.current);
+      }}
+      onSwipeableClose={() => {
+        // Reset after close animation completes
+        setTimeout(() => { didSwipe.current = false; }, 100);
+      }}
     >
-      <Pressable onPress={onPress} disabled={!goal.isRepeating}>
+      <Pressable onPress={handlePress} disabled={!goal.isRepeating}>
         <GoalRowItem goal={goal} tags={tags} />
       </Pressable>
     </Swipeable>
