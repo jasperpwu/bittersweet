@@ -1,5 +1,5 @@
 import React, { FC, useState } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { Typography } from '../../ui/Typography';
 import { FocusGoalForm } from '../../forms/FocusGoalForm';
@@ -82,13 +82,22 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
       </View>
 
       {/* Form Content */}
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <FocusGoalForm
-          onSubmit={handleCreateGoal}
-          onCancel={onClose}
-          editingGoal={activeEditingGoal ? goals.byId[activeEditingGoal] : undefined}
-        />
-      </ScrollView>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1"
+      >
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <FocusGoalForm
+            onSubmit={handleCreateGoal}
+            onCancel={onClose}
+            editingGoal={activeEditingGoal ? goals.byId[activeEditingGoal] : undefined}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </BottomSheet>
   );
 };

@@ -1,5 +1,5 @@
 import { FC, useState, useEffect } from 'react';
-import { View, Pressable, ScrollView, TextInput } from 'react-native';
+import { View, Pressable, TextInput } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { Slider } from '../../ui/Slider';
 import { Toggle } from '../../ui/Toggle';
@@ -146,209 +146,201 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   };
 
   return (
-    <ScrollView className="flex-1">
-      <View className="space-y-4">
-        {/* Time Period */}
-        <View>
-          <Typography variant="subtitle-16" color="white" className="mb-2">
-            Time Period
-          </Typography>
-          <View className="flex-row space-x-2">
-            {(['daily', 'weekly', 'monthly'] as const).map((p) => (
-              <Pressable
-                key={p}
-                onPress={() => setPeriod(p)}
-                className={`flex-1 p-3 rounded-xl ${
-                  period === p ? 'bg-primary' : 'bg-dark-border'
-                }`}
+    <View className="gap-y-5">
+      {/* Time Period */}
+      <View>
+        <Typography variant="subtitle-16" color="white" className="mb-2">
+          Time Period
+        </Typography>
+        <View className="flex-row gap-x-2">
+          {(['daily', 'weekly', 'monthly'] as const).map((p) => (
+            <Pressable
+              key={p}
+              onPress={() => setPeriod(p)}
+              className={`flex-1 py-3 rounded-xl ${
+                period === p ? 'bg-primary' : 'bg-dark-border'
+              }`}
+            >
+              <Typography
+                variant="body-14"
+                className="text-center text-white"
               >
-                <Typography
-                  variant="body-14"
-                  className={`text-center ${
-                    'text-white'
-                  }`}
-                >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                {p.charAt(0).toUpperCase() + p.slice(1)}
+              </Typography>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* Target Duration — Slider */}
+      <View>
+        <Typography variant="subtitle-16" color="white" className="mb-2">
+          Target Duration
+        </Typography>
+        <View className="bg-dark-border rounded-xl p-4 items-center">
+          <Typography variant="headline-20" color="white" className="mb-3">
+            {formatSliderValue(targetHours)}
+          </Typography>
+          <Slider
+            value={targetHours}
+            minimumValue={STEP_HOURS[period]}
+            maximumValue={MAX_HOURS[period]}
+            step={STEP_HOURS[period]}
+            onValueChange={setTargetHours}
+            unit="h"
+          />
+        </View>
+      </View>
+
+      {/* Repeating Toggle */}
+      <View className="flex-row items-center justify-between bg-dark-border rounded-xl p-4">
+        <View className="flex-1 mr-3">
+          <Typography variant="subtitle-16" color="white">
+            Repeat this goal
+          </Typography>
+          <Typography variant="body-12" color="secondary" className="mt-1">
+            Track consistency across periods
+          </Typography>
+        </View>
+        <Toggle value={isRepeating} onValueChange={setIsRepeating} />
+      </View>
+
+      {/* Show Total Hours Toggle */}
+      <View className="flex-row items-center justify-between bg-dark-border rounded-xl p-4">
+        <View className="flex-1 mr-3">
+          <Typography variant="subtitle-16" color="white">
+            Show total hours
+          </Typography>
+          <Typography variant="body-12" color="secondary" className="mt-1">
+            Display cumulative hours in the streaks view
+          </Typography>
+        </View>
+        <Toggle value={showTotalHours} onValueChange={setShowTotalHours} />
+      </View>
+
+      {/* Tag Selection */}
+      <View>
+        <Typography variant="subtitle-16" color="white" className="mb-2">
+          Tags *
+        </Typography>
+        <Typography variant="body-12" color="secondary" className="mb-3">
+          Select at least one tag to track
+        </Typography>
+        <View className="flex-row flex-wrap gap-2">
+          {selectedTagIds.map((tagId) => {
+            const tag = availableTags.find(t => t.id === tagId);
+            return tag ? (
+              <Pressable
+                key={tag.id}
+                onPress={() => toggleTag(tag.id)}
+                className="flex-row items-center rounded-full px-3 py-2 bg-primary"
+              >
+                <Typography variant="body-14" className="mr-1">
+                  {tag.icon}
+                </Typography>
+                <Typography variant="body-14" className="text-white mr-1">
+                  {tag.name}
+                </Typography>
+                <Typography variant="body-14" className="text-white">
+                  ×
                 </Typography>
               </Pressable>
-            ))}
-          </View>
-        </View>
+            ) : null;
+          })}
 
-        {/* Target Duration — Slider */}
-        <View>
-          <Typography variant="subtitle-16" color="white" className="mb-2">
-            Target Duration
-          </Typography>
-          <View className="bg-dark-border rounded-xl p-4 items-center">
-            <Typography variant="headline-20" color="white" className="mb-3">
-              {formatSliderValue(targetHours)}
+          {/* Add Tag Button */}
+          <Pressable
+            onPress={() => setShowAddTag(!showAddTag)}
+            className="flex-row items-center rounded-full px-3 py-2 bg-dark-border border border-dashed border-gray-500"
+          >
+            <Typography variant="body-14" className="text-white mr-1">
+              +
             </Typography>
-            <Slider
-              value={targetHours}
-              minimumValue={STEP_HOURS[period]}
-              maximumValue={MAX_HOURS[period]}
-              step={STEP_HOURS[period]}
-              onValueChange={setTargetHours}
-              unit="h"
-            />
-          </View>
+            <Typography variant="body-14" className="text-white">
+              Add Tag
+            </Typography>
+          </Pressable>
         </View>
 
-        {/* Repeating Toggle */}
-        <View>
-          <View className="flex-row items-center justify-between bg-dark-border rounded-xl p-4">
-            <View className="flex-1 mr-3">
-              <Typography variant="subtitle-16" color="white">
-                Repeat this goal
-              </Typography>
-              <Typography variant="body-12" color="secondary" className="mt-1">
-                Track consistency across periods
-              </Typography>
-            </View>
-            <Toggle value={isRepeating} onValueChange={setIsRepeating} />
-          </View>
-        </View>
-
-        {/* Show Total Hours Toggle */}
-        <View>
-          <View className="flex-row items-center justify-between bg-dark-border rounded-xl p-4">
-            <View className="flex-1 mr-3">
-              <Typography variant="subtitle-16" color="white">
-                Show total hours
-              </Typography>
-              <Typography variant="body-12" color="secondary" className="mt-1">
-                Display cumulative hours in the streaks view
-              </Typography>
-            </View>
-            <Toggle value={showTotalHours} onValueChange={setShowTotalHours} />
-          </View>
-        </View>
-
-        {/* Tag Selection */}
-        <View>
-          <Typography variant="subtitle-16" color="white" className="mb-2">
-            Tags *
-          </Typography>
-          <Typography variant="body-14" color="white" className="mb-3">
-            Select at least one tag to track
-          </Typography>
-          <View className="flex-row flex-wrap">
-            {selectedTagIds.map((tagId) => {
-              const tag = availableTags.find(t => t.id === tagId);
-              return tag ? (
+        {/* Available Tags */}
+        {showAddTag && (
+          <View className="mt-3">
+            <Typography variant="body-12" color="secondary" className="mb-2">
+              Available Tags:
+            </Typography>
+            <View className="flex-row flex-wrap gap-2">
+              {availableTags.filter(tag => !selectedTagIds.includes(tag.id)).map((tag) => (
                 <Pressable
                   key={tag.id}
-                  onPress={() => toggleTag(tag.id)}
-                  className="flex-row items-center rounded-full px-3 py-2 mr-2 mb-2 bg-primary"
+                  onPress={() => {
+                    toggleTag(tag.id);
+                    setShowAddTag(false);
+                  }}
+                  className="flex-row items-center rounded-full px-3 py-2 bg-dark-border"
                 >
                   <Typography variant="body-14" className="mr-1">
                     {tag.icon}
                   </Typography>
-                  <Typography variant="body-14" className="text-white mr-1">
+                  <Typography variant="body-14" className="text-white">
                     {tag.name}
                   </Typography>
-                  <Typography variant="body-14" className="text-white">
-                    ×
-                  </Typography>
                 </Pressable>
-              ) : null;
-            })}
-
-            {/* Add Tag Button */}
-            <Pressable
-              onPress={() => setShowAddTag(!showAddTag)}
-              className="flex-row items-center rounded-full px-3 py-2 mr-2 mb-2 bg-dark-border border-2 border-dashed border-gray-400"
-            >
-              <Typography variant="body-14" className="text-white mr-1">
-                +
-              </Typography>
-              <Typography variant="body-14" className="text-white">
-                Add Tag
-              </Typography>
-            </Pressable>
-          </View>
-
-          {/* Available Tags */}
-          {showAddTag && (
-            <View className="mt-3">
-              <Typography variant="body-14" color="white" className="mb-2">
-                Available Tags:
-              </Typography>
-              <View className="flex-row flex-wrap">
-                {availableTags.filter(tag => !selectedTagIds.includes(tag.id)).map((tag) => (
-                  <Pressable
-                    key={tag.id}
-                    onPress={() => {
-                      toggleTag(tag.id);
-                      setShowAddTag(false);
-                    }}
-                    className="flex-row items-center rounded-full px-3 py-2 mr-2 mb-2 bg-dark-border"
-                  >
-                    <Typography variant="body-14" className="mr-1">
-                      {tag.icon}
-                    </Typography>
-                    <Typography variant="body-14" className="text-white">
-                      {tag.name}
-                    </Typography>
-                  </Pressable>
-                ))}
-              </View>
+              ))}
             </View>
-          )}
-        </View>
-
-        {/* Custom Goal Name - Show when multiple tags selected or when editing with custom name */}
-        {(selectedTagIds.length > 1 || customGoalName) && (
-          <View>
-            <Typography variant="subtitle-16" color="white" className="mb-2">
-              Goal Name (Optional)
-            </Typography>
-            <Typography variant="body-14" color="white" className="mb-3">
-              Give your goal a custom name
-            </Typography>
-            <TextInput
-              value={customGoalName}
-              onChangeText={setCustomGoalName}
-              placeholder={
-                selectedTagIds.length === 1
-                  ? `${period.charAt(0).toUpperCase() + period.slice(1)} ${availableTags.find(t => t.id === selectedTagIds[0])?.name || 'Focus'} Goal`
-                  : `${period.charAt(0).toUpperCase() + period.slice(1)} Focus Goal`
-              }
-              placeholderTextColor="#6B7280"
-              className="bg-dark-border rounded-xl p-3 text-white text-base"
-              style={{ fontFamily: 'Poppins-Regular' }}
-            />
           </View>
         )}
-
-        {/* Action Buttons */}
-        <View className="flex-row space-x-3 pt-4">
-          <Pressable
-            onPress={onCancel}
-            className="flex-1 bg-dark-border rounded-xl p-3 active:opacity-70"
-          >
-            <Typography variant="body-14" color="white" className="text-center">
-              Cancel
-            </Typography>
-          </Pressable>
-          <Pressable
-            onPress={handleSubmit}
-            disabled={!isValid}
-            className={`flex-1 rounded-xl p-3 active:opacity-70 ${
-              isValid ? 'bg-primary' : 'bg-dark-border opacity-50'
-            }`}
-          >
-            <Typography
-              variant="body-14"
-              color="white"
-              className={`text-center text-white`}
-            >
-              {editingGoal ? 'Update Goal' : 'Create Goal'}
-            </Typography>
-          </Pressable>
-        </View>
       </View>
-    </ScrollView>
+
+      {/* Custom Goal Name - Show when multiple tags selected or when editing with custom name */}
+      {(selectedTagIds.length > 1 || customGoalName) && (
+        <View>
+          <Typography variant="subtitle-16" color="white" className="mb-2">
+            Goal Name (Optional)
+          </Typography>
+          <Typography variant="body-12" color="secondary" className="mb-3">
+            Give your goal a custom name
+          </Typography>
+          <TextInput
+            value={customGoalName}
+            onChangeText={setCustomGoalName}
+            placeholder={
+              selectedTagIds.length === 1
+                ? `${period.charAt(0).toUpperCase() + period.slice(1)} ${availableTags.find(t => t.id === selectedTagIds[0])?.name || 'Focus'} Goal`
+                : `${period.charAt(0).toUpperCase() + period.slice(1)} Focus Goal`
+            }
+            placeholderTextColor="#6B7280"
+            className="bg-dark-border rounded-xl p-4 text-white text-base"
+            style={{ fontFamily: 'Poppins-Regular' }}
+          />
+        </View>
+      )}
+
+      {/* Action Buttons */}
+      <View className="flex-row gap-x-3 pt-2 pb-4">
+        <Pressable
+          onPress={onCancel}
+          className="flex-1 bg-dark-border rounded-xl py-4 active:opacity-70"
+        >
+          <Typography variant="body-14" color="white" className="text-center">
+            Cancel
+          </Typography>
+        </Pressable>
+        <Pressable
+          onPress={handleSubmit}
+          disabled={!isValid}
+          className={`flex-1 rounded-xl py-4 active:opacity-70 ${
+            isValid ? 'bg-primary' : 'bg-dark-border opacity-50'
+          }`}
+        >
+          <Typography
+            variant="body-14"
+            color="white"
+            className="text-center"
+          >
+            {editingGoal ? 'Update Goal' : 'Create Goal'}
+          </Typography>
+        </Pressable>
+      </View>
+    </View>
   );
 };
