@@ -405,7 +405,10 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
     const totalMinutes = relevant.reduce((sum, s) => sum + s.duration, 0);
     const hit = totalMinutes >= goal.targetMinutes;
-    return { ...range, hit, totalMinutes };
+    const fillPercent = goal.targetMinutes > 0
+      ? Math.min(totalMinutes / goal.targetMinutes, 1) * 100
+      : 0;
+    return { ...range, hit, totalMinutes, fillPercent };
   });
 
   const hitCount = results.filter(r => r.hit).length;
@@ -446,9 +449,16 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
           {paddedResults.map((r, i) => (
             <View key={i} className="items-center justify-center" style={{ width: '14.28%', aspectRatio: 1 }}>
               {r ? (
-                <View
-                  className={`w-5 h-5 rounded-sm ${r.hit ? 'bg-green-500' : 'bg-dark-border'}`}
-                />
+                r.hit ? (
+                  <View className="w-5 h-5 rounded-sm bg-green-500" />
+                ) : (
+                  <View className="w-5 h-5 rounded-sm bg-dark-border overflow-hidden">
+                    <View
+                      className="absolute bottom-0 left-0 right-0 bg-primary"
+                      style={{ height: `${r.fillPercent}%` }}
+                    />
+                  </View>
+                )
               ) : (
                 <View className="w-5 h-5" />
               )}
@@ -489,10 +499,22 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
           <View key={rowIdx} className={`flex-row justify-between ${rowIdx === 0 ? 'mb-2' : ''}`}>
             {row.map((r, i) => (
               <View key={i} className="items-center" style={{ flex: 1 }}>
-                <View
-                  className={`rounded-sm mb-1 ${r.hit ? 'bg-green-500' : 'bg-dark-border'}`}
-                  style={{ width: 28, height: 28 }}
-                />
+                {r.hit ? (
+                  <View
+                    className="rounded-sm mb-1 bg-green-500"
+                    style={{ width: 28, height: 28 }}
+                  />
+                ) : (
+                  <View
+                    className="rounded-sm mb-1 bg-dark-border overflow-hidden"
+                    style={{ width: 28, height: 28 }}
+                  >
+                    <View
+                      className="absolute bottom-0 left-0 right-0 bg-primary"
+                      style={{ height: `${r.fillPercent}%` }}
+                    />
+                  </View>
+                )}
                 <Typography variant="tiny-10" color="secondary" className="text-center">
                   {r.label}
                 </Typography>
@@ -528,9 +550,16 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
       <View className="flex-row justify-between">
         {results.map((r, i) => (
           <View key={i} className="items-center" style={{ flex: 1 }}>
-            <View
-              className={`w-5 h-5 rounded-sm mb-1 ${r.hit ? 'bg-green-500' : 'bg-dark-border'}`}
-            />
+            {r.hit ? (
+              <View className="w-5 h-5 rounded-sm mb-1 bg-green-500" />
+            ) : (
+              <View className="w-5 h-5 rounded-sm mb-1 bg-dark-border overflow-hidden">
+                <View
+                  className="absolute bottom-0 left-0 right-0 bg-primary"
+                  style={{ height: `${r.fillPercent}%` }}
+                />
+              </View>
+            )}
             <Typography variant="tiny-10" color="secondary" className="text-center">
               {r.label}
             </Typography>
@@ -551,6 +580,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 // ---------- Empty State Placeholder ----------
 
 const GoalEmptyPlaceholder: FC = () => {
+  const targetHours = 40;
   const placeholderMonths = [
     { label: 'Jun', hours: 42, hit: true },
     { label: 'Jul', hours: 38, hit: true },
@@ -564,7 +594,7 @@ const GoalEmptyPlaceholder: FC = () => {
     { label: 'Mar', hours: 44, hit: true },
     { label: 'Apr', hours: 50, hit: true },
     { label: 'May', hours: 22, hit: false },
-  ];
+  ].map(m => ({ ...m, fillPercent: Math.min(m.hours / targetHours, 1) * 100 }));
 
   const topRow = placeholderMonths.slice(0, 6);
   const bottomRow = placeholderMonths.slice(6);
@@ -631,10 +661,22 @@ const GoalEmptyPlaceholder: FC = () => {
           <View key={rowIdx} className={`flex-row justify-between ${rowIdx === 0 ? 'mb-2' : ''}`}>
             {row.map((m, i) => (
               <View key={i} className="items-center" style={{ flex: 1 }}>
-                <View
-                  className={`rounded-sm mb-1 ${m.hit ? 'bg-[#6592E9]' : 'bg-dark-border'}`}
-                  style={{ width: 28, height: 28 }}
-                />
+                {m.hit ? (
+                  <View
+                    className="rounded-sm mb-1 bg-green-500"
+                    style={{ width: 28, height: 28 }}
+                  />
+                ) : (
+                  <View
+                    className="rounded-sm mb-1 bg-dark-border overflow-hidden"
+                    style={{ width: 28, height: 28 }}
+                  >
+                    <View
+                      className="absolute bottom-0 left-0 right-0 bg-primary"
+                      style={{ height: `${m.fillPercent}%` }}
+                    />
+                  </View>
+                )}
                 <Typography variant="tiny-10" className="text-gray-300 text-center">
                   {m.label}
                 </Typography>
