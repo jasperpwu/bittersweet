@@ -44,7 +44,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   const [showAddTag, setShowAddTag] = useState(false);
   const [customGoalName, setCustomGoalName] = useState('');
   const [isRepeating, setIsRepeating] = useState(true);
-  const [showTotalHours, setShowTotalHours] = useState(false);
+  const [showTotalHours, setShowTotalHours] = useState(true);
 
   // Get tags from store
   const { tags } = useFocus();
@@ -82,7 +82,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       setSelectedTagIds([]);
       setCustomGoalName('');
       setIsRepeating(true);
-      setShowTotalHours(false);
+      setShowTotalHours(true);
     }
     setShowAddTag(false);
   }, [editingGoal, tags.byId]);

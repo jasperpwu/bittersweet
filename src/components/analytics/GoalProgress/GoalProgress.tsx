@@ -1,6 +1,8 @@
 import { FC, useRef, useState, useMemo } from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, Share, Platform } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { Ionicons } from '@expo/vector-icons';
+import { captureRef } from 'react-native-view-shot';
 import { Typography } from '../../ui/Typography';
 import { FocusGoal } from '../../../store/types';
 import { useFocus } from '../../../store';
@@ -159,25 +161,31 @@ export const GoalProgress: FC<GoalProgressProps> = ({
       {Object.entries(goalsByPeriod).map(([period, periodGoals]) => (
         <View key={period} className="mb-4">
           <View className="space-y-3">
-            {periodGoals.map((goal) => (
-              <View key={goal.id}>
-                <GoalRowSwipeable
-                  goal={goal}
-                  tags={tags}
-                  onPress={() => handleGoalPress(goal)}
-                  onEdit={onEditGoal}
-                  onDelete={onDeleteGoal}
-                  onSwipeOpen={handleSwipeOpen}
-                />
-                {goal.isRepeating && expandedGoalId === goal.id && (
-                  <GoalConsistencyCalendar
-                    goal={goal}
-                    sessions={safeSessions}
-                    tagMap={tagMap}
-                  />
-                )}
-              </View>
-            ))}
+            {periodGoals.map((goal) => {
+              const isExpanded = goal.isRepeating && expandedGoalId === goal.id;
+              return (
+                <View key={goal.id}>
+                  {!isExpanded && (
+                    <GoalRowSwipeable
+                      goal={goal}
+                      tags={tags}
+                      onPress={() => handleGoalPress(goal)}
+                      onEdit={onEditGoal}
+                      onDelete={onDeleteGoal}
+                      onSwipeOpen={handleSwipeOpen}
+                    />
+                  )}
+                  {isExpanded && (
+                    <GoalConsistencyCalendar
+                      goal={goal}
+                      sessions={safeSessions}
+                      tagMap={tagMap}
+                      onCollapse={() => setExpandedGoalId(null)}
+                    />
+                  )}
+                </View>
+              );
+            })}
           </View>
         </View>
       ))}
@@ -383,9 +391,29 @@ interface GoalConsistencyCalendarProps {
   goal: ProcessedGoal;
   sessions: any[];
   tagMap: Record<string, { id: string; name: string }>;
+  onCollapse: () => void;
 }
 
-const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessions, tagMap: _tagMap }) => {
+const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessions, tagMap: _tagMap, onCollapse }) => {
+  const captureAreaRef = useRef<View>(null);
+
+  const handleShare = async () => {
+    try {
+      const uri = await captureRef(captureAreaRef, {
+        format: 'png',
+        quality: 1,
+      });
+
+      await Share.share(
+        Platform.OS === 'ios'
+          ? { url: uri }
+          : { message: `Check out my focus streak for "${goal.name}"!`, url: uri }
+      );
+    } catch (_e) {
+      // User cancelled or share failed silently
+    }
+  };
+
   const periodCounts: Record<string, number> = { daily: 30, weekly: 12, monthly: 12 };
   const count = periodCounts[goal.period] || 12;
   const ranges = getHistoricalPeriodRanges(goal.period, count);
@@ -422,57 +450,79 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
     return `${mins}m`;
   };
 
+  // Goal header for the screenshot capture
+  const goalHeader = (
+    <View className="mb-3">
+      <Typography variant="subtitle-16" className="text-white">
+        {goal.name}
+      </Typography>
+    </View>
+  );
+
+  // Footer row with total hours + share button
+  const footerRow = (
+    <View className="mt-3 pt-3 border-t border-dark-border flex-row items-center justify-between">
+      <View className="flex-1">
+        {(goal as any).showTotalHours && (
+          <Typography variant="body-14" className="text-white font-poppins-semibold">
+            ⏱️ {formatTotalHours(totalMinutesAll)} total
+          </Typography>
+        )}
+      </View>
+      <Pressable onPress={handleShare} className="active:opacity-70 p-1">
+        <Ionicons name="share-outline" size={18} color="#FFFFFF" />
+      </Pressable>
+    </View>
+  );
+
   if (goal.period === 'daily') {
     const firstDay = results[0]?.periodStart.getDay() ?? 0;
     const paddedResults = [...Array(firstDay).fill(null), ...results];
 
     return (
-      <View className="bg-dark-bg border border-dark-border rounded-xl p-4 mt-2">
-        <View className="flex-row items-center justify-between mb-3">
-          <Typography variant="body-12" color="secondary">
-            Last 30 days
-          </Typography>
-          <Typography variant="body-12" color="primary">
-            {hitCount}/{count} hit
-          </Typography>
-        </View>
-        {/* Day headers */}
-        <View className="flex-row mb-1">
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-            <View key={i} className="flex-1 items-center">
-              <Typography variant="tiny-10" color="secondary">{d}</Typography>
-            </View>
-          ))}
-        </View>
-        {/* Grid */}
-        <View className="flex-row flex-wrap">
-          {paddedResults.map((r, i) => (
-            <View key={i} className="items-center justify-center" style={{ width: '14.28%', aspectRatio: 1 }}>
-              {r ? (
-                r.hit ? (
-                  <View className="w-5 h-5 rounded-sm bg-green-500" />
-                ) : (
-                  <View className="w-5 h-5 rounded-sm bg-dark-border overflow-hidden">
-                    <View
-                      className="absolute bottom-0 left-0 right-0 bg-primary"
-                      style={{ height: `${r.fillPercent}%` }}
-                    />
-                  </View>
-                )
-              ) : (
-                <View className="w-5 h-5" />
-              )}
-            </View>
-          ))}
-        </View>
-        {(goal as any).showTotalHours && (
-          <View className="mt-3 pt-3 border-t border-dark-border items-center">
-            <Typography variant="body-14" className="text-white font-poppins-semibold">
-              ⏱️ {formatTotalHours(totalMinutesAll)} total
+      <Pressable className="mt-2" onPress={onCollapse}>
+        <View ref={captureAreaRef} collapsable={false} className="bg-dark-bg border border-dark-border rounded-xl p-4">
+          {goalHeader}
+          <View className="flex-row items-center justify-between mb-3">
+            <Typography variant="body-12" color="secondary">
+              Last 30 days
+            </Typography>
+            <Typography variant="body-12" color="primary">
+              {hitCount}/{count} hit
             </Typography>
           </View>
-        )}
-      </View>
+          {/* Day headers */}
+          <View className="flex-row mb-1">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+              <View key={i} className="flex-1 items-center">
+                <Typography variant="tiny-10" color="secondary">{d}</Typography>
+              </View>
+            ))}
+          </View>
+          {/* Grid */}
+          <View className="flex-row flex-wrap">
+            {paddedResults.map((r, i) => (
+              <View key={i} className="items-center justify-center" style={{ width: '14.28%', aspectRatio: 1 }}>
+                {r ? (
+                  r.hit ? (
+                    <View className="w-5 h-5 rounded-sm bg-green-500" />
+                  ) : (
+                    <View className="w-5 h-5 rounded-sm bg-dark-border overflow-hidden">
+                      <View
+                        className="absolute bottom-0 left-0 right-0 bg-primary"
+                        style={{ height: `${r.fillPercent}%` }}
+                      />
+                    </View>
+                  )
+                ) : (
+                  <View className="w-5 h-5" />
+                )}
+              </View>
+            ))}
+          </View>
+          {footerRow}
+        </View>
+      </Pressable>
     );
   }
 
@@ -486,94 +536,88 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
     };
 
     return (
-      <View className="bg-dark-bg border border-dark-border rounded-xl p-4 mt-2">
-        <View className="flex-row items-center justify-between mb-3">
-          <Typography variant="body-12" color="secondary">
-            Last 12 months
-          </Typography>
-          <Typography variant="body-12" color="primary">
-            {hitCount}/{count} hit
-          </Typography>
-        </View>
-        {[topRow, bottomRow].map((row, rowIdx) => (
-          <View key={rowIdx} className={`flex-row justify-between ${rowIdx === 0 ? 'mb-2' : ''}`}>
-            {row.map((r, i) => (
-              <View key={i} className="items-center" style={{ flex: 1 }}>
-                {r.hit ? (
-                  <View
-                    className="rounded-sm mb-1 bg-green-500"
-                    style={{ width: 28, height: 28 }}
-                  />
-                ) : (
-                  <View
-                    className="rounded-sm mb-1 bg-dark-border overflow-hidden"
-                    style={{ width: 28, height: 28 }}
-                  >
-                    <View
-                      className="absolute bottom-0 left-0 right-0 bg-primary"
-                      style={{ height: `${r.fillPercent}%` }}
-                    />
-                  </View>
-                )}
-                <Typography variant="tiny-10" color="secondary" className="text-center">
-                  {r.label}
-                </Typography>
-                <Typography variant="tiny-10" color={r.hit ? 'primary' : 'secondary'} className="text-center">
-                  {formatMinutes(r.totalMinutes)}
-                </Typography>
-              </View>
-            ))}
-          </View>
-        ))}
-        {(goal as any).showTotalHours && (
-          <View className="mt-3 pt-3 border-t border-dark-border items-center">
-            <Typography variant="body-14" className="text-white font-poppins-semibold">
-              ⏱️ {formatTotalHours(totalMinutesAll)} total
+      <Pressable className="mt-2" onPress={onCollapse}>
+        <View ref={captureAreaRef} collapsable={false} className="bg-dark-bg border border-dark-border rounded-xl p-4">
+          {goalHeader}
+          <View className="flex-row items-center justify-between mb-3">
+            <Typography variant="body-12" color="secondary">
+              Last 12 months
+            </Typography>
+            <Typography variant="body-12" color="primary">
+              {hitCount}/{count} hit
             </Typography>
           </View>
-        )}
-      </View>
+          {[topRow, bottomRow].map((row, rowIdx) => (
+            <View key={rowIdx} className={`flex-row justify-between ${rowIdx === 0 ? 'mb-2' : ''}`}>
+              {row.map((r, i) => (
+                <View key={i} className="items-center" style={{ flex: 1 }}>
+                  {r.hit ? (
+                    <View
+                      className="rounded-sm mb-1 bg-green-500"
+                      style={{ width: 28, height: 28 }}
+                    />
+                  ) : (
+                    <View
+                      className="rounded-sm mb-1 bg-dark-border overflow-hidden"
+                      style={{ width: 28, height: 28 }}
+                    >
+                      <View
+                        className="absolute bottom-0 left-0 right-0 bg-primary"
+                        style={{ height: `${r.fillPercent}%` }}
+                      />
+                    </View>
+                  )}
+                  <Typography variant="tiny-10" color="secondary" className="text-center">
+                    {r.label}
+                  </Typography>
+                  <Typography variant="tiny-10" color={r.hit ? 'primary' : 'secondary'} className="text-center">
+                    {formatMinutes(r.totalMinutes)}
+                  </Typography>
+                </View>
+              ))}
+            </View>
+          ))}
+          {footerRow}
+        </View>
+      </Pressable>
     );
   }
 
   // Weekly — horizontal row of blocks
   return (
-    <View className="bg-dark-bg border border-dark-border rounded-xl p-4 mt-2">
-      <View className="flex-row items-center justify-between mb-3">
-        <Typography variant="body-12" color="secondary">
-          Last {count} weeks
-        </Typography>
-        <Typography variant="body-12" color="primary">
-          {hitCount}/{count} hit
-        </Typography>
-      </View>
-      <View className="flex-row justify-between">
-        {results.map((r, i) => (
-          <View key={i} className="items-center" style={{ flex: 1 }}>
-            {r.hit ? (
-              <View className="w-5 h-5 rounded-sm mb-1 bg-green-500" />
-            ) : (
-              <View className="w-5 h-5 rounded-sm mb-1 bg-dark-border overflow-hidden">
-                <View
-                  className="absolute bottom-0 left-0 right-0 bg-primary"
-                  style={{ height: `${r.fillPercent}%` }}
-                />
-              </View>
-            )}
-            <Typography variant="tiny-10" color="secondary" className="text-center">
-              {r.label}
-            </Typography>
-          </View>
-        ))}
-      </View>
-      {(goal as any).showTotalHours && (
-        <View className="mt-3 pt-3 border-t border-dark-border items-center">
-          <Typography variant="body-14" className="text-white font-poppins-semibold">
-            ⏱️ {formatTotalHours(totalMinutesAll)} total
+    <Pressable className="mt-2" onPress={onCollapse}>
+      <View ref={captureAreaRef} collapsable={false} className="bg-dark-bg border border-dark-border rounded-xl p-4">
+        {goalHeader}
+        <View className="flex-row items-center justify-between mb-3">
+          <Typography variant="body-12" color="secondary">
+            Last {count} weeks
+          </Typography>
+          <Typography variant="body-12" color="primary">
+            {hitCount}/{count} hit
           </Typography>
         </View>
-      )}
-    </View>
+        <View className="flex-row justify-between">
+          {results.map((r, i) => (
+            <View key={i} className="items-center" style={{ flex: 1 }}>
+              {r.hit ? (
+                <View className="w-5 h-5 rounded-sm mb-1 bg-green-500" />
+              ) : (
+                <View className="w-5 h-5 rounded-sm mb-1 bg-dark-border overflow-hidden">
+                  <View
+                    className="absolute bottom-0 left-0 right-0 bg-primary"
+                    style={{ height: `${r.fillPercent}%` }}
+                  />
+                </View>
+              )}
+              <Typography variant="tiny-10" color="secondary" className="text-center">
+                {r.label}
+              </Typography>
+            </View>
+          ))}
+        </View>
+        {footerRow}
+      </View>
+    </Pressable>
   );
 };
 
