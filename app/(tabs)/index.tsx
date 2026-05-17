@@ -5,7 +5,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal, EMOJI_CATEGORIES } from '../../src/components/ui/EmojiPicker/EmojiPicker';
-import { TimeScroller, WheelTimePicker } from '../../src/components/focus';
+import { TimeScroller, DurationPicker } from '../../src/components/focus';
 
 import { useFocus, useFocusActions, useRewards, useAppStore, useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
 import { useAppSettings } from '../../src/store/unified-store';
@@ -1187,7 +1187,7 @@ export default function FocusScreen() {
         <View style={{ height: 300, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
           <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 0 : scrollerOpacity, width: '100%', zIndex: 0 }} pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
             {timerPickerStyle === 'wheel' ? (
-              <WheelTimePicker
+              <DurationPicker
                 selectedTime={selectedTime}
                 onTimeChange={handleTimeChange}
               />

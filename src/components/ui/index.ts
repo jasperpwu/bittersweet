@@ -17,4 +17,4 @@ export * from './TabBar';
 export * from './TabBarIcon';
 export * from './TimePicker';
 export * from './Toggle';
-export * from './Typography';
+export * from './Typography';export * from './WheelColumn';

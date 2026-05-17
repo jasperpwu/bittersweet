@@ -4,4 +4,4 @@ export * from './TimerControls';
 export * from './SessionStatus';
 export * from './TagSelector';
 export * from './TimeScroller';
-export * from './WheelTimePicker';
+export * from './DurationPicker';
