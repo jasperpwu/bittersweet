@@ -75,9 +75,9 @@ export default function JournalScreen() {
       }
     });
 
-    // Use whichever is later: last session end or 25 min ago (avoid overlap)
+    // Use whichever is later: last session end + 1 minute or 25 min ago (avoid overlap)
     const start = latestEndTime && latestEndTime >= twentyFiveMinAgo
-      ? latestEndTime
+      ? new Date(latestEndTime.getTime() + 60 * 1000)
       : twentyFiveMinAgo;
 
     setManualStartTime(start);
