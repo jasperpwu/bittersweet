@@ -76,7 +76,7 @@ export default function JournalScreen() {
     });
 
     // Use whichever is later: last session end or 25 min ago (avoid overlap)
-    const start = latestEndTime && latestEndTime > twentyFiveMinAgo
+    const start = latestEndTime && latestEndTime >= twentyFiveMinAgo
       ? latestEndTime
       : twentyFiveMinAgo;
 

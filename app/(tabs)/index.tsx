@@ -325,9 +325,11 @@ export default function FocusScreen() {
   const stoppedInBonusRef = useRef(false);
   const stoppedBonusSecondsRef = useRef(0);
   const stoppedSessionStartTimeRef = useRef<number | null>(null);
+  const stoppedSessionTargetDurationRef = useRef<number | null>(null);
   const liveActivityIdRef = useRef<string | undefined>(undefined);
   const sessionEndTimeRef = useRef<number | null>(null); // Unix ms when session should end
   const sessionStartTimeRef = useRef<number | null>(null); // Unix ms when session started
+  const sessionTargetDurationRef = useRef<number | null>(null); // target duration in minutes, immune to state races
   const scheduledNotificationRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unlockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -589,6 +591,7 @@ export default function FocusScreen() {
 
     const now = Date.now();
     sessionStartTimeRef.current = now;
+    sessionTargetDurationRef.current = isDevTimer ? 1 : selectedTime;
 
     if (infinite) {
       setElapsedSeconds(0);
@@ -711,6 +714,7 @@ export default function FocusScreen() {
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = null;
     sessionStartTimeRef.current = null;
+    sessionTargetDurationRef.current = null;
     setIsRunning(false);
     setIsSessionActive(false);
     setIsBonusTime(false);
@@ -732,6 +736,7 @@ export default function FocusScreen() {
     stoppedInBonusRef.current = isBonusTime;
     stoppedBonusSecondsRef.current = bonusSeconds;
     stoppedSessionStartTimeRef.current = sessionStartTimeRef.current;
+    stoppedSessionTargetDurationRef.current = sessionTargetDurationRef.current;
     setIsRunning(false);
     setIsBonusTime(false);
     setBonusSeconds(0);
@@ -746,6 +751,7 @@ export default function FocusScreen() {
     // Stop Live Activity if it's running - clear ID first to prevent double-stop
     sessionEndTimeRef.current = null;
     sessionStartTimeRef.current = null;
+    sessionTargetDurationRef.current = null;
     const activityId = liveActivityIdRef.current;
     liveActivityIdRef.current = undefined;
     if (activityId) {
@@ -899,6 +905,7 @@ export default function FocusScreen() {
           setIsRunning(true);
           setIsSessionActive(true);
           sessionStartTimeRef.current = persisted.startTime;
+          sessionTargetDurationRef.current = persisted.targetDuration;
 
           // Switch visuals to timer mode immediately
           scrollerOpacity.setValue(0);
@@ -938,6 +945,7 @@ export default function FocusScreen() {
           setIsSessionActive(true);
           sessionStartTimeRef.current = persisted.startTime;
           sessionEndTimeRef.current = persisted.endTime;
+          sessionTargetDurationRef.current = persisted.targetDuration;
 
           const bonus = Math.floor((now - persisted.endTime) / 1000);
           setIsBonusTime(true);
@@ -969,10 +977,12 @@ export default function FocusScreen() {
           setIsSessionActive(true);
           sessionStartTimeRef.current = persisted.startTime;
           sessionEndTimeRef.current = persisted.endTime;
+          sessionTargetDurationRef.current = persisted.targetDuration;
 
           // Switch visuals to timer mode immediately (no animation needed on recovery)
           scrollerOpacity.setValue(0);
           tagsOpacity.setValue(0);
+          headerOpacity.setValue(0);
           timerOpacity.setValue(1);
           timerScale.setValue(1);
           timerTranslateY.setValue(0);
@@ -1092,9 +1102,11 @@ export default function FocusScreen() {
     const wasBonus = stoppedInBonusRef.current;
     const savedBonusSeconds = stoppedBonusSecondsRef.current;
     const sessionStart = stoppedSessionStartTimeRef.current;
-    const isDevTimer = selectedTime === -1;
-    const baseMinutes = isDevTimer ? 1 : selectedTime;
-    const baseSeconds = isDevTimer ? 5 : selectedTime * 60;
+    // Use captured ref for target duration — immune to state overwrites and being cleared early
+    const targetDuration = stoppedSessionTargetDurationRef.current ?? sessionTargetDurationRef.current ?? selectedTime;
+    const isDevTimer = targetDuration === -1;
+    const baseMinutes = isDevTimer ? 1 : targetDuration;
+    const baseSeconds = isDevTimer ? 5 : targetDuration * 60;
 
     // Use wall-clock time from refs (immune to state race conditions after rehydration)
     const now = Date.now();
