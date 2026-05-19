@@ -834,41 +834,8 @@ export default function FocusScreen() {
           setElapsedSeconds(elapsed);
         }
 
-        // Check if the widget stopped a session while the app was backgrounded.
-        // _layout.tsx clears active-focus-session on stop adoption, so if this
-        // component thinks a session is running but AsyncStorage is empty, reset UI.
-        if (sessionStartTimeRef.current || sessionEndTimeRef.current) {
-          AsyncStorage.getItem(ACTIVE_SESSION_KEY).then(raw => {
-            if (!raw) {
-              // Session was stopped externally (widget stop) — reset UI
-              console.log('📱 [Widget] Session stopped externally, resetting UI');
-              if (timerRef.current) clearInterval(timerRef.current as any);
-              timerRef.current = null;
-              setIsRunning(false);
-              setIsSessionActive(false);
-              setIsBonusTime(false);
-              setBonusSeconds(0);
-              setRemainingSeconds(0);
-              setElapsedSeconds(0);
-              setIsInfinite(false);
-              sessionStartTimeRef.current = null;
-              sessionEndTimeRef.current = null;
-              sessionTargetDurationRef.current = null;
-              liveActivityIdRef.current = undefined;
-
-              // Restore visuals to idle
-              scrollerOpacity.setValue(1);
-              tagsOpacity.setValue(1);
-              headerOpacity.setValue(1);
-              timerOpacity.setValue(0);
-              timerScale.setValue(0.94);
-              timerTranslateY.setValue(6);
-            }
-          });
-        } else {
-          // No session running — check if _layout.tsx adopted a widget-started session
-          recoverSession();
-        }
+        // Adopt widget start/stop + recover session in one sequential flow
+        adoptAndRecoverSession();
       }
     });
     return () => subscription.remove();
@@ -927,9 +894,116 @@ export default function FocusScreen() {
     };
   }, []);
 
-  // Recover active session from AsyncStorage.
-  // Called on mount (app kill + restart) and on foreground (widget-adopted session).
-  const recoverSession = async () => {
+  // Adopt any widget-started/stopped session, then recover from AsyncStorage.
+  // Called on mount (cold start) and on foreground (warm start).
+  // Runs adoption (write) before recovery (read) to eliminate the race condition.
+  const adoptAndRecoverSession = async () => {
+    try {
+      // --- Widget adoption phase ---
+
+      // 1. Check if widget stopped a session while app was backgrounded/killed
+      const stopAction = WidgetService.checkWidgetStopAction();
+      if (stopAction) {
+        console.log('📱 [Widget] Adopting widget stop action');
+
+        const activeRaw = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
+        const widgetSession = WidgetService.checkWidgetStartedSession();
+        const sessionInfo = activeRaw
+          ? JSON.parse(activeRaw)
+          : widgetSession
+            ? { startTime: widgetSession.startTime, targetDuration: widgetSession.duration, tagId: widgetSession.tagId }
+            : null;
+
+        if (sessionInfo) {
+          const store = useAppStore.getState();
+          const actualEndTime = stopAction.timestamp;
+          const durationMs = actualEndTime - sessionInfo.startTime;
+          const durationMinutes = Math.round(durationMs / 60000);
+
+          if (durationMinutes > 0) {
+            store.focus.createCompletedSession({
+              startTime: new Date(sessionInfo.startTime),
+              endTime: new Date(actualEndTime),
+              duration: durationMinutes,
+              targetDuration: sessionInfo.targetDuration,
+              tagId: sessionInfo.tagId,
+            });
+            console.log('📱 [Widget] Recorded completed session:', durationMinutes, 'min');
+          }
+
+          await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+          WidgetService.syncSessionState(null);
+        }
+
+        // Session was stopped — reset UI if it was active
+        if (sessionStartTimeRef.current || sessionEndTimeRef.current) {
+          console.log('📱 [Widget] Session stopped externally, resetting UI');
+          if (timerRef.current) clearInterval(timerRef.current as any);
+          timerRef.current = null;
+          setIsRunning(false);
+          setIsSessionActive(false);
+          setIsBonusTime(false);
+          setBonusSeconds(0);
+          setRemainingSeconds(0);
+          setElapsedSeconds(0);
+          setIsInfinite(false);
+          sessionStartTimeRef.current = null;
+          sessionEndTimeRef.current = null;
+          sessionTargetDurationRef.current = null;
+          liveActivityIdRef.current = undefined;
+
+          scrollerOpacity.setValue(1);
+          tagsOpacity.setValue(1);
+          headerOpacity.setValue(1);
+          timerOpacity.setValue(0);
+          timerScale.setValue(0.94);
+          timerTranslateY.setValue(6);
+        }
+        return; // stop action handled — no session to recover
+      }
+
+      // 2. Check if widget started a session
+      const startedSession = WidgetService.checkWidgetStartedSession();
+      if (startedSession) {
+        console.log('📱 [Widget] Adopting widget-started session:', startedSession.tagId);
+
+        const existingSession = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
+        if (!existingSession) {
+          if (!startedSession.isInfinite && startedSession.endTime > 0 && Date.now() > startedSession.endTime) {
+            console.log('📱 [Widget] Widget-started session already expired, skipping');
+            WidgetService.syncSessionState(null);
+            // fall through to recovery (which will find nothing)
+          } else {
+            // Adopt the Live Activity so JS can manage it
+            if (startedSession.liveActivityId) {
+              LiveActivityService.adoptWidgetActivity(
+                startedSession.liveActivityId,
+                startedSession.isInfinite ? undefined : startedSession.endTime
+              );
+            }
+
+            // Write to AsyncStorage so the recovery phase below picks it up
+            const persistedSession = {
+              startTime: startedSession.startTime,
+              endTime: startedSession.isInfinite ? 0 : startedSession.endTime,
+              targetDuration: startedSession.duration,
+              tagId: startedSession.tagId,
+              isInfinite: startedSession.isInfinite,
+              liveActivityId: startedSession.liveActivityId,
+            };
+            await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(persistedSession));
+            console.log('📱 [Widget] Wrote active-focus-session for recovery, liveActivityId:', startedSession.liveActivityId);
+          }
+        } else {
+          console.log('📱 [Widget] Existing active session found, skipping adoption');
+        }
+      }
+
+      // --- Recovery phase ---
+    } catch (error) {
+      console.error('📱 [Widget] Failed to adopt widget session:', error);
+    }
+
     const raw = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
     if (!raw) return;
     try {
@@ -1082,9 +1156,9 @@ export default function FocusScreen() {
     }
   };
 
-  // Recover active session on mount (app kill + restart)
+  // Adopt widget session + recover from AsyncStorage on mount (cold start)
   useEffect(() => {
-    recoverSession();
+    adoptAndRecoverSession();
   }, []);
 
   const handleStartFocus = () => {

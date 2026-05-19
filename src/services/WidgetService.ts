@@ -1,4 +1,5 @@
 import * as ReactNativeDeviceActivity from 'react-native-device-activity';
+import { reloadWidgetTimelines } from 'expo-live-activity';
 
 // UserDefaults keys (must match WidgetKeys in WidgetDataManager.swift)
 const SESSION_DATA_KEY = 'widgetSessionData';
@@ -77,6 +78,8 @@ export class WidgetService {
         });
       }
       console.log('📱 [Widget] Synced session state:', data ? 'active' : 'idle');
+      // Force widget to refresh immediately instead of waiting up to 15 min
+      reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to sync session state:', error);
     }
