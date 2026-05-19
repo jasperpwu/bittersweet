@@ -112,6 +112,8 @@ export class WidgetService {
         ReactNativeDeviceActivity.userDefaultsRemove(SELECTED_TAG_ID_KEY);
       }
       console.log('📱 [Widget] Synced selected tag ID:', tagId ?? 'none');
+      // Force widget to refresh immediately so the small widget shows the new tag
+      reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to sync selected tag ID:', error);
     }
@@ -155,6 +157,36 @@ export class WidgetService {
     } catch (error) {
       console.error('📱 [Widget] Failed to check widget started session:', error);
       return null;
+    }
+  }
+
+  /**
+   * Read the widget-started session WITHOUT clearing it.
+   * Use clearWidgetStartedSession() after successful adoption.
+   */
+  static readWidgetStartedSession(): WidgetStartedSession | null {
+    try {
+      const raw = ReactNativeDeviceActivity.userDefaultsGet(WIDGET_STARTED_SESSION_KEY);
+      if (!raw || typeof raw !== 'object') return null;
+
+      const session = raw as WidgetStartedSession;
+      if (!session.tagId || !session.startTime) return null;
+
+      return session;
+    } catch (error) {
+      console.error('📱 [Widget] Failed to read widget started session:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear the widget-started session key. Call after successful adoption.
+   */
+  static clearWidgetStartedSession(): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsRemove(WIDGET_STARTED_SESSION_KEY);
+    } catch (error) {
+      console.error('📱 [Widget] Failed to clear widget started session:', error);
     }
   }
 

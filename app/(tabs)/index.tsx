@@ -442,6 +442,8 @@ export default function FocusScreen() {
   const handleTagSelect = (tagId: string) => {
     setSelectedTag(tagId);
     setLastSelectedTagId(tagId);
+    // Sync to small widget so it shows the newly selected tag
+    WidgetService.syncSelectedTagId(tagId);
     // Restore last used duration for this tag (default 15 min)
     setSelectedTime(lastDurationByTagId[tagId] ?? 15);
     setShowTagModal(false);
@@ -469,6 +471,7 @@ export default function FocusScreen() {
 
       setSelectedTag(newTag.id);
       setLastSelectedTagId(newTag.id);
+      WidgetService.syncSelectedTagId(newTag.id);
       setShowNewTagModal(false);
       setNewTagName('');
       setNewTagEmoji('');
@@ -522,6 +525,7 @@ export default function FocusScreen() {
         const fallbackId = remainingTags.length > 0 ? remainingTags[0].id : null;
         setSelectedTag(fallbackId);
         setLastSelectedTagId(fallbackId);
+        WidgetService.syncSelectedTagId(fallbackId);
       }
       setShowDeleteModal(false);
       setTagToDelete(null);
@@ -907,7 +911,8 @@ export default function FocusScreen() {
         console.log('📱 [Widget] Adopting widget stop action');
 
         const activeRaw = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
-        const widgetSession = WidgetService.checkWidgetStartedSession();
+        const widgetSession = WidgetService.readWidgetStartedSession();
+        if (widgetSession) WidgetService.clearWidgetStartedSession();
         const sessionInfo = activeRaw
           ? JSON.parse(activeRaw)
           : widgetSession
@@ -963,7 +968,10 @@ export default function FocusScreen() {
       }
 
       // 2. Check if widget started a session
-      const startedSession = WidgetService.checkWidgetStartedSession();
+      // Use read-only check first; only clear after successful AsyncStorage write.
+      // This prevents data loss if the adoption is interrupted (e.g. by a race
+      // condition when the intent fires during a long-press context menu).
+      const startedSession = WidgetService.readWidgetStartedSession();
       if (startedSession) {
         console.log('📱 [Widget] Adopting widget-started session:', startedSession.tagId);
 
@@ -971,6 +979,7 @@ export default function FocusScreen() {
         if (!existingSession) {
           if (!startedSession.isInfinite && startedSession.endTime > 0 && Date.now() > startedSession.endTime) {
             console.log('📱 [Widget] Widget-started session already expired, skipping');
+            WidgetService.clearWidgetStartedSession();
             WidgetService.syncSessionState(null);
             // fall through to recovery (which will find nothing)
           } else {
@@ -992,10 +1001,13 @@ export default function FocusScreen() {
               liveActivityId: startedSession.liveActivityId,
             };
             await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(persistedSession));
+            // Only clear after successful write so the data survives crashes/races
+            WidgetService.clearWidgetStartedSession();
             console.log('📱 [Widget] Wrote active-focus-session for recovery, liveActivityId:', startedSession.liveActivityId);
           }
         } else {
           console.log('📱 [Widget] Existing active session found, skipping adoption');
+          WidgetService.clearWidgetStartedSession();
         }
       }
 
@@ -1153,6 +1165,21 @@ export default function FocusScreen() {
     } catch (e) {
       // Corrupted data — just clear it
       AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+    }
+
+    // Safety net: if no session was recovered but a widget-started session still
+    // exists in UserDefaults (e.g. intent fired during a long-press but adoption
+    // failed), clean up the orphaned Live Activity and widget state.
+    if (!sessionStartTimeRef.current && !sessionEndTimeRef.current) {
+      const orphaned = WidgetService.readWidgetStartedSession();
+      if (orphaned) {
+        console.log('📱 [Widget] Cleaning up orphaned widget-started session');
+        if (orphaned.liveActivityId) {
+          LiveActivityService.stopFocusTimer(orphaned.liveActivityId, 'cancelled');
+        }
+        WidgetService.clearWidgetStartedSession();
+        WidgetService.syncSessionState(null);
+      }
     }
   };
 
