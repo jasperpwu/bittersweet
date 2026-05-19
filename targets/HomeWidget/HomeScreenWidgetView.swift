@@ -71,36 +71,30 @@ struct HomeScreenWidgetView: View {
   }
 
   private func smallActiveView(session: WidgetSessionData) -> some View {
-    VStack(spacing: 0) {
-      Spacer()
-
+    VStack(alignment: .leading, spacing: 0) {
       // Tag icon + name
       HStack(spacing: 6) {
         Text(session.tagIcon)
-          .font(.system(size: 24))
+          .font(.system(size: 20))
         Text(session.tagName)
           .font(.system(size: 20, weight: .bold))
           .foregroundStyle(tagColor)
           .lineLimit(1)
       }
 
-      Spacer().frame(height: 10)
+      Spacer().frame(height: 6)
 
       // Live timer
       if session.isInfinite {
         Text(Date(timeIntervalSince1970: session.startTime / 1000), style: .timer)
-          .font(.system(size: 36, weight: .semibold))
+          .font(.system(size: 28, weight: .semibold))
           .foregroundStyle(Color(hex: "#5D4E37"))
-          .multilineTextAlignment(.center)
           .minimumScaleFactor(0.7)
-          .frame(maxWidth: .infinity, alignment: .center)
       } else {
         Text(Date(timeIntervalSince1970: session.endTime / 1000), style: .timer)
-          .font(.system(size: 36, weight: .semibold))
+          .font(.system(size: 28, weight: .semibold))
           .foregroundStyle(Color(hex: "#5D4E37"))
-          .multilineTextAlignment(.center)
           .minimumScaleFactor(0.7)
-          .frame(maxWidth: .infinity, alignment: .center)
       }
 
       Spacer()
@@ -120,8 +114,6 @@ struct HomeScreenWidgetView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .padding(.horizontal, 16)
-    .padding(.vertical, 14)
   }
 
   private func mediumActiveView(session: WidgetSessionData) -> some View {
@@ -170,7 +162,7 @@ struct HomeScreenWidgetView: View {
           }
           .foregroundStyle(.white)
           .frame(width: 56, height: 56)
-          .background(Color(hex: "#B22222"), in: RoundedRectangle(cornerRadius: 14))
+          .background(tagColor, in: RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
       }
@@ -191,20 +183,18 @@ struct HomeScreenWidgetView: View {
   }
 
   private var smallIdleView: some View {
-    VStack(spacing: 0) {
-      Spacer()
-
+    VStack(alignment: .leading, spacing: 0) {
       // Tag icon + name
       HStack(spacing: 6) {
         Text(entry.configuredTagIcon ?? "🎯")
-          .font(.system(size: 24))
+          .font(.system(size: 20))
         Text(entry.configuredTagName ?? "Focus")
           .font(.system(size: 20, weight: .bold))
           .foregroundStyle(tagColor)
           .lineLimit(1)
       }
 
-      Spacer().frame(height: 10)
+      Spacer().frame(height: 6)
 
       // Duration
       Text(durationLabel.isEmpty ? "∞" : durationLabel)
@@ -228,8 +218,6 @@ struct HomeScreenWidgetView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .padding(.horizontal, 16)
-    .padding(.vertical, 14)
   }
 
   private var mediumIdleView: some View {

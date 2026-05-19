@@ -137,6 +137,10 @@ export default function RootLayout() {
         };
       });
       WidgetService.syncTagList(tagList);
+
+      // Sync the currently selected tag for the small widget
+      const selectedTagId = store.focus.lastSelectedTagId;
+      WidgetService.syncSelectedTagId(selectedTagId);
     } catch (error) {
       console.error('📱 [Widget] Failed to sync tag list:', error);
     }

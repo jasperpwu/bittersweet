@@ -13,6 +13,7 @@ enum WidgetKeys {
   static let pendingAction = "pendingWidgetAction"
   static let widgetStartedSession = "widgetStartedSession"
   static let widgetStopAction = "widgetStopAction"
+  static let selectedTagId = "widgetSelectedTagId"
 }
 
 // MARK: - Data Models
@@ -96,6 +97,10 @@ struct WidgetDataManager {
   func getSessionData() -> WidgetSessionData? {
     guard let dict = userDefaults?.dictionary(forKey: WidgetKeys.sessionData) else { return nil }
     return WidgetSessionData(dict: dict)
+  }
+
+  func getSelectedTagId() -> String? {
+    return userDefaults?.string(forKey: WidgetKeys.selectedTagId)
   }
 
   func getTagList() -> [WidgetTagInfo] {
@@ -197,5 +202,6 @@ struct WidgetDataManager {
 
   func reloadTimelines() {
     WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.HomeScreenWidget")
+    WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.MediumFocusWidget")
   }
 }

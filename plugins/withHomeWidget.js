@@ -135,14 +135,24 @@ const withHomeWidget = (config) => {
       );
       if (fs.existsSync(bundlePath)) {
         let bundleContent = fs.readFileSync(bundlePath, "utf8");
-        if (!bundleContent.includes("HomeScreenWidget()")) {
+        // Migrate from single HomeScreenWidget to split Small/Medium widgets
+        if (bundleContent.includes("HomeScreenWidget()")) {
           bundleContent = bundleContent.replace(
-            "LiveActivityWidget()",
-            "LiveActivityWidget()\n    HomeScreenWidget()"
+            "HomeScreenWidget()",
+            "SmallFocusWidget()\n    MediumFocusWidget()"
           );
           fs.writeFileSync(bundlePath, bundleContent, "utf8");
           console.log(
-            "[withHomeWidget] Added HomeScreenWidget to widget bundle"
+            "[withHomeWidget] Migrated HomeScreenWidget to SmallFocusWidget + MediumFocusWidget"
+          );
+        } else if (!bundleContent.includes("SmallFocusWidget()")) {
+          bundleContent = bundleContent.replace(
+            "LiveActivityWidget()",
+            "LiveActivityWidget()\n    SmallFocusWidget()\n    MediumFocusWidget()"
+          );
+          fs.writeFileSync(bundlePath, bundleContent, "utf8");
+          console.log(
+            "[withHomeWidget] Added SmallFocusWidget + MediumFocusWidget to widget bundle"
           );
         }
       }

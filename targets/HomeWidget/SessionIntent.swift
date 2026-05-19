@@ -143,45 +143,6 @@ struct StopSessionIntent: LiveActivityIntent {
   }
 }
 
-// MARK: - Tag Query for Widget Configuration
-
-@available(iOS 17.0, *)
-struct TagEntity: AppEntity {
-  static var typeDisplayRepresentation: TypeDisplayRepresentation = "Focus Tag"
-  static var defaultQuery = TagEntityQuery()
-
-  var id: String
-  var name: String
-  var icon: String
-  var color: String
-
-  var displayRepresentation: DisplayRepresentation {
-    DisplayRepresentation(title: "\(icon) \(name)")
-  }
-}
-
-@available(iOS 17.0, *)
-struct TagEntityQuery: EntityQuery {
-  func entities(for identifiers: [String]) async throws -> [TagEntity] {
-    let tags = WidgetDataManager.shared.getTagList()
-    return identifiers.compactMap { id in
-      guard let tag = tags.first(where: { $0.id == id }) else { return nil }
-      return TagEntity(id: tag.id, name: tag.name, icon: tag.icon, color: tag.color)
-    }
-  }
-
-  func suggestedEntities() async throws -> [TagEntity] {
-    let tags = WidgetDataManager.shared.getTagList()
-    return tags.map { TagEntity(id: $0.id, name: $0.name, icon: $0.icon, color: $0.color) }
-  }
-
-  func defaultResult() async -> TagEntity? {
-    let tags = WidgetDataManager.shared.getTagList()
-    guard let first = tags.first else { return nil }
-    return TagEntity(id: first.id, name: first.name, icon: first.icon, color: first.color)
-  }
-}
-
 // MARK: - Widget Configuration Enums
 
 @available(iOS 17.0, *)
@@ -210,15 +171,12 @@ enum TagGridSize: String, AppEnum {
   ]
 }
 
-// MARK: - Widget Configuration Intent
+// MARK: - Medium Widget Configuration Intent
 
 @available(iOS 17.0, *)
-struct SelectTagIntent: WidgetConfigurationIntent {
-  static var title: LocalizedStringResource = "Configure Focus Widget"
-  static var description: IntentDescription = "Select a tag for quick-start"
-
-  @Parameter(title: "Tag")
-  var tag: TagEntity?
+struct SelectGridIntent: WidgetConfigurationIntent {
+  static var title: LocalizedStringResource = "Configure Focus Grid"
+  static var description: IntentDescription = "Choose how tags are displayed"
 
   @Parameter(title: "Sort By", default: .currentOrder)
   var sortOrder: TagSortOrder?
@@ -227,8 +185,4 @@ struct SelectTagIntent: WidgetConfigurationIntent {
   var gridSize: TagGridSize?
 
   init() {}
-
-  init(tag: TagEntity?) {
-    self.tag = tag
-  }
 }

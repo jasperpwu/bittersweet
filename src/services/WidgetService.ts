@@ -7,6 +7,7 @@ const TAG_LIST_KEY = 'widgetTagList';
 const PENDING_ACTION_KEY = 'pendingWidgetAction';
 const WIDGET_STARTED_SESSION_KEY = 'widgetStartedSession';
 const WIDGET_STOP_ACTION_KEY = 'widgetStopAction';
+const SELECTED_TAG_ID_KEY = 'widgetSelectedTagId';
 
 export interface WidgetSessionData {
   isActive: boolean;
@@ -96,6 +97,23 @@ export class WidgetService {
       console.log('📱 [Widget] Synced tag list:', tags.length, 'tags');
     } catch (error) {
       console.error('📱 [Widget] Failed to sync tag list:', error);
+    }
+  }
+
+  /**
+   * Sync the currently selected tag ID from the Focus tab.
+   * The small widget reads this to show the active tag automatically.
+   */
+  static syncSelectedTagId(tagId: string | null): void {
+    try {
+      if (tagId) {
+        ReactNativeDeviceActivity.userDefaultsSet(SELECTED_TAG_ID_KEY, tagId);
+      } else {
+        ReactNativeDeviceActivity.userDefaultsRemove(SELECTED_TAG_ID_KEY);
+      }
+      console.log('📱 [Widget] Synced selected tag ID:', tagId ?? 'none');
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync selected tag ID:', error);
     }
   }
 

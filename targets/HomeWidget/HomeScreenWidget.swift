@@ -16,38 +16,103 @@ private func buildGridItems(from tags: [WidgetTagInfo], count: Int) -> [WidgetTa
   }
 }
 
-// MARK: - Timeline Provider (iOS < 17, no configuration)
+// MARK: - Helper: Build a HomeWidgetEntry from tag list + session
 
-struct HomeWidgetProvider: TimelineProvider {
+private func makeEntry(
+  date: Date,
+  session: WidgetSessionData?,
+  tagId: String?,
+  tagName: String?,
+  tagIcon: String?,
+  tagColor: String?,
+  tagDuration: Int?,
+  gridItems: [WidgetTagGridItem]
+) -> HomeWidgetEntry {
+  HomeWidgetEntry(
+    date: date,
+    sessionData: session,
+    configuredTagId: tagId,
+    configuredTagName: tagName ?? "Focus",
+    configuredTagIcon: tagIcon ?? "\u{1F3AF}",
+    configuredTagColor: tagColor,
+    configuredTagDuration: tagDuration,
+    configuredTags: gridItems
+  )
+}
+
+// MARK: - Timeline Provider (iOS < 17, no configuration — used by both sizes)
+
+struct SmallWidgetProvider: TimelineProvider {
+  typealias Entry = HomeWidgetEntry
+
+  /// Resolve the selected tag from UserDefaults, falling back to first tag
+  private func resolveSelectedTag() -> WidgetTagInfo? {
+    let tags = WidgetDataManager.shared.getTagList()
+    if let selectedId = WidgetDataManager.shared.getSelectedTagId(),
+       let tag = tags.first(where: { $0.id == selectedId }) {
+      return tag
+    }
+    return tags.first
+  }
+
+  func placeholder(in context: Context) -> HomeWidgetEntry {
+    makeEntry(date: Date(), session: nil, tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil, tagDuration: nil, gridItems: [])
+  }
+
+  func getSnapshot(in context: Context, completion: @escaping (HomeWidgetEntry) -> Void) {
+    let session = WidgetDataManager.shared.getSessionData()
+    let tag = resolveSelectedTag()
+    let entry = makeEntry(
+      date: Date(), session: session,
+      tagId: tag?.id, tagName: tag?.name, tagIcon: tag?.icon, tagColor: tag?.color,
+      tagDuration: tag?.lastDuration, gridItems: []
+    )
+    completion(entry)
+  }
+
+  func getTimeline(in context: Context, completion: @escaping (Timeline<HomeWidgetEntry>) -> Void) {
+    let session = WidgetDataManager.shared.getSessionData()
+    let tag = resolveSelectedTag()
+
+    let currentEntry = makeEntry(
+      date: Date(), session: session,
+      tagId: tag?.id, tagName: tag?.name, tagIcon: tag?.icon, tagColor: tag?.color,
+      tagDuration: tag?.lastDuration, gridItems: []
+    )
+    var entries: [HomeWidgetEntry] = [currentEntry]
+
+    if let session = session, session.isActive, !session.isInfinite, session.endTime > 0 {
+      let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
+      if endDate > Date() {
+        entries.append(makeEntry(
+          date: endDate, session: nil,
+          tagId: tag?.id, tagName: tag?.name, tagIcon: tag?.icon, tagColor: tag?.color,
+          tagDuration: tag?.lastDuration, gridItems: []
+        ))
+      }
+    }
+
+    let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
+    completion(Timeline(entries: entries, policy: .after(refreshDate)))
+  }
+}
+
+// MARK: - Medium Widget Static Provider (iOS < 17 fallback, no configuration)
+
+struct MediumWidgetStaticProvider: TimelineProvider {
   typealias Entry = HomeWidgetEntry
 
   func placeholder(in context: Context) -> HomeWidgetEntry {
-    HomeWidgetEntry(
-      date: Date(),
-      sessionData: nil,
-      configuredTagId: nil,
-      configuredTagName: "Focus",
-      configuredTagIcon: "\u{1F3AF}",
-      configuredTagColor: nil,
-      configuredTagDuration: nil,
-      configuredTags: []
-    )
+    makeEntry(date: Date(), session: nil, tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil, tagDuration: nil, gridItems: [])
   }
 
   func getSnapshot(in context: Context, completion: @escaping (HomeWidgetEntry) -> Void) {
     let session = WidgetDataManager.shared.getSessionData()
     let tags = WidgetDataManager.shared.getTagList()
-    let firstTag = tags.first
-
-    let entry = HomeWidgetEntry(
-      date: Date(),
-      sessionData: session,
-      configuredTagId: firstTag?.id,
-      configuredTagName: firstTag?.name ?? "Focus",
-      configuredTagIcon: firstTag?.icon ?? "\u{1F3AF}",
-      configuredTagColor: firstTag?.color,
-      configuredTagDuration: firstTag?.lastDuration,
-      configuredTags: buildGridItems(from: tags, count: 4)
+    let entry = makeEntry(
+      date: Date(), session: session,
+      tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
+      tagDuration: nil, gridItems: buildGridItems(from: tags, count: 4)
     )
     completion(entry)
   }
@@ -55,130 +120,73 @@ struct HomeWidgetProvider: TimelineProvider {
   func getTimeline(in context: Context, completion: @escaping (Timeline<HomeWidgetEntry>) -> Void) {
     let session = WidgetDataManager.shared.getSessionData()
     let tags = WidgetDataManager.shared.getTagList()
-    let firstTag = tags.first
     let gridItems = buildGridItems(from: tags, count: 4)
 
-    let currentEntry = HomeWidgetEntry(
-      date: Date(),
-      sessionData: session,
-      configuredTagId: firstTag?.id,
-      configuredTagName: firstTag?.name ?? "Focus",
-      configuredTagIcon: firstTag?.icon ?? "\u{1F3AF}",
-      configuredTagColor: firstTag?.color,
-      configuredTagDuration: firstTag?.lastDuration,
-      configuredTags: gridItems
+    let currentEntry = makeEntry(
+      date: Date(), session: session,
+      tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
+      tagDuration: nil, gridItems: gridItems
     )
-
     var entries: [HomeWidgetEntry] = [currentEntry]
 
-    // If there's an active session with an end time, add a transition entry
     if let session = session, session.isActive, !session.isInfinite, session.endTime > 0 {
       let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
       if endDate > Date() {
-        let endEntry = HomeWidgetEntry(
-          date: endDate,
-          sessionData: nil, // Session will be over
-          configuredTagId: firstTag?.id,
-          configuredTagName: firstTag?.name ?? "Focus",
-          configuredTagIcon: firstTag?.icon ?? "\u{1F3AF}",
-          configuredTagColor: firstTag?.color,
-          configuredTagDuration: firstTag?.lastDuration,
-          configuredTags: gridItems
-        )
-        entries.append(endEntry)
+        entries.append(makeEntry(
+          date: endDate, session: nil,
+          tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
+          tagDuration: nil, gridItems: gridItems
+        ))
       }
     }
 
-    // Refresh every 15 minutes if idle, or at session end if active
     let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
-    let timeline = Timeline(entries: entries, policy: .after(refreshDate))
-    completion(timeline)
+    completion(Timeline(entries: entries, policy: .after(refreshDate)))
   }
 }
 
-// MARK: - iOS 17+ Configurable Provider
+// MARK: - iOS 17+ Medium Widget Provider (SelectGridIntent — sort & grid size)
 
 @available(iOS 17.0, *)
-struct HomeWidgetAppIntentProvider: AppIntentTimelineProvider {
+struct MediumWidgetProvider: AppIntentTimelineProvider {
   typealias Entry = HomeWidgetEntry
-  typealias Intent = SelectTagIntent
+  typealias Intent = SelectGridIntent
 
   func placeholder(in context: Context) -> HomeWidgetEntry {
-    HomeWidgetEntry(
-      date: Date(),
-      sessionData: nil,
-      configuredTagId: nil,
-      configuredTagName: "Focus",
-      configuredTagIcon: "\u{1F3AF}",
-      configuredTagColor: nil,
-      configuredTagDuration: nil,
-      configuredTags: []
+    makeEntry(date: Date(), session: nil, tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil, tagDuration: nil, gridItems: [])
+  }
+
+  func snapshot(for configuration: SelectGridIntent, in context: Context) async -> HomeWidgetEntry {
+    let session = WidgetDataManager.shared.getSessionData()
+    let tags = WidgetDataManager.shared.getTagList()
+    let gridItems = sortedGridItems(from: tags, configuration: configuration)
+    return makeEntry(
+      date: Date(), session: session,
+      tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
+      tagDuration: nil, gridItems: gridItems
     )
   }
 
-  func snapshot(for configuration: SelectTagIntent, in context: Context) async -> HomeWidgetEntry {
+  func timeline(for configuration: SelectGridIntent, in context: Context) async -> Timeline<HomeWidgetEntry> {
     let session = WidgetDataManager.shared.getSessionData()
     let tags = WidgetDataManager.shared.getTagList()
     let gridItems = sortedGridItems(from: tags, configuration: configuration)
 
-    let tagDuration: Int? = {
-      guard let tagId = configuration.tag?.id else { return nil }
-      return tags.first(where: { $0.id == tagId })?.lastDuration
-    }()
-
-    return HomeWidgetEntry(
-      date: Date(),
-      sessionData: session,
-      configuredTagId: configuration.tag?.id,
-      configuredTagName: configuration.tag?.name ?? "Focus",
-      configuredTagIcon: configuration.tag?.icon ?? "\u{1F3AF}",
-      configuredTagColor: configuration.tag?.color,
-      configuredTagDuration: tagDuration,
-      configuredTags: gridItems
+    let currentEntry = makeEntry(
+      date: Date(), session: session,
+      tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
+      tagDuration: nil, gridItems: gridItems
     )
-  }
-
-  func timeline(for configuration: SelectTagIntent, in context: Context) async -> Timeline<HomeWidgetEntry> {
-    let session = WidgetDataManager.shared.getSessionData()
-    let tags = WidgetDataManager.shared.getTagList()
-    let gridItems = sortedGridItems(from: tags, configuration: configuration)
-
-    let tagId = configuration.tag?.id
-    let tagName = configuration.tag?.name ?? "Focus"
-    let tagIcon = configuration.tag?.icon ?? "\u{1F3AF}"
-    let tagColor = configuration.tag?.color
-    let tagDuration: Int? = {
-      guard let id = tagId else { return nil }
-      return tags.first(where: { $0.id == id })?.lastDuration
-    }()
-
-    let currentEntry = HomeWidgetEntry(
-      date: Date(),
-      sessionData: session,
-      configuredTagId: tagId,
-      configuredTagName: tagName,
-      configuredTagIcon: tagIcon,
-      configuredTagColor: tagColor,
-      configuredTagDuration: tagDuration,
-      configuredTags: gridItems
-    )
-
     var entries: [HomeWidgetEntry] = [currentEntry]
 
     if let session = session, session.isActive, !session.isInfinite, session.endTime > 0 {
       let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
       if endDate > Date() {
-        let endEntry = HomeWidgetEntry(
-          date: endDate,
-          sessionData: nil,
-          configuredTagId: tagId,
-          configuredTagName: tagName,
-          configuredTagIcon: tagIcon,
-          configuredTagColor: tagColor,
-          configuredTagDuration: tagDuration,
-          configuredTags: gridItems
-        )
-        entries.append(endEntry)
+        entries.append(makeEntry(
+          date: endDate, session: nil,
+          tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
+          tagDuration: nil, gridItems: gridItems
+        ))
       }
     }
 
@@ -186,9 +194,7 @@ struct HomeWidgetAppIntentProvider: AppIntentTimelineProvider {
     return Timeline(entries: entries, policy: .after(refreshDate))
   }
 
-  // MARK: - Sort + Slice
-
-  private func sortedGridItems(from tags: [WidgetTagInfo], configuration: SelectTagIntent) -> [WidgetTagGridItem] {
+  private func sortedGridItems(from tags: [WidgetTagInfo], configuration: SelectGridIntent) -> [WidgetTagGridItem] {
     let sortOrder = configuration.sortOrder ?? .currentOrder
     let gridSize = configuration.gridSize ?? .four
     let count = gridSize == .two ? 2 : 4
@@ -197,39 +203,54 @@ struct HomeWidgetAppIntentProvider: AppIntentTimelineProvider {
     if sortOrder == .mostUsed {
       sorted = tags.sorted { $0.usageCount > $1.usageCount }
     }
-    // .currentOrder keeps the original order from JS
 
     return buildGridItems(from: sorted, count: count)
   }
 }
 
-// MARK: - Widget Definition
+// MARK: - Widget Definitions
 
-struct HomeScreenWidget: Widget {
+struct SmallFocusWidget: Widget {
   let kind: String = "com.path2us.bittersweet.HomeScreenWidget"
+
+  var body: some WidgetConfiguration {
+    StaticConfiguration(
+      kind: kind,
+      provider: SmallWidgetProvider()
+    ) { entry in
+      HomeScreenWidgetView(entry: entry)
+    }
+    .configurationDisplayName("Focus Session")
+    .description("Quick-start a focus session with one tap.")
+    .supportedFamilies([.systemSmall])
+  }
+}
+
+struct MediumFocusWidget: Widget {
+  let kind: String = "com.path2us.bittersweet.MediumFocusWidget"
 
   var body: some WidgetConfiguration {
     if #available(iOS 17.0, *) {
       return AppIntentConfiguration(
         kind: kind,
-        intent: SelectTagIntent.self,
-        provider: HomeWidgetAppIntentProvider()
+        intent: SelectGridIntent.self,
+        provider: MediumWidgetProvider()
       ) { entry in
         HomeScreenWidgetView(entry: entry)
       }
-      .configurationDisplayName("Focus Session")
-      .description("Start and stop focus sessions from your home screen.")
-      .supportedFamilies([.systemSmall, .systemMedium])
+      .configurationDisplayName("Focus Grid")
+      .description("Start any focus session from a tag grid.")
+      .supportedFamilies([.systemMedium])
     } else {
       return StaticConfiguration(
         kind: kind,
-        provider: HomeWidgetProvider()
+        provider: MediumWidgetStaticProvider()
       ) { entry in
         HomeScreenWidgetView(entry: entry)
       }
-      .configurationDisplayName("Focus Session")
-      .description("Start and stop focus sessions from your home screen.")
-      .supportedFamilies([.systemSmall, .systemMedium])
+      .configurationDisplayName("Focus Grid")
+      .description("Start any focus session from a tag grid.")
+      .supportedFamilies([.systemMedium])
     }
   }
 }
