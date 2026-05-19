@@ -37,10 +37,10 @@ index 6b32c30..22cb29d 100644
  //# sourceMappingURL=index.js.map
 \ No newline at end of file
 diff --git a/node_modules/expo-live-activity/ios-files/LiveActivityView.swift b/node_modules/expo-live-activity/ios-files/LiveActivityView.swift
-index e309104..d2c05ea 100644
+index e309104..2b61bc5 100644
 --- a/node_modules/expo-live-activity/ios-files/LiveActivityView.swift
 +++ b/node_modules/expo-live-activity/ios-files/LiveActivityView.swift
-@@ -54,11 +54,22 @@ import WidgetKit
+@@ -54,11 +54,27 @@ import WidgetKit
          }
  
          if let date = contentState.timerEndDateInMilliseconds {
@@ -59,7 +59,12 @@ index e309104..d2c05ea 100644
 +              .modifier(ConditionalForegroundViewModifier(color: attributes.progressViewLabelColor))
 +          } else {
 +            // Future date: count DOWN to that time (normal mode)
-+            Text(timerInterval: Date.toTimerInterval(miliseconds: date))
++            // Use Text(date, style: .timer) so the countdown is anchored to the
++            // absolute target date, matching the home-screen widget's timer.
++            // The previous timerInterval approach used Date.now as the range
++            // start, introducing a ~1 s lag because Date.now is captured at
++            // render time (after the intent already set the target timestamp).
++            Text(target, style: .timer)
 +              .font(.system(size: 28, weight: .bold, design: .monospaced))
 +              .minimumScaleFactor(0.8)
 +              .multilineTextAlignment(.leading)
@@ -69,7 +74,7 @@ index e309104..d2c05ea 100644
            ProgressView(value: progress)
              .tint(progressViewTint)
 diff --git a/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift b/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift
-index fd8eea7..85a7d4b 100644
+index fd8eea7..8f58372 100644
 --- a/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift
 +++ b/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift
 @@ -21,6 +21,7 @@ struct LiveActivityAttributes: ActivityAttributes {
@@ -183,11 +188,12 @@ index fd8eea7..85a7d4b 100644
          } else if let date = context.state.timerEndDateInMilliseconds {
            compactTimer(
              endDate: date,
-@@ -148,7 +199,16 @@ struct LiveActivityWidget: Widget {
+@@ -148,8 +199,19 @@ struct LiveActivityWidget: Widget {
      timerType: LiveActivityAttributes.DynamicIslandTimerType,
      progressViewTint: String?
    ) -> some View {
 -    if timerType == .digital {
+-      Text(timerInterval: Date.toTimerInterval(miliseconds: endDate))
 +    let target = Date(timeIntervalSince1970: endDate / 1000)
 +    if target <= Date.now {
 +      // Past date: count UP (infinite/elapsed mode)
@@ -198,10 +204,13 @@ index fd8eea7..85a7d4b 100644
 +        .frame(maxWidth: 60)
 +        .multilineTextAlignment(.trailing)
 +    } else if timerType == .digital {
-       Text(timerInterval: Date.toTimerInterval(miliseconds: endDate))
++      // Use Text(date, style: .timer) so the countdown is anchored to the
++      // absolute target date, consistent with the home-screen widget timer.
++      Text(target, style: .timer)
          .font(.system(size: 15))
          .minimumScaleFactor(0.8)
-@@ -187,11 +247,21 @@ struct LiveActivityWidget: Widget {
+         .fontWeight(.semibold)
+@@ -187,11 +249,21 @@ struct LiveActivityWidget: Widget {
      }
    }
  

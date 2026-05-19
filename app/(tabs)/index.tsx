@@ -827,7 +827,8 @@ export default function FocusScreen() {
             }, 1000);
           } else {
             // Session still running — sync remaining seconds with real clock
-            const remaining = Math.max(0, Math.ceil((sessionEndTimeRef.current - now) / 1000));
+            // Use Math.floor to match SwiftUI's Text(date, style: .timer) truncation
+            const remaining = Math.max(0, Math.floor((sessionEndTimeRef.current - now) / 1000));
             setRemainingSeconds(remaining);
           }
         }
@@ -910,13 +911,21 @@ export default function FocusScreen() {
       if (stopAction) {
         console.log('📱 [Widget] Adopting widget stop action');
 
-        const activeRaw = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
+        // Check if a NEWER session was started after this stop action.
+        // Flow: start A → stop A → start B → user opens app.
+        // The stop belongs to session A; session B is the current one.
         const widgetSession = WidgetService.readWidgetStartedSession();
-        if (widgetSession) WidgetService.clearWidgetStartedSession();
+        const hasNewerStart = widgetSession && widgetSession.startTime > stopAction.timestamp;
+
+        // Use the stopped session's info to record it as completed.
+        // Only consume widgetStartedSession if it belongs to the stopped session.
+        const activeRaw = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
+        const stoppedSession = hasNewerStart ? null : widgetSession;
+        if (stoppedSession) WidgetService.clearWidgetStartedSession();
         const sessionInfo = activeRaw
           ? JSON.parse(activeRaw)
-          : widgetSession
-            ? { startTime: widgetSession.startTime, targetDuration: widgetSession.duration, tagId: widgetSession.tagId }
+          : stoppedSession
+            ? { startTime: stoppedSession.startTime, targetDuration: stoppedSession.duration, tagId: stoppedSession.tagId }
             : null;
 
         if (sessionInfo) {
@@ -937,34 +946,40 @@ export default function FocusScreen() {
           }
 
           await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+        }
+
+        // If a newer session is pending, don't reset — fall through to adopt it.
+        // Otherwise, clean up and return.
+        if (!hasNewerStart) {
           WidgetService.syncSessionState(null);
-        }
 
-        // Session was stopped — reset UI if it was active
-        if (sessionStartTimeRef.current || sessionEndTimeRef.current) {
-          console.log('📱 [Widget] Session stopped externally, resetting UI');
-          if (timerRef.current) clearInterval(timerRef.current as any);
-          timerRef.current = null;
-          setIsRunning(false);
-          setIsSessionActive(false);
-          setIsBonusTime(false);
-          setBonusSeconds(0);
-          setRemainingSeconds(0);
-          setElapsedSeconds(0);
-          setIsInfinite(false);
-          sessionStartTimeRef.current = null;
-          sessionEndTimeRef.current = null;
-          sessionTargetDurationRef.current = null;
-          liveActivityIdRef.current = undefined;
+          // Session was stopped — reset UI if it was active
+          if (sessionStartTimeRef.current || sessionEndTimeRef.current) {
+            console.log('📱 [Widget] Session stopped externally, resetting UI');
+            if (timerRef.current) clearInterval(timerRef.current as any);
+            timerRef.current = null;
+            setIsRunning(false);
+            setIsSessionActive(false);
+            setIsBonusTime(false);
+            setBonusSeconds(0);
+            setRemainingSeconds(0);
+            setElapsedSeconds(0);
+            setIsInfinite(false);
+            sessionStartTimeRef.current = null;
+            sessionEndTimeRef.current = null;
+            sessionTargetDurationRef.current = null;
+            liveActivityIdRef.current = undefined;
 
-          scrollerOpacity.setValue(1);
-          tagsOpacity.setValue(1);
-          headerOpacity.setValue(1);
-          timerOpacity.setValue(0);
-          timerScale.setValue(0.94);
-          timerTranslateY.setValue(6);
+            scrollerOpacity.setValue(1);
+            tagsOpacity.setValue(1);
+            headerOpacity.setValue(1);
+            timerOpacity.setValue(0);
+            timerScale.setValue(0.94);
+            timerTranslateY.setValue(6);
+          }
+          return; // stop action handled — no session to recover
         }
-        return; // stop action handled — no session to recover
+        // hasNewerStart: fall through to adopt the newer session below
       }
 
       // 2. Check if widget started a session
@@ -977,34 +992,29 @@ export default function FocusScreen() {
 
         const existingSession = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
         if (!existingSession) {
-          if (!startedSession.isInfinite && startedSession.endTime > 0 && Date.now() > startedSession.endTime) {
-            console.log('📱 [Widget] Widget-started session already expired, skipping');
-            WidgetService.clearWidgetStartedSession();
-            WidgetService.syncSessionState(null);
-            // fall through to recovery (which will find nothing)
-          } else {
-            // Adopt the Live Activity so JS can manage it
-            if (startedSession.liveActivityId) {
-              LiveActivityService.adoptWidgetActivity(
-                startedSession.liveActivityId,
-                startedSession.isInfinite ? undefined : startedSession.endTime
-              );
-            }
-
-            // Write to AsyncStorage so the recovery phase below picks it up
-            const persistedSession = {
-              startTime: startedSession.startTime,
-              endTime: startedSession.isInfinite ? 0 : startedSession.endTime,
-              targetDuration: startedSession.duration,
-              tagId: startedSession.tagId,
-              isInfinite: startedSession.isInfinite,
-              liveActivityId: startedSession.liveActivityId,
-            };
-            await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(persistedSession));
-            // Only clear after successful write so the data survives crashes/races
-            WidgetService.clearWidgetStartedSession();
-            console.log('📱 [Widget] Wrote active-focus-session for recovery, liveActivityId:', startedSession.liveActivityId);
+          // Adopt the Live Activity so JS can manage it (even if expired — it's
+          // still running in bonus-time / count-up mode on the Dynamic Island)
+          if (startedSession.liveActivityId) {
+            LiveActivityService.adoptWidgetActivity(
+              startedSession.liveActivityId,
+              startedSession.isInfinite ? undefined : startedSession.endTime
+            );
           }
+
+          // Write to AsyncStorage so the recovery phase below picks it up.
+          // If the timer already expired, recovery will enter bonus-time mode.
+          const persistedSession = {
+            startTime: startedSession.startTime,
+            endTime: startedSession.isInfinite ? 0 : startedSession.endTime,
+            targetDuration: startedSession.duration,
+            tagId: startedSession.tagId,
+            isInfinite: startedSession.isInfinite,
+            liveActivityId: startedSession.liveActivityId,
+          };
+          await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(persistedSession));
+          // Only clear after successful write so the data survives crashes/races
+          WidgetService.clearWidgetStartedSession();
+          console.log('📱 [Widget] Wrote active-focus-session for recovery, liveActivityId:', startedSession.liveActivityId);
         } else {
           console.log('📱 [Widget] Existing active session found, skipping adoption');
           WidgetService.clearWidgetStartedSession();
@@ -1121,7 +1131,8 @@ export default function FocusScreen() {
       } else {
         // Session still running — resume the timer
         const remainingMs = persisted.endTime - now;
-        const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+        // Use Math.floor to match SwiftUI's Text(date, style: .timer) truncation
+        const remainingSec = Math.max(0, Math.floor(remainingMs / 1000));
 
         setSelectedTime(persisted.targetDuration);
         setSelectedTag(persisted.tagId);
@@ -1167,20 +1178,6 @@ export default function FocusScreen() {
       AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
     }
 
-    // Safety net: if no session was recovered but a widget-started session still
-    // exists in UserDefaults (e.g. intent fired during a long-press but adoption
-    // failed), clean up the orphaned Live Activity and widget state.
-    if (!sessionStartTimeRef.current && !sessionEndTimeRef.current) {
-      const orphaned = WidgetService.readWidgetStartedSession();
-      if (orphaned) {
-        console.log('📱 [Widget] Cleaning up orphaned widget-started session');
-        if (orphaned.liveActivityId) {
-          LiveActivityService.stopFocusTimer(orphaned.liveActivityId, 'cancelled');
-        }
-        WidgetService.clearWidgetStartedSession();
-        WidgetService.syncSessionState(null);
-      }
-    }
   };
 
   // Adopt widget session + recover from AsyncStorage on mount (cold start)

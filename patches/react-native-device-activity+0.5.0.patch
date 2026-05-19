@@ -1,8 +1,30 @@
+diff --git a/node_modules/react-native-device-activity/ios/ReactNativeDeviceActivityModule.swift b/node_modules/react-native-device-activity/ios/ReactNativeDeviceActivityModule.swift
+index 01c36ba..02a62dc 100644
+--- a/node_modules/react-native-device-activity/ios/ReactNativeDeviceActivityModule.swift
++++ b/node_modules/react-native-device-activity/ios/ReactNativeDeviceActivityModule.swift
+@@ -375,13 +375,16 @@ public class ReactNativeDeviceActivityModule: Module {
+         return
+       }
+       userDefaults?.set(value, forKey: key)
++      userDefaults?.synchronize()
+     }
+ 
+     Function("userDefaultsGet") { (forKey: String) -> Any? in
++      userDefaults?.synchronize()
+       return userDefaults?.object(forKey: forKey)
+     }
+ 
+     Function("userDefaultsRemove") { (forKey: String) -> Any? in
++      userDefaults?.synchronize()
+       return userDefaults?.removeObject(forKey: forKey)
+     }
+ 
 diff --git a/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist b/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist
-index 045057a..5215ae0 100644
+index 84601bb..d96bd58 100644
 --- a/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist
 +++ b/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist
-@@ -3,8 +3,10 @@
+@@ -2,6 +2,8 @@
+ <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
  <plist version="1.0">
  <dict>
 +	<key>UIUserInterfaceStyle</key>
@@ -10,6 +32,3 @@ index 045057a..5215ae0 100644
  	<key>REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP</key>
    <string>$(REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP)</string>
  	<key>NSExtension</key>
- 	<dict>
- 		<key>NSExtensionPointIdentifier</key>
- 		<string>com.apple.ManagedSettingsUI.shield-configuration-service</string>

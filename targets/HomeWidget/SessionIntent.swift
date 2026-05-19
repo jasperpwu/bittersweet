@@ -49,12 +49,6 @@ struct StartSessionIntent: LiveActivityIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    // Brief delay so iOS can cancel this task if the button tap was an accidental
-    // long-press that should show the context menu instead. Without this, tapping
-    // and holding a widget button fires the intent AND shows the context menu.
-    try await Task.sleep(nanoseconds: 150_000_000) // 150ms
-    try Task.checkCancellation()
-
     // Ensure ActivityKit handlers are registered (main app target only; no-op in widget extension)
     WidgetActivityKit.registerIfNeeded()
 
@@ -126,6 +120,9 @@ struct StopSessionIntent: LiveActivityIntent {
 
     // Stop all Live Activities (runs in main app process via LiveActivityIntent)
     WidgetActivityKit.stopHandler?()
+
+    // Clear the start marker so a subsequent start doesn't find stale data
+    WidgetDataManager.shared.clearWidgetStartedSession()
 
     // Write idle session data for widget display
     WidgetDataManager.shared.writeSessionData(

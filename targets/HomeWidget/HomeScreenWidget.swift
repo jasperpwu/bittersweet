@@ -79,16 +79,22 @@ struct SmallWidgetProvider: TimelineProvider {
       tagId: tag?.id, tagName: tag?.name, tagIcon: tag?.icon, tagColor: tag?.color,
       tagDuration: tag?.lastDuration, gridItems: []
     )
-    var entries: [HomeWidgetEntry] = [currentEntry]
 
+    var entries = [currentEntry]
+
+    // For timed sessions, add a second entry at endDate that still carries the
+    // active session. Text(date, style: .timer) will automatically count UP once
+    // endTime is in the past, giving us bonus-time behavior. The widget only
+    // returns to idle when reloadTimelines() is called on session stop.
     if let session = session, session.isActive, !session.isInfinite, session.endTime > 0 {
       let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
       if endDate > Date() {
-        entries.append(makeEntry(
-          date: endDate, session: nil,
+        let bonusEntry = makeEntry(
+          date: endDate, session: session,
           tagId: tag?.id, tagName: tag?.name, tagIcon: tag?.icon, tagColor: tag?.color,
           tagDuration: tag?.lastDuration, gridItems: []
-        ))
+        )
+        entries.append(bonusEntry)
       }
     }
 
@@ -127,16 +133,18 @@ struct MediumWidgetStaticProvider: TimelineProvider {
       tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
       tagDuration: nil, gridItems: gridItems
     )
-    var entries: [HomeWidgetEntry] = [currentEntry]
+
+    var entries = [currentEntry]
 
     if let session = session, session.isActive, !session.isInfinite, session.endTime > 0 {
       let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
       if endDate > Date() {
-        entries.append(makeEntry(
-          date: endDate, session: nil,
+        let bonusEntry = makeEntry(
+          date: endDate, session: session,
           tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
           tagDuration: nil, gridItems: gridItems
-        ))
+        )
+        entries.append(bonusEntry)
       }
     }
 
@@ -177,16 +185,18 @@ struct MediumWidgetProvider: AppIntentTimelineProvider {
       tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
       tagDuration: nil, gridItems: gridItems
     )
-    var entries: [HomeWidgetEntry] = [currentEntry]
+
+    var entries = [currentEntry]
 
     if let session = session, session.isActive, !session.isInfinite, session.endTime > 0 {
       let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
       if endDate > Date() {
-        entries.append(makeEntry(
-          date: endDate, session: nil,
+        let bonusEntry = makeEntry(
+          date: endDate, session: session,
           tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
           tagDuration: nil, gridItems: gridItems
-        ))
+        )
+        entries.append(bonusEntry)
       }
     }
 

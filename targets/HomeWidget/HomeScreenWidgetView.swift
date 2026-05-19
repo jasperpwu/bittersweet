@@ -70,6 +70,14 @@ struct HomeScreenWidgetView: View {
     }
   }
 
+  /// Whether a timed session's end time has passed (bonus / count-up mode).
+  /// Uses the timeline entry date (not Date()) so the bonus entry rendered at
+  /// timeline-creation time still gets the correct color when displayed later.
+  private func isBonusTime(_ session: WidgetSessionData) -> Bool {
+    !session.isInfinite && session.endTime > 0
+      && Date(timeIntervalSince1970: session.endTime / 1000) <= entry.date
+  }
+
   private func smallActiveView(session: WidgetSessionData) -> some View {
     VStack(alignment: .leading, spacing: 0) {
       // Tag icon + name
@@ -90,6 +98,14 @@ struct HomeScreenWidgetView: View {
           .font(.system(size: 28, weight: .semibold))
           .foregroundStyle(Color(hex: "#5D4E37"))
           .minimumScaleFactor(0.7)
+      } else if isBonusTime(session) {
+        HStack(spacing: 4) {
+          Text("+")
+          Text(Date(timeIntervalSince1970: session.endTime / 1000), style: .timer)
+        }
+        .font(.system(size: 28, weight: .semibold))
+        .foregroundStyle(Color(hex: "#4CAF7C"))
+        .minimumScaleFactor(0.7)
       } else {
         Text(Date(timeIntervalSince1970: session.endTime / 1000), style: .timer)
           .font(.system(size: 28, weight: .semibold))
@@ -135,6 +151,15 @@ struct HomeScreenWidgetView: View {
             .font(.system(size: 32, weight: .bold, design: .monospaced))
             .foregroundStyle(Color(hex: "#8B4513"))
             .minimumScaleFactor(0.7)
+        } else if isBonusTime(session) {
+          // Bonus time — count up from end time in green
+          HStack(spacing: 4) {
+            Text("+")
+            Text(Date(timeIntervalSince1970: session.endTime / 1000), style: .timer)
+          }
+          .font(.system(size: 32, weight: .bold, design: .monospaced))
+          .foregroundStyle(Color(hex: "#4CAF7C"))
+          .minimumScaleFactor(0.7)
         } else {
           // Count down to end time
           Text(Date(timeIntervalSince1970: session.endTime / 1000), style: .timer)
@@ -143,7 +168,7 @@ struct HomeScreenWidgetView: View {
             .minimumScaleFactor(0.7)
         }
 
-        Text("Focusing...")
+        Text(isBonusTime(session) ? "Bonus Time" : "Focusing...")
           .font(.caption)
           .foregroundStyle(Color(hex: "#8B7355"))
       }
