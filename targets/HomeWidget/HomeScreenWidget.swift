@@ -13,6 +13,7 @@ struct HomeWidgetProvider: TimelineProvider {
       configuredTagId: nil,
       configuredTagName: "Focus",
       configuredTagIcon: "🎯",
+      configuredTagColor: nil,
       configuredTagDuration: nil
     )
   }
@@ -28,6 +29,7 @@ struct HomeWidgetProvider: TimelineProvider {
       configuredTagId: firstTag?.id,
       configuredTagName: firstTag?.name ?? "Focus",
       configuredTagIcon: firstTag?.icon ?? "🎯",
+      configuredTagColor: firstTag?.color,
       configuredTagDuration: firstTag?.lastDuration
     )
     completion(entry)
@@ -44,6 +46,7 @@ struct HomeWidgetProvider: TimelineProvider {
       configuredTagId: firstTag?.id,
       configuredTagName: firstTag?.name ?? "Focus",
       configuredTagIcon: firstTag?.icon ?? "🎯",
+      configuredTagColor: firstTag?.color,
       configuredTagDuration: firstTag?.lastDuration
     )
 
@@ -59,6 +62,7 @@ struct HomeWidgetProvider: TimelineProvider {
           configuredTagId: firstTag?.id,
           configuredTagName: firstTag?.name ?? "Focus",
           configuredTagIcon: firstTag?.icon ?? "🎯",
+          configuredTagColor: firstTag?.color,
           configuredTagDuration: firstTag?.lastDuration
         )
         entries.append(endEntry)
@@ -86,6 +90,7 @@ struct HomeWidgetAppIntentProvider: AppIntentTimelineProvider {
       configuredTagId: nil,
       configuredTagName: "Focus",
       configuredTagIcon: "🎯",
+      configuredTagColor: nil,
       configuredTagDuration: nil
     )
   }
@@ -103,6 +108,7 @@ struct HomeWidgetAppIntentProvider: AppIntentTimelineProvider {
       configuredTagId: configuration.tag?.id,
       configuredTagName: configuration.tag?.name ?? "Focus",
       configuredTagIcon: configuration.tag?.icon ?? "🎯",
+      configuredTagColor: configuration.tag?.color,
       configuredTagDuration: tagDuration
     )
   }
@@ -113,6 +119,7 @@ struct HomeWidgetAppIntentProvider: AppIntentTimelineProvider {
     let tagId = configuration.tag?.id
     let tagName = configuration.tag?.name ?? "Focus"
     let tagIcon = configuration.tag?.icon ?? "🎯"
+    let tagColor = configuration.tag?.color
     let tagDuration: Int? = {
       guard let id = tagId else { return nil }
       let tags = WidgetDataManager.shared.getTagList()
@@ -125,6 +132,7 @@ struct HomeWidgetAppIntentProvider: AppIntentTimelineProvider {
       configuredTagId: tagId,
       configuredTagName: tagName,
       configuredTagIcon: tagIcon,
+      configuredTagColor: tagColor,
       configuredTagDuration: tagDuration
     )
 
@@ -139,6 +147,7 @@ struct HomeWidgetAppIntentProvider: AppIntentTimelineProvider {
           configuredTagId: tagId,
           configuredTagName: tagName,
           configuredTagIcon: tagIcon,
+          configuredTagColor: tagColor,
           configuredTagDuration: tagDuration
         )
         entries.append(endEntry)
@@ -166,7 +175,7 @@ struct HomeScreenWidget: Widget {
       }
       .configurationDisplayName("Focus Session")
       .description("Start and stop focus sessions from your home screen.")
-      .supportedFamilies([.systemMedium])
+      .supportedFamilies([.systemSmall, .systemMedium])
     } else {
       return StaticConfiguration(
         kind: kind,
@@ -176,7 +185,7 @@ struct HomeScreenWidget: Widget {
       }
       .configurationDisplayName("Focus Session")
       .description("Start and stop focus sessions from your home screen.")
-      .supportedFamilies([.systemMedium])
+      .supportedFamilies([.systemSmall, .systemMedium])
     }
   }
 }

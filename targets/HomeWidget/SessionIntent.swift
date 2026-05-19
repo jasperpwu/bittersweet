@@ -153,6 +153,7 @@ struct TagEntity: AppEntity {
   var id: String
   var name: String
   var icon: String
+  var color: String
 
   var displayRepresentation: DisplayRepresentation {
     DisplayRepresentation(title: "\(icon) \(name)")
@@ -165,19 +166,19 @@ struct TagEntityQuery: EntityQuery {
     let tags = WidgetDataManager.shared.getTagList()
     return identifiers.compactMap { id in
       guard let tag = tags.first(where: { $0.id == id }) else { return nil }
-      return TagEntity(id: tag.id, name: tag.name, icon: tag.icon)
+      return TagEntity(id: tag.id, name: tag.name, icon: tag.icon, color: tag.color)
     }
   }
 
   func suggestedEntities() async throws -> [TagEntity] {
     let tags = WidgetDataManager.shared.getTagList()
-    return tags.map { TagEntity(id: $0.id, name: $0.name, icon: $0.icon) }
+    return tags.map { TagEntity(id: $0.id, name: $0.name, icon: $0.icon, color: $0.color) }
   }
 
   func defaultResult() async -> TagEntity? {
     let tags = WidgetDataManager.shared.getTagList()
     guard let first = tags.first else { return nil }
-    return TagEntity(id: first.id, name: first.name, icon: first.icon)
+    return TagEntity(id: first.id, name: first.name, icon: first.icon, color: first.color)
   }
 }
 
