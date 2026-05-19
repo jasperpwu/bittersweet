@@ -401,4 +401,15 @@ export class LiveActivityService {
     return !!this.lastFocusActivityId;
   }
 
+  /**
+   * Adopt a Live Activity that was started by the widget extension.
+   * Sets the internal tracking state so stopFocusTimer() works correctly
+   * when the app eventually stops the session.
+   */
+  static adoptWidgetActivity(activityId: string, endTimestamp?: number): void {
+    this.lastFocusActivityId = activityId;
+    this.focusEndTimestamp = endTimestamp;
+    console.log('📱 [LiveActivity] Adopted widget activity:', activityId);
+  }
+
 }

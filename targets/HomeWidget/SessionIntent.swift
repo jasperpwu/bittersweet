@@ -1,0 +1,199 @@
+import AppIntents
+import Foundation
+import WidgetKit
+
+// MARK: - Start Session Intent
+// Conforms to LiveActivityIntent so the system runs perform() in the main app
+// process, where Activity.request() works. The widget extension also compiles
+// this file but the system only executes the main app's copy.
+//
+// ActivityKit calls are in a separate file (SessionIntentActivityKit.swift)
+// that is only compiled in the main app target, because LiveActivityAttributes
+// is internal to the ExpoLiveActivity module and not visible from the main app target
+// via direct import. The widget extension target has its own copy via LiveActivityWidget.swift.
+
+// Callback hooks for ActivityKit — set by WidgetActivityKitLoader in SessionIntentActivityKit.swift
+// (main app target only). In the widget extension, these stay nil and registerIfNeeded() is a no-op
+// because the loader class doesn't exist there.
+@available(iOS 17.0, *)
+enum WidgetActivityKit {
+  nonisolated(unsafe) static var startHandler: ((String, Int, Double, Double, Bool) -> String?)? = nil
+  nonisolated(unsafe) static var stopHandler: (() -> Void)? = nil
+
+  /// Lazily registers ActivityKit handlers by dynamically discovering WidgetActivityKitLoader
+  /// via the ObjC runtime. In the widget extension, the class doesn't exist so this is a no-op.
+  /// In the main app, it calls registerHandlers() which sets the start/stop closures.
+  static func registerIfNeeded() {
+    guard startHandler == nil else { return }
+    guard let loaderClass = NSClassFromString("WidgetActivityKitLoader") as? NSObject.Type else { return }
+    loaderClass.perform(NSSelectorFromString("registerHandlers"))
+  }
+}
+
+@available(iOS 17.0, *)
+struct StartSessionIntent: LiveActivityIntent {
+  static var title: LocalizedStringResource = "Start Focus Session"
+  static var description: IntentDescription = "Starts a focus session with the configured tag"
+
+  @Parameter(title: "Tag ID")
+  var tagId: String?
+
+  @Parameter(title: "Duration")
+  var duration: Int?
+
+  init() {}
+
+  init(tagId: String?, duration: Int?) {
+    self.tagId = tagId
+    self.duration = duration
+  }
+
+  func perform() async throws -> some IntentResult {
+    // Ensure ActivityKit handlers are registered (main app target only; no-op in widget extension)
+    WidgetActivityKit.registerIfNeeded()
+
+    // Guard: don't double-start if a session is already active
+    if let session = WidgetDataManager.shared.getSessionData(), session.isActive {
+      return .result()
+    }
+
+    let tags = WidgetDataManager.shared.getTagList()
+    let tag = tagId.flatMap { id in tags.first(where: { $0.id == id }) } ?? tags.first
+
+    guard let tag = tag else {
+      return .result()
+    }
+
+    let resolvedDuration = duration ?? tag.lastDuration ?? 15
+    let isInfinite = resolvedDuration == 0
+    let now = Date().timeIntervalSince1970 * 1000
+    let startTimeMs = now
+    let endTimeMs = isInfinite ? 0 : now + Double(resolvedDuration) * 60 * 1000
+
+    // Start Live Activity (runs in main app process via LiveActivityIntent)
+    let liveActivityId = WidgetActivityKit.startHandler?(
+      tag.name, resolvedDuration, startTimeMs, endTimeMs, isInfinite
+    )
+
+    // Update widget display
+    WidgetDataManager.shared.writeSessionData(
+      isActive: true,
+      tagName: tag.name,
+      tagIcon: tag.icon,
+      tagColor: tag.color,
+      startTime: startTimeMs,
+      endTime: endTimeMs,
+      isInfinite: isInfinite
+    )
+
+    // Write session info for JS adoption when app opens
+    WidgetDataManager.shared.writeWidgetStartedSession(
+      tagId: tag.id,
+      tagName: tag.name,
+      tagIcon: tag.icon,
+      tagColor: tag.color,
+      duration: resolvedDuration,
+      startTime: startTimeMs,
+      endTime: endTimeMs,
+      isInfinite: isInfinite,
+      liveActivityId: liveActivityId
+    )
+
+    WidgetDataManager.shared.reloadTimelines()
+
+    return .result()
+  }
+}
+
+// MARK: - Stop Session Intent
+
+@available(iOS 17.0, *)
+struct StopSessionIntent: LiveActivityIntent {
+  static var title: LocalizedStringResource = "Stop Focus Session"
+  static var description: IntentDescription = "Stops the current focus session"
+
+  init() {}
+
+  func perform() async throws -> some IntentResult {
+    // Ensure ActivityKit handlers are registered (main app target only; no-op in widget extension)
+    WidgetActivityKit.registerIfNeeded()
+
+    // Stop all Live Activities (runs in main app process via LiveActivityIntent)
+    WidgetActivityKit.stopHandler?()
+
+    // Write idle session data for widget display
+    WidgetDataManager.shared.writeSessionData(
+      isActive: false,
+      tagName: "",
+      tagIcon: "",
+      tagColor: "",
+      startTime: 0,
+      endTime: 0,
+      isInfinite: false
+    )
+
+    // Write stop marker for JS to record the completed session
+    WidgetDataManager.shared.writeWidgetStopAction(
+      timestamp: Date().timeIntervalSince1970 * 1000
+    )
+
+    WidgetDataManager.shared.reloadTimelines()
+
+    return .result()
+  }
+}
+
+// MARK: - Tag Query for Widget Configuration
+
+@available(iOS 17.0, *)
+struct TagEntity: AppEntity {
+  static var typeDisplayRepresentation: TypeDisplayRepresentation = "Focus Tag"
+  static var defaultQuery = TagEntityQuery()
+
+  var id: String
+  var name: String
+  var icon: String
+
+  var displayRepresentation: DisplayRepresentation {
+    DisplayRepresentation(title: "\(icon) \(name)")
+  }
+}
+
+@available(iOS 17.0, *)
+struct TagEntityQuery: EntityQuery {
+  func entities(for identifiers: [String]) async throws -> [TagEntity] {
+    let tags = WidgetDataManager.shared.getTagList()
+    return identifiers.compactMap { id in
+      guard let tag = tags.first(where: { $0.id == id }) else { return nil }
+      return TagEntity(id: tag.id, name: tag.name, icon: tag.icon)
+    }
+  }
+
+  func suggestedEntities() async throws -> [TagEntity] {
+    let tags = WidgetDataManager.shared.getTagList()
+    return tags.map { TagEntity(id: $0.id, name: $0.name, icon: $0.icon) }
+  }
+
+  func defaultResult() async -> TagEntity? {
+    let tags = WidgetDataManager.shared.getTagList()
+    guard let first = tags.first else { return nil }
+    return TagEntity(id: first.id, name: first.name, icon: first.icon)
+  }
+}
+
+// MARK: - Widget Configuration Intent
+
+@available(iOS 17.0, *)
+struct SelectTagIntent: WidgetConfigurationIntent {
+  static var title: LocalizedStringResource = "Configure Focus Widget"
+  static var description: IntentDescription = "Select a tag for quick-start"
+
+  @Parameter(title: "Tag")
+  var tag: TagEntity?
+
+  init() {}
+
+  init(tag: TagEntity?) {
+    self.tag = tag
+  }
+}

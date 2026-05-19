@@ -32,3 +32,4 @@ Bittersweet — an iOS mobile app built with Expo 53 (React Native), TypeScript,
 - `ios/` and `node_modules/` are not tracked. Never modify them directly — sync native changes through Expo plugins or patches.
 - Do not blindly execute what the user asks. Validate and research first; let the user know if the ask is unreasonable.
 - Do not execute alternative solutions without asking the user.
+- Must let user know when it no longer safe to run `npx expo prebuild --clean`.

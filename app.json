@@ -29,7 +29,8 @@
           "appGroupIdentifier": "group.com.path2us.bittersweet.appblocker"
         }
       ],
-      "./plugins/withFmtFix"
+      "./plugins/withFmtFix",
+      "./plugins/withHomeWidget"
     ],
     "experiments": {
       "typedRoutes": true,

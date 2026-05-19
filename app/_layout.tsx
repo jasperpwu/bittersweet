@@ -18,6 +18,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
 import { Toast } from '../src/components/ui/Toast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
+import { WidgetService } from '../src/services/WidgetService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '../src/store';
 
@@ -120,10 +121,120 @@ export default function RootLayout() {
     };
   }, []);
 
+  const syncWidgetTagList = () => {
+    try {
+      const store = useAppStore.getState();
+      const { tags, lastDurationByTagId } = store.focus;
+      const tagList = tags.allIds.map(id => {
+        const tag = tags.byId[id];
+        return {
+          id: tag.id,
+          name: tag.name,
+          icon: tag.icon || '🎯',
+          color: tag.color || '#8B4513',
+          lastDuration: lastDurationByTagId[id] ?? 15,
+        };
+      });
+      WidgetService.syncTagList(tagList);
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync tag list:', error);
+    }
+  };
+
+  const adoptWidgetSession = async () => {
+    try {
+      // Check if widget stopped a session
+      const stopAction = WidgetService.checkWidgetStopAction();
+      if (stopAction) {
+        console.log('📱 [Widget] Adopting widget stop action');
+
+        // Try to find session info from AsyncStorage first (app was opened during session),
+        // then fall back to widgetStartedSession (user never opened the app)
+        const activeRaw = await AsyncStorage.getItem('active-focus-session');
+        const widgetSession = WidgetService.checkWidgetStartedSession();
+        const sessionInfo = activeRaw
+          ? JSON.parse(activeRaw)
+          : widgetSession
+            ? { startTime: widgetSession.startTime, targetDuration: widgetSession.duration, tagId: widgetSession.tagId }
+            : null;
+
+        if (sessionInfo) {
+          const store = useAppStore.getState();
+          const actualEndTime = stopAction.timestamp;
+          const durationMs = actualEndTime - sessionInfo.startTime;
+          const durationMinutes = Math.round(durationMs / 60000);
+
+          if (durationMinutes > 0) {
+            store.focus.createCompletedSession({
+              startTime: new Date(sessionInfo.startTime),
+              endTime: new Date(actualEndTime),
+              duration: durationMinutes,
+              targetDuration: sessionInfo.targetDuration,
+              tagId: sessionInfo.tagId,
+            });
+            console.log('📱 [Widget] Recorded completed session:', durationMinutes, 'min');
+          }
+
+          await AsyncStorage.removeItem('active-focus-session');
+          // Sync widget to idle
+          WidgetService.syncSessionState(null);
+        }
+      }
+
+      // Check if widget started a session
+      const startedSession = WidgetService.checkWidgetStartedSession();
+      if (startedSession) {
+        console.log('📱 [Widget] Adopting widget-started session:', startedSession.tagId);
+
+        // Skip if there's already an active session in AsyncStorage
+        const existingSession = await AsyncStorage.getItem('active-focus-session');
+        if (existingSession) {
+          console.log('📱 [Widget] Existing active session found, skipping adoption');
+          return;
+        }
+
+        // Skip expired timed sessions
+        if (!startedSession.isInfinite && startedSession.endTime > 0 && Date.now() > startedSession.endTime) {
+          console.log('📱 [Widget] Widget-started session already expired, skipping');
+          // Clear widget display since session is over
+          WidgetService.syncSessionState(null);
+          return;
+        }
+
+        // The Live Activity was already started by the LiveActivityIntent in the
+        // app process. Adopt it so JS can manage (stop) it later.
+        if (startedSession.liveActivityId) {
+          LiveActivityService.adoptWidgetActivity(
+            startedSession.liveActivityId,
+            startedSession.isInfinite ? undefined : startedSession.endTime
+          );
+        }
+
+        // Write PersistedSession to AsyncStorage so index.tsx recovery code picks it up
+        const persistedSession = {
+          startTime: startedSession.startTime,
+          endTime: startedSession.isInfinite ? 0 : startedSession.endTime,
+          targetDuration: startedSession.duration,
+          tagId: startedSession.tagId,
+          isInfinite: startedSession.isInfinite,
+          liveActivityId: startedSession.liveActivityId,
+        };
+        await AsyncStorage.setItem('active-focus-session', JSON.stringify(persistedSession));
+        console.log('📱 [Widget] Wrote active-focus-session for recovery, liveActivityId:', startedSession.liveActivityId);
+      }
+    } catch (error) {
+      console.error('📱 [Widget] Failed to adopt widget session:', error);
+    }
+  };
+
   useEffect(() => {
     if (isHydrated) {
       checkExpiredUnlockSessions('mount');
       syncShieldConfiguration('mount');
+      syncWidgetTagList();
+
+      // Adopt any widget-started/stopped session (cold start)
+      adoptWidgetSession();
     }
   }, [isHydrated]);
 
@@ -187,12 +298,16 @@ export default function RootLayout() {
         console.log('🛡️ [SHIELD_LAYOUT] App came to foreground - checking for shield opening...');
         checkShieldOpening('foreground');
 
+        // Adopt any widget-started/stopped session (warm start)
+        adoptWidgetSession();
+
         // End any lingering live activities. JS timers are suspended in the
         // background, so if a focus session's timer expired while the phone was
         // locked, stopActivity was never called. This is the safety net.
         LiveActivityService.cleanupExpired();
         checkExpiredUnlockSessions('foreground');
         syncShieldConfiguration('foreground');
+        syncWidgetTagList();
       }
 
       appState.current = nextAppState;
@@ -202,8 +317,6 @@ export default function RootLayout() {
 
     return () => subscription?.remove();
   }, [fontsLoaded, isHydrated]);
-
-  // Deep link handling removed - now using UserDefaults + foreground detection only
 
   // Debug logging
   if (__DEV__) {

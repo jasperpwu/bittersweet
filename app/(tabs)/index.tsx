@@ -13,6 +13,7 @@ import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { FruitCounter } from '../../src/components/rewards';
 import { showToast } from '../../src/components/ui/Toast';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
+import { WidgetService } from '../../src/services/WidgetService';
 import { FamilyControlsModule } from '../../src/modules/BitterSweetFamilyControls';
 import { blockSelection, stopMonitoring } from 'react-native-device-activity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -684,6 +685,18 @@ export default function FocusScreen() {
       liveActivityId,
     } satisfies PersistedSession));
 
+    // Sync widget with active session state
+    const tagInfo = selectedTag ? tags.byId[selectedTag] : null;
+    WidgetService.syncSessionState({
+      isActive: true,
+      tagName: tagInfo?.name || 'Focus',
+      tagIcon: tagInfo?.icon || '🎯',
+      tagColor: tagInfo?.color || '#8B4513',
+      startTime: persistNow,
+      endTime: infinite ? 0 : persistNow + timerSeconds * 1000,
+      isInfinite: infinite,
+    });
+
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = setInterval(() => {
       if (infinite) {
@@ -726,6 +739,9 @@ export default function FocusScreen() {
     FamilyControlsModule.updateShieldBalance(currentBalance, false).catch((error) => {
       console.error('Failed to restore shield after focus session stop:', error);
     });
+
+    // Clear widget session state
+    WidgetService.syncSessionState(null);
   };
 
   const stopWithAnimation = () => {
@@ -747,6 +763,9 @@ export default function FocusScreen() {
     FamilyControlsModule.updateShieldBalance(currentBalance, false).catch((error) => {
       console.error('Failed to restore shield after focus session stop:', error);
     });
+
+    // Clear widget session state
+    WidgetService.syncSessionState(null);
 
     // Stop Live Activity if it's running - clear ID first to prevent double-stop
     sessionEndTimeRef.current = null;
@@ -814,6 +833,42 @@ export default function FocusScreen() {
           const elapsed = Math.floor((now - sessionStartTimeRef.current) / 1000);
           setElapsedSeconds(elapsed);
         }
+
+        // Check if the widget stopped a session while the app was backgrounded.
+        // _layout.tsx clears active-focus-session on stop adoption, so if this
+        // component thinks a session is running but AsyncStorage is empty, reset UI.
+        if (sessionStartTimeRef.current || sessionEndTimeRef.current) {
+          AsyncStorage.getItem(ACTIVE_SESSION_KEY).then(raw => {
+            if (!raw) {
+              // Session was stopped externally (widget stop) — reset UI
+              console.log('📱 [Widget] Session stopped externally, resetting UI');
+              if (timerRef.current) clearInterval(timerRef.current as any);
+              timerRef.current = null;
+              setIsRunning(false);
+              setIsSessionActive(false);
+              setIsBonusTime(false);
+              setBonusSeconds(0);
+              setRemainingSeconds(0);
+              setElapsedSeconds(0);
+              setIsInfinite(false);
+              sessionStartTimeRef.current = null;
+              sessionEndTimeRef.current = null;
+              sessionTargetDurationRef.current = null;
+              liveActivityIdRef.current = undefined;
+
+              // Restore visuals to idle
+              scrollerOpacity.setValue(1);
+              tagsOpacity.setValue(1);
+              headerOpacity.setValue(1);
+              timerOpacity.setValue(0);
+              timerScale.setValue(0.94);
+              timerTranslateY.setValue(6);
+            }
+          });
+        } else {
+          // No session running — check if _layout.tsx adopted a widget-started session
+          recoverSession();
+        }
       }
     });
     return () => subscription.remove();
@@ -872,147 +927,164 @@ export default function FocusScreen() {
     };
   }, []);
 
-  // Recover active session after app kill + restart
-  useEffect(() => {
-    AsyncStorage.getItem(ACTIVE_SESSION_KEY).then(raw => {
-      if (!raw) return;
-      try {
-        const persisted: PersistedSession = JSON.parse(raw);
-        const now = Date.now();
+  // Recover active session from AsyncStorage.
+  // Called on mount (app kill + restart) and on foreground (widget-adopted session).
+  const recoverSession = async () => {
+    const raw = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
+    if (!raw) return;
+    try {
+      const persisted: PersistedSession = JSON.parse(raw);
+      const now = Date.now();
 
-        // Restore notification ID so it can be cancelled if the user stops the session
-        if (persisted.notificationId) {
-          scheduledNotificationRef.current = persisted.notificationId;
-        }
-        if (persisted.liveActivityId) {
-          liveActivityIdRef.current = persisted.liveActivityId;
-        }
-
-        // Restore shield to focus-session mode (block unlocking)
-        const currentBalance = useAppStore.getState().rewards.balance;
-        FamilyControlsModule.updateShieldBalance(currentBalance, true).catch((error) => {
-          console.error('Failed to update shield for recovered focus session:', error);
-        });
-
-        if (persisted.isInfinite) {
-          // Infinite session was running when app was killed — restore it
-          const elapsed = Math.floor((now - persisted.startTime) / 1000);
-
-          setSelectedTime(0);
-          setSelectedTag(persisted.tagId);
-          setElapsedSeconds(elapsed);
-          setIsInfinite(true);
-          setIsRunning(true);
-          setIsSessionActive(true);
-          sessionStartTimeRef.current = persisted.startTime;
-          sessionTargetDurationRef.current = persisted.targetDuration;
-
-          // Switch visuals to timer mode immediately
-          scrollerOpacity.setValue(0);
-          tagsOpacity.setValue(0);
-          headerOpacity.setValue(0);
-          timerOpacity.setValue(1);
-          timerScale.setValue(1);
-          timerTranslateY.setValue(0);
-
-          if (!persisted.liveActivityId) {
-            // Older persisted sessions did not store the activity ID.
-            const recoveredTagName = useAppStore.getState().focus.tags.byId[persisted.tagId]?.name || 'Focus';
-            const activityId = LiveActivityService.startFocusTimerInfinite(
-              new Date(persisted.startTime),
-              recoveredTagName
-            );
-            if (activityId) {
-              liveActivityIdRef.current = activityId;
-            }
-          }
-
-          // Start elapsed count-up interval
-          if (timerRef.current) clearInterval(timerRef.current as any);
-          timerRef.current = setInterval(() => {
-            setElapsedSeconds(prev => prev + 1);
-          }, 1000);
-          return;
-        }
-
-        if (now >= persisted.endTime) {
-          // Session expired while app was killed — resume in bonus time mode
-          setSelectedTime(persisted.targetDuration);
-          setSelectedTag(persisted.tagId);
-          setRemainingSeconds(0);
-          setIsInfinite(false);
-          setIsRunning(true);
-          setIsSessionActive(true);
-          sessionStartTimeRef.current = persisted.startTime;
-          sessionEndTimeRef.current = persisted.endTime;
-          sessionTargetDurationRef.current = persisted.targetDuration;
-
-          const bonus = Math.floor((now - persisted.endTime) / 1000);
-          setIsBonusTime(true);
-          setBonusSeconds(bonus);
-
-          // Switch visuals to timer mode immediately
-          scrollerOpacity.setValue(0);
-          tagsOpacity.setValue(0);
-          headerOpacity.setValue(0);
-          timerOpacity.setValue(1);
-          timerScale.setValue(1);
-          timerTranslateY.setValue(0);
-
-          // Start bonus count-up interval
-          if (timerRef.current) clearInterval(timerRef.current as any);
-          timerRef.current = setInterval(() => {
-            setBonusSeconds(b => b + 1);
-          }, 1000);
-        } else {
-          // Session still running — resume the timer
-          const remainingMs = persisted.endTime - now;
-          const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
-
-          setSelectedTime(persisted.targetDuration);
-          setSelectedTag(persisted.tagId);
-          setRemainingSeconds(remainingSec);
-          setIsInfinite(false);
-          setIsRunning(true);
-          setIsSessionActive(true);
-          sessionStartTimeRef.current = persisted.startTime;
-          sessionEndTimeRef.current = persisted.endTime;
-          sessionTargetDurationRef.current = persisted.targetDuration;
-
-          // Switch visuals to timer mode immediately (no animation needed on recovery)
-          scrollerOpacity.setValue(0);
-          tagsOpacity.setValue(0);
-          headerOpacity.setValue(0);
-          timerOpacity.setValue(1);
-          timerScale.setValue(1);
-          timerTranslateY.setValue(0);
-
-          // Start the countdown interval
-          if (timerRef.current) clearInterval(timerRef.current as any);
-          timerRef.current = setInterval(() => {
-            setRemainingSeconds(prev => {
-              if (prev <= 1) {
-                // Enter bonus time mode
-                if (timerRef.current) clearInterval(timerRef.current as any);
-                timerRef.current = null;
-                setIsBonusTime(true);
-                setBonusSeconds(0);
-
-                timerRef.current = setInterval(() => {
-                  setBonusSeconds(b => b + 1);
-                }, 1000);
-
-                return 0;
-              }
-              return prev - 1;
-            });
-          }, 1000);
-        }
-      } catch (e) {
-        // Corrupted data — just clear it
-        AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+      // Restore notification ID so it can be cancelled if the user stops the session
+      if (persisted.notificationId) {
+        scheduledNotificationRef.current = persisted.notificationId;
       }
-    });
+      if (persisted.liveActivityId) {
+        liveActivityIdRef.current = persisted.liveActivityId;
+      }
+
+      // Restore shield to focus-session mode (block unlocking)
+      const currentBalance = useAppStore.getState().rewards.balance;
+      FamilyControlsModule.updateShieldBalance(currentBalance, true).catch((error) => {
+        console.error('Failed to update shield for recovered focus session:', error);
+      });
+
+      // Sync widget with recovered session state
+      const recoveredTag = useAppStore.getState().focus.tags.byId[persisted.tagId];
+      WidgetService.syncSessionState({
+        isActive: true,
+        tagName: recoveredTag?.name || 'Focus',
+        tagIcon: recoveredTag?.icon || '🎯',
+        tagColor: recoveredTag?.color || '#8B4513',
+        startTime: persisted.startTime,
+        endTime: persisted.isInfinite ? 0 : persisted.endTime,
+        isInfinite: persisted.isInfinite,
+      });
+
+      if (persisted.isInfinite) {
+        // Infinite session was running when app was killed — restore it
+        const elapsed = Math.floor((now - persisted.startTime) / 1000);
+
+        setSelectedTime(0);
+        setSelectedTag(persisted.tagId);
+        setElapsedSeconds(elapsed);
+        setIsInfinite(true);
+        setIsRunning(true);
+        setIsSessionActive(true);
+        sessionStartTimeRef.current = persisted.startTime;
+        sessionTargetDurationRef.current = persisted.targetDuration;
+
+        // Switch visuals to timer mode immediately
+        scrollerOpacity.setValue(0);
+        tagsOpacity.setValue(0);
+        headerOpacity.setValue(0);
+        timerOpacity.setValue(1);
+        timerScale.setValue(1);
+        timerTranslateY.setValue(0);
+
+        if (!persisted.liveActivityId) {
+          // Older persisted sessions did not store the activity ID.
+          const recoveredTagName = useAppStore.getState().focus.tags.byId[persisted.tagId]?.name || 'Focus';
+          const activityId = LiveActivityService.startFocusTimerInfinite(
+            new Date(persisted.startTime),
+            recoveredTagName
+          );
+          if (activityId) {
+            liveActivityIdRef.current = activityId;
+          }
+        }
+
+        // Start elapsed count-up interval
+        if (timerRef.current) clearInterval(timerRef.current as any);
+        timerRef.current = setInterval(() => {
+          setElapsedSeconds(prev => prev + 1);
+        }, 1000);
+        return;
+      }
+
+      if (now >= persisted.endTime) {
+        // Session expired while app was killed — resume in bonus time mode
+        setSelectedTime(persisted.targetDuration);
+        setSelectedTag(persisted.tagId);
+        setRemainingSeconds(0);
+        setIsInfinite(false);
+        setIsRunning(true);
+        setIsSessionActive(true);
+        sessionStartTimeRef.current = persisted.startTime;
+        sessionEndTimeRef.current = persisted.endTime;
+        sessionTargetDurationRef.current = persisted.targetDuration;
+
+        const bonus = Math.floor((now - persisted.endTime) / 1000);
+        setIsBonusTime(true);
+        setBonusSeconds(bonus);
+
+        // Switch visuals to timer mode immediately
+        scrollerOpacity.setValue(0);
+        tagsOpacity.setValue(0);
+        headerOpacity.setValue(0);
+        timerOpacity.setValue(1);
+        timerScale.setValue(1);
+        timerTranslateY.setValue(0);
+
+        // Start bonus count-up interval
+        if (timerRef.current) clearInterval(timerRef.current as any);
+        timerRef.current = setInterval(() => {
+          setBonusSeconds(b => b + 1);
+        }, 1000);
+      } else {
+        // Session still running — resume the timer
+        const remainingMs = persisted.endTime - now;
+        const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+
+        setSelectedTime(persisted.targetDuration);
+        setSelectedTag(persisted.tagId);
+        setRemainingSeconds(remainingSec);
+        setIsInfinite(false);
+        setIsRunning(true);
+        setIsSessionActive(true);
+        sessionStartTimeRef.current = persisted.startTime;
+        sessionEndTimeRef.current = persisted.endTime;
+        sessionTargetDurationRef.current = persisted.targetDuration;
+
+        // Switch visuals to timer mode immediately (no animation needed on recovery)
+        scrollerOpacity.setValue(0);
+        tagsOpacity.setValue(0);
+        headerOpacity.setValue(0);
+        timerOpacity.setValue(1);
+        timerScale.setValue(1);
+        timerTranslateY.setValue(0);
+
+        // Start the countdown interval
+        if (timerRef.current) clearInterval(timerRef.current as any);
+        timerRef.current = setInterval(() => {
+          setRemainingSeconds(prev => {
+            if (prev <= 1) {
+              // Enter bonus time mode
+              if (timerRef.current) clearInterval(timerRef.current as any);
+              timerRef.current = null;
+              setIsBonusTime(true);
+              setBonusSeconds(0);
+
+              timerRef.current = setInterval(() => {
+                setBonusSeconds(b => b + 1);
+              }, 1000);
+
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    } catch (e) {
+      // Corrupted data — just clear it
+      AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
+    }
+  };
+
+  // Recover active session on mount (app kill + restart)
+  useEffect(() => {
+    recoverSession();
   }, []);
 
   const handleStartFocus = () => {
