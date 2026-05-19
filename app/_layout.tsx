@@ -133,6 +133,7 @@ export default function RootLayout() {
           icon: tag.icon || '🎯',
           color: tag.color || '#8B4513',
           lastDuration: lastDurationByTagId[id] ?? 15,
+          usageCount: tag.usageCount ?? 0,
         };
       });
       WidgetService.syncTagList(tagList);

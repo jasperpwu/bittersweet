@@ -25,6 +25,7 @@ export interface WidgetTagInfo {
   icon: string;
   color: string;
   lastDuration?: number; // minutes; undefined = unknown, 0 = infinite
+  usageCount?: number;
 }
 
 export interface WidgetStartedSession {

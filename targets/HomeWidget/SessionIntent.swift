@@ -182,6 +182,34 @@ struct TagEntityQuery: EntityQuery {
   }
 }
 
+// MARK: - Widget Configuration Enums
+
+@available(iOS 17.0, *)
+enum TagSortOrder: String, AppEnum {
+  case currentOrder
+  case mostUsed
+
+  static var typeDisplayRepresentation: TypeDisplayRepresentation = "Sort Order"
+
+  static var caseDisplayRepresentations: [TagSortOrder: DisplayRepresentation] = [
+    .currentOrder: "Current Order",
+    .mostUsed: "Most Used",
+  ]
+}
+
+@available(iOS 17.0, *)
+enum TagGridSize: String, AppEnum {
+  case two
+  case four
+
+  static var typeDisplayRepresentation: TypeDisplayRepresentation = "Tags Shown"
+
+  static var caseDisplayRepresentations: [TagGridSize: DisplayRepresentation] = [
+    .two: "2 Tags",
+    .four: "4 Tags",
+  ]
+}
+
 // MARK: - Widget Configuration Intent
 
 @available(iOS 17.0, *)
@@ -191,6 +219,12 @@ struct SelectTagIntent: WidgetConfigurationIntent {
 
   @Parameter(title: "Tag")
   var tag: TagEntity?
+
+  @Parameter(title: "Sort By", default: .currentOrder)
+  var sortOrder: TagSortOrder?
+
+  @Parameter(title: "Tags Shown", default: .four)
+  var gridSize: TagGridSize?
 
   init() {}
 

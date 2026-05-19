@@ -1,6 +1,16 @@
 import SwiftUI
 import WidgetKit
 
+// MARK: - Grid Item for Medium Widget
+
+struct WidgetTagGridItem {
+  let id: String
+  let name: String
+  let icon: String
+  let color: String
+  let lastDuration: Int? // minutes; nil = unknown, 0 = infinite
+}
+
 // MARK: - Timeline Entry
 
 struct HomeWidgetEntry: TimelineEntry {
@@ -11,6 +21,7 @@ struct HomeWidgetEntry: TimelineEntry {
   let configuredTagIcon: String?
   let configuredTagColor: String?
   let configuredTagDuration: Int? // minutes; nil = unknown, 0 = infinite
+  let configuredTags: [WidgetTagGridItem] // for medium widget grid
 }
 
 // MARK: - Widget View
@@ -222,6 +233,19 @@ struct HomeScreenWidgetView: View {
   }
 
   private var mediumIdleView: some View {
+    Group {
+      if entry.configuredTags.isEmpty {
+        // Fallback: no tags available
+        mediumIdleFallbackView
+      } else if #available(iOS 17.0, *) {
+        mediumIdleGridView
+      } else {
+        mediumIdleFallbackView
+      }
+    }
+  }
+
+  private var mediumIdleFallbackView: some View {
     HStack(spacing: 12) {
       VStack(alignment: .leading, spacing: 8) {
         Text("Ready to Focus")
@@ -229,50 +253,84 @@ struct HomeScreenWidgetView: View {
           .fontWeight(.semibold)
           .foregroundStyle(Color(hex: "#5D4E37"))
 
-        if let tagIcon = entry.configuredTagIcon,
-           let tagName = entry.configuredTagName {
-          HStack(spacing: 4) {
-            Text(tagIcon)
-              .font(.subheadline)
-            Text(tagName)
-              .font(.subheadline)
-              .foregroundStyle(Color(hex: "#8B7355"))
-            Text("·")
-              .font(.subheadline)
-              .foregroundStyle(Color(hex: "#8B7355").opacity(0.6))
-            Text(durationLabel)
-              .font(.subheadline)
-              .foregroundStyle(Color(hex: "#8B7355").opacity(0.8))
-          }
-        }
-
-        if let session = entry.sessionData, let total = session.todayTotalMinutes, total > 0 {
-          Text("Today: \(total)m focused")
-            .font(.caption)
-            .foregroundStyle(Color(hex: "#8B7355").opacity(0.8))
-        }
+        Text("Open the app to get started")
+          .font(.subheadline)
+          .foregroundStyle(Color(hex: "#8B7355"))
       }
-
       Spacer()
-
-      // Start button — runs StartSessionIntent directly (no app open)
-      if #available(iOS 17.0, *) {
-        Button(intent: StartSessionIntent(tagId: entry.configuredTagId, duration: entry.configuredTagDuration)) {
-          VStack(spacing: 4) {
-            Image(systemName: "play.fill")
-              .font(.title2)
-            Text("Start")
-              .font(.caption2)
-              .fontWeight(.medium)
-          }
-          .foregroundStyle(.white)
-          .frame(width: 56, height: 56)
-          .background(Color(hex: "#4CAF7C"), in: RoundedRectangle(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
-      }
     }
     .padding(16)
+  }
+
+  @available(iOS 17.0, *)
+  private var mediumIdleGridView: some View {
+    let tags = entry.configuredTags
+    let isTwoTag = tags.count <= 2
+    return VStack(spacing: 0) {
+      if isTwoTag {
+        // 1 row x 2 columns
+        HStack(spacing: 10) {
+          ForEach(0..<min(tags.count, 2), id: \.self) { i in
+            tagGridButton(tag: tags[i])
+          }
+        }
+      } else {
+        // 2 rows x 2 columns
+        VStack(spacing: 10) {
+          HStack(spacing: 10) {
+            tagGridButton(tag: tags[0])
+            if tags.count > 1 {
+              tagGridButton(tag: tags[1])
+            }
+          }
+          HStack(spacing: 10) {
+            if tags.count > 2 {
+              tagGridButton(tag: tags[2])
+            }
+            if tags.count > 3 {
+              tagGridButton(tag: tags[3])
+            }
+          }
+        }
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .padding(14)
+  }
+
+  @available(iOS 17.0, *)
+  private func tagGridButton(tag: WidgetTagGridItem) -> some View {
+    let buttonColor = Color(hex: tag.color.isEmpty ? "#5D4E37" : tag.color)
+    let durationText: String = {
+      guard let d = tag.lastDuration else { return "" }
+      return d == 0 ? "\u{221E}" : "\(d)m"
+    }()
+    return Button(intent: StartSessionIntent(tagId: tag.id, duration: tag.lastDuration)) {
+      ZStack {
+        RoundedRectangle(cornerRadius: 14)
+          .fill(buttonColor)
+        HStack(spacing: 0) {
+          VStack(alignment: .leading, spacing: 3) {
+            Text(tag.name)
+              .font(.system(size: 18, weight: .bold))
+              .foregroundStyle(.white)
+              .lineLimit(1)
+            if !durationText.isEmpty {
+              Text(durationText)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.75))
+            }
+          }
+          Spacer()
+          Image(systemName: "play.fill")
+            .font(.system(size: 16))
+            .foregroundStyle(.white.opacity(0.7))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+      }
+    }
+    .buttonStyle(.plain)
   }
 }
 
