@@ -27,6 +27,12 @@ Bittersweet — an iOS mobile app built with Expo 53 (React Native), TypeScript,
 - `npm run lint` — ESLint + Prettier check
 - `npm run format` — Auto-fix lint + formatting
 
+## Bug Fixing Approach
+When fixing bugs, follow this structured approach:
+1. **Identify the root cause** — Read the relevant code and trace the data flow to understand *why* the bug happens, not just *what* happens.
+2. **Map the reproduction flow** — Write out the exact sequence of steps/states that trigger the bug, identifying where the logic breaks.
+3. **Propose a minimal fix** — Target the root cause directly. Avoid workarounds that mask the issue.
+
 ## Conventions
 - Always reference actual Expo and iOS docs; do not guess APIs or expect user to trial-and-error.
 - `ios/` and `node_modules/` are not tracked. Never modify them directly — sync native changes through Expo plugins or patches.

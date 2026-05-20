@@ -121,8 +121,9 @@ struct StopSessionIntent: LiveActivityIntent {
     // Stop all Live Activities (runs in main app process via LiveActivityIntent)
     WidgetActivityKit.stopHandler?()
 
-    // Clear the start marker so a subsequent start doesn't find stale data
-    WidgetDataManager.shared.clearWidgetStartedSession()
+    // NOTE: Do NOT clear widgetStartedSession here. The JS side needs it to
+    // record the completed session in adoptAndRecoverSession(). It will be
+    // cleared there after being read (index.tsx: adoptAndRecoverSession).
 
     // Write idle session data for widget display
     WidgetDataManager.shared.writeSessionData(
