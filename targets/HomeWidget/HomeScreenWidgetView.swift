@@ -107,7 +107,7 @@ struct HomeScreenWidgetView: View {
         .foregroundStyle(Color(hex: "#4CAF7C"))
         .minimumScaleFactor(0.7)
       } else {
-        Text(Date(timeIntervalSince1970: session.endTime / 1000), style: .timer)
+        Text(timerInterval: Date(timeIntervalSince1970: session.startTime / 1000)...Date(timeIntervalSince1970: session.endTime / 1000), countsDown: true, showsHours: false)
           .font(.system(size: 28, weight: .semibold))
           .foregroundStyle(Color(hex: "#5D4E37"))
           .minimumScaleFactor(0.7)
@@ -162,7 +162,7 @@ struct HomeScreenWidgetView: View {
           .minimumScaleFactor(0.7)
         } else {
           // Count down to end time
-          Text(Date(timeIntervalSince1970: session.endTime / 1000), style: .timer)
+          Text(timerInterval: Date(timeIntervalSince1970: session.startTime / 1000)...Date(timeIntervalSince1970: session.endTime / 1000), countsDown: true, showsHours: false)
             .font(.system(size: 32, weight: .bold, design: .monospaced))
             .foregroundStyle(Color(hex: "#8B4513"))
             .minimumScaleFactor(0.7)

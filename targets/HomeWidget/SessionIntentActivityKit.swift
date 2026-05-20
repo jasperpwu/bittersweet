@@ -17,6 +17,7 @@ struct LiveActivityAttributes: ActivityAttributes {
     var title: String
     var subtitle: String?
     var timerEndDateInMilliseconds: Double?
+    var timerStartDateInMilliseconds: Double?
     var progress: Double?
     var imageName: String?
     var dynamicIslandImageName: String?
@@ -64,6 +65,7 @@ class WidgetActivityKitLoader: NSObject {
         title: tagName,
         subtitle: subtitle,
         timerEndDateInMilliseconds: timerDate,
+        timerStartDateInMilliseconds: startTimeMs,
         progress: nil,
         imageName: "app_icon",
         dynamicIslandImageName: "app_icon",
@@ -106,6 +108,7 @@ class WidgetActivityKitLoader: NSObject {
             title: "Focus Session Complete",
             subtitle: "Great work!",
             timerEndDateInMilliseconds: Double(Date().timeIntervalSince1970 * 1000),
+            timerStartDateInMilliseconds: nil,
             progress: nil,
             imageName: nil,
             dynamicIslandImageName: nil,

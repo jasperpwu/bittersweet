@@ -56,6 +56,7 @@ export class LiveActivityService {
 
       const now = Date.now();
       const endTimestamp = endTime.getTime();
+      const startTimestamp = endTimestamp - durationMinutes * 60 * 1000;
 
       // State for Live Activity (using correct expo-live-activity API)
       const state: LiveActivity.LiveActivityState = {
@@ -66,7 +67,8 @@ export class LiveActivityService {
         },
         imageName: 'app_icon',
         dynamicIslandImageName: 'app_icon',
-        dynamicIslandText: reason || 'Unlocked'
+        dynamicIslandText: reason || 'Unlocked',
+        timerStartDateInMilliseconds: startTimestamp,
       };
 
       // Configuration for Live Activity
@@ -181,6 +183,7 @@ export class LiveActivityService {
     try {
       const now = Date.now();
       const endTimestamp = endTime.getTime();
+      const startTimestamp = endTimestamp - durationMinutes * 60 * 1000;
 
       // State for Live Activity
       const state: LiveActivity.LiveActivityState = {
@@ -191,7 +194,8 @@ export class LiveActivityService {
         },
         imageName: 'app_icon',
         dynamicIslandImageName: 'app_icon',
-        dynamicIslandText: labelName
+        dynamicIslandText: labelName,
+        timerStartDateInMilliseconds: startTimestamp,
       };
 
       console.log('🎬 Starting Live Activity for focus timer:', {

@@ -1,8 +1,24 @@
 diff --git a/node_modules/expo-live-activity/build/index.d.ts b/node_modules/expo-live-activity/build/index.d.ts
-index bdcae0f..fbba66a 100644
+index bdcae0f..3e22f64 100644
 --- a/node_modules/expo-live-activity/build/index.d.ts
 +++ b/node_modules/expo-live-activity/build/index.d.ts
-@@ -33,6 +33,7 @@ export type LiveActivityConfig = {
+@@ -15,6 +15,7 @@ export type LiveActivityState = {
+     imageName?: string;
+     dynamicIslandImageName?: string;
+     dynamicIslandText?: string;
++    timerStartDateInMilliseconds?: number;
+ };
+ export type NativeLiveActivityState = {
+     title: string;
+@@ -24,6 +25,7 @@ export type NativeLiveActivityState = {
+     imageName?: string;
+     dynamicIslandImageName?: string;
+     dynamicIslandText?: string;
++    timerStartDateInMilliseconds?: number;
+ };
+ export type LiveActivityConfig = {
+     backgroundColor?: string;
+@@ -33,6 +35,7 @@ export type LiveActivityConfig = {
      progressViewLabelColor?: string;
      deepLinkUrl?: string;
      timerType?: DynamicIslandTimerType;
@@ -10,7 +26,7 @@ index bdcae0f..fbba66a 100644
  };
  export type ActivityTokenReceivedEvent = {
      activityID: string;
-@@ -72,5 +73,10 @@ export declare function updateActivity(id: string, state: LiveActivityState): an
+@@ -72,5 +75,10 @@ export declare function updateActivity(id: string, state: LiveActivityState): an
  export declare function addActivityTokenListener(listener: (event: ActivityTokenReceivedEvent) => void): Voidable<EventSubscription>;
  export declare function addActivityPushToStartTokenListener(listener: (event: ActivityPushToStartTokenReceivedEvent) => void): Voidable<EventSubscription>;
  export declare function addActivityUpdatesListener(listener: (event: ActivityUpdateEvent) => void): Voidable<EventSubscription>;
@@ -37,10 +53,10 @@ index 6b32c30..22cb29d 100644
  //# sourceMappingURL=index.js.map
 \ No newline at end of file
 diff --git a/node_modules/expo-live-activity/ios-files/LiveActivityView.swift b/node_modules/expo-live-activity/ios-files/LiveActivityView.swift
-index e309104..2b61bc5 100644
+index e309104..76f3d70 100644
 --- a/node_modules/expo-live-activity/ios-files/LiveActivityView.swift
 +++ b/node_modules/expo-live-activity/ios-files/LiveActivityView.swift
-@@ -54,11 +54,27 @@ import WidgetKit
+@@ -54,11 +54,31 @@ import WidgetKit
          }
  
          if let date = contentState.timerEndDateInMilliseconds {
@@ -59,12 +75,16 @@ index e309104..2b61bc5 100644
 +              .modifier(ConditionalForegroundViewModifier(color: attributes.progressViewLabelColor))
 +          } else {
 +            // Future date: count DOWN to that time (normal mode)
-+            // Use Text(date, style: .timer) so the countdown is anchored to the
-+            // absolute target date, matching the home-screen widget's timer.
-+            // The previous timerInterval approach used Date.now as the range
-+            // start, introducing a ~1 s lag because Date.now is captured at
-+            // render time (after the intent already set the target timestamp).
-+            Text(target, style: .timer)
++            // Use timerInterval with the real start date so the displayed second
++            // is computed deterministically from the range, not from render time.
++            // This keeps the Live Activity timer in sync with the home-screen widget.
++            let startDate: Date = {
++              if let startMs = contentState.timerStartDateInMilliseconds {
++                return Date(timeIntervalSince1970: startMs / 1000)
++              }
++              return Date.now
++            }()
++            Text(timerInterval: startDate...target, countsDown: true, showsHours: false)
 +              .font(.system(size: 28, weight: .bold, design: .monospaced))
 +              .minimumScaleFactor(0.8)
 +              .multilineTextAlignment(.leading)
@@ -74,10 +94,18 @@ index e309104..2b61bc5 100644
            ProgressView(value: progress)
              .tint(progressViewTint)
 diff --git a/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift b/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift
-index fd8eea7..8f58372 100644
+index fd8eea7..c7f19e9 100644
 --- a/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift
 +++ b/node_modules/expo-live-activity/ios-files/LiveActivityWidget.swift
-@@ -21,6 +21,7 @@ struct LiveActivityAttributes: ActivityAttributes {
+@@ -7,6 +7,7 @@ struct LiveActivityAttributes: ActivityAttributes {
+     var title: String
+     var subtitle: String?
+     var timerEndDateInMilliseconds: Double?
++    var timerStartDateInMilliseconds: Double?
+     var progress: Double?
+     var imageName: String?
+     var dynamicIslandImageName: String?
+@@ -21,6 +22,7 @@ struct LiveActivityAttributes: ActivityAttributes {
    var progressViewLabelColor: String?
    var deepLinkUrl: String?
    var timerType: DynamicIslandTimerType?
@@ -85,7 +113,7 @@ index fd8eea7..8f58372 100644
  
    enum DynamicIslandTimerType: String, Codable {
      case circular
-@@ -31,16 +32,37 @@ struct LiveActivityAttributes: ActivityAttributes {
+@@ -31,16 +33,37 @@ struct LiveActivityAttributes: ActivityAttributes {
  struct LiveActivityWidget: Widget {
    var body: some WidgetConfiguration {
      ActivityConfiguration(for: LiveActivityAttributes.self) { context in
@@ -127,7 +155,7 @@ index fd8eea7..8f58372 100644
                  .font(.title3)
                  .foregroundStyle(Color(hex: context.attributes.subtitleColor ?? "#8B4513").opacity(0.7))
              }
-@@ -48,6 +70,18 @@ struct LiveActivityWidget: Widget {
+@@ -48,6 +71,18 @@ struct LiveActivityWidget: Widget {
              resizableImage(imageName: context.state.imageName ?? "default-coffee-bean")
                .frame(maxHeight: 64)
            }
@@ -146,7 +174,16 @@ index fd8eea7..8f58372 100644
          }
          .padding(24)
          .activityBackgroundTint(
-@@ -116,10 +150,20 @@ struct LiveActivityWidget: Widget {
+@@ -87,7 +122,7 @@ struct LiveActivityWidget: Widget {
+         DynamicIslandExpandedRegion(.bottom) {
+           if let date = context.state.timerEndDateInMilliseconds {
+             dynamicIslandExpandedBottom(
+-              endDate: date, progressViewTint: context.attributes.progressViewTint
++              endDate: date, startDateMs: context.state.timerStartDateInMilliseconds, progressViewTint: context.attributes.progressViewTint
+             )
+             .padding(.horizontal, 5)
+             .applyWidgetURL(from: context.attributes.deepLinkUrl)
+@@ -116,24 +151,43 @@ struct LiveActivityWidget: Widget {
          }
          .applyWidgetURL(from: context.attributes.deepLinkUrl)
        } compactTrailing: {
@@ -169,7 +206,9 @@ index fd8eea7..8f58372 100644
          } else if let date = context.state.timerEndDateInMilliseconds {
            compactTimer(
              endDate: date,
-@@ -128,9 +172,16 @@ struct LiveActivityWidget: Widget {
++            startDateMs: context.state.timerStartDateInMilliseconds,
+             timerType: context.attributes.timerType ?? .circular,
+             progressViewTint: context.attributes.progressViewTint
            ).applyWidgetURL(from: context.attributes.deepLinkUrl)
          }
        } minimal: {
@@ -188,7 +227,15 @@ index fd8eea7..8f58372 100644
          } else if let date = context.state.timerEndDateInMilliseconds {
            compactTimer(
              endDate: date,
-@@ -148,8 +199,19 @@ struct LiveActivityWidget: Widget {
++            startDateMs: context.state.timerStartDateInMilliseconds,
+             timerType: context.attributes.timerType ?? .circular,
+             progressViewTint: context.attributes.progressViewTint
+           ).applyWidgetURL(from: context.attributes.deepLinkUrl)
+@@ -145,11 +199,27 @@ struct LiveActivityWidget: Widget {
+   @ViewBuilder
+   private func compactTimer(
+     endDate: Double,
++    startDateMs: Double?,
      timerType: LiveActivityAttributes.DynamicIslandTimerType,
      progressViewTint: String?
    ) -> some View {
@@ -204,22 +251,27 @@ index fd8eea7..8f58372 100644
 +        .frame(maxWidth: 60)
 +        .multilineTextAlignment(.trailing)
 +    } else if timerType == .digital {
-+      // Use Text(date, style: .timer) so the countdown is anchored to the
-+      // absolute target date, consistent with the home-screen widget timer.
-+      Text(target, style: .timer)
++      // Use timerInterval with real start date so the countdown is deterministic
++      // and stays in sync with the home-screen widget timer.
++      let startDate: Date = {
++        if let ms = startDateMs { return Date(timeIntervalSince1970: ms / 1000) }
++        return Date.now
++      }()
++      Text(timerInterval: startDate...target, countsDown: true, showsHours: false)
          .font(.system(size: 15))
          .minimumScaleFactor(0.8)
          .fontWeight(.semibold)
-@@ -187,11 +249,21 @@ struct LiveActivityWidget: Widget {
+@@ -187,11 +257,25 @@ struct LiveActivityWidget: Widget {
      }
    }
  
-+  @ViewBuilder
-   private func dynamicIslandExpandedBottom(endDate: Double, progressViewTint: String?) -> some View {
+-  private func dynamicIslandExpandedBottom(endDate: Double, progressViewTint: String?) -> some View {
 -    ProgressView(timerInterval: Date.toTimerInterval(miliseconds: endDate))
 -      .foregroundStyle(.white)
 -      .tint(progressViewTint.map { Color(hex: $0) })
 -      .padding(.top, 5)
++  @ViewBuilder
++  private func dynamicIslandExpandedBottom(endDate: Double, startDateMs: Double?, progressViewTint: String?) -> some View {
 +    let target = Date(timeIntervalSince1970: endDate / 1000)
 +    if target <= Date.now {
 +      // Past date: show elapsed time count-up (infinite mode)
@@ -228,7 +280,11 @@ index fd8eea7..8f58372 100644
 +        .foregroundStyle(.white)
 +        .padding(.top, 5)
 +    } else {
-+      ProgressView(timerInterval: Date.toTimerInterval(miliseconds: endDate))
++      let startDate: Date = {
++        if let ms = startDateMs { return Date(timeIntervalSince1970: ms / 1000) }
++        return Date.now
++      }()
++      ProgressView(timerInterval: startDate...target)
 +        .foregroundStyle(.white)
 +        .tint(progressViewTint.map { Color(hex: $0) })
 +        .padding(.top, 5)
@@ -237,7 +293,7 @@ index fd8eea7..8f58372 100644
  
    private func circularTimer(endDate: Double) -> some View {
 diff --git a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
-index a222928..4712833 100644
+index a222928..f0b5619 100644
 --- a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 +++ b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 @@ -1,5 +1,6 @@
@@ -247,7 +303,17 @@ index a222928..4712833 100644
  
  public class ExpoLiveActivityModule: Module {
    struct LiveActivityState: Record {
-@@ -51,6 +52,9 @@ public class ExpoLiveActivityModule: Module {
+@@ -28,6 +29,9 @@ public class ExpoLiveActivityModule: Module {
+ 
+     @Field
+     var dynamicIslandText: String?
++
++    @Field
++    var timerStartDateInMilliseconds: Double?
+   }
+ 
+   struct LiveActivityConfig: Record {
+@@ -51,6 +55,9 @@ public class ExpoLiveActivityModule: Module {
  
      @Field
      var timerType: DynamicIslandTimerType?
@@ -257,7 +323,7 @@ index a222928..4712833 100644
    }
  
    enum DynamicIslandTimerType: String, Enumerable {
-@@ -191,6 +195,18 @@ public class ExpoLiveActivityModule: Module {
+@@ -191,6 +198,18 @@ public class ExpoLiveActivityModule: Module {
        }
  
        do {
@@ -276,7 +342,7 @@ index a222928..4712833 100644
          let config = maybeConfig ?? LiveActivityConfig()
          let attributes = LiveActivityAttributes(
            name: "ExpoLiveActivity",
-@@ -200,7 +216,8 @@ public class ExpoLiveActivityModule: Module {
+@@ -200,12 +219,14 @@ public class ExpoLiveActivityModule: Module {
            progressViewTint: config.progressViewTint,
            progressViewLabelColor: config.progressViewLabelColor,
            deepLinkUrl: config.deepLinkUrl,
@@ -286,7 +352,13 @@ index a222928..4712833 100644
          )
          let initialState = LiveActivityAttributes.ContentState(
            title: state.title,
-@@ -214,8 +231,11 @@ public class ExpoLiveActivityModule: Module {
+           subtitle: state.subtitle,
+           timerEndDateInMilliseconds: state.progressBar?.date,
++          timerStartDateInMilliseconds: state.timerStartDateInMilliseconds,
+           progress: state.progressBar?.progress,
+           imageName: state.imageName,
+           dynamicIslandImageName: state.dynamicIslandImageName,
+@@ -214,8 +235,11 @@ public class ExpoLiveActivityModule: Module {
  
          // Set staleDate to the timer end time so the widget knows when
          // content is outdated (e.g. timer reached 0:00 while app was in background).
@@ -300,7 +372,7 @@ index a222928..4712833 100644
          }
  
          let activity = try Activity.request(
-@@ -230,32 +250,6 @@ public class ExpoLiveActivityModule: Module {
+@@ -230,32 +254,6 @@ public class ExpoLiveActivityModule: Module {
            await activity.update(ActivityContent(state: newState, staleDate: timerEndDate))
          }
  
@@ -333,7 +405,23 @@ index a222928..4712833 100644
  
          return activity.id
        } catch {
-@@ -317,5 +311,11 @@ public class ExpoLiveActivityModule: Module {
+@@ -278,6 +276,7 @@ public class ExpoLiveActivityModule: Module {
+           title: state.title,
+           subtitle: state.subtitle,
+           timerEndDateInMilliseconds: state.progressBar?.date,
++          timerStartDateInMilliseconds: state.timerStartDateInMilliseconds,
+           progress: state.progressBar?.progress,
+           imageName: nil,
+           dynamicIslandImageName: nil,
+@@ -308,6 +307,7 @@ public class ExpoLiveActivityModule: Module {
+           title: state.title,
+           subtitle: state.subtitle,
+           timerEndDateInMilliseconds: state.progressBar?.date,
++          timerStartDateInMilliseconds: state.timerStartDateInMilliseconds,
+           progress: state.progressBar?.progress,
+           imageName: nil,
+           dynamicIslandImageName: nil,
+@@ -317,5 +317,11 @@ public class ExpoLiveActivityModule: Module {
          await activity.update(ActivityContent(state: newState, staleDate: nil))
        }
      }
@@ -346,10 +434,18 @@ index a222928..4712833 100644
    }
  }
 diff --git a/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift b/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift
-index e96360d..6404ea8 100644
+index e96360d..a2eb464 100644
 --- a/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift
 +++ b/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift
-@@ -20,6 +20,7 @@ struct LiveActivityAttributes: ActivityAttributes {
+@@ -6,6 +6,7 @@ struct LiveActivityAttributes: ActivityAttributes {
+     var title: String
+     var subtitle: String?
+     var timerEndDateInMilliseconds: Double?
++    var timerStartDateInMilliseconds: Double?
+     var progress: Double?
+     var imageName: String?
+     var dynamicIslandImageName: String?
+@@ -20,6 +21,7 @@ struct LiveActivityAttributes: ActivityAttributes {
    var progressViewLabelColor: String?
    var deepLinkUrl: String?
    var timerType: DynamicIslandTimerType?
@@ -358,10 +454,26 @@ index e96360d..6404ea8 100644
    enum DynamicIslandTimerType: String, Codable {
      case circular
 diff --git a/node_modules/expo-live-activity/src/index.ts b/node_modules/expo-live-activity/src/index.ts
-index 2b58e20..959e747 100644
+index 2b58e20..b8d3e10 100644
 --- a/node_modules/expo-live-activity/src/index.ts
 +++ b/node_modules/expo-live-activity/src/index.ts
-@@ -44,6 +44,7 @@ export type LiveActivityConfig = {
+@@ -24,6 +24,7 @@ export type LiveActivityState = {
+   imageName?: string
+   dynamicIslandImageName?: string
+   dynamicIslandText?: string
++  timerStartDateInMilliseconds?: number
+ }
+ 
+ export type NativeLiveActivityState = {
+@@ -34,6 +35,7 @@ export type NativeLiveActivityState = {
+   imageName?: string
+   dynamicIslandImageName?: string
+   dynamicIslandText?: string
++  timerStartDateInMilliseconds?: number
+ }
+ 
+ export type LiveActivityConfig = {
+@@ -44,6 +46,7 @@ export type LiveActivityConfig = {
    progressViewLabelColor?: string
    deepLinkUrl?: string
    timerType?: DynamicIslandTimerType
@@ -369,7 +481,7 @@ index 2b58e20..959e747 100644
  }
  
  export type ActivityTokenReceivedEvent = {
-@@ -121,3 +122,11 @@ export function addActivityUpdatesListener(
+@@ -121,3 +124,11 @@ export function addActivityUpdatesListener(
  ): Voidable<EventSubscription> {
    if (assertIOS('addActivityUpdatesListener')) return ExpoLiveActivityModule.addListener('onStateChange', listener)
  }
