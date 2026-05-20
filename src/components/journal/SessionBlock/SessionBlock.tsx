@@ -132,20 +132,9 @@ export const SessionBlock: FC<SessionBlockProps> = ({
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-end',
             marginTop: blockHeight > 70 ? 8 : 4,
           }}>
-            {/* Focus indicator dot */}
-            <View
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: 'white',
-                opacity: 0.8,
-              }}
-            />
-
             {/* Duration */}
             <Typography
               variant="tiny-10"

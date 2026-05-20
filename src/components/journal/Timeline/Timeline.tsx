@@ -7,6 +7,7 @@ import { FocusSession } from '../../../types/models';
 interface TimelineProps {
   sessions: FocusSession[];
   currentTime: Date;
+  isToday?: boolean;
   onSessionPress: (sessionId: string) => void;
   scrollToSessionId?: string | null;
   onScrollComplete?: () => void;
@@ -53,6 +54,7 @@ const getCurrentTimePosition = (currentTime: Date) => {
 export const Timeline: FC<TimelineProps> = ({
   sessions,
   currentTime,
+  isToday: isTodayView = true,
   onSessionPress,
   scrollToSessionId,
   onScrollComplete,
@@ -73,8 +75,8 @@ export const Timeline: FC<TimelineProps> = ({
     return slots;
   }, []);
 
-  // Check if current time indicator should be shown
-  const showCurrentTimeIndicator = isCurrentTimeInRange(currentTime);
+  // Check if current time indicator should be shown (only on today)
+  const showCurrentTimeIndicator = isTodayView && isCurrentTimeInRange(currentTime);
   const currentTimePosition = showCurrentTimeIndicator ? getCurrentTimePosition(currentTime) : 0;
 
   // Handle scrolling to specific session

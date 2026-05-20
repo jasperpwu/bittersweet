@@ -350,7 +350,7 @@ export default function JournalScreen() {
           <View className="flex-row items-center" style={{ gap: 8 }}>
             <Pressable
               onPress={openManualEntryModal}
-              className="w-9 h-9 items-center justify-center rounded-lg active:opacity-80"
+              className="w-9 h-9 items-center justify-center  rounded-lg active:opacity-80"
               style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
               accessibilityLabel="Add manual focus session"
             >
@@ -374,6 +374,7 @@ export default function JournalScreen() {
             <Timeline
               sessions={sessionsForSelectedDate}
               currentTime={currentTime}
+              isToday={!showJumpToToday}
               onSessionPress={handleSessionPress}
               scrollToSessionId={scrollToSessionId}
               onScrollComplete={() => setScrollToSessionId(null)}
@@ -388,7 +389,7 @@ export default function JournalScreen() {
             exiting={FadeOut.duration(200)}
             style={{
               position: 'absolute',
-              bottom: 24,
+              bottom: 12,
               right: 20,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
@@ -399,11 +400,12 @@ export default function JournalScreen() {
           >
             <Pressable
               onPress={handleJumpToToday}
-              className="flex-row items-center bg-[#6592E9] rounded-full px-4 py-2.5 active:opacity-80"
+              className="flex-row items-center rounded-full px-4 py-2.5 active:opacity-80"
+              style={{ backgroundColor: 'rgba(101, 146, 233, 0.5)' }}
             >
               <Ionicons name="today-outline" size={18} color="#fff" />
               <Typography variant="subtitle-14-semibold" color="white" className="ml-1.5">
-                Today
+                Back to Today
               </Typography>
             </Pressable>
           </Animated.View>

@@ -83,9 +83,9 @@ struct HomeScreenWidgetView: View {
       // Tag icon + name
       HStack(spacing: 6) {
         Text(session.tagIcon)
-          .font(.system(size: 20))
+          .font(.system(size: 15))
         Text(session.tagName)
-          .font(.system(size: 20, weight: .bold))
+          .font(.system(size: 15, weight: .bold))
           .foregroundStyle(tagColor)
           .lineLimit(1)
       }
@@ -95,7 +95,7 @@ struct HomeScreenWidgetView: View {
       // Live timer
       if session.isInfinite {
         Text(Date(timeIntervalSince1970: session.startTime / 1000), style: .timer)
-          .font(.system(size: 28, weight: .semibold))
+          .font(.system(size: 36, weight: .semibold))
           .foregroundStyle(Color(hex: "#5D4E37"))
           .minimumScaleFactor(0.7)
       } else if isBonusTime(session) {
@@ -103,12 +103,12 @@ struct HomeScreenWidgetView: View {
           Text("+")
           Text(Date(timeIntervalSince1970: session.endTime / 1000), style: .timer)
         }
-        .font(.system(size: 28, weight: .semibold))
+        .font(.system(size: 36, weight: .semibold))
         .foregroundStyle(Color(hex: "#4CAF7C"))
         .minimumScaleFactor(0.7)
       } else {
         Text(timerInterval: Date(timeIntervalSince1970: session.startTime / 1000)...Date(timeIntervalSince1970: session.endTime / 1000), countsDown: true, showsHours: false)
-          .font(.system(size: 28, weight: .semibold))
+          .font(.system(size: 36, weight: .semibold))
           .foregroundStyle(Color(hex: "#5D4E37"))
           .minimumScaleFactor(0.7)
       }
@@ -137,19 +137,19 @@ struct HomeScreenWidgetView: View {
       VStack(alignment: .leading, spacing: 6) {
         HStack(spacing: 6) {
           Text(session.tagIcon)
-            .font(.title3)
+            .font(.system(size: 15))
           Text(session.tagName)
-            .font(.headline)
-            .fontWeight(.semibold)
-            .foregroundStyle(Color(hex: "#5D4E37"))
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(tagColor)
+            .lineLimit(1)
         }
 
         // Live timer
         if session.isInfinite {
           // Count up from start time
           Text(Date(timeIntervalSince1970: session.startTime / 1000), style: .timer)
-            .font(.system(size: 32, weight: .bold, design: .monospaced))
-            .foregroundStyle(Color(hex: "#8B4513"))
+            .font(.system(size: 42, weight: .bold, design: .monospaced))
+            .foregroundStyle(Color(hex: "#5D4E37"))
             .minimumScaleFactor(0.7)
         } else if isBonusTime(session) {
           // Bonus time — count up from end time in green
@@ -157,14 +157,14 @@ struct HomeScreenWidgetView: View {
             Text("+")
             Text(Date(timeIntervalSince1970: session.endTime / 1000), style: .timer)
           }
-          .font(.system(size: 32, weight: .bold, design: .monospaced))
+          .font(.system(size: 42, weight: .bold, design: .monospaced))
           .foregroundStyle(Color(hex: "#4CAF7C"))
           .minimumScaleFactor(0.7)
         } else {
           // Count down to end time
           Text(timerInterval: Date(timeIntervalSince1970: session.startTime / 1000)...Date(timeIntervalSince1970: session.endTime / 1000), countsDown: true, showsHours: false)
-            .font(.system(size: 32, weight: .bold, design: .monospaced))
-            .foregroundStyle(Color(hex: "#8B4513"))
+            .font(.system(size: 42, weight: .bold, design: .monospaced))
+            .foregroundStyle(Color(hex: "#5D4E37"))
             .minimumScaleFactor(0.7)
         }
 
@@ -178,13 +178,8 @@ struct HomeScreenWidgetView: View {
       // Stop button — runs StopSessionIntent directly (no app open)
       if #available(iOS 17.0, *) {
         Button(intent: StopSessionIntent()) {
-          VStack(spacing: 4) {
-            Image(systemName: "stop.fill")
-              .font(.title2)
-            Text("Stop")
-              .font(.caption2)
-              .fontWeight(.medium)
-          }
+          Image(systemName: "stop.fill")
+            .font(.title2)
           .foregroundStyle(.white)
           .frame(width: 56, height: 56)
           .background(tagColor, in: RoundedRectangle(cornerRadius: 14))
@@ -212,9 +207,9 @@ struct HomeScreenWidgetView: View {
       // Tag icon + name
       HStack(spacing: 6) {
         Text(entry.configuredTagIcon ?? "🎯")
-          .font(.system(size: 20))
+          .font(.system(size: 15))
         Text(entry.configuredTagName ?? "Focus")
-          .font(.system(size: 20, weight: .bold))
+          .font(.system(size: 15, weight: .bold))
           .foregroundStyle(tagColor)
           .lineLimit(1)
       }
@@ -223,7 +218,7 @@ struct HomeScreenWidgetView: View {
 
       // Duration
       Text(durationLabel.isEmpty ? "∞" : durationLabel)
-        .font(.system(size: 28, weight: .semibold))
+        .font(.system(size: 36, weight: .semibold))
         .foregroundStyle(Color(hex: "#5D4E37"))
 
       Spacer()
@@ -324,13 +319,17 @@ struct HomeScreenWidgetView: View {
           .fill(buttonColor)
         HStack(spacing: 0) {
           VStack(alignment: .leading, spacing: 3) {
-            Text(tag.name)
-              .font(.system(size: 18, weight: .bold))
-              .foregroundStyle(.white)
-              .lineLimit(1)
+            HStack(spacing: 4) {
+              Text(tag.icon)
+                .font(.system(size: 13))
+              Text(tag.name)
+                .font(.system(size: 13, weight: .bold))
+                .lineLimit(1)
+            }
+            .foregroundStyle(.white)
             if !durationText.isEmpty {
               Text(durationText)
-                .font(.system(size: 22, weight: .semibold))
+                .font(.system(size: 29, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.75))
             }
           }
