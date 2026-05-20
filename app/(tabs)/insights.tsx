@@ -17,16 +17,21 @@ export default function InsightsScreen() {
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
 
   // Get data from focus store
-  const { sessions, tags } = useFocus();
-  const { getActiveGoals, deleteGoal } = useFocusActions();
-  
+  const { sessions, tags, goals } = useFocus();
+  const { getActiveGoals, deleteGoal, reorderGoals } = useFocusActions();
+
   // Extract sessions array from normalized state
-  const safeSessions = (sessions && sessions.allIds && sessions.byId) 
-    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean) 
+  const safeSessions = (sessions && sessions.allIds && sessions.byId)
+    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean)
     : [];
 
-  // Get goals from store
-  const storeGoals = getActiveGoals() || [];
+  // Get goals preserving allIds order (instead of Object.values which loses order)
+  const storeGoals = useMemo(() => {
+    if (!goals?.allIds || !goals?.byId) return [];
+    return goals.allIds
+      .map(id => goals.byId[id])
+      .filter((g): g is FocusGoal => !!g && g.isActive);
+  }, [goals]);
   
   // Create tag map for goal progress calculation
   const tagMap = useMemo(() =>
@@ -255,6 +260,7 @@ export default function InsightsScreen() {
             currentPeriodProgress={goalProgress}
             onEditGoal={handleEditGoal}
             onDeleteGoal={handleDeleteGoal}
+            onReorderGoals={reorderGoals}
           />
           
           {/* Statistics View */}

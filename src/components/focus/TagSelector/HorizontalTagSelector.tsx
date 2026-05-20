@@ -19,7 +19,7 @@ interface Tag {
   isDefault?: boolean;
 }
 
-interface TagSelectorProps {
+interface HorizontalTagSelectorProps {
   tags: Tag[];
   selectedTags: string[]; // tag IDs
   onTagSelect: (tagId: string) => void;
@@ -29,7 +29,7 @@ interface TagSelectorProps {
 }
 
 
-export const TagSelector: FC<TagSelectorProps> = ({
+export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
   tags,
   selectedTags,
   onTagSelect,

@@ -98,6 +98,7 @@ interface AppStore {
     addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
     updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
     deleteGoal: (id: string) => void;
+    reorderGoals: (orderedIds: string[]) => void;
     getActiveGoals: () => FocusGoal[];
   };
   
@@ -737,6 +738,18 @@ export const useAppStore = create<AppStore>()(
           });
         },
         
+        reorderGoals: (orderedIds) => {
+          set((state) => ({
+            focus: {
+              ...state.focus,
+              goals: {
+                ...state.focus.goals,
+                allIds: orderedIds,
+              }
+            }
+          }));
+        },
+
         getActiveGoals: () => {
           return Object.values(get().focus.goals.byId).filter((goal: FocusGoal) => goal.isActive);
         },
@@ -1460,6 +1473,7 @@ export const useFocusActions = () => useAppStore((state) => ({
   addGoal: state.focus.addGoal,
   updateGoal: state.focus.updateGoal,
   deleteGoal: state.focus.deleteGoal,
+  reorderGoals: state.focus.reorderGoals,
   getActiveGoals: state.focus.getActiveGoals,
 }));
 

@@ -1,1 +1,1 @@
-export { TagSelector } from './TagSelector';
+export { HorizontalTagSelector } from './HorizontalTagSelector';

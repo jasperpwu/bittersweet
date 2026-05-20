@@ -1,6 +1,13 @@
-import { FC, useRef, useState, useMemo } from 'react';
+import React, { FC, useRef, useState, useMemo, useCallback } from 'react';
 import { View, Pressable, Share, Platform } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import { Typography } from '../../ui/Typography';
@@ -13,6 +20,7 @@ interface GoalProgressProps {
   currentPeriodProgress: Record<string, number>;
   onEditGoal?: (goalId: string) => void;
   onDeleteGoal?: (goalId: string) => void;
+  onReorderGoals?: (orderedIds: string[]) => void;
 }
 
 interface ProcessedGoal extends FocusGoal {
@@ -48,172 +56,100 @@ const getGoalBarSegments = (currentMinutes: number, targetMinutes: number) => {
   };
 };
 
-export const GoalProgress: FC<GoalProgressProps> = ({
-  goals,
-  currentPeriodProgress: _currentPeriodProgress,
-  onEditGoal,
-  onDeleteGoal,
-}) => {
-  const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'all'>('all');
-  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+const ROW_HEIGHT = 84; // row height + mb-3 gap — must match DraggableTagRow in index.tsx
+const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 0.8 };
 
-  // Track open swipeable refs to close others
-  const openSwipeableRef = useRef<any>(null);
+// ---------- Draggable Goal Row (mirrors DraggableTagRow from index.tsx) ----------
 
-  // Get tags and sessions from store for real data
-  const { tags, sessions } = useFocus();
-
-  // Extract sessions array from normalized state
-  const safeSessions = (sessions && sessions.allIds && sessions.byId)
-    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean)
-    : [];
-
-  // Create tag map for name/ID conversion
-  const tagMap = useMemo(() =>
-    (tags && tags.allIds && tags.byId ? tags.allIds : []).reduce((map, id) => {
-      if (tags && tags.byId) {
-        const tag = tags.byId[id];
-        if (tag) {
-          map[id] = { id: tag.id, name: tag.name };
-        }
-      }
-      return map;
-    }, {} as Record<string, { id: string; name: string }>),
-    [tags]
-  );
-
-  // Calculate fresh goal progress from current session data
-  const freshGoalProgress = useMemo(() =>
-    calculateGoalProgress(goals || [], safeSessions, tagMap),
-    [goals, safeSessions, tagMap]
-  );
-
-  // Show placeholder when no goals exist
-  if (!goals || goals.length === 0) {
-    return <GoalEmptyPlaceholder />;
-  }
-
-  // Process goals to calculate progress
-  const processedGoals: ProcessedGoal[] = goals.map(goal => {
-    const currentProgress = freshGoalProgress[goal.id] || 0;
-    const percentage = goal.targetMinutes > 0
-      ? (currentProgress / goal.targetMinutes) * 100
-      : 0;
-
-    return {
-      ...goal,
-      currentProgress,
-      percentage,
-    };
-  });
-
-  // Filter goals by selected period
-  const filteredGoals = selectedPeriod === 'all'
-    ? processedGoals
-    : processedGoals.filter(goal => goal.period === selectedPeriod);
-
-  // Group goals by period for display
-  const goalsByPeriod = filteredGoals.reduce((acc, goal) => {
-    if (!acc[goal.period]) acc[goal.period] = [];
-    acc[goal.period].push(goal);
-    return acc;
-  }, {} as Record<string, ProcessedGoal[]>);
-
-  const handleGoalPress = (goal: ProcessedGoal) => {
-    if (goal.isRepeating) {
-      setExpandedGoalId(prev => prev === goal.id ? null : goal.id);
-    }
-  };
-
-  const handleSwipeOpen = (ref: any) => {
-    if (openSwipeableRef.current && openSwipeableRef.current !== ref) {
-      openSwipeableRef.current.close();
-    }
-    openSwipeableRef.current = ref;
-  };
-
-  return (
-    <View className="px-5 mb-6">
-      {/* Period Filter */}
-      <View className="flex-row items-center justify-end mb-4">
-        <View className="flex-row space-x-2">
-          {(['all', 'daily', 'weekly', 'monthly'] as const).map((period) => (
-            <Pressable
-              key={period}
-              onPress={() => setSelectedPeriod(period)}
-              className={`px-3 py-2 rounded-lg ${
-                selectedPeriod === period ? 'bg-primary' : 'bg-dark-border'
-              }`}
-            >
-              <Typography
-                variant="body-12"
-                color="white"
-                className="text-white"
-              >
-                {period === 'all' ? 'All' : period.charAt(0).toUpperCase() + period.slice(1)}
-              </Typography>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {/* Goals Display */}
-      {Object.entries(goalsByPeriod).map(([period, periodGoals]) => (
-        <View key={period} className="mb-4">
-          <View className="space-y-3">
-            {periodGoals.map((goal) => {
-              const isExpanded = goal.isRepeating && expandedGoalId === goal.id;
-              return (
-                <View key={goal.id}>
-                  {!isExpanded && (
-                    <GoalRowSwipeable
-                      goal={goal}
-                      tags={tags}
-                      onPress={() => handleGoalPress(goal)}
-                      onEdit={onEditGoal}
-                      onDelete={onDeleteGoal}
-                      onSwipeOpen={handleSwipeOpen}
-                    />
-                  )}
-                  {isExpanded && (
-                    <GoalConsistencyCalendar
-                      goal={goal}
-                      sessions={safeSessions}
-                      tagMap={tagMap}
-                      onCollapse={() => setExpandedGoalId(null)}
-                    />
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-};
-
-// ---------- Swipeable Row ----------
-
-interface GoalRowSwipeableProps {
+type DraggableGoalRowProps = {
   goal: ProcessedGoal;
+  index: number;
   tags: { byId: Record<string, any>; allIds: string[] };
+  isDragging: boolean;
+  dragOriginalIndex: number;
+  dragTargetIndex: number;
   onPress: () => void;
   onEdit?: (goalId: string) => void;
   onDelete?: (goalId: string) => void;
   onSwipeOpen?: (ref: any) => void;
-}
+  onDragStart: (index: number) => void;
+  onDragMove: (translationY: number) => void;
+  onDragEnd: () => void;
+};
 
-const GoalRowSwipeable: FC<GoalRowSwipeableProps> = ({
-  goal,
-  tags,
-  onPress,
-  onEdit,
-  onDelete,
-  onSwipeOpen,
-}) => {
+function DraggableGoalRow({
+  goal, index, tags, isDragging, dragOriginalIndex, dragTargetIndex,
+  onPress, onEdit, onDelete, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
+}: DraggableGoalRowProps) {
+  const isBeingDragged = isDragging && dragOriginalIndex === index;
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const zIndex = useSharedValue(0);
+  const displacement = useSharedValue(0);
+  const gestureActive = useSharedValue(false);
+
   const swipeableRef = useRef<any>(null);
   const didSwipe = useRef(false);
+
+  // Reset shared values when drag ends and array has reordered
+  React.useEffect(() => {
+    if (!isDragging) {
+      translateY.value = withSpring(0, SPRING_CONFIG);
+      displacement.value = 0;
+    }
+  }, [isDragging]);
+
+  // Animate displacement for non-dragged items to make room
+  React.useEffect(() => {
+    if (!isDragging || isBeingDragged) return;
+
+    const orig = dragOriginalIndex;
+    const target = dragTargetIndex;
+    let shift = 0;
+
+    if (orig < target && index > orig && index <= target) {
+      shift = -ROW_HEIGHT;
+    } else if (orig > target && index >= target && index < orig) {
+      shift = ROW_HEIGHT;
+    }
+
+    displacement.value = withSpring(shift, SPRING_CONFIG);
+  }, [isDragging, isBeingDragged, dragOriginalIndex, dragTargetIndex, index]);
+
+  const panGesture = Gesture.Pan()
+    .activateAfterLongPress(250)
+    .onStart(() => {
+      gestureActive.value = true;
+      scale.value = withSpring(1.03, SPRING_CONFIG);
+      zIndex.value = 100;
+      runOnJS(onDragStart)(index);
+    })
+    .onUpdate((e) => {
+      translateY.value = e.translationY;
+      runOnJS(onDragMove)(e.translationY);
+    })
+    .onEnd(() => {
+      gestureActive.value = false;
+      scale.value = withSpring(1, SPRING_CONFIG);
+      zIndex.value = 0;
+      runOnJS(onDragEnd)();
+    })
+    .onFinalize(() => {
+      if (gestureActive.value) {
+        translateY.value = withSpring(0, SPRING_CONFIG);
+        gestureActive.value = false;
+      }
+      scale.value = withSpring(1, SPRING_CONFIG);
+      zIndex.value = 0;
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: isBeingDragged ? translateY.value : displacement.value },
+      { scale: scale.value },
+    ],
+    zIndex: zIndex.value,
+  }));
 
   const renderRightActions = () => (
     <View className="flex-row items-center ml-2">
@@ -251,23 +187,191 @@ const GoalRowSwipeable: FC<GoalRowSwipeableProps> = ({
   };
 
   return (
-    <Swipeable
-      ref={swipeableRef}
-      renderRightActions={renderRightActions}
-      overshootRight={false}
-      onSwipeableWillOpen={() => {
-        didSwipe.current = true;
-        onSwipeOpen?.(swipeableRef.current);
-      }}
-      onSwipeableClose={() => {
-        // Reset after close animation completes
-        setTimeout(() => { didSwipe.current = false; }, 100);
-      }}
-    >
-      <Pressable onPress={handlePress} disabled={!goal.isRepeating}>
-        <GoalRowItem goal={goal} tags={tags} />
-      </Pressable>
-    </Swipeable>
+    <GestureDetector gesture={panGesture}>
+      <Reanimated.View
+        style={[
+          animatedStyle,
+          isBeingDragged && {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.4,
+            shadowRadius: 12,
+            elevation: 12,
+          },
+        ]}
+      >
+        <Swipeable
+          ref={swipeableRef}
+          renderRightActions={renderRightActions}
+          overshootRight={false}
+          onSwipeableWillOpen={() => {
+            didSwipe.current = true;
+            onSwipeOpen?.(swipeableRef.current);
+          }}
+          onSwipeableClose={() => {
+            setTimeout(() => { didSwipe.current = false; }, 100);
+          }}
+        >
+          <Pressable onPress={handlePress} disabled={!goal.isRepeating}>
+            <GoalRowItem goal={goal} tags={tags} />
+          </Pressable>
+        </Swipeable>
+      </Reanimated.View>
+    </GestureDetector>
+  );
+}
+
+// ---------- GoalProgress ----------
+
+export const GoalProgress: FC<GoalProgressProps> = ({
+  goals,
+  currentPeriodProgress: _currentPeriodProgress,
+  onEditGoal,
+  onDeleteGoal,
+  onReorderGoals,
+}) => {
+  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+
+  // Drag-to-reorder state — mirrors index.tsx tag drag pattern exactly
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOriginalIdx, setDragOriginalIdx] = useState(-1);
+  const [dragTargetIdx, setDragTargetIdx] = useState(-1);
+  const dragOriginalIdxRef = useRef(-1);
+  const dragTargetIdxRef = useRef(-1);
+
+  // Track open swipeable refs to close others
+  const openSwipeableRef = useRef<any>(null);
+
+  // Get tags and sessions from store for real data
+  const { tags, sessions } = useFocus();
+
+  // Extract sessions array from normalized state
+  const safeSessions = (sessions && sessions.allIds && sessions.byId)
+    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean)
+    : [];
+
+  // Create tag map for name/ID conversion
+  const tagMap = useMemo(() =>
+    (tags && tags.allIds && tags.byId ? tags.allIds : []).reduce((map, id) => {
+      if (tags && tags.byId) {
+        const tag = tags.byId[id];
+        if (tag) {
+          map[id] = { id: tag.id, name: tag.name };
+        }
+      }
+      return map;
+    }, {} as Record<string, { id: string; name: string }>),
+    [tags]
+  );
+
+  // Calculate fresh goal progress from current session data
+  const freshGoalProgress = useMemo(() =>
+    calculateGoalProgress(goals || [], safeSessions, tagMap),
+    [goals, safeSessions, tagMap]
+  );
+
+  // Show placeholder when no goals exist
+  if (!goals || goals.length === 0) {
+    return <GoalEmptyPlaceholder />;
+  }
+
+  // Process goals to calculate progress (flat list, preserving allIds order)
+  const processedGoals: ProcessedGoal[] = goals.map(goal => {
+    const currentProgress = freshGoalProgress[goal.id] || 0;
+    const percentage = goal.targetMinutes > 0
+      ? (currentProgress / goal.targetMinutes) * 100
+      : 0;
+    return { ...goal, currentProgress, percentage };
+  });
+
+  const handleGoalPress = (goal: ProcessedGoal) => {
+    if (goal.isRepeating) {
+      setExpandedGoalId(prev => prev === goal.id ? null : goal.id);
+    }
+  };
+
+  const handleSwipeOpen = (ref: any) => {
+    if (openSwipeableRef.current && openSwipeableRef.current !== ref) {
+      openSwipeableRef.current.close();
+    }
+    openSwipeableRef.current = ref;
+  };
+
+  const handleDragStart = useCallback((index: number) => {
+    setIsDragging(true);
+    setDragOriginalIdx(index);
+    setDragTargetIdx(index);
+    dragOriginalIdxRef.current = index;
+    dragTargetIdxRef.current = index;
+  }, []);
+
+  const handleDragMove = useCallback((translationY: number) => {
+    const origIdx = dragOriginalIdxRef.current;
+    const total = processedGoals.length;
+    const offset = Math.round(translationY / ROW_HEIGHT);
+    const newTarget = Math.max(0, Math.min(total - 1, origIdx + offset));
+
+    if (newTarget !== dragTargetIdxRef.current) {
+      dragTargetIdxRef.current = newTarget;
+      setDragTargetIdx(newTarget);
+    }
+  }, [processedGoals.length]);
+
+  const handleDragEnd = useCallback(() => {
+    const orig = dragOriginalIdxRef.current;
+    const target = dragTargetIdxRef.current;
+
+    if (orig !== target && orig >= 0 && target >= 0 && onReorderGoals) {
+      const ids = processedGoals.map(g => g.id);
+      const [moved] = ids.splice(orig, 1);
+      ids.splice(target, 0, moved);
+      onReorderGoals(ids);
+    }
+
+    setIsDragging(false);
+    setDragOriginalIdx(-1);
+    setDragTargetIdx(-1);
+    dragOriginalIdxRef.current = -1;
+    dragTargetIdxRef.current = -1;
+  }, [processedGoals, onReorderGoals]);
+
+  return (
+    <View className="px-5 mb-6">
+      <View>
+        {processedGoals.map((goal, index) => {
+          const isExpanded = goal.isRepeating && expandedGoalId === goal.id;
+          return (
+            <View key={goal.id}>
+              {!isExpanded && (
+                <DraggableGoalRow
+                  goal={goal}
+                  index={index}
+                  tags={tags}
+                  isDragging={isDragging}
+                  dragOriginalIndex={dragOriginalIdx}
+                  dragTargetIndex={dragTargetIdx}
+                  onPress={() => handleGoalPress(goal)}
+                  onEdit={onEditGoal}
+                  onDelete={onDeleteGoal}
+                  onSwipeOpen={handleSwipeOpen}
+                  onDragStart={handleDragStart}
+                  onDragMove={handleDragMove}
+                  onDragEnd={handleDragEnd}
+                />
+              )}
+              {isExpanded && (
+                <GoalConsistencyCalendar
+                  goal={goal}
+                  sessions={safeSessions}
+                  tagMap={tagMap}
+                  onCollapse={() => setExpandedGoalId(null)}
+                />
+              )}
+            </View>
+          );
+        })}
+      </View>
+    </View>
   );
 };
 
@@ -288,16 +392,10 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
     return `${mins}m`;
   };
 
-  const getTagNames = (tagIds: string[]): string => {
-    return tagIds
-      .map(id => tags.byId[id]?.name || id)
-      .join(', ');
-  };
-
   const tagIds = (goal as any).tagIds || [];
-  const hasExceededGoal = goal.currentProgress > goal.targetMinutes;
-  const exceededMinutes = Math.max(goal.currentProgress - goal.targetMinutes, 0);
   const { progressWidth, exceededWidth } = getGoalBarSegments(goal.currentProgress, goal.targetMinutes);
+
+  const periodLabel = goal.period.charAt(0).toUpperCase() + goal.period.slice(1);
 
   return (
     <View className="bg-dark-bg border border-dark-border rounded-xl px-4 py-3">
@@ -332,30 +430,40 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
             <Typography variant="body-12" className="text-white font-poppins-medium">
               {formatTime(goal.currentProgress)} / {formatTime(goal.targetMinutes)}
             </Typography>
-            {tagIds.length > 0 && (
-              <Typography variant="tiny-10" className="text-gray-400 ml-2">
-                {getTagNames(tagIds)}
-              </Typography>
-            )}
           </View>
         </View>
 
-        {/* Status */}
-        <View className="items-end">
-          {goal.percentage >= 100 ? (
-            <Typography
-              variant="body-12"
-              className={hasExceededGoal ? 'text-orange-400' : 'text-green-400'}
-            >
-              {hasExceededGoal ? `+${formatTime(exceededMinutes)}` : '✓'}
-            </Typography>
-          ) : (
-            <Typography variant="body-12" className="text-gray-400">
-              {formatTime(goal.targetMinutes - goal.currentProgress)} left
-            </Typography>
-          )}
+        {/* Period Badge */}
+        <View className="rounded-full px-3 py-1" style={{ backgroundColor: '#3B82F6' }}>
+          <Typography variant="body-12" className="text-white font-poppins-medium">
+            {periodLabel}
+          </Typography>
         </View>
       </View>
+
+      {/* Tag Pills */}
+      {tagIds.length > 0 && (
+        <View className="flex-row flex-wrap gap-1.5 mt-2">
+          {tagIds.map((tagId: string) => {
+            const tag = tags.byId[tagId];
+            if (!tag) return null;
+            return (
+              <View
+                key={tagId}
+                className="flex-row items-center rounded-full px-2.5 py-1"
+                style={{ backgroundColor: tag.color || '#6592E9' }}
+              >
+                <Typography variant="tiny-10" className="mr-1">
+                  {tag.icon}
+                </Typography>
+                <Typography variant="tiny-10" className="text-white font-poppins-medium">
+                  {tag.name}
+                </Typography>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Progress bar */}
       <View className="mt-2 h-2 rounded-full bg-dark-border overflow-hidden relative">
@@ -664,17 +772,43 @@ const GoalEmptyPlaceholder: FC = () => {
             </Typography>
           </View>
           <View className="flex-1">
-            <Typography variant="body-14" className="text-white font-poppins-semibold mb-0.5">
-              Monthly Study Goal
-            </Typography>
+            <View className="flex-row items-center">
+              <Typography variant="body-14" className="text-white font-poppins-semibold">
+                Study Goal
+              </Typography>
+              <Typography variant="tiny-10" className="text-primary ml-2">
+                🔁
+              </Typography>
+            </View>
+            <View className="flex-row items-center mt-0.5">
+              <Typography variant="body-12" className="text-white font-poppins-medium">
+                28h 48m / 40h 0m
+              </Typography>
+            </View>
+          </View>
+          <View className="rounded-full px-3 py-1" style={{ backgroundColor: '#3B82F6' }}>
             <Typography variant="body-12" className="text-white font-poppins-medium">
-              28h 48m / 40h 0m
+              Monthly
             </Typography>
           </View>
-          <Typography variant="body-12" className="text-gray-300">
-            11h 12m left
-          </Typography>
         </View>
+
+        {/* Tag Pills */}
+        <View className="flex-row flex-wrap gap-1.5 mt-2">
+          <View
+            className="flex-row items-center rounded-full px-2.5 py-1"
+            style={{ backgroundColor: '#6592E9' }}
+          >
+            <Typography variant="tiny-10" className="mr-1">
+              📚
+            </Typography>
+            <Typography variant="tiny-10" className="text-white font-poppins-medium">
+              Study
+            </Typography>
+          </View>
+        </View>
+
+        {/* Progress bar */}
         <View className="mt-2 h-2 rounded-full bg-dark-border overflow-hidden relative">
           <View
             className="h-full bg-primary"

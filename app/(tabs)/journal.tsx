@@ -16,7 +16,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from '../../src/components/ui/StatusBar';
 import { Ionicons } from '@expo/vector-icons';
 import { Modal, Slider, Typography, TimePicker, DatePicker } from '../../src/components/ui';
-import { TagSelector } from '../../src/components/focus/TagSelector';
+import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { DateSelector, Timeline } from '../../src/components/journal';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions } from '../../src/store';
@@ -540,7 +540,7 @@ export default function JournalScreen() {
               Tag
             </Typography>
             <View className="mb-4">
-              <TagSelector
+              <HorizontalTagSelector
                 tags={tags.allIds.map(id => tags.byId[id]).filter(Boolean)}
                 selectedTags={manualTag ? [manualTag] : []}
                 onTagSelect={setManualTag}
