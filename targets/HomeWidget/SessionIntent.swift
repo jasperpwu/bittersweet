@@ -99,6 +99,11 @@ struct StartSessionIntent: LiveActivityIntent {
       liveActivityId: liveActivityId
     )
 
+    // Set shield to focus mode so blocked apps show "Focus session in progress"
+    // instead of the unlock button. JS will also set this on adoption, but we
+    // set it here for immediate effect when starting from the widget.
+    WidgetDataManager.shared.setShieldForFocusMode()
+
     WidgetDataManager.shared.reloadTimelines()
 
     return .result()
@@ -140,6 +145,11 @@ struct StopSessionIntent: LiveActivityIntent {
     WidgetDataManager.shared.writeWidgetStopAction(
       timestamp: Date().timeIntervalSince1970 * 1000
     )
+
+    // Restore shield to non-focus mode so users can unlock apps with fruits.
+    // JS won't run until the app foregrounds, so we update the shield config
+    // directly from native to avoid the shield staying stuck in focus mode.
+    WidgetDataManager.shared.restoreShieldForNonFocusMode()
 
     WidgetDataManager.shared.reloadTimelines()
 

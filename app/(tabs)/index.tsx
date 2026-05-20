@@ -748,18 +748,21 @@ export default function FocusScreen() {
     WidgetService.syncSessionState(null);
   };
 
-  const stopWithAnimation = () => {
+  // Shared teardown logic for stopping a focus session.
+  // Clears timer, resets running state, removes persisted session,
+  // restores shield, clears widget state, cancels notification,
+  // and returns the Live Activity ID so the caller can stop it.
+  const teardownSession = () => {
+    // Clear timer
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = null;
-    const wasBonusTime = isBonusTime;
-    // Capture session info for saveSessionAndNavigate (called later from animation callback)
-    stoppedInBonusRef.current = isBonusTime;
-    stoppedBonusSecondsRef.current = bonusSeconds;
-    stoppedSessionStartTimeRef.current = sessionStartTimeRef.current;
-    stoppedSessionTargetDurationRef.current = sessionTargetDurationRef.current;
+
+    // Reset running state
     setIsRunning(false);
     setIsBonusTime(false);
     setBonusSeconds(0);
+
+    // Clear persisted session
     AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
 
     // Restore normal shield (allow unlocking again)
@@ -771,19 +774,33 @@ export default function FocusScreen() {
     // Clear widget session state
     WidgetService.syncSessionState(null);
 
-    // Stop Live Activity if it's running - clear ID first to prevent double-stop
+    // Clear session refs and capture Live Activity ID for caller
     sessionEndTimeRef.current = null;
     sessionStartTimeRef.current = null;
     sessionTargetDurationRef.current = null;
     const activityId = liveActivityIdRef.current;
     liveActivityIdRef.current = undefined;
-    if (activityId) {
-      LiveActivityService.stopFocusTimer(activityId, wasBonusTime ? 'completed' : 'cancelled');
-    }
+
     // Cancel the scheduled completion notification
     if (scheduledNotificationRef.current) {
       Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
       scheduledNotificationRef.current = null;
+    }
+
+    return activityId;
+  };
+
+  const stopWithAnimation = () => {
+    const wasBonusTime = isBonusTime;
+    // Capture session info for saveSessionAndNavigate (called later from animation callback)
+    stoppedInBonusRef.current = isBonusTime;
+    stoppedBonusSecondsRef.current = bonusSeconds;
+    stoppedSessionStartTimeRef.current = sessionStartTimeRef.current;
+    stoppedSessionTargetDurationRef.current = sessionTargetDurationRef.current;
+
+    const activityId = teardownSession();
+    if (activityId) {
+      LiveActivityService.stopFocusTimer(activityId, wasBonusTime ? 'completed' : 'cancelled');
     }
 
     Animated.parallel([
@@ -951,24 +968,20 @@ export default function FocusScreen() {
         // If a newer session is pending, don't reset — fall through to adopt it.
         // Otherwise, clean up and return.
         if (!hasNewerStart) {
-          WidgetService.syncSessionState(null);
+          // Check if the UI was showing an active session before teardown clears refs
+          const wasUIActive = !!(sessionStartTimeRef.current || sessionEndTimeRef.current);
 
-          // Session was stopped — reset UI if it was active
-          if (sessionStartTimeRef.current || sessionEndTimeRef.current) {
+          // Use shared teardown: clears timer, resets running state, removes
+          // persisted session, restores shield, clears widget state, cancels notification
+          teardownSession();
+
+          // Reset additional UI-only state that teardownSession doesn't cover
+          if (wasUIActive) {
             console.log('📱 [Widget] Session stopped externally, resetting UI');
-            if (timerRef.current) clearInterval(timerRef.current as any);
-            timerRef.current = null;
-            setIsRunning(false);
             setIsSessionActive(false);
-            setIsBonusTime(false);
-            setBonusSeconds(0);
             setRemainingSeconds(0);
             setElapsedSeconds(0);
             setIsInfinite(false);
-            sessionStartTimeRef.current = null;
-            sessionEndTimeRef.current = null;
-            sessionTargetDurationRef.current = null;
-            liveActivityIdRef.current = undefined;
 
             scrollerOpacity.setValue(1);
             tagsOpacity.setValue(1);

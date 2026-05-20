@@ -14,6 +14,13 @@ enum WidgetKeys {
   static let widgetStartedSession = "widgetStartedSession"
   static let widgetStopAction = "widgetStopAction"
   static let selectedTagId = "widgetSelectedTagId"
+  static let fruitBalance = "widgetFruitBalance"
+}
+
+// UserDefaults keys used by react-native-device-activity for shield configuration
+private enum ShieldKeys {
+  static let shieldConfiguration = "shieldConfiguration"
+  static let shieldActions = "shieldActions"
 }
 
 // MARK: - Data Models
@@ -196,6 +203,80 @@ struct WidgetDataManager {
 
   func getWidgetStopAction() -> [String: Any]? {
     return userDefaults?.dictionary(forKey: WidgetKeys.widgetStopAction)
+  }
+
+  // MARK: - Fruit Balance (synced from JS for shield updates)
+
+  func getFruitBalance() -> Int {
+    return userDefaults?.integer(forKey: WidgetKeys.fruitBalance) ?? 0
+  }
+
+  // MARK: - Shield Configuration
+
+  /// Restore the shield to non-focus-session mode so users can unlock apps with fruits.
+  /// Called from StopSessionIntent when a session is stopped from the widget,
+  /// since JS won't run until the app foregrounds.
+  func restoreShieldForNonFocusMode() {
+    let balance = getFruitBalance()
+
+    let shieldConfig: [String: Any] = [
+      "title": "{applicationOrDomainDisplayName} is Blocked",
+      "subtitle": "You have \(balance) 🍎\nSpend fruits to unlock temporarily",
+      "primaryButtonLabel": "Unlock App",
+      "secondaryButtonLabel": "Close",
+      "iconSystemName": "hand.raised.fill",
+      "backgroundColor": ["red": 178.0, "green": 25.0, "blue": 25.0, "alpha": 1.0],
+      "titleColor": ["red": 255.0, "green": 255.0, "blue": 255.0, "alpha": 1.0],
+      "subtitleColor": ["red": 230.0, "green": 230.0, "blue": 230.0, "alpha": 1.0],
+      "primaryButtonLabelColor": ["red": 255.0, "green": 255.0, "blue": 255.0, "alpha": 1.0],
+      "primaryButtonBackgroundColor": ["red": 51.0, "green": 153.0, "blue": 51.0, "alpha": 1.0],
+      "secondaryButtonLabelColor": ["red": 178.0, "green": 178.0, "blue": 178.0, "alpha": 1.0],
+    ]
+
+    let shieldActions: [String: Any] = [
+      "primary": [
+        "behavior": "defer",
+        "actions": [
+          ["type": "openAppWithBundleId", "bundleId": "com.path2us.bittersweet"]
+        ]
+      ] as [String: Any],
+      "secondary": [
+        "behavior": "close"
+      ] as [String: Any],
+    ]
+
+    userDefaults?.set(shieldConfig, forKey: ShieldKeys.shieldConfiguration)
+    userDefaults?.set(shieldActions, forKey: ShieldKeys.shieldActions)
+    userDefaults?.synchronize()
+  }
+
+  /// Set the shield to focus-session mode (block unlocking during focus).
+  /// Called from StartSessionIntent when a session is started from the widget.
+  func setShieldForFocusMode() {
+    let shieldConfig: [String: Any] = [
+      "title": "{applicationOrDomainDisplayName} is Blocked",
+      "subtitle": "Focus session in progress\nStay focused!",
+      "primaryButtonLabel": "Close",
+      "iconSystemName": "hand.raised.fill",
+      "backgroundColor": ["red": 178.0, "green": 25.0, "blue": 25.0, "alpha": 1.0],
+      "titleColor": ["red": 255.0, "green": 255.0, "blue": 255.0, "alpha": 1.0],
+      "subtitleColor": ["red": 230.0, "green": 230.0, "blue": 230.0, "alpha": 1.0],
+      "primaryButtonLabelColor": ["red": 255.0, "green": 255.0, "blue": 255.0, "alpha": 1.0],
+      "primaryButtonBackgroundColor": ["red": 178.0, "green": 25.0, "blue": 25.0, "alpha": 1.0],
+    ]
+
+    let shieldActions: [String: Any] = [
+      "primary": [
+        "behavior": "close"
+      ] as [String: Any],
+      "secondary": [
+        "behavior": "close"
+      ] as [String: Any],
+    ]
+
+    userDefaults?.set(shieldConfig, forKey: ShieldKeys.shieldConfiguration)
+    userDefaults?.set(shieldActions, forKey: ShieldKeys.shieldActions)
+    userDefaults?.synchronize()
   }
 
   // MARK: - Widget Reload

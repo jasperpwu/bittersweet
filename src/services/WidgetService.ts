@@ -8,6 +8,7 @@ const PENDING_ACTION_KEY = 'pendingWidgetAction';
 const WIDGET_STARTED_SESSION_KEY = 'widgetStartedSession';
 const WIDGET_STOP_ACTION_KEY = 'widgetStopAction';
 const SELECTED_TAG_ID_KEY = 'widgetSelectedTagId';
+const FRUIT_BALANCE_KEY = 'widgetFruitBalance';
 
 export interface WidgetSessionData {
   isActive: boolean;
@@ -116,6 +117,19 @@ export class WidgetService {
       reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to sync selected tag ID:', error);
+    }
+  }
+
+  /**
+   * Sync the current fruit balance to UserDefaults so the native widget/intent
+   * code can write accurate shield configuration without waiting for JS.
+   * Call whenever the balance changes (e.g. after earning or spending fruits).
+   */
+  static syncFruitBalance(balance: number): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsSet(FRUIT_BALANCE_KEY, balance);
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync fruit balance:', error);
     }
   }
 

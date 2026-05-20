@@ -1,5 +1,6 @@
 import { FamilyActivitySelection } from '../types/models';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WidgetService } from '../services/WidgetService';
 
 // Import react-native-device-activity with proper types
 import * as ReactNativeDeviceActivity from 'react-native-device-activity';
@@ -113,6 +114,10 @@ class BitterSweetFamilyControlsModule {
       // Store configuration in UserDefaults for the shield extensions
       ReactNativeDeviceActivity.userDefaultsSet(SHIELD_CONFIGURATION_KEY, shieldConfig);
       ReactNativeDeviceActivity.userDefaultsSet(SHIELD_ACTIONS_KEY, shieldActions);
+
+      // Sync balance to app group so native widget/intent code can write
+      // accurate shield config when stopping a session without JS running
+      WidgetService.syncFruitBalance(fruitBalance);
 
       // Debug: Log the stored configuration
       console.log('✅ Shield configuration updated:', {
