@@ -138,21 +138,18 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
             onPress={onSelect}
             disabled={disabled}
             className={`
-              px-4 py-3 pr-10 rounded-full border relative
-              ${selected 
-                ? 'border-white' 
-                : 'border-gray-600'
+              px-4 py-2.5 ${onDelete ? 'pr-10' : ''} rounded-xl relative
+              ${selected
+                ? 'bg-primary'
+                : 'bg-dark-border'
               }
               ${disabled ? 'opacity-50' : 'active:opacity-80'}
               ${isDragging ? 'shadow-lg' : ''}
             `}
-            style={{
-              backgroundColor: selected ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-            }}
           >
-            <Typography 
-              variant="body-14" 
-              className="font-medium"
+            <Typography
+              variant="body-14"
+              className="text-center"
               style={{ color: '#FFFFFF' }}
             >
               {tag.name}

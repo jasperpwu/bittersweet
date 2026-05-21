@@ -6,6 +6,7 @@ import { Toggle } from '../../src/components/ui/Toggle';
 import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
+import { TimePicker } from '../../src/components/ui/TimePicker';
 import { router } from 'expo-router';
 
 // --- Inline sub-components ---
@@ -356,7 +357,7 @@ export default function SettingsScreen() {
       <BottomSheet
         isVisible={notificationSheetVisible}
         onClose={() => setNotificationSheetVisible(false)}
-        height={200}
+        height={340}
       >
         <Typography variant="headline-20" color="white" className="mb-4">
           Notifications
@@ -380,7 +381,7 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View className="flex-row items-center justify-between py-3">
+          <View className="flex-row items-center justify-between py-3 border-b border-dark-border">
             <View className="flex-row items-center flex-1">
               <View className="w-8 items-center mr-3">
                 <Ionicons name="phone-portrait-outline" size={20} color="#CACACA" />
@@ -395,6 +396,69 @@ export default function SettingsScreen() {
               size="medium"
               accessibilityLabel="Toggle notification vibration"
             />
+          </View>
+
+          <View className="py-3">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1">
+                <View className="w-8 items-center mr-3">
+                  <Ionicons name="flag-outline" size={20} color="#CACACA" />
+                </View>
+                <View className="flex-1">
+                  <Typography variant="subtitle-14-medium" color="white">
+                    Goal Reminders
+                  </Typography>
+                  <Typography variant="body-12" color="secondary" className="mt-0.5">
+                    Daily nudge when behind pace
+                  </Typography>
+                </View>
+              </View>
+              <Toggle
+                value={preferences.notifications.goalReminderEnabled}
+                onValueChange={async (value) => {
+                  try {
+                    if (value) {
+                      const granted = await ensureNotificationPermissions();
+                      if (!granted) return;
+                    }
+                    await updatePreferences({
+                      notifications: { ...preferences.notifications, goalReminderEnabled: value },
+                    });
+                    triggerHaptic('light');
+                  } catch (error) {
+                    console.error('Failed to update goal reminder setting:', error);
+                    triggerHaptic('error');
+                  }
+                }}
+                size="medium"
+                accessibilityLabel="Toggle goal reminders"
+              />
+            </View>
+
+            {preferences.notifications.goalReminderEnabled && (
+              <View className="mt-3 ml-11">
+                <TimePicker
+                  value={(() => {
+                    const [h, m] = (preferences.notifications.goalReminderTime || '20:00').split(':').map(Number);
+                    const d = new Date();
+                    d.setHours(h, m, 0, 0);
+                    return d;
+                  })()}
+                  onChange={async (date) => {
+                    const timeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    try {
+                      await updatePreferences({
+                        notifications: { ...preferences.notifications, goalReminderTime: timeStr },
+                      });
+                      triggerHaptic('light');
+                    } catch (error) {
+                      console.error('Failed to update goal reminder time:', error);
+                    }
+                  }}
+                  label="Reminder Time"
+                />
+              </View>
+            )}
           </View>
         </View>
       </BottomSheet>

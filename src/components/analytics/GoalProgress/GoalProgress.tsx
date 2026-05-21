@@ -1,19 +1,28 @@
-import React, { FC, useRef, useState, useMemo, useCallback } from 'react';
+import React, { FC, useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { View, Pressable, Share, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
+  withDelay,
+  withSequence,
+  withRepeat,
+  Easing,
   runOnJS,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { captureRef } from 'react-native-view-shot';
 import { Typography } from '../../ui/Typography';
 import { FocusGoal } from '../../../store/types';
 import { useFocus } from '../../../store';
 import { calculateGoalProgress, getHistoricalPeriodRanges } from '../../../utils/goalProgress';
+import { calculateUrgency, UrgencyLevel } from '../../../utils/goalUrgency';
 
 interface GoalProgressProps {
   goals: FocusGoal[];
@@ -75,11 +84,13 @@ type DraggableGoalRowProps = {
   onDragStart: (index: number) => void;
   onDragMove: (translationY: number) => void;
   onDragEnd: () => void;
+  shouldNudge: boolean;
 };
 
 function DraggableGoalRow({
   goal, index, tags, isDragging, dragOriginalIndex, dragTargetIndex,
   onPress, onEdit, onDelete, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
+  shouldNudge,
 }: DraggableGoalRowProps) {
   const isBeingDragged = isDragging && dragOriginalIndex === index;
   const translateY = useSharedValue(0);
@@ -88,8 +99,22 @@ function DraggableGoalRow({
   const displacement = useSharedValue(0);
   const gestureActive = useSharedValue(false);
 
+  const nudgeX = useSharedValue(0);
   const swipeableRef = useRef<any>(null);
   const didSwipe = useRef(false);
+
+  // Swipe hint: nudge left briefly on first-ever mount, staggered per row
+  React.useEffect(() => {
+    if (!shouldNudge) return;
+    const delay = 400 + index * 120;
+    nudgeX.value = withDelay(
+      delay,
+      withSequence(
+        withTiming(-30, { duration: 250, easing: Easing.out(Easing.cubic) }),
+        withSpring(0, { damping: 12, stiffness: 180 }),
+      ),
+    );
+  }, [shouldNudge]);
 
   // Reset shared values when drag ends and array has reordered
   React.useEffect(() => {
@@ -145,6 +170,7 @@ function DraggableGoalRow({
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
+      { translateX: nudgeX.value },
       { translateY: isBeingDragged ? translateY.value : displacement.value },
       { scale: scale.value },
     ],
@@ -158,7 +184,7 @@ function DraggableGoalRow({
           swipeableRef.current?.close();
           onEdit?.(goal.id);
         }}
-        className="bg-primary rounded-lg px-4 h-full justify-center mr-2"
+        className="bg-primary rounded-lg w-16 h-full items-center justify-center mr-2"
       >
         <Typography variant="body-14" color="white">
           Edit
@@ -169,7 +195,7 @@ function DraggableGoalRow({
           swipeableRef.current?.close();
           onDelete?.(goal.id);
         }}
-        className="bg-red-500 rounded-lg px-4 h-full justify-center"
+        className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
       >
         <Typography variant="body-14" color="white">
           Delete
@@ -178,6 +204,8 @@ function DraggableGoalRow({
     </View>
   );
 
+  const pressScale = useSharedValue(1);
+
   const handlePress = () => {
     if (didSwipe.current) {
       didSwipe.current = false;
@@ -185,6 +213,19 @@ function DraggableGoalRow({
     }
     onPress();
   };
+
+  const handlePressIn = () => {
+    pressScale.value = withTiming(1.015, { duration: 200, easing: Easing.out(Easing.cubic) });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handlePressOut = () => {
+    pressScale.value = withSpring(1, { damping: 15, stiffness: 200 });
+  };
+
+  const pressAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }));
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -212,8 +253,15 @@ function DraggableGoalRow({
             setTimeout(() => { didSwipe.current = false; }, 100);
           }}
         >
-          <Pressable onPress={handlePress} disabled={!goal.isRepeating}>
-            <GoalRowItem goal={goal} tags={tags} />
+          <Pressable
+            onPress={handlePress}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            disabled={!goal.isRepeating}
+          >
+            <Reanimated.View style={pressAnimatedStyle}>
+              <GoalRowItem goal={goal} tags={tags} />
+            </Reanimated.View>
           </Pressable>
         </Swipeable>
       </Reanimated.View>
@@ -231,6 +279,18 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   onReorderGoals,
 }) => {
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+  const [shouldNudge, setShouldNudge] = useState(false);
+
+  // Check if swipe nudge hint has been shown before
+  const NUDGE_STORAGE_KEY = 'goal-swipe-nudge-shown';
+  useEffect(() => {
+    AsyncStorage.getItem(NUDGE_STORAGE_KEY).then(value => {
+      if (!value) {
+        setShouldNudge(true);
+        AsyncStorage.setItem(NUDGE_STORAGE_KEY, 'true');
+      }
+    });
+  }, []);
 
   // Drag-to-reorder state — mirrors index.tsx tag drag pattern exactly
   const [isDragging, setIsDragging] = useState(false);
@@ -337,7 +397,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
 
   return (
     <View className="px-5 mb-6">
-      <View>
+      <View className="gap-y-3">
         {processedGoals.map((goal, index) => {
           const isExpanded = goal.isRepeating && expandedGoalId === goal.id;
           return (
@@ -357,6 +417,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
                   onDragStart={handleDragStart}
                   onDragMove={handleDragMove}
                   onDragEnd={handleDragEnd}
+                  shouldNudge={shouldNudge}
                 />
               )}
               {isExpanded && (
@@ -382,7 +443,20 @@ interface GoalRowItemProps {
   tags: { byId: Record<string, any>; allIds: string[] };
 }
 
+// Excel-style lightest conditional formatting colors for the progress bar track
+const TRACK_COLORS: Record<UrgencyLevel | 'healthy', string> = {
+  healthy: '#C6EFCE', // Excel lightest green
+  low: '#C6EFCE',     // Excel lightest green
+  medium: '#FF9536',  // strong amber/orange
+  high: '#D9364B',    // strong urgent red
+};
+
 const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
+  const urgency = useMemo(
+    () => calculateUrgency(goal, goal.currentProgress),
+    [goal],
+  );
+
   const formatTime = (minutes: number): string => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -396,6 +470,25 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   const { progressWidth, exceededWidth } = getGoalBarSegments(goal.currentProgress, goal.targetMinutes);
 
   const periodLabel = goal.period.charAt(0).toUpperCase() + goal.period.slice(1);
+
+  // Urgency-driven track color for the unfilled portion of the progress bar
+  const isHealthy = !urgency.isBehindPace || urgency.level === 'low';
+  const trackColor = isHealthy ? TRACK_COLORS.healthy : TRACK_COLORS[urgency.level];
+
+  // Shimmer sweep animation — runs once each time the tab is focused
+  const isFocused = useIsFocused();
+  const shimmerX = useSharedValue(-40);
+
+  useEffect(() => {
+    if (isFocused) {
+      shimmerX.value = -40;
+      shimmerX.value = withTiming(400, { duration: 2000, easing: Easing.inOut(Easing.ease) });
+    }
+  }, [isFocused]);
+
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shimmerX.value }],
+  }));
 
   return (
     <View className="bg-dark-bg border border-dark-border rounded-xl px-4 py-3">
@@ -487,6 +580,52 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
             width: 2,
             opacity: 0.9,
           }}
+        />
+      </View>
+
+      {/* Urgency hint line — only covers the unfilled portion, with forward shimmer */}
+      <View
+        style={{
+          marginLeft: `${progressWidth}%`,
+          marginTop: -5,
+          height: 6,
+          overflow: 'hidden',
+          borderTopRightRadius: 999,
+          borderBottomRightRadius: 999,
+        }}
+      >
+        {/* Static base line */}
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 2,
+            height: 2,
+            backgroundColor: trackColor,
+            opacity: 0.5,
+            borderTopRightRadius: 999,
+            borderBottomRightRadius: 999,
+          }}
+        />
+        {/* Sweeping highlight */}
+        <Reanimated.View
+          style={[
+            {
+              position: 'absolute',
+              top: 1,
+              width: 40,
+              height: 4,
+              borderRadius: 999,
+              backgroundColor: trackColor,
+              shadowColor: trackColor,
+              shadowOpacity: 1,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 10,
+            },
+            shimmerStyle,
+          ]}
         />
       </View>
     </View>

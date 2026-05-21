@@ -148,7 +148,38 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   };
 
   return (
-    <View className="gap-y-5">
+    <View className="gap-y-4">
+      {/* Goal Name */}
+      <View>
+        <Typography variant="subtitle-16" color="white" className="mb-2">
+          Goal Name
+        </Typography>
+        <TextInput
+          value={customGoalName}
+          onChangeText={setCustomGoalName}
+          placeholder={
+            selectedTagIds.length === 1
+              ? `${availableTags.find(t => t.id === selectedTagIds[0])?.name || 'Focus'} Goal`
+              : 'Focus Goal'
+          }
+          placeholderTextColor="#6B7280"
+          className="bg-dark-border rounded-xl p-4 text-white text-base"
+          style={{ fontFamily: 'Poppins-Regular' }}
+        />
+      </View>
+
+      {/* Tag Selection */}
+      <View>
+        <Typography variant="subtitle-16" color="white" className="mb-2">
+          Tags *
+        </Typography>
+        <HorizontalTagSelector
+          tags={availableTags}
+          selectedTags={selectedTagIds}
+          onTagSelect={toggleTag}
+        />
+      </View>
+
       {/* Time Period */}
       <View>
         <Typography variant="subtitle-16" color="white" className="mb-2">
@@ -159,7 +190,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
             <Pressable
               key={p}
               onPress={() => setPeriod(p)}
-              className={`flex-1 py-3 rounded-xl ${
+              className={`flex-1 py-2.5 rounded-xl ${
                 period === p ? 'bg-primary' : 'bg-dark-border'
               }`}
             >
@@ -179,8 +210,8 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
         <Typography variant="subtitle-16" color="white" className="mb-2">
           Target Duration
         </Typography>
-        <View className="bg-dark-border rounded-xl p-4 items-center">
-          <Typography variant="headline-20" color="white" className="mb-3">
+        <View className="bg-dark-border rounded-xl px-4 py-3 items-center">
+          <Typography variant="headline-20" color="white" className="mb-1">
             {formatSliderValue(targetHours)}
           </Typography>
           <Slider
@@ -194,71 +225,35 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
         </View>
       </View>
 
-      {/* Repeating Toggle */}
-      <View className="flex-row items-center justify-between bg-dark-border rounded-xl p-4">
-        <View className="flex-1 mr-3">
-          <Typography variant="subtitle-16" color="white">
-            Repeat this goal
-          </Typography>
-          <Typography variant="body-12" color="secondary" className="mt-1">
-            Track consistency across periods
-          </Typography>
+      {/* Settings */}
+      <View className="bg-dark-border rounded-xl">
+        <View className="flex-row items-center justify-between p-4">
+          <View className="flex-1 mr-3">
+            <Typography variant="subtitle-16" color="white">
+              Repeat this goal
+            </Typography>
+            <Typography variant="body-12" color="secondary" className="mt-0.5">
+              Track consistency across periods
+            </Typography>
+          </View>
+          <Toggle value={isRepeating} onValueChange={setIsRepeating} />
         </View>
-        <Toggle value={isRepeating} onValueChange={setIsRepeating} />
-      </View>
-
-      {/* Show Total Hours Toggle */}
-      <View className="flex-row items-center justify-between bg-dark-border rounded-xl p-4">
-        <View className="flex-1 mr-3">
-          <Typography variant="subtitle-16" color="white">
-            Show total hours
-          </Typography>
-          <Typography variant="body-12" color="secondary" className="mt-1">
-            Display cumulative hours in the streaks view
-          </Typography>
+        <View className="h-px bg-dark-surface mx-4" />
+        <View className="flex-row items-center justify-between p-4">
+          <View className="flex-1 mr-3">
+            <Typography variant="subtitle-16" color="white">
+              Show total hours
+            </Typography>
+            <Typography variant="body-12" color="secondary" className="mt-0.5">
+              Display cumulative hours in the streaks view
+            </Typography>
+          </View>
+          <Toggle value={showTotalHours} onValueChange={setShowTotalHours} />
         </View>
-        <Toggle value={showTotalHours} onValueChange={setShowTotalHours} />
-      </View>
-
-      {/* Tag Selection */}
-      <View>
-        <Typography variant="subtitle-16" color="white" className="mb-2">
-          Tags *
-        </Typography>
-        <Typography variant="body-12" color="secondary" className="mb-3">
-          Select at least one tag to track
-        </Typography>
-        <HorizontalTagSelector
-          tags={availableTags}
-          selectedTags={selectedTagIds}
-          onTagSelect={toggleTag}
-        />
-      </View>
-
-      {/* Custom Goal Name */}
-      <View>
-        <Typography variant="subtitle-16" color="white" className="mb-2">
-          Goal Name (Optional)
-        </Typography>
-        <Typography variant="body-12" color="secondary" className="mb-3">
-          Give your goal a custom name
-        </Typography>
-        <TextInput
-          value={customGoalName}
-          onChangeText={setCustomGoalName}
-          placeholder={
-            selectedTagIds.length === 1
-              ? `${availableTags.find(t => t.id === selectedTagIds[0])?.name || 'Focus'} Goal`
-              : 'Focus Goal'
-          }
-          placeholderTextColor="#6B7280"
-          className="bg-dark-border rounded-xl p-4 text-white text-base"
-          style={{ fontFamily: 'Poppins-Regular' }}
-        />
       </View>
 
       {/* Action Buttons */}
-      <View className="flex-row gap-x-3 pt-2 pb-4">
+      <View className="flex-row gap-x-3 pt-1 pb-4">
         <Pressable
           onPress={onCancel}
           className="flex-1 bg-dark-border rounded-xl py-4 active:opacity-70"

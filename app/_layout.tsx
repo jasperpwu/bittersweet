@@ -10,6 +10,7 @@ import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
 import { useAppState, initializeUnifiedStore } from '../src/store/unified-store';
 import { autoInitializeMockData } from '../src/store/initializeMockData';
 import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
+import { useGoalNudgeNotifications } from '../src/hooks/useGoalNudgeNotifications';
 import { useEffect, useRef, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -52,6 +53,9 @@ export default function RootLayout() {
 
   // Initialize Device Activity Listener
   const { isListening } = useDeviceActivityListener();
+
+  // Schedule/cancel goal nudge notifications
+  useGoalNudgeNotifications();
 
   const checkExpiredUnlockSessions = (trigger: string) => {
     try {

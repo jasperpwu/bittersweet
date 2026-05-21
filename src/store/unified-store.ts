@@ -35,6 +35,8 @@ interface NotificationSettings {
   sessionReminders: boolean;
   breakReminders: boolean;
   dailyGoals: boolean;
+  goalReminderEnabled: boolean;
+  goalReminderTime: string; // "HH:MM" format
 }
 
 interface FocusSettings {
@@ -133,6 +135,8 @@ const createDefaultPreferences = (): AppPreferences => ({
     sessionReminders: true,
     breakReminders: true,
     dailyGoals: true,
+    goalReminderEnabled: true,
+    goalReminderTime: '20:00',
   },
   focus: {
     defaultDuration: 25,
