@@ -1401,6 +1401,14 @@ export const useAppStore = create<AppStore>()(
 
             // Note: Re-blocking is now handled automatically by DeviceActivity schedule
 
+            // Show idle focus Live Activity so user can start a new session from lock screen
+            const focus = get().focus;
+            const tagId = focus.lastSelectedTagId;
+            const tag = tagId ? focus.tags.byId[tagId] : undefined;
+            const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
+            const lastDuration = tagId ? focus.lastDurationByTagId[tagId] : undefined;
+            LiveActivityService.showIdleFocusActivity(tagLabel, tagId || undefined, lastDuration);
+
             console.log('🔒 Unlock session ended:', sessionId);
           }
         },

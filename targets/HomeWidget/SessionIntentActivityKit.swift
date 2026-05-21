@@ -22,6 +22,9 @@ struct LiveActivityAttributes: ActivityAttributes {
     var imageName: String?
     var dynamicIslandImageName: String?
     var dynamicIslandText: String?
+    var isIdle: Bool?
+    var tagId: String?
+    var durationMinutes: Int?
   }
 
   var name: String
@@ -58,7 +61,7 @@ class WidgetActivityKitLoader: NSObject {
         }
       }
 
-      let subtitle: String? = isInfinite ? nil : "\(duration)m focus session"
+      let subtitle: String? = isInfinite ? "∞ focus session" : "\(duration)m focus session"
       let timerDate: Double = isInfinite ? startTimeMs : endTimeMs
 
       let state = LiveActivityAttributes.ContentState(
@@ -101,24 +104,40 @@ class WidgetActivityKitLoader: NSObject {
     }
 
     WidgetActivityKit.stopHandler = {
+      // Read the selected tag from shared UserDefaults so the idle LA
+      // can display the tag name and pass tagId/duration to the Start button.
+      let tags = WidgetDataManager.shared.getTagList()
+      let selectedTagId = WidgetDataManager.shared.getSelectedTagId()
+      let tag = selectedTagId.flatMap { id in tags.first(where: { $0.id == id }) } ?? tags.first
+
       for activity in Activity<LiveActivityAttributes>.activities {
         let id = activity.id
         Task {
-          let finalState = LiveActivityAttributes.ContentState(
-            title: "Focus Session Complete",
-            subtitle: "Great work!",
-            timerEndDateInMilliseconds: Double(Date().timeIntervalSince1970 * 1000),
+          let tagTitle: String = {
+            guard let t = tag else { return "Focus" }
+            let icon = t.icon.isEmpty ? "🎯" : t.icon
+            return "\(icon) \(t.name)"
+          }()
+          let idleState = LiveActivityAttributes.ContentState(
+            title: tagTitle,
+            subtitle: tag.flatMap { t in
+              guard let d = t.lastDuration else { return nil }
+              return d > 0 ? "\(d) min" : "∞"
+            },
+            timerEndDateInMilliseconds: nil,
             timerStartDateInMilliseconds: nil,
             progress: nil,
-            imageName: nil,
-            dynamicIslandImageName: nil,
-            dynamicIslandText: nil
+            imageName: "app_icon",
+            dynamicIslandImageName: "app_icon",
+            dynamicIslandText: tagTitle,
+            isIdle: true,
+            tagId: tag?.id,
+            durationMinutes: tag?.lastDuration
           )
-          await activity.end(
-            ActivityContent(state: finalState, staleDate: nil),
-            dismissalPolicy: .immediate
+          await activity.update(
+            ActivityContent(state: idleState, staleDate: nil)
           )
-          print("✅ [Widget] Ended Live Activity: \(id)")
+          print("✅ [Widget] Updated Live Activity to idle: \(id)")
         }
       }
     }

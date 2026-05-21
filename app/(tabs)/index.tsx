@@ -445,7 +445,14 @@ export default function FocusScreen() {
     // Sync to small widget so it shows the newly selected tag
     WidgetService.syncSelectedTagId(tagId);
     // Restore last used duration for this tag (default 15 min)
-    setSelectedTime(lastDurationByTagId[tagId] ?? 15);
+    const duration = lastDurationByTagId[tagId] ?? 15;
+    setSelectedTime(duration);
+    // Update idle Live Activity if one is showing
+    if (!isRunning && LiveActivityService.hasFocusActivity) {
+      const tag = tags.byId[tagId];
+      const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
+      LiveActivityService.showIdleFocusActivity(tagLabel, tagId, duration);
+    }
     setShowTagModal(false);
   };
 
@@ -608,10 +615,15 @@ export default function FocusScreen() {
     // activity if one is still around, ensuring at most one is shown)
     let liveActivityId: string | undefined;
 
+    // Store tag info for later idle state (when session ends, LA transitions to idle)
+    const selectedTagObj = selectedTag ? tags.byId[selectedTag] : undefined;
+    const selectedTagName = selectedTagObj ? selectedTagObj.name : 'Focus';
+    const selectedTagLabel = selectedTagObj ? `${selectedTagObj.icon || '🎯'} ${selectedTagObj.name}` : 'Focus';
+    LiveActivityService.setLastTag(selectedTag || undefined, selectedTagLabel, isDevTimer ? 1 : selectedTime);
+
     if (infinite) {
       // Infinite mode: no end time — use a count-up live activity
       sessionEndTimeRef.current = null;
-      const selectedTagName = selectedTag ? tags.byId[selectedTag]?.name || 'Focus' : 'Focus';
       const activityId = LiveActivityService.startFocusTimerInfinite(
         new Date(),
         selectedTagName
@@ -626,11 +638,10 @@ export default function FocusScreen() {
     } else {
       const endTime = new Date(Date.now() + timerSeconds * 1000);
       sessionEndTimeRef.current = endTime.getTime();
-      const selectedTagNameForTimer = selectedTag ? tags.byId[selectedTag]?.name || 'Focus' : 'Focus';
       const activityId = LiveActivityService.startFocusTimer(
         endTime,
         isDevTimer ? 1 : selectedTime,
-        selectedTagNameForTimer
+        selectedTagName
       );
       if (activityId) {
         liveActivityId = activityId;
@@ -1261,6 +1272,26 @@ export default function FocusScreen() {
     setSelectedTime(time);
     if (selectedTag) {
       setLastDurationForTag(selectedTag, time);
+      // Sync updated duration to widget immediately
+      const updatedDurations = { ...lastDurationByTagId, [selectedTag]: time };
+      const tagList = tags.allIds.map(id => {
+        const tag = tags.byId[id];
+        return {
+          id: tag.id,
+          name: tag.name,
+          icon: tag.icon || '🎯',
+          color: tag.color || '#8B4513',
+          lastDuration: updatedDurations[id] ?? 15,
+          usageCount: tag.usageCount ?? 0,
+        };
+      });
+      WidgetService.syncTagList(tagList);
+      // Update idle Live Activity if one is showing
+      if (!isRunning && LiveActivityService.hasFocusActivity) {
+        const tagObj = tags.byId[selectedTag];
+        const tagLabel = tagObj ? `${tagObj.icon || '🎯'} ${tagObj.name}` : 'Focus';
+        LiveActivityService.showIdleFocusActivity(tagLabel, selectedTag, time);
+      }
     }
   };
 

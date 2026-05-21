@@ -20,6 +20,11 @@ export class LiveActivityService {
   private static focusEndTimestamp: number | undefined;
   private static unlockEndTimestamp: number | undefined;
 
+  // Track last tag info for idle state after session ends
+  private static lastTagName: string | undefined;
+  private static lastTagId: string | undefined;
+  private static lastDurationMinutes: number | undefined;
+
   /**
    * Start a new Live Activity for unlock countdown
    * @param endTime - When the unlock expires
@@ -181,6 +186,10 @@ export class LiveActivityService {
     }
 
     try {
+      // Store tag info for later idle state
+      this.lastTagName = labelName;
+      this.lastDurationMinutes = durationMinutes;
+
       const now = Date.now();
       const endTimestamp = endTime.getTime();
       const startTimestamp = endTimestamp - durationMinutes * 60 * 1000;
@@ -273,9 +282,13 @@ export class LiveActivityService {
     }
 
     try {
+      // Store tag info for later idle state
+      this.lastTagName = labelName;
+      this.lastDurationMinutes = 0; // 0 = infinite
+
       const state: LiveActivity.LiveActivityState = {
         title: labelName,
-        subtitle: undefined,
+        subtitle: '∞ focus session',
         progressBar: {
           date: startTime.getTime(), // Past date → iOS timer widget counts UP
         },
@@ -334,27 +347,29 @@ export class LiveActivityService {
     }
 
     try {
-      console.log('🛑 Stopping Focus Timer Live Activity:', activityId, 'Reason:', reason);
+      console.log('🛑 Transitioning Focus Timer Live Activity to idle:', activityId, 'Reason:', reason);
 
-      // Final state showing the session has ended
-      // Note: Do NOT pass imageName here — the native stopActivity runs
-      // updateImages() before activity.end(), and if image resolution fails
-      // the Task throws silently and the activity is never dismissed.
-      const finalState: LiveActivity.LiveActivityState = {
-        title: reason === 'completed' ? "Focus Session Complete" : "Focus Session Cancelled",
-        subtitle: "Great work!",
-        progressBar: {
-          date: Date.now(), // Set to now to show 00:00
-        },
+      // Build idle state with tag info so the LA shows a "Start" button
+      const durationLabel = this.lastDurationMinutes != null
+        ? (this.lastDurationMinutes > 0 ? `${this.lastDurationMinutes} min` : '∞')
+        : undefined;
+
+      const idleState: LiveActivity.LiveActivityState = {
+        title: this.lastTagName || 'Focus',
+        subtitle: durationLabel,
+        imageName: 'app_icon',
+        dynamicIslandImageName: 'app_icon',
+        dynamicIslandText: this.lastTagName || 'Focus',
+        isIdle: true,
+        tagId: this.lastTagId,
+        durationMinutes: this.lastDurationMinutes,
       };
 
-      LiveActivity.stopActivity(activityId, finalState);
-      // Keep lastFocusActivityId so startFocusTimer can attempt to reuse it
-      // (updateActivity will fail gracefully if iOS already dismissed it).
+      LiveActivity.updateActivity(activityId, idleState);
+      // Keep lastFocusActivityId so startFocusTimer can reuse it
       this.focusEndTimestamp = undefined;
-      console.log('✅ Focus Timer Live Activity stopped');
+      console.log('✅ Focus Timer Live Activity transitioned to idle');
     } catch (error: any) {
-      // Activity might have already expired/ended naturally, which is fine
       const errorCode = error?.code || error?.cause?.code;
       if (errorCode === 'ERR_ACTIVITY_NOT_FOUND') {
         console.log('ℹ️ Focus Timer Live Activity already ended (likely expired naturally)');
@@ -362,7 +377,7 @@ export class LiveActivityService {
           this.lastFocusActivityId = undefined;
         }
       } else {
-        console.error('❌ Error stopping Focus Timer Live Activity:', error);
+        console.error('❌ Error transitioning Focus Timer Live Activity to idle:', error);
       }
       this.focusEndTimestamp = undefined;
     }
@@ -414,6 +429,104 @@ export class LiveActivityService {
     this.lastFocusActivityId = activityId;
     this.focusEndTimestamp = endTimestamp;
     console.log('📱 [LiveActivity] Adopted widget activity:', activityId);
+  }
+
+  /**
+   * Store tag info for later use in idle state transitions.
+   * Called before starting a focus session so that stopFocusTimer and
+   * showIdleFocusActivity know what tag/duration to display.
+   */
+  static setLastTag(tagId: string | undefined, tagName: string, durationMinutes: number): void {
+    this.lastTagId = tagId;
+    this.lastTagName = tagName;
+    this.lastDurationMinutes = durationMinutes;
+  }
+
+  /**
+   * Show an idle focus Live Activity (after unlock ends, for example).
+   * Reuses the existing focus activity if available, otherwise starts a new one.
+   */
+  static showIdleFocusActivity(tagName: string, tagId?: string, durationMinutes?: number): void {
+    if (!this.isAvailable()) return;
+
+    const durationLabel = durationMinutes != null
+      ? (durationMinutes > 0 ? `${durationMinutes} min` : '∞')
+      : undefined;
+
+    const idleState: LiveActivity.LiveActivityState = {
+      title: tagName,
+      subtitle: durationLabel,
+      imageName: 'app_icon',
+      dynamicIslandImageName: 'app_icon',
+      dynamicIslandText: tagName,
+      isIdle: true,
+      tagId,
+      durationMinutes,
+    };
+
+    // Try to update existing activity first
+    if (this.lastFocusActivityId) {
+      try {
+        LiveActivity.updateActivity(this.lastFocusActivityId, idleState);
+        console.log('♻️ Updated existing LA to idle focus:', this.lastFocusActivityId);
+        return;
+      } catch (e) {
+        console.log('ℹ️ Could not update existing activity to idle, starting new one');
+        this.lastFocusActivityId = undefined;
+      }
+    }
+
+    // Start a new idle activity
+    const config: LiveActivity.LiveActivityConfig = {
+      backgroundColor: '#D2B48C',
+      titleColor: '#8B4513',
+      subtitleColor: '#8B4513',
+      progressViewTint: '#FF6347',
+      progressViewLabelColor: '#8B4513',
+      timerType: 'digital',
+    };
+
+    try {
+      const activityId = LiveActivity.startActivity(idleState, config);
+      if (activityId) {
+        this.lastFocusActivityId = activityId;
+        this.focusEndTimestamp = undefined;
+        console.log('✅ Started idle focus Live Activity:', activityId);
+      }
+    } catch (error) {
+      console.error('❌ Error starting idle focus Live Activity:', error);
+    }
+  }
+
+  /**
+   * Truly end the focus Live Activity (dismiss it completely).
+   * Used when the user explicitly dismisses or in rare cleanup cases.
+   */
+  static endFocusActivity(activityId?: string): void {
+    if (!this.isAvailable()) return;
+
+    const id = activityId || this.lastFocusActivityId;
+    if (!id) return;
+
+    try {
+      const finalState: LiveActivity.LiveActivityState = {
+        title: 'Session Ended',
+      };
+      LiveActivity.stopActivity(id, finalState);
+      if (this.lastFocusActivityId === id) {
+        this.lastFocusActivityId = undefined;
+      }
+      this.focusEndTimestamp = undefined;
+      console.log('✅ Ended focus Live Activity:', id);
+    } catch (error: any) {
+      const errorCode = error?.code || error?.cause?.code;
+      if (errorCode === 'ERR_ACTIVITY_NOT_FOUND') {
+        if (this.lastFocusActivityId === id) {
+          this.lastFocusActivityId = undefined;
+        }
+      }
+      this.focusEndTimestamp = undefined;
+    }
   }
 
 }

@@ -96,6 +96,7 @@ export class WidgetService {
     try {
       ReactNativeDeviceActivity.userDefaultsSet(TAG_LIST_KEY, tags);
       console.log('📱 [Widget] Synced tag list:', tags.length, 'tags');
+      reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to sync tag list:', error);
     }

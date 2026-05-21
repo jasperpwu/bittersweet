@@ -103,9 +103,20 @@ export default function RootLayout() {
         const data = notification.request.content.data;
         if (data?.type === 'unlock-expired') {
           if (data.unlockSessionId) {
+            // endUnlock stops the unlock LA and shows idle focus LA
             useAppStore.getState().blocklist.endUnlock(data.unlockSessionId as string);
           } else if (data.liveActivityId) {
             LiveActivityService.stopUnlockCountdown(data.liveActivityId as string, 'expired');
+            // Show idle focus LA after unlock ends
+            const focus = useAppStore.getState().focus;
+            const tagId = focus.lastSelectedTagId;
+            const tag = tagId ? focus.tags.byId[tagId] : undefined;
+            const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
+            LiveActivityService.showIdleFocusActivity(
+              tagLabel,
+              tagId || undefined,
+              tagId ? focus.lastDurationByTagId[tagId] : undefined
+            );
           }
         }
       }

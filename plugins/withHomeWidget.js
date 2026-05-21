@@ -23,6 +23,20 @@ const withHomeWidget = (config) => {
       const liveActivityDir = path.join(platformRoot, "bittersweetmobileLiveActivity");
       const mainAppDir = path.join(platformRoot, "bittersweetmobile");
       const sourceDir = path.join(projectRoot, "targets", "HomeWidget");
+      const liveActivitySourceDir = path.join(projectRoot, "targets", "LiveActivity");
+
+      // Owned Live Activity Swift files — overwrite the library's copies
+      const liveActivityFiles = [
+        "LiveActivityView.swift",
+        "LiveActivityWidget.swift",
+        "LiveActivityWidgetBundle.swift",
+        "ViewHelpers.swift",
+        "Color+hex.swift",
+        "Date+toTimerInterval.swift",
+        "Image+dynamic.swift",
+        "View+applyWidgetURL.swift",
+        "View+applyIfPresent.swift",
+      ];
 
       // Files for the widget extension target
       const widgetExtensionFiles = [
@@ -56,7 +70,18 @@ const withHomeWidget = (config) => {
         }
       }
 
-      // 2. Copy shared files to main app directory
+      // 2. Copy owned Live Activity Swift files, overwriting library's versions
+      for (const file of liveActivityFiles) {
+        const src = path.join(liveActivitySourceDir, file);
+        const dest = path.join(liveActivityDir, file);
+        if (fs.existsSync(src)) {
+          fs.copyFileSync(src, dest);
+          console.log(`[withHomeWidget] Copied owned ${file} to widget extension`);
+        } else {
+          console.warn(`[withHomeWidget] Owned Live Activity file not found: ${src}`);
+        }
+      }
+
       for (const file of mainAppFiles) {
         const src = path.join(sourceDir, file);
         const dest = path.join(mainAppDir, file);
@@ -68,7 +93,7 @@ const withHomeWidget = (config) => {
         }
       }
 
-      // 3. Add files to pbxproj
+      // 4. Add files to pbxproj
       const xcodeProjectPath = path.join(
         platformRoot,
         "bittersweetmobile.xcodeproj",
@@ -79,7 +104,7 @@ const withHomeWidget = (config) => {
         const project = xcode.project(xcodeProjectPath);
         project.parseSync();
 
-        // 3a. Add widget extension files to widget extension target
+        // 4a. Add widget extension files to widget extension target
         const widgetTargetName = "bittersweetmobileLiveActivity";
         const widgetTargetUuid = findTargetUuid(project, widgetTargetName);
 
@@ -101,7 +126,7 @@ const withHomeWidget = (config) => {
           );
         }
 
-        // 3b. Add shared files to main app target (for LiveActivityIntent)
+        // 4b. Add shared files to main app target (for LiveActivityIntent)
         const mainAppTargetName = "bittersweetmobile";
         const mainAppTargetUuid = findTargetUuid(project, mainAppTargetName);
 
@@ -128,7 +153,7 @@ const withHomeWidget = (config) => {
         fs.writeFileSync(xcodeProjectPath, project.writeSync());
       }
 
-      // 4. Modify LiveActivityWidgetBundle.swift
+      // 5. Modify LiveActivityWidgetBundle.swift
       const bundlePath = path.join(
         liveActivityDir,
         "LiveActivityWidgetBundle.swift"

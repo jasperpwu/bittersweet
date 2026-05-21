@@ -1,24 +1,30 @@
 diff --git a/node_modules/expo-live-activity/build/index.d.ts b/node_modules/expo-live-activity/build/index.d.ts
-index bdcae0f..3e22f64 100644
+index bdcae0f..ffa8662 100644
 --- a/node_modules/expo-live-activity/build/index.d.ts
 +++ b/node_modules/expo-live-activity/build/index.d.ts
-@@ -15,6 +15,7 @@ export type LiveActivityState = {
+@@ -15,6 +15,10 @@ export type LiveActivityState = {
      imageName?: string;
      dynamicIslandImageName?: string;
      dynamicIslandText?: string;
 +    timerStartDateInMilliseconds?: number;
++    isIdle?: boolean;
++    tagId?: string;
++    durationMinutes?: number;
  };
  export type NativeLiveActivityState = {
      title: string;
-@@ -24,6 +25,7 @@ export type NativeLiveActivityState = {
+@@ -24,6 +28,10 @@ export type NativeLiveActivityState = {
      imageName?: string;
      dynamicIslandImageName?: string;
      dynamicIslandText?: string;
 +    timerStartDateInMilliseconds?: number;
++    isIdle?: boolean;
++    tagId?: string;
++    durationMinutes?: number;
  };
  export type LiveActivityConfig = {
      backgroundColor?: string;
-@@ -33,6 +35,7 @@ export type LiveActivityConfig = {
+@@ -33,6 +41,7 @@ export type LiveActivityConfig = {
      progressViewLabelColor?: string;
      deepLinkUrl?: string;
      timerType?: DynamicIslandTimerType;
@@ -26,7 +32,7 @@ index bdcae0f..3e22f64 100644
  };
  export type ActivityTokenReceivedEvent = {
      activityID: string;
-@@ -72,5 +75,10 @@ export declare function updateActivity(id: string, state: LiveActivityState): an
+@@ -72,5 +81,10 @@ export declare function updateActivity(id: string, state: LiveActivityState): an
  export declare function addActivityTokenListener(listener: (event: ActivityTokenReceivedEvent) => void): Voidable<EventSubscription>;
  export declare function addActivityPushToStartTokenListener(listener: (event: ActivityPushToStartTokenReceivedEvent) => void): Voidable<EventSubscription>;
  export declare function addActivityUpdatesListener(listener: (event: ActivityUpdateEvent) => void): Voidable<EventSubscription>;
@@ -293,7 +299,7 @@ index fd8eea7..c7f19e9 100644
  
    private func circularTimer(endDate: Double) -> some View {
 diff --git a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
-index a222928..f0b5619 100644
+index a222928..52a9da7 100644
 --- a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 +++ b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 @@ -1,5 +1,6 @@
@@ -303,17 +309,26 @@ index a222928..f0b5619 100644
  
  public class ExpoLiveActivityModule: Module {
    struct LiveActivityState: Record {
-@@ -28,6 +29,9 @@ public class ExpoLiveActivityModule: Module {
+@@ -28,6 +29,18 @@ public class ExpoLiveActivityModule: Module {
  
      @Field
      var dynamicIslandText: String?
 +
 +    @Field
 +    var timerStartDateInMilliseconds: Double?
++
++    @Field
++    var isIdle: Bool?
++
++    @Field
++    var tagId: String?
++
++    @Field
++    var durationMinutes: Int?
    }
  
    struct LiveActivityConfig: Record {
-@@ -51,6 +55,9 @@ public class ExpoLiveActivityModule: Module {
+@@ -51,6 +64,9 @@ public class ExpoLiveActivityModule: Module {
  
      @Field
      var timerType: DynamicIslandTimerType?
@@ -323,7 +338,7 @@ index a222928..f0b5619 100644
    }
  
    enum DynamicIslandTimerType: String, Enumerable {
-@@ -191,6 +198,18 @@ public class ExpoLiveActivityModule: Module {
+@@ -191,6 +207,18 @@ public class ExpoLiveActivityModule: Module {
        }
  
        do {
@@ -342,7 +357,7 @@ index a222928..f0b5619 100644
          let config = maybeConfig ?? LiveActivityConfig()
          let attributes = LiveActivityAttributes(
            name: "ExpoLiveActivity",
-@@ -200,12 +219,14 @@ public class ExpoLiveActivityModule: Module {
+@@ -200,22 +228,30 @@ public class ExpoLiveActivityModule: Module {
            progressViewTint: config.progressViewTint,
            progressViewLabelColor: config.progressViewLabelColor,
            deepLinkUrl: config.deepLinkUrl,
@@ -358,7 +373,12 @@ index a222928..f0b5619 100644
            progress: state.progressBar?.progress,
            imageName: state.imageName,
            dynamicIslandImageName: state.dynamicIslandImageName,
-@@ -214,8 +235,11 @@ public class ExpoLiveActivityModule: Module {
+-          dynamicIslandText: state.dynamicIslandText
++          dynamicIslandText: state.dynamicIslandText,
++          isIdle: state.isIdle,
++          tagId: state.tagId,
++          durationMinutes: state.durationMinutes
+         )
  
          // Set staleDate to the timer end time so the widget knows when
          // content is outdated (e.g. timer reached 0:00 while app was in background).
@@ -372,7 +392,7 @@ index a222928..f0b5619 100644
          }
  
          let activity = try Activity.request(
-@@ -230,32 +254,6 @@ public class ExpoLiveActivityModule: Module {
+@@ -230,32 +266,6 @@ public class ExpoLiveActivityModule: Module {
            await activity.update(ActivityContent(state: newState, staleDate: timerEndDate))
          }
  
@@ -405,7 +425,7 @@ index a222928..f0b5619 100644
  
          return activity.id
        } catch {
-@@ -278,6 +276,7 @@ public class ExpoLiveActivityModule: Module {
+@@ -278,10 +288,14 @@ public class ExpoLiveActivityModule: Module {
            title: state.title,
            subtitle: state.subtitle,
            timerEndDateInMilliseconds: state.progressBar?.date,
@@ -413,7 +433,15 @@ index a222928..f0b5619 100644
            progress: state.progressBar?.progress,
            imageName: nil,
            dynamicIslandImageName: nil,
-@@ -308,6 +307,7 @@ public class ExpoLiveActivityModule: Module {
+-          dynamicIslandText: state.dynamicIslandText
++          dynamicIslandText: state.dynamicIslandText,
++          isIdle: state.isIdle,
++          tagId: state.tagId,
++          durationMinutes: state.durationMinutes
+         )
+         try await updateImages(state: state, newState: &newState)
+         await activity.end(
+@@ -308,14 +322,24 @@ public class ExpoLiveActivityModule: Module {
            title: state.title,
            subtitle: state.subtitle,
            timerEndDateInMilliseconds: state.progressBar?.date,
@@ -421,7 +449,13 @@ index a222928..f0b5619 100644
            progress: state.progressBar?.progress,
            imageName: nil,
            dynamicIslandImageName: nil,
-@@ -317,5 +317,11 @@ public class ExpoLiveActivityModule: Module {
+-          dynamicIslandText: state.dynamicIslandText
++          dynamicIslandText: state.dynamicIslandText,
++          isIdle: state.isIdle,
++          tagId: state.tagId,
++          durationMinutes: state.durationMinutes
+         )
+         try await updateImages(state: state, newState: &newState)
          await activity.update(ActivityContent(state: newState, staleDate: nil))
        }
      }
@@ -434,10 +468,10 @@ index a222928..f0b5619 100644
    }
  }
 diff --git a/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift b/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift
-index e96360d..a2eb464 100644
+index e96360d..c332a38 100644
 --- a/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift
 +++ b/node_modules/expo-live-activity/ios/LiveActivityAttributes.swift
-@@ -6,6 +6,7 @@ struct LiveActivityAttributes: ActivityAttributes {
+@@ -6,10 +6,14 @@ struct LiveActivityAttributes: ActivityAttributes {
      var title: String
      var subtitle: String?
      var timerEndDateInMilliseconds: Double?
@@ -445,7 +479,14 @@ index e96360d..a2eb464 100644
      var progress: Double?
      var imageName: String?
      var dynamicIslandImageName: String?
-@@ -20,6 +21,7 @@ struct LiveActivityAttributes: ActivityAttributes {
+     var dynamicIslandText: String?
++    var isIdle: Bool?
++    var tagId: String?
++    var durationMinutes: Int?
+   }
+ 
+   var name: String
+@@ -20,6 +24,7 @@ struct LiveActivityAttributes: ActivityAttributes {
    var progressViewLabelColor: String?
    var deepLinkUrl: String?
    var timerType: DynamicIslandTimerType?
@@ -454,26 +495,32 @@ index e96360d..a2eb464 100644
    enum DynamicIslandTimerType: String, Codable {
      case circular
 diff --git a/node_modules/expo-live-activity/src/index.ts b/node_modules/expo-live-activity/src/index.ts
-index 2b58e20..b8d3e10 100644
+index 2b58e20..879640e 100644
 --- a/node_modules/expo-live-activity/src/index.ts
 +++ b/node_modules/expo-live-activity/src/index.ts
-@@ -24,6 +24,7 @@ export type LiveActivityState = {
+@@ -24,6 +24,10 @@ export type LiveActivityState = {
    imageName?: string
    dynamicIslandImageName?: string
    dynamicIslandText?: string
 +  timerStartDateInMilliseconds?: number
++  isIdle?: boolean
++  tagId?: string
++  durationMinutes?: number
  }
  
  export type NativeLiveActivityState = {
-@@ -34,6 +35,7 @@ export type NativeLiveActivityState = {
+@@ -34,6 +38,10 @@ export type NativeLiveActivityState = {
    imageName?: string
    dynamicIslandImageName?: string
    dynamicIslandText?: string
 +  timerStartDateInMilliseconds?: number
++  isIdle?: boolean
++  tagId?: string
++  durationMinutes?: number
  }
  
  export type LiveActivityConfig = {
-@@ -44,6 +46,7 @@ export type LiveActivityConfig = {
+@@ -44,6 +52,7 @@ export type LiveActivityConfig = {
    progressViewLabelColor?: string
    deepLinkUrl?: string
    timerType?: DynamicIslandTimerType
@@ -481,7 +528,7 @@ index 2b58e20..b8d3e10 100644
  }
  
  export type ActivityTokenReceivedEvent = {
-@@ -121,3 +124,11 @@ export function addActivityUpdatesListener(
+@@ -121,3 +130,11 @@ export function addActivityUpdatesListener(
  ): Voidable<EventSubscription> {
    if (assertIOS('addActivityUpdatesListener')) return ExpoLiveActivityModule.addListener('onStateChange', listener)
  }
