@@ -50,8 +50,6 @@ coverage/
 
 # Build
 build/
-targets/*
-!targets/HomeWidget/
 
 # Logs
 logs
