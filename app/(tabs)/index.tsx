@@ -20,6 +20,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { STORAGE_KEYS } from '../../src/config/constants';
+import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
+import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
+import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
 
@@ -217,6 +220,7 @@ export default function FocusScreen() {
   const { triggerHaptic } = useDeviceIntegration();
   const { preferences } = useAppSettings();
   const timerPickerStyle = preferences.focus.timerPickerStyle ?? 'scroller';
+  const { canCreateTag } = useSubscriptionGate();
   const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean);
   
   const [selectedTime, setSelectedTime] = useState(15); // minutes; 0 => ∞
@@ -235,6 +239,8 @@ export default function FocusScreen() {
   const [showTagModal, setShowTagModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showNewTagModal, setShowNewTagModal] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagEmoji, setNewTagEmoji] = useState('');
   const [newTagColor, setNewTagColor] = useState('#6592E9');
@@ -468,6 +474,11 @@ export default function FocusScreen() {
   };
 
   const handleCreateNewTag = () => {
+    if (!canCreateTag) {
+      setShowNewTagModal(false);
+      setShowUpgradePrompt(true);
+      return;
+    }
     if (newTagName.trim() && newTagEmoji) {
       // Create tag using store action — returns the created tag with its ID
       const newTag = createTag({
@@ -1544,6 +1555,11 @@ export default function FocusScreen() {
             <View className="p-4 border-t border-gray-700">
               <Pressable
                 onPress={() => {
+                  if (!canCreateTag) {
+                    setShowTagModal(false);
+                    setShowUpgradePrompt(true);
+                    return;
+                  }
                   setShowTagModal(false);
                   setShowNewTagModal(true);
                 }}
@@ -1949,6 +1965,17 @@ export default function FocusScreen() {
         title="Choose Emoji for New Tag"
       />
 
+      <UpgradePrompt
+        isVisible={showUpgradePrompt}
+        onClose={() => setShowUpgradePrompt(false)}
+        onUpgrade={() => setShowUpgradeSheet(true)}
+        limitType="tags"
+      />
+
+      <UpgradeSheet
+        isVisible={showUpgradeSheet}
+        onClose={() => setShowUpgradeSheet(false)}
+      />
 
     </SafeAreaView>
   );

@@ -183,8 +183,20 @@ const optimizedStorage = new OptimizedStorage();
 export const persistenceConfig = {
   name: STORAGE_KEY,
   storage: createJSONStorage(() => optimizedStorage),
-  version: 1,
+  version: 2,
   migrate: (persistedState: any, version: number) => {
+    if (version < 2) {
+      console.log('🔄 Migrating store to v2 (adding auth slice)...');
+      const state = persistedState;
+      if (!state.auth) {
+        state.auth = {
+          user: null,
+          isAuthenticated: false,
+        };
+      }
+      console.log('✅ Store migration to v2 complete');
+    }
+
     if (version === 0) {
       console.log('🔄 Migrating store from v0 → v1 (tag IDs)...');
       const state = persistedState;
@@ -278,6 +290,18 @@ export const persistenceConfig = {
       authorizationStatus: state.blocklist.authorizationStatus,
     },
     settings: state.settings,
+    auth: {
+      user: state.auth?.user ?? null,
+      isAuthenticated: state.auth?.isAuthenticated ?? false,
+    },
+    subscription: {
+      tier: state.subscription?.tier ?? 'free',
+      expiresAt: state.subscription?.expiresAt ?? null,
+      productId: state.subscription?.productId ?? null,
+    },
+    sync: {
+      lastSyncTime: state.sync?.lastSyncTime ?? null,
+    },
   }),
 
   // Hydration callback
@@ -348,6 +372,16 @@ export const persistenceConfig = {
           activeSessions: { byId: {}, allIds: [] },
           isAuthorized: false,
           authorizationStatus: 0,
+        };
+      }
+
+      // Restore auth slice if missing
+      if (!state.auth) {
+        state.auth = {
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: null,
         };
       }
 

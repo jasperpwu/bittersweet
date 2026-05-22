@@ -22,6 +22,8 @@ import { LiveActivityService } from '../src/services/LiveActivityService';
 import { WidgetService } from '../src/services/WidgetService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '../src/store';
+import { supabase } from '../src/config/supabase';
+import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
@@ -122,6 +124,69 @@ export default function RootLayout() {
       }
     );
 
+    // Initialize IAP connection
+    useAppStore.getState().subscription.initializeIAP();
+    useAppStore.getState().subscription.checkSubscriptionStatus();
+
+    // Restore auth session and listen for auth state changes
+    useAppStore.getState().auth.restoreSession();
+
+    // Initialize sync middleware
+    const teardownSync = initSyncMiddleware(useAppStore);
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          resetSyncSnapshot();
+          useAppStore.setState((state) => ({
+            auth: {
+              ...state.auth,
+              user: null,
+              isAuthenticated: false,
+            },
+          }));
+        } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+          const user = session.user;
+          useAppStore.setState((state) => ({
+            auth: {
+              ...state.auth,
+              user: {
+                id: user.id,
+                email: user.email ?? null,
+                fullName: user.user_metadata?.full_name ?? null,
+                avatarUrl: user.user_metadata?.avatar_url ?? null,
+              },
+              isAuthenticated: true,
+            },
+          }));
+
+          // Check if cloud has data, then decide initial upload vs pull+merge
+          try {
+            const remoteData = await useAppStore.getState().sync.pullFromCloud();
+            const localState = useAppStore.getState();
+            const hasLocalData =
+              localState.focus.sessions.allIds.length > 0 ||
+              localState.focus.tags.allIds.length > 0;
+            const hasRemoteData =
+              remoteData &&
+              (remoteData.focus.sessions.allIds.length > 0 ||
+                remoteData.focus.tags.allIds.length > 0);
+
+            if (hasRemoteData) {
+              // Cloud has data — merge (pulls remote into local)
+              await useAppStore.getState().sync.triggerSync();
+            } else if (hasLocalData) {
+              // Cloud empty but local has data — initial upload
+              await useAppStore.getState().sync.initialUpload();
+            }
+            // Both empty — nothing to do
+          } catch (error) {
+            console.error('Post sign-in sync error:', error);
+          }
+        }
+      }
+    );
+
     // Debug: Clear storage if needed (change to true if needed)
     if (__DEV__ && false) {
       import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
@@ -133,6 +198,9 @@ export default function RootLayout() {
 
     return () => {
       notificationSubscription.remove();
+      authListener.subscription.unsubscribe();
+      useAppStore.getState().subscription.teardownIAP();
+      teardownSync();
     };
   }, []);
 
@@ -236,6 +304,12 @@ export default function RootLayout() {
         checkExpiredUnlockSessions('foreground');
         syncShieldConfiguration('foreground');
         syncWidgetTagList();
+
+        // Re-check subscription status
+        useAppStore.getState().subscription.checkSubscriptionStatus();
+
+        // Flush any pending offline sync operations
+        useAppStore.getState().sync.flushOfflineQueue();
       }
 
       appState.current = nextAppState;

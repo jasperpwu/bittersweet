@@ -40,6 +40,12 @@ export const REWARD_CONSTANTS = {
   },
 } as const;
 
+// Subscription Product IDs (App Store Connect)
+export const SUBSCRIPTION_PRODUCTS = {
+  monthly: 'com.path2us.bittersweet.premium.monthly',
+  yearly: 'com.path2us.bittersweet.premium.yearly',
+} as const;
+
 // Storage Keys
 export const STORAGE_KEYS = {
   userData: 'user_data',

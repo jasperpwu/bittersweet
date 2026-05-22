@@ -29,6 +29,8 @@
           "appGroupIdentifier": "group.com.path2us.bittersweet.appblocker"
         }
       ],
+      "expo-apple-authentication",
+      "expo-iap",
       "./plugins/withFmtFix",
       "./plugins/withHomeWidget"
     ],

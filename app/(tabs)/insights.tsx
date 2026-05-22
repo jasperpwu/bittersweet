@@ -4,7 +4,10 @@ import { Typography } from '../../src/components/ui/Typography';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
 import { GoalProgress } from '../../src/components/analytics/GoalProgress';
 import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
+import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
+import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
 import { useFocus, useFocusActions } from '../../src/store';
+import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { TimePeriod, FocusGoal, ChartSegment } from '../../src/store/types';
 import { calculateGoalProgress } from '../../src/utils/goalProgress';
 
@@ -15,6 +18,9 @@ export default function InsightsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('weekly');
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
+  const { canCreateGoal } = useSubscriptionGate();
 
   // Get data from focus store
   const { sessions, tags, goals } = useFocus();
@@ -241,8 +247,14 @@ export default function InsightsScreen() {
         </View>
         
         {/* Settings icon */}
-        <Pressable 
-          onPress={() => setShowGoalModal(true)}
+        <Pressable
+          onPress={() => {
+            if (!canCreateGoal && !editingGoalId) {
+              setShowUpgradePrompt(true);
+            } else {
+              setShowGoalModal(true);
+            }
+          }}
           className="p-2 active:opacity-70"
         >
           <Typography variant="headline-18" color="secondary">
@@ -284,6 +296,19 @@ export default function InsightsScreen() {
           setEditingGoalId(null);
         }}
         editingGoalId={editingGoalId}
+        onUpgrade={() => setShowUpgradePrompt(true)}
+      />
+
+      <UpgradePrompt
+        isVisible={showUpgradePrompt}
+        onClose={() => setShowUpgradePrompt(false)}
+        onUpgrade={() => setShowUpgradeSheet(true)}
+        limitType="goals"
+      />
+
+      <UpgradeSheet
+        isVisible={showUpgradeSheet}
+        onClose={() => setShowUpgradeSheet(false)}
       />
     </SafeAreaView>
   );

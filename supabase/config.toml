@@ -1,0 +1,5 @@
+[project]
+id = "" # Fill in after creating your Supabase project
+
+[api]
+enabled = true

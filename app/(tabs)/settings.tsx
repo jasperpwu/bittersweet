@@ -8,6 +8,9 @@ import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { TimePicker } from '../../src/components/ui/TimePicker';
 import { router } from 'expo-router';
+import { AccountSection } from '../../src/components/auth/AccountSection';
+import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
+import { useAppStore } from '../../src/store';
 
 // --- Inline sub-components ---
 
@@ -39,10 +42,10 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
   return (
     <Pressable
       onPress={onPress}
-      disabled={hasToggle && !onPress}
+      disabled={!onPress}
       className={`
         w-full flex-row items-center py-3
-        ${!hasToggle ? 'active:opacity-70' : ''}
+        ${onPress ? 'active:opacity-70' : ''}
         ${!isLast ? 'border-b border-dark-border' : ''}
       `}
     >
@@ -114,6 +117,8 @@ export default function SettingsScreen() {
     deviceInfo
   } = useDeviceIntegration();
   const [notificationSheetVisible, setNotificationSheetVisible] = useState(false);
+  const [upgradeSheetVisible, setUpgradeSheetVisible] = useState(false);
+  const subscriptionTier = useAppStore((state) => state.subscription.tier);
 
   // --- Handlers ---
 
@@ -212,6 +217,47 @@ export default function SettingsScreen() {
             Every focused minute is an investment in yourself.
           </Typography>
         </View>
+
+        {/* Account */}
+        <AccountSection />
+
+        {/* Subscription */}
+        <SettingsSection title="Subscription">
+          {subscriptionTier === 'premium' ? (
+            <>
+              <SettingsItem
+                title="Premium"
+                subtitle="All features unlocked"
+                icon="diamond-outline"
+                valueLabel="Active"
+              />
+              <SettingsItem
+                title="Manage Subscription"
+                subtitle="Change or cancel in iOS Settings"
+                icon="settings-outline"
+                hasChevron
+                onPress={() => {
+                  triggerHaptic('light');
+                  Linking.openURL('https://apps.apple.com/account/subscriptions');
+                }}
+                isLast
+              />
+            </>
+          ) : (
+            <SettingsItem
+              title="Free Plan"
+              subtitle="Upgrade for unlimited tags & goals"
+              icon="diamond-outline"
+              hasChevron
+              valueLabel="Upgrade"
+              onPress={() => {
+                triggerHaptic('light');
+                setUpgradeSheetVisible(true);
+              }}
+              isLast
+            />
+          )}
+        </SettingsSection>
 
         {/* Notifications */}
         <SettingsSection title="Notifications">
@@ -352,6 +398,12 @@ export default function SettingsScreen() {
         {/* Bottom spacing for tab bar */}
         <View className="h-20" />
       </ScrollView>
+
+      {/* Upgrade Sheet */}
+      <UpgradeSheet
+        isVisible={upgradeSheetVisible}
+        onClose={() => setUpgradeSheetVisible(false)}
+      />
 
       {/* Notification Settings Snackbar */}
       <BottomSheet

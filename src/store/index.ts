@@ -10,6 +10,9 @@ import { LiveActivityService } from '../services/LiveActivityService';
 import { FocusGoal } from './types';
 import { persistenceConfig } from './middleware/persistence';
 import * as Notifications from 'expo-notifications';
+import { AuthSlice, createAuthSlice } from './slices/authSlice';
+import { SubscriptionSlice, createSubscriptionSlice } from './slices/subscriptionSlice';
+import { SyncSlice, createSyncSlice } from './slices/syncSlice';
 
 interface AppStore {
   // Focus sessions and tags
@@ -141,6 +144,15 @@ interface AppStore {
     spendFruits: (amount: number, purpose: string, metadata?: any) => void;
     unlockApp: (appId: string) => Promise<boolean>;
   };
+
+  // Auth
+  auth: AuthSlice;
+
+  // Subscription
+  subscription: SubscriptionSlice;
+
+  // Sync
+  sync: SyncSlice;
 
   // Blocklist
   blocklist: {
@@ -882,6 +894,15 @@ export const useAppStore = create<AppStore>()(
           }));
         },
       },
+
+      // Auth state
+      auth: createAuthSlice(set, get),
+
+      // Subscription state
+      subscription: createSubscriptionSlice(set, get),
+
+      // Sync state
+      sync: createSyncSlice(set, get),
 
       // UI state
       ui: {

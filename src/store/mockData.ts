@@ -20,10 +20,6 @@ export function getMockData() {
     
     focusTags: [
       { id: 'work', name: 'Work', icon: '💼', isDefault: true, usageCount: 0 },
-      { id: 'study', name: 'Study', icon: '📚', isDefault: true, usageCount: 0 },
-      { id: 'personal', name: 'Personal', icon: '🏠', isDefault: true, usageCount: 0 },
-      { id: 'exercise', name: 'Exercise', icon: '💪', isDefault: true, usageCount: 0 },
-      { id: 'creative', name: 'Creative', icon: '🎨', isDefault: true, usageCount: 0 },
     ],
     
     focusSessions: [

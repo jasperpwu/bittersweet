@@ -7,4 +7,7 @@ const { withNativeWind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 
+// Fix: Supabase uses Node.js built-ins (ws, stream) that fail with package exports enabled
+config.resolver.unstable_enablePackageExports = false;
+
 module.exports = withNativeWind(config, { input: './global.css' });

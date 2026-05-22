@@ -4,23 +4,27 @@ import { BottomSheet } from '../../ui/BottomSheet';
 import { Typography } from '../../ui/Typography';
 import { FocusGoalForm } from '../../forms/FocusGoalForm';
 import { useFocus, useFocusActions } from '../../../store';
+import { useSubscriptionGate } from '../../../hooks/useSubscriptionGate';
 
 interface GoalConfigModalProps {
   isVisible: boolean;
   onClose: () => void;
   editingGoalId?: string | null;
+  onUpgrade?: () => void;
 }
 
 export const GoalConfigModal: FC<GoalConfigModalProps> = ({
   isVisible,
   onClose,
   editingGoalId = null,
+  onUpgrade,
 }) => {
   const [internalEditingGoal, setInternalEditingGoal] = useState<string | null>(null);
 
   // Get data from focus store
   const { goals } = useFocus();
   const { addGoal, updateGoal } = useFocusActions();
+  const { canCreateGoal } = useSubscriptionGate();
 
   // Use external editingGoalId if provided, otherwise internal state
   const activeEditingGoal = editingGoalId || internalEditingGoal;
@@ -52,6 +56,10 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
     if (activeEditingGoal) {
       // Update existing goal
       updateGoal(activeEditingGoal, goalPayload as Parameters<typeof updateGoal>[1]);
+    } else if (!canCreateGoal) {
+      onClose();
+      onUpgrade?.();
+      return;
     } else {
       // Add new goal to store
       addGoal({
