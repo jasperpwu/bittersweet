@@ -974,14 +974,22 @@ export default function FocusScreen() {
           const durationMinutes = Math.round(durationMs / 60000);
 
           if (durationMinutes > 0) {
+            // For infinite sessions (targetDuration === 0), set targetDuration
+            // to the actual duration so fruit calculation works correctly.
+            // Mirrors the logic in saveSessionAndNavigate().
+            const isInfiniteSession = sessionInfo.targetDuration === 0 || sessionInfo.isInfinite;
+            const effectiveTargetDuration = isInfiniteSession
+              ? Math.max(1, durationMinutes)
+              : sessionInfo.targetDuration;
+
             store.focus.createCompletedSession({
               startTime: new Date(sessionInfo.startTime),
               endTime: new Date(actualEndTime),
               duration: durationMinutes,
-              targetDuration: sessionInfo.targetDuration,
+              targetDuration: effectiveTargetDuration,
               tagId: sessionInfo.tagId,
             });
-            console.log('📱 [Widget] Recorded completed session:', durationMinutes, 'min');
+            console.log('📱 [Widget] Recorded completed session:', durationMinutes, 'min', isInfiniteSession ? '(infinite)' : '');
           }
 
           await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
