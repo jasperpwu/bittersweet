@@ -330,32 +330,27 @@ export const GoalProgress: FC<GoalProgressProps> = ({
     [goals, safeSessions, tagMap]
   );
 
-  // Show placeholder when no goals exist
-  if (!goals || goals.length === 0) {
-    return <GoalEmptyPlaceholder />;
-  }
-
   // Process goals to calculate progress (flat list, preserving allIds order)
-  const processedGoals: ProcessedGoal[] = goals.map(goal => {
+  const processedGoals: ProcessedGoal[] = useMemo(() => (goals || []).map(goal => {
     const currentProgress = freshGoalProgress[goal.id] || 0;
     const percentage = goal.targetMinutes > 0
       ? (currentProgress / goal.targetMinutes) * 100
       : 0;
     return { ...goal, currentProgress, percentage };
-  });
+  }), [goals, freshGoalProgress]);
 
-  const handleGoalPress = (goal: ProcessedGoal) => {
+  const handleGoalPress = useCallback((goal: ProcessedGoal) => {
     if (goal.isRepeating) {
       setExpandedGoalId(prev => prev === goal.id ? null : goal.id);
     }
-  };
+  }, []);
 
-  const handleSwipeOpen = (ref: any) => {
+  const handleSwipeOpen = useCallback((ref: any) => {
     if (openSwipeableRef.current && openSwipeableRef.current !== ref) {
       openSwipeableRef.current.close();
     }
     openSwipeableRef.current = ref;
-  };
+  }, []);
 
   const handleDragStart = useCallback((index: number) => {
     setIsDragging(true);
@@ -394,6 +389,11 @@ export const GoalProgress: FC<GoalProgressProps> = ({
     dragOriginalIdxRef.current = -1;
     dragTargetIdxRef.current = -1;
   }, [processedGoals, onReorderGoals]);
+
+  // Show placeholder when no goals exist (after all hooks)
+  if (!goals || goals.length === 0) {
+    return <GoalEmptyPlaceholder />;
+  }
 
   return (
     <View className="px-5 mb-6">
