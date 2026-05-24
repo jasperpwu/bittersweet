@@ -64,6 +64,15 @@ export default function RootLayout() {
     try {
       console.log(`⏰ Checking expired unlock sessions (${trigger})`);
       useAppStore.getState().blocklist.checkActiveUnlocks();
+
+      // If no more active unlocks, clear the widget unlock state
+      const { activeSessions } = useAppStore.getState().blocklist;
+      const hasActiveUnlock = activeSessions.allIds.some(
+        id => activeSessions.byId[id]?.isActive
+      );
+      if (!hasActiveUnlock) {
+        WidgetService.syncUnlockSessionState(null);
+      }
     } catch (error) {
       console.error('❌ Failed to check expired unlock sessions:', error);
     }
@@ -131,6 +140,8 @@ export default function RootLayout() {
               tagId ? focus.lastDurationByTagId[tagId] : undefined
             );
           }
+          // Clear unlock state on home screen widget
+          WidgetService.syncUnlockSessionState(null);
         }
       }
     );

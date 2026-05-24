@@ -58,6 +58,11 @@ struct StartSessionIntent: LiveActivityIntent {
       return .result()
     }
 
+    // Guard: don't start a focus session during an active unlock
+    if let unlock = WidgetDataManager.shared.getUnlockSessionData(), unlock.isActive {
+      return .result()
+    }
+
     let tags = WidgetDataManager.shared.getTagList()
     let tag = tagId.flatMap { id in tags.first(where: { $0.id == id }) } ?? tags.first
 
@@ -177,6 +182,9 @@ struct StopUnlockIntent: LiveActivityIntent {
 
     // Re-block apps immediately via ManagedSettingsStore (main app process only)
     WidgetActivityKit.reblockHandler?()
+
+    // Clear unlock state so widget immediately shows idle
+    WidgetDataManager.shared.clearUnlockSessionData()
 
     // Write unlock stop marker for JS to end the unlock session
     // (refund fruits, update Zustand state)

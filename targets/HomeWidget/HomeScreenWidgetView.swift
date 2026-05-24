@@ -16,6 +16,7 @@ struct WidgetTagGridItem {
 struct HomeWidgetEntry: TimelineEntry {
   let date: Date
   let sessionData: WidgetSessionData?
+  let unlockData: WidgetUnlockSessionData?
   let configuredTagId: String?
   let configuredTagName: String?
   let configuredTagIcon: String?
@@ -51,6 +52,9 @@ struct HomeScreenWidgetView: View {
   var body: some View {
     if let session = entry.sessionData, session.isActive {
       activeSessionView(session: session)
+        .widgetBackground(Color(hex: "#F5E6D3"))
+    } else if let unlock = entry.unlockData, unlock.isActive {
+      unlockSessionView(unlock: unlock)
         .widgetBackground(Color(hex: "#F5E6D3"))
     } else {
       idleView
@@ -183,6 +187,99 @@ struct HomeScreenWidgetView: View {
           .foregroundStyle(.white)
           .frame(width: 56, height: 56)
           .background(tagColor, in: RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
+      }
+    }
+    .padding(16)
+  }
+
+  // MARK: - Unlock State
+
+  private func unlockSessionView(unlock: WidgetUnlockSessionData) -> some View {
+    Group {
+      if family == .systemSmall {
+        smallUnlockView(unlock: unlock)
+      } else {
+        mediumUnlockView(unlock: unlock)
+      }
+    }
+  }
+
+  private func smallUnlockView(unlock: WidgetUnlockSessionData) -> some View {
+    let endDate = Date(timeIntervalSince1970: unlock.endTime / 1000)
+    return VStack(alignment: .leading, spacing: 0) {
+      // Header
+      HStack(spacing: 6) {
+        Text("\u{1F513}")
+          .font(.system(size: 15))
+        Text("Unlocked")
+          .font(.system(size: 15, weight: .bold))
+          .foregroundStyle(Color(hex: "#4CAF7C"))
+          .lineLimit(1)
+      }
+
+      Spacer().frame(height: 6)
+
+      // Countdown timer
+      Text(timerInterval: Date()...endDate, countsDown: true, showsHours: false)
+        .font(.system(size: 36, weight: .semibold))
+        .foregroundStyle(Color(hex: "#5D4E37"))
+        .minimumScaleFactor(0.7)
+
+      Spacer()
+
+      // Stop button
+      if #available(iOS 17.0, *) {
+        Button(intent: StopUnlockIntent()) {
+          Text("Stop")
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 36)
+            .background(Color(hex: "#B22222"), in: Capsule())
+        }
+        .buttonStyle(.plain)
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  private func mediumUnlockView(unlock: WidgetUnlockSessionData) -> some View {
+    let endDate = Date(timeIntervalSince1970: unlock.endTime / 1000)
+    return HStack(spacing: 12) {
+      VStack(alignment: .leading, spacing: 6) {
+        HStack(spacing: 6) {
+          Text("\u{1F513}")
+            .font(.system(size: 15))
+          Text("Unlocked")
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(Color(hex: "#4CAF7C"))
+            .lineLimit(1)
+        }
+
+        // Countdown timer
+        Text(timerInterval: Date()...endDate, countsDown: true, showsHours: false)
+          .font(.system(size: 42, weight: .bold, design: .monospaced))
+          .foregroundStyle(Color(hex: "#5D4E37"))
+          .minimumScaleFactor(0.7)
+
+        Text("Apps unlocked")
+          .font(.caption)
+          .foregroundStyle(Color(hex: "#8B7355"))
+      }
+
+      Spacer()
+
+      // Stop button
+      if #available(iOS 17.0, *) {
+        Button(intent: StopUnlockIntent()) {
+          Image(systemName: "stop.fill")
+            .font(.title2)
+            .foregroundStyle(.white)
+            .frame(width: 56, height: 56)
+            .background(Color(hex: "#B22222"), in: RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
       }

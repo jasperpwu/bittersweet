@@ -11,6 +11,7 @@ import { useBlocklist, useBlocklistActions, useRewards, useAppStore } from '../.
 import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
 import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
 import { LiveActivityService } from '../../services/LiveActivityService';
+import { WidgetService } from '../../services/WidgetService';
 import { showToast } from './Toast';
 import * as Notifications from 'expo-notifications';
 
@@ -149,6 +150,12 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
           }));
           console.log('🎬 Live Activity started for unlock session:', unlockSession.id);
         }
+
+        // Sync unlock state to home screen widget
+        WidgetService.syncUnlockSessionState({
+          isActive: true,
+          endTime: reblockTime.getTime(),
+        });
 
         // Schedule a local notification at unlock expiry. When it fires,
         // iOS wakes the app and the notification listener in _layout.tsx

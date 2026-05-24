@@ -11,6 +11,7 @@ const SELECTED_TAG_ID_KEY = 'widgetSelectedTagId';
 const FRUIT_BALANCE_KEY = 'widgetFruitBalance';
 const WIDGET_UNLOCK_STOP_ACTION_KEY = 'widgetUnlockStopAction';
 const CURRENT_SELECTION_ID_KEY = 'widgetCurrentSelectionId';
+const UNLOCK_SESSION_DATA_KEY = 'widgetUnlockSessionData';
 
 export interface WidgetSessionData {
   isActive: boolean;
@@ -52,6 +53,11 @@ export interface WidgetStopAction {
 export interface WidgetUnlockStopAction {
   action: 'stopUnlock';
   timestamp: number;
+}
+
+export interface WidgetUnlockSessionData {
+  isActive: boolean;
+  endTime: number; // Unix timestamp ms
 }
 
 export interface PendingWidgetAction {
@@ -138,6 +144,25 @@ export class WidgetService {
       ReactNativeDeviceActivity.userDefaultsSet(FRUIT_BALANCE_KEY, balance);
     } catch (error) {
       console.error('📱 [Widget] Failed to sync fruit balance:', error);
+    }
+  }
+
+  /**
+   * Sync unlock session state to the widget.
+   * Call when an unlock starts, stops, or expires.
+   * Pass null to clear the unlock state (idle).
+   */
+  static syncUnlockSessionState(data: WidgetUnlockSessionData | null): void {
+    try {
+      if (data) {
+        ReactNativeDeviceActivity.userDefaultsSet(UNLOCK_SESSION_DATA_KEY, data);
+      } else {
+        ReactNativeDeviceActivity.userDefaultsRemove(UNLOCK_SESSION_DATA_KEY);
+      }
+      console.log('📱 [Widget] Synced unlock session state:', data ? 'active' : 'cleared');
+      reloadWidgetTimelines();
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync unlock session state:', error);
     }
   }
 

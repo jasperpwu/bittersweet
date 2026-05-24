@@ -17,6 +17,7 @@ enum WidgetKeys {
   static let fruitBalance = "widgetFruitBalance"
   static let widgetUnlockStopAction = "widgetUnlockStopAction"
   static let currentSelectionId = "widgetCurrentSelectionId"
+  static let unlockSessionData = "widgetUnlockSessionData"
 }
 
 // UserDefaults keys used by react-native-device-activity for shield configuration
@@ -71,6 +72,17 @@ struct WidgetTagInfo {
   }
 }
 
+struct WidgetUnlockSessionData {
+  let isActive: Bool
+  let endTime: Double // Unix timestamp ms
+
+  init?(dict: [String: Any]) {
+    guard let isActive = dict["isActive"] as? Bool else { return nil }
+    self.isActive = isActive
+    self.endTime = dict["endTime"] as? Double ?? 0
+  }
+}
+
 struct PendingWidgetAction {
   let action: String // "start" or "stop"
   let tagId: String?
@@ -110,6 +122,25 @@ struct WidgetDataManager {
 
   func getSelectedTagId() -> String? {
     return userDefaults?.string(forKey: WidgetKeys.selectedTagId)
+  }
+
+  func getUnlockSessionData() -> WidgetUnlockSessionData? {
+    guard let dict = userDefaults?.dictionary(forKey: WidgetKeys.unlockSessionData) else { return nil }
+    return WidgetUnlockSessionData(dict: dict)
+  }
+
+  func writeUnlockSessionData(isActive: Bool, endTime: Double) {
+    let dict: [String: Any] = [
+      "isActive": isActive,
+      "endTime": endTime,
+    ]
+    userDefaults?.set(dict, forKey: WidgetKeys.unlockSessionData)
+    userDefaults?.synchronize()
+  }
+
+  func clearUnlockSessionData() {
+    userDefaults?.removeObject(forKey: WidgetKeys.unlockSessionData)
+    userDefaults?.synchronize()
   }
 
   func getTagList() -> [WidgetTagInfo] {

@@ -21,6 +21,7 @@ private func buildGridItems(from tags: [WidgetTagInfo], count: Int) -> [WidgetTa
 private func makeEntry(
   date: Date,
   session: WidgetSessionData?,
+  unlockData: WidgetUnlockSessionData? = nil,
   tagId: String?,
   tagName: String?,
   tagIcon: String?,
@@ -31,6 +32,7 @@ private func makeEntry(
   HomeWidgetEntry(
     date: date,
     sessionData: session,
+    unlockData: unlockData,
     configuredTagId: tagId,
     configuredTagName: tagName ?? "Focus",
     configuredTagIcon: tagIcon ?? "\u{1F3AF}",
@@ -61,9 +63,10 @@ struct SmallWidgetProvider: TimelineProvider {
 
   func getSnapshot(in context: Context, completion: @escaping (HomeWidgetEntry) -> Void) {
     let session = WidgetDataManager.shared.getSessionData()
+    let unlockData = WidgetDataManager.shared.getUnlockSessionData()
     let tag = resolveSelectedTag()
     let entry = makeEntry(
-      date: Date(), session: session,
+      date: Date(), session: session, unlockData: unlockData,
       tagId: tag?.id, tagName: tag?.name, tagIcon: tag?.icon, tagColor: tag?.color,
       tagDuration: tag?.lastDuration, gridItems: []
     )
@@ -72,10 +75,11 @@ struct SmallWidgetProvider: TimelineProvider {
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<HomeWidgetEntry>) -> Void) {
     let session = WidgetDataManager.shared.getSessionData()
+    let unlockData = WidgetDataManager.shared.getUnlockSessionData()
     let tag = resolveSelectedTag()
 
     let currentEntry = makeEntry(
-      date: Date(), session: session,
+      date: Date(), session: session, unlockData: unlockData,
       tagId: tag?.id, tagName: tag?.name, tagIcon: tag?.icon, tagColor: tag?.color,
       tagDuration: tag?.lastDuration, gridItems: []
     )
@@ -90,11 +94,24 @@ struct SmallWidgetProvider: TimelineProvider {
       let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
       if endDate > Date() {
         let bonusEntry = makeEntry(
-          date: endDate, session: session,
+          date: endDate, session: session, unlockData: unlockData,
           tagId: tag?.id, tagName: tag?.name, tagIcon: tag?.icon, tagColor: tag?.color,
           tagDuration: tag?.lastDuration, gridItems: []
         )
         entries.append(bonusEntry)
+      }
+    }
+
+    // For active unlock sessions, add an entry at endTime so widget auto-refreshes to idle
+    if let unlock = unlockData, unlock.isActive, unlock.endTime > 0 {
+      let unlockEndDate = Date(timeIntervalSince1970: unlock.endTime / 1000)
+      if unlockEndDate > Date() {
+        let unlockExpiryEntry = makeEntry(
+          date: unlockEndDate, session: session, unlockData: nil,
+          tagId: tag?.id, tagName: tag?.name, tagIcon: tag?.icon, tagColor: tag?.color,
+          tagDuration: tag?.lastDuration, gridItems: []
+        )
+        entries.append(unlockExpiryEntry)
       }
     }
 
@@ -114,9 +131,10 @@ struct MediumWidgetStaticProvider: TimelineProvider {
 
   func getSnapshot(in context: Context, completion: @escaping (HomeWidgetEntry) -> Void) {
     let session = WidgetDataManager.shared.getSessionData()
+    let unlockData = WidgetDataManager.shared.getUnlockSessionData()
     let tags = WidgetDataManager.shared.getTagList()
     let entry = makeEntry(
-      date: Date(), session: session,
+      date: Date(), session: session, unlockData: unlockData,
       tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
       tagDuration: nil, gridItems: buildGridItems(from: tags, count: 4)
     )
@@ -125,11 +143,12 @@ struct MediumWidgetStaticProvider: TimelineProvider {
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<HomeWidgetEntry>) -> Void) {
     let session = WidgetDataManager.shared.getSessionData()
+    let unlockData = WidgetDataManager.shared.getUnlockSessionData()
     let tags = WidgetDataManager.shared.getTagList()
     let gridItems = buildGridItems(from: tags, count: 4)
 
     let currentEntry = makeEntry(
-      date: Date(), session: session,
+      date: Date(), session: session, unlockData: unlockData,
       tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
       tagDuration: nil, gridItems: gridItems
     )
@@ -140,11 +159,24 @@ struct MediumWidgetStaticProvider: TimelineProvider {
       let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
       if endDate > Date() {
         let bonusEntry = makeEntry(
-          date: endDate, session: session,
+          date: endDate, session: session, unlockData: unlockData,
           tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
           tagDuration: nil, gridItems: gridItems
         )
         entries.append(bonusEntry)
+      }
+    }
+
+    // For active unlock sessions, add an entry at endTime so widget auto-refreshes to idle
+    if let unlock = unlockData, unlock.isActive, unlock.endTime > 0 {
+      let unlockEndDate = Date(timeIntervalSince1970: unlock.endTime / 1000)
+      if unlockEndDate > Date() {
+        let unlockExpiryEntry = makeEntry(
+          date: unlockEndDate, session: session, unlockData: nil,
+          tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
+          tagDuration: nil, gridItems: gridItems
+        )
+        entries.append(unlockExpiryEntry)
       }
     }
 
@@ -166,10 +198,11 @@ struct MediumWidgetProvider: AppIntentTimelineProvider {
 
   func snapshot(for configuration: SelectGridIntent, in context: Context) async -> HomeWidgetEntry {
     let session = WidgetDataManager.shared.getSessionData()
+    let unlockData = WidgetDataManager.shared.getUnlockSessionData()
     let tags = WidgetDataManager.shared.getTagList()
     let gridItems = sortedGridItems(from: tags, configuration: configuration)
     return makeEntry(
-      date: Date(), session: session,
+      date: Date(), session: session, unlockData: unlockData,
       tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
       tagDuration: nil, gridItems: gridItems
     )
@@ -177,11 +210,12 @@ struct MediumWidgetProvider: AppIntentTimelineProvider {
 
   func timeline(for configuration: SelectGridIntent, in context: Context) async -> Timeline<HomeWidgetEntry> {
     let session = WidgetDataManager.shared.getSessionData()
+    let unlockData = WidgetDataManager.shared.getUnlockSessionData()
     let tags = WidgetDataManager.shared.getTagList()
     let gridItems = sortedGridItems(from: tags, configuration: configuration)
 
     let currentEntry = makeEntry(
-      date: Date(), session: session,
+      date: Date(), session: session, unlockData: unlockData,
       tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
       tagDuration: nil, gridItems: gridItems
     )
@@ -192,11 +226,24 @@ struct MediumWidgetProvider: AppIntentTimelineProvider {
       let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
       if endDate > Date() {
         let bonusEntry = makeEntry(
-          date: endDate, session: session,
+          date: endDate, session: session, unlockData: unlockData,
           tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
           tagDuration: nil, gridItems: gridItems
         )
         entries.append(bonusEntry)
+      }
+    }
+
+    // For active unlock sessions, add an entry at endTime so widget auto-refreshes to idle
+    if let unlock = unlockData, unlock.isActive, unlock.endTime > 0 {
+      let unlockEndDate = Date(timeIntervalSince1970: unlock.endTime / 1000)
+      if unlockEndDate > Date() {
+        let unlockExpiryEntry = makeEntry(
+          date: unlockEndDate, session: session, unlockData: nil,
+          tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
+          tagDuration: nil, gridItems: gridItems
+        )
+        entries.append(unlockExpiryEntry)
       }
     }
 

@@ -585,6 +585,9 @@ export default function FocusScreen() {
     }
 
     store.blocklist.endUnlock(sessionId, refundUnusedTime ? 'manual' : 'expired');
+
+    // Clear unlock state on home screen widget
+    WidgetService.syncUnlockSessionState(null);
   };
 
   const handleStopUnlock = () => {
