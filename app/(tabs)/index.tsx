@@ -628,7 +628,6 @@ export default function FocusScreen() {
 
     // Store tag info for later idle state (when session ends, LA transitions to idle)
     const selectedTagObj = selectedTag ? tags.byId[selectedTag] : undefined;
-    const selectedTagName = selectedTagObj ? selectedTagObj.name : 'Focus';
     const selectedTagLabel = selectedTagObj ? `${selectedTagObj.icon || '🎯'} ${selectedTagObj.name}` : 'Focus';
     LiveActivityService.setLastTag(selectedTag || undefined, selectedTagLabel, isDevTimer ? 1 : selectedTime);
 
@@ -637,7 +636,7 @@ export default function FocusScreen() {
       sessionEndTimeRef.current = null;
       const activityId = LiveActivityService.startFocusTimerInfinite(
         new Date(),
-        selectedTagName
+        selectedTagLabel
       );
       if (activityId) {
         liveActivityId = activityId;
@@ -652,7 +651,7 @@ export default function FocusScreen() {
       const activityId = LiveActivityService.startFocusTimer(
         endTime,
         isDevTimer ? 1 : selectedTime,
-        selectedTagName
+        selectedTagLabel
       );
       if (activityId) {
         liveActivityId = activityId;
@@ -1091,6 +1090,9 @@ export default function FocusScreen() {
 
       // Sync widget with recovered session state
       const recoveredTag = useAppStore.getState().focus.tags.byId[persisted.tagId];
+      const recoveredTagLabel = recoveredTag
+        ? `${recoveredTag.icon || '🎯'} ${recoveredTag.name}`
+        : 'Focus';
       WidgetService.syncSessionState({
         isActive: true,
         tagName: recoveredTag?.name || 'Focus',
@@ -1100,6 +1102,14 @@ export default function FocusScreen() {
         endTime: persisted.isInfinite ? 0 : persisted.endTime,
         isInfinite: persisted.isInfinite,
       });
+
+      // Restore in-memory tag info so stopFocusTimer can build the correct
+      // idle state (these static fields are lost on app termination)
+      LiveActivityService.setLastTag(
+        persisted.tagId,
+        recoveredTagLabel,
+        persisted.targetDuration,
+      );
 
       if (persisted.isInfinite) {
         // Infinite session was running when app was killed — restore it
@@ -1124,10 +1134,13 @@ export default function FocusScreen() {
 
         if (!persisted.liveActivityId) {
           // Older persisted sessions did not store the activity ID.
-          const recoveredTagName = useAppStore.getState().focus.tags.byId[persisted.tagId]?.name || 'Focus';
+          const recoveredTagObj = useAppStore.getState().focus.tags.byId[persisted.tagId];
+          const recoveredTagLabel = recoveredTagObj
+            ? `${recoveredTagObj.icon || '🎯'} ${recoveredTagObj.name}`
+            : 'Focus';
           const activityId = LiveActivityService.startFocusTimerInfinite(
             new Date(persisted.startTime),
-            recoveredTagName
+            recoveredTagLabel
           );
           if (activityId) {
             liveActivityIdRef.current = activityId;

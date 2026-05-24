@@ -50,6 +50,7 @@ export const unstable_settings = {
 export default function RootLayout() {
   const { fontsLoaded } = useFonts();
   const { isHydrated, initializeApp } = useAppState();
+  const mainStoreHydrated = useAppStore((s) => s.ui.isHydrated);
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const [showUnlockSheet, setShowUnlockSheet] = useState(false);
 
@@ -78,7 +79,17 @@ export default function RootLayout() {
 
       console.log(`🛡️ Syncing shield configuration (${trigger})`);
       const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
-      await FamilyControlsModule.updateShieldBalance(store.rewards.balance);
+
+      // Check for widget-started focus session not yet adopted into AsyncStorage.
+      // updateShieldBalance auto-detects from AsyncStorage, but widget-started
+      // sessions only exist in UserDefaults until adoptAndRecoverSession runs.
+      const widgetSession = WidgetService.readWidgetStartedSession();
+      if (widgetSession) {
+        console.log('🛡️ Widget-started focus session detected, keeping shield in focus mode');
+        await FamilyControlsModule.updateShieldBalance(store.rewards.balance, true);
+      } else {
+        await FamilyControlsModule.updateShieldBalance(store.rewards.balance);
+      }
     } catch (error) {
       console.error('❌ Failed to sync shield configuration:', error);
     }
@@ -230,12 +241,12 @@ export default function RootLayout() {
   };
 
   useEffect(() => {
-    if (isHydrated) {
+    if (isHydrated && mainStoreHydrated) {
       checkExpiredUnlockSessions('mount');
       syncShieldConfiguration('mount');
       syncWidgetTagList();
     }
-  }, [isHydrated]);
+  }, [isHydrated, mainStoreHydrated]);
 
   // Check if app was opened from shield (both on mount and app foreground)
   const checkShieldOpening = async (trigger: string) => {
@@ -258,7 +269,14 @@ export default function RootLayout() {
         // Don't show unlock sheet during a focus session
         const activeSession = await AsyncStorage.getItem('active-focus-session');
         if (activeSession) {
-          console.log('🛡️ [SHIELD_LAYOUT] Focus session active, skipping unlock sheet');
+          console.log('🛡️ [SHIELD_LAYOUT] Focus session active (AsyncStorage), skipping unlock sheet');
+          return;
+        }
+
+        // Also check for widget-started sessions not yet adopted into AsyncStorage
+        const widgetSession = WidgetService.readWidgetStartedSession();
+        if (widgetSession) {
+          console.log('🛡️ [SHIELD_LAYOUT] Widget-started focus session pending adoption, skipping unlock sheet');
           return;
         }
 

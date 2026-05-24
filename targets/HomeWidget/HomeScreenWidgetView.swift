@@ -82,9 +82,9 @@ struct HomeScreenWidgetView: View {
     VStack(alignment: .leading, spacing: 0) {
       // Tag icon + name
       HStack(spacing: 6) {
-        Text(session.tagIcon)
+        Text(session.tagIcon.isEmpty ? "🎯" : session.tagIcon)
           .font(.system(size: 15))
-        Text(session.tagName)
+        Text(session.tagName.isEmpty ? "Focus" : session.tagName)
           .font(.system(size: 15, weight: .bold))
           .foregroundStyle(tagColor)
           .lineLimit(1)
@@ -136,9 +136,9 @@ struct HomeScreenWidgetView: View {
     HStack(spacing: 12) {
       VStack(alignment: .leading, spacing: 6) {
         HStack(spacing: 6) {
-          Text(session.tagIcon)
+          Text(session.tagIcon.isEmpty ? "🎯" : session.tagIcon)
             .font(.system(size: 15))
-          Text(session.tagName)
+          Text(session.tagName.isEmpty ? "Focus" : session.tagName)
             .font(.system(size: 15, weight: .bold))
             .foregroundStyle(tagColor)
             .lineLimit(1)
@@ -206,9 +206,11 @@ struct HomeScreenWidgetView: View {
     VStack(alignment: .leading, spacing: 0) {
       // Tag icon + name
       HStack(spacing: 6) {
-        Text(entry.configuredTagIcon ?? "🎯")
+        let icon = entry.configuredTagIcon ?? ""
+        Text(icon.isEmpty ? "🎯" : icon)
           .font(.system(size: 15))
-        Text(entry.configuredTagName ?? "Focus")
+        let name = entry.configuredTagName ?? ""
+        Text(name.isEmpty ? "Focus" : name)
           .font(.system(size: 15, weight: .bold))
           .foregroundStyle(tagColor)
           .lineLimit(1)
@@ -320,7 +322,7 @@ struct HomeScreenWidgetView: View {
         HStack(spacing: 0) {
           VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 4) {
-              Text(tag.icon)
+              Text(tag.icon.isEmpty ? "🎯" : tag.icon)
                 .font(.system(size: 13))
               Text(tag.name)
                 .font(.system(size: 13, weight: .bold))

@@ -71,8 +71,9 @@ struct StartSessionIntent: LiveActivityIntent {
     let endTimeMs = isInfinite ? 0 : now + Double(resolvedDuration) * 60 * 1000
 
     // Start Live Activity (runs in main app process via LiveActivityIntent)
+    let tagLabel = "\(tag.icon.isEmpty ? "🎯" : tag.icon) \(tag.name)"
     let liveActivityId = WidgetActivityKit.startHandler?(
-      tag.name, resolvedDuration, startTimeMs, endTimeMs, isInfinite
+      tagLabel, resolvedDuration, startTimeMs, endTimeMs, isInfinite
     )
 
     // Update widget display
