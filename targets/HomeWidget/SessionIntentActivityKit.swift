@@ -206,10 +206,11 @@ class WidgetActivityKitLoader: NSObject {
             tagId: tag?.id,
             durationMinutes: tag?.lastDuration
           )
-          await activity.update(
-            ActivityContent(state: idleState, staleDate: nil)
+          await activity.end(
+            ActivityContent(state: idleState, staleDate: nil),
+            dismissalPolicy: .default
           )
-          print("✅ [Widget] Updated Live Activity to idle: \(id)")
+          print("✅ [Widget] Ended Live Activity to idle (removed from Dynamic Island): \(id)")
         }
       }
     }

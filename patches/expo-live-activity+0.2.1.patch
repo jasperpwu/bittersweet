@@ -1,5 +1,5 @@
 diff --git a/node_modules/expo-live-activity/build/index.d.ts b/node_modules/expo-live-activity/build/index.d.ts
-index bdcae0f..ffa8662 100644
+index bdcae0f..1a063c5 100644
 --- a/node_modules/expo-live-activity/build/index.d.ts
 +++ b/node_modules/expo-live-activity/build/index.d.ts
 @@ -15,6 +15,10 @@ export type LiveActivityState = {
@@ -32,6 +32,15 @@ index bdcae0f..ffa8662 100644
  };
  export type ActivityTokenReceivedEvent = {
      activityID: string;
+@@ -63,7 +72,7 @@ export declare function startActivity(state: LiveActivityState, config?: LiveAct
+  * @param {string} id The identifier of the activity to stop.
+  * @param {LiveActivityState} state The updated state for the live activity.
+  */
+-export declare function stopActivity(id: string, state: LiveActivityState): any;
++export declare function stopActivity(id: string, state: LiveActivityState, dismissImmediately?: boolean): any;
+ /**
+  * @param {string} id The identifier of the activity to update.
+  * @param {LiveActivityState} state The updated state for the live activity.
 @@ -72,5 +81,10 @@ export declare function updateActivity(id: string, state: LiveActivityState): an
  export declare function addActivityTokenListener(listener: (event: ActivityTokenReceivedEvent) => void): Voidable<EventSubscription>;
  export declare function addActivityPushToStartTokenListener(listener: (event: ActivityPushToStartTokenReceivedEvent) => void): Voidable<EventSubscription>;
@@ -45,9 +54,21 @@ index bdcae0f..ffa8662 100644
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 diff --git a/node_modules/expo-live-activity/build/index.js b/node_modules/expo-live-activity/build/index.js
-index 6b32c30..22cb29d 100644
+index 6b32c30..a36f054 100644
 --- a/node_modules/expo-live-activity/build/index.js
 +++ b/node_modules/expo-live-activity/build/index.js
+@@ -19,9 +19,9 @@ export function startActivity(state, config) {
+  * @param {string} id The identifier of the activity to stop.
+  * @param {LiveActivityState} state The updated state for the live activity.
+  */
+-export function stopActivity(id, state) {
++export function stopActivity(id, state, dismissImmediately = true) {
+     if (assertIOS('stopActivity'))
+-        return ExpoLiveActivityModule.stopActivity(id, state);
++        return ExpoLiveActivityModule.stopActivity(id, state, dismissImmediately);
+ }
+ /**
+  * @param {string} id The identifier of the activity to update.
 @@ -43,4 +43,8 @@ export function addActivityUpdatesListener(listener) {
      if (assertIOS('addActivityUpdatesListener'))
          return ExpoLiveActivityModule.addListener('onStateChange', listener);
@@ -299,7 +320,7 @@ index fd8eea7..c7f19e9 100644
  
    private func circularTimer(endDate: Double) -> some View {
 diff --git a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
-index a222928..52a9da7 100644
+index a222928..3264e9d 100644
 --- a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 +++ b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 @@ -1,5 +1,6 @@
@@ -425,7 +446,16 @@ index a222928..52a9da7 100644
  
          return activity.id
        } catch {
-@@ -278,10 +288,14 @@ public class ExpoLiveActivityModule: Module {
+@@ -263,7 +273,7 @@ public class ExpoLiveActivityModule: Module {
+       }
+     }
+ 
+-    Function("stopActivity") { (activityId: String, state: LiveActivityState) in
++    Function("stopActivity") { (activityId: String, state: LiveActivityState, dismissImmediately: Bool) in
+       guard #available(iOS 16.2, *) else { throw UnsupportedOSException("16.2") }
+ 
+       guard
+@@ -278,15 +288,19 @@ public class ExpoLiveActivityModule: Module {
            title: state.title,
            subtitle: state.subtitle,
            timerEndDateInMilliseconds: state.progressBar?.date,
@@ -441,6 +471,12 @@ index a222928..52a9da7 100644
          )
          try await updateImages(state: state, newState: &newState)
          await activity.end(
+           ActivityContent(state: newState, staleDate: nil),
+-          dismissalPolicy: .immediate
++          dismissalPolicy: dismissImmediately ? .immediate : .default
+         )
+       }
+     }
 @@ -308,14 +322,24 @@ public class ExpoLiveActivityModule: Module {
            title: state.title,
            subtitle: state.subtitle,
@@ -495,7 +531,7 @@ index e96360d..c332a38 100644
    enum DynamicIslandTimerType: String, Codable {
      case circular
 diff --git a/node_modules/expo-live-activity/src/index.ts b/node_modules/expo-live-activity/src/index.ts
-index 2b58e20..879640e 100644
+index 2b58e20..398ef1c 100644
 --- a/node_modules/expo-live-activity/src/index.ts
 +++ b/node_modules/expo-live-activity/src/index.ts
 @@ -24,6 +24,10 @@ export type LiveActivityState = {
@@ -528,6 +564,17 @@ index 2b58e20..879640e 100644
  }
  
  export type ActivityTokenReceivedEvent = {
+@@ -91,8 +100,8 @@ export function startActivity(state: LiveActivityState, config?: LiveActivityCon
+  * @param {string} id The identifier of the activity to stop.
+  * @param {LiveActivityState} state The updated state for the live activity.
+  */
+-export function stopActivity(id: string, state: LiveActivityState) {
+-  if (assertIOS('stopActivity')) return ExpoLiveActivityModule.stopActivity(id, state)
++export function stopActivity(id: string, state: LiveActivityState, dismissImmediately: boolean = true) {
++  if (assertIOS('stopActivity')) return ExpoLiveActivityModule.stopActivity(id, state, dismissImmediately)
+ }
+ 
+ /**
 @@ -121,3 +130,11 @@ export function addActivityUpdatesListener(
  ): Voidable<EventSubscription> {
    if (assertIOS('addActivityUpdatesListener')) return ExpoLiveActivityModule.addListener('onStateChange', listener)

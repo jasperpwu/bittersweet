@@ -347,9 +347,9 @@ export class LiveActivityService {
     }
 
     try {
-      console.log('🛑 Transitioning Focus Timer Live Activity to idle:', activityId, 'Reason:', reason);
+      console.log('🛑 Ending Focus Timer Live Activity (idle on Lock Screen, removed from Dynamic Island):', activityId, 'Reason:', reason);
 
-      // Build idle state with tag info so the LA shows a "Start" button
+      // Build idle state with tag info so the Lock Screen LA shows a "Start" button
       const durationLabel = this.lastDurationMinutes != null
         ? (this.lastDurationMinutes > 0 ? `${this.lastDurationMinutes} min` : '∞')
         : undefined;
@@ -365,19 +365,22 @@ export class LiveActivityService {
         durationMinutes: this.lastDurationMinutes,
       };
 
-      LiveActivity.updateActivity(activityId, idleState);
-      // Keep lastFocusActivityId so startFocusTimer can reuse it
+      // End the activity with .default dismissal: removes from Dynamic Island
+      // immediately but keeps on Lock Screen for up to 4 hours.
+      LiveActivity.stopActivity(activityId, idleState, false);
+      // Activity is ended — clear tracking so next session creates a new one
+      this.lastFocusActivityId = undefined;
       this.focusEndTimestamp = undefined;
-      console.log('✅ Focus Timer Live Activity transitioned to idle');
+      console.log('✅ Focus Timer Live Activity ended (idle on Lock Screen)');
     } catch (error: any) {
       const errorCode = error?.code || error?.cause?.code;
       if (errorCode === 'ERR_ACTIVITY_NOT_FOUND') {
         console.log('ℹ️ Focus Timer Live Activity already ended (likely expired naturally)');
-        if (this.lastFocusActivityId === activityId) {
-          this.lastFocusActivityId = undefined;
-        }
       } else {
-        console.error('❌ Error transitioning Focus Timer Live Activity to idle:', error);
+        console.error('❌ Error ending Focus Timer Live Activity:', error);
+      }
+      if (this.lastFocusActivityId === activityId) {
+        this.lastFocusActivityId = undefined;
       }
       this.focusEndTimestamp = undefined;
     }
@@ -444,10 +447,17 @@ export class LiveActivityService {
 
   /**
    * Show an idle focus Live Activity (after unlock ends, for example).
-   * Reuses the existing focus activity if available, otherwise starts a new one.
+   * If there's a currently active activity, ends it with idle state on Lock Screen.
+   * Does NOT start a new activity (to avoid re-appearing on Dynamic Island).
    */
   static showIdleFocusActivity(tagName: string, tagId?: string, durationMinutes?: number): void {
     if (!this.isAvailable()) return;
+
+    // Only act if there's a live activity to transition to idle
+    if (!this.lastFocusActivityId) {
+      console.log('ℹ️ No active focus activity to transition to idle');
+      return;
+    }
 
     const durationLabel = durationMinutes != null
       ? (durationMinutes > 0 ? `${durationMinutes} min` : '∞')
@@ -464,37 +474,17 @@ export class LiveActivityService {
       durationMinutes,
     };
 
-    // Try to update existing activity first
-    if (this.lastFocusActivityId) {
-      try {
-        LiveActivity.updateActivity(this.lastFocusActivityId, idleState);
-        console.log('♻️ Updated existing LA to idle focus:', this.lastFocusActivityId);
-        return;
-      } catch (e) {
-        console.log('ℹ️ Could not update existing activity to idle, starting new one');
-        this.lastFocusActivityId = undefined;
-      }
-    }
-
-    // Start a new idle activity
-    const config: LiveActivity.LiveActivityConfig = {
-      backgroundColor: '#D2B48C',
-      titleColor: '#8B4513',
-      subtitleColor: '#8B4513',
-      progressViewTint: '#FF6347',
-      progressViewLabelColor: '#8B4513',
-      timerType: 'digital',
-    };
-
     try {
-      const activityId = LiveActivity.startActivity(idleState, config);
-      if (activityId) {
-        this.lastFocusActivityId = activityId;
-        this.focusEndTimestamp = undefined;
-        console.log('✅ Started idle focus Live Activity:', activityId);
-      }
+      // End the activity with .default dismissal: removed from Dynamic Island,
+      // stays on Lock Screen for up to 4 hours.
+      LiveActivity.stopActivity(this.lastFocusActivityId, idleState, false);
+      console.log('✅ Ended focus LA to idle (removed from Dynamic Island):', this.lastFocusActivityId);
+      this.lastFocusActivityId = undefined;
+      this.focusEndTimestamp = undefined;
     } catch (error) {
-      console.error('❌ Error starting idle focus Live Activity:', error);
+      console.log('ℹ️ Could not end activity to idle:', error);
+      this.lastFocusActivityId = undefined;
+      this.focusEndTimestamp = undefined;
     }
   }
 
