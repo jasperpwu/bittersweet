@@ -7,6 +7,7 @@ import { devtools, persist } from 'zustand/middleware';
 import { FocusSession, SessionTag, CreateSessionInput, FamilyActivitySelection, UnlockSession, UnlockTransaction, BlocklistSettings } from '../types/models';
 import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
+import { WidgetService } from '../services/WidgetService';
 import { FocusGoal } from './types';
 import { persistenceConfig } from './middleware/persistence';
 import * as Notifications from 'expo-notifications';
@@ -1228,6 +1229,9 @@ export const useAppStore = create<AppStore>()(
                 };
               });
 
+              // Sync to UserDefaults so native intent can re-block if needed
+              WidgetService.syncCurrentSelectionId(null);
+
               // Clear shield configuration when clearing blocklist
               await FamilyControlsModule.clearShieldConfiguration();
 
@@ -1286,6 +1290,9 @@ export const useAppStore = create<AppStore>()(
                 console.log('📱 Store: Stored selectionId:', selection);
                 return newState;
               });
+
+              // Sync to UserDefaults so native intent can re-block if needed
+              WidgetService.syncCurrentSelectionId(selection);
 
               // Verify the update
               console.log('📱 Store: Verifying update...');

@@ -944,6 +944,23 @@ export default function FocusScreen() {
     try {
       // --- Widget adoption phase ---
 
+      // 0. Check if widget stopped an unlock session (StopUnlockIntent)
+      const unlockStopAction = WidgetService.checkWidgetUnlockStopAction();
+      if (unlockStopAction) {
+        console.log('📱 [Widget] Adopting widget unlock stop action');
+        const store = useAppStore.getState();
+        const { activeSessions } = store.blocklist;
+
+        // Find and stop any active unlock sessions
+        activeSessions.allIds.forEach(id => {
+          const session = activeSessions.byId[id];
+          if (session?.isActive) {
+            stopUnlockSession(id, true);
+            console.log('🔒 [Widget] Ended unlock session from live activity:', id);
+          }
+        });
+      }
+
       // 1. Check if widget stopped a session while app was backgrounded/killed
       const stopAction = WidgetService.checkWidgetStopAction();
       if (stopAction) {

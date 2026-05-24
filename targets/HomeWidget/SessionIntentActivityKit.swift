@@ -1,5 +1,7 @@
 import ActivityKit
+import FamilyControls
 import Foundation
+import ManagedSettings
 
 // This file is ONLY compiled in the main app target (not the widget extension).
 // It provides the real ActivityKit implementations for the WidgetActivityKit
@@ -101,6 +103,76 @@ class WidgetActivityKitLoader: NSObject {
         print("❌ [Widget] Failed to start Live Activity: \(error)")
         return nil
       }
+    }
+
+    WidgetActivityKit.reblockHandler = {
+      // Re-block apps by reading the selection from UserDefaults and applying
+      // it back via ManagedSettingsStore. This replicates what JS blockSelection()
+      // does, but runs immediately from the native intent without waiting for JS.
+      guard let selectionId = WidgetDataManager.shared.getCurrentSelectionId() else {
+        return
+      }
+
+      let appGroupId = "group.com.path2us.bittersweet.appblocker"
+      guard let ud = UserDefaults(suiteName: appGroupId) else {
+        return
+      }
+
+      // Read the serialized FamilyActivitySelection for this ID
+      guard let selectionIds = ud.dictionary(forKey: "familyActivitySelectionIds"),
+            let selectionStr = selectionIds[selectionId] as? String,
+            let data = Data(base64Encoded: selectionStr) else {
+        return
+      }
+
+      // Deserialize the selection
+      guard let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else {
+        return
+      }
+
+      // Read current blocklist and add the selection back
+      var currentBlocklist = FamilyActivitySelection()
+      if let blocklistStr = ud.string(forKey: "currentBlockedSelection"),
+         let blocklistData = Data(base64Encoded: blocklistStr) {
+        currentBlocklist = (try? JSONDecoder().decode(FamilyActivitySelection.self, from: blocklistData)) ?? FamilyActivitySelection()
+      }
+
+      // Union: add the selection's tokens back to the blocklist
+      var updatedBlocklist = FamilyActivitySelection()
+      updatedBlocklist.applicationTokens = currentBlocklist.applicationTokens.union(selection.applicationTokens)
+      updatedBlocklist.webDomainTokens = currentBlocklist.webDomainTokens.union(selection.webDomainTokens)
+      updatedBlocklist.categoryTokens = currentBlocklist.categoryTokens.union(selection.categoryTokens)
+
+      // Save updated blocklist
+      if let encoded = try? JSONEncoder().encode(updatedBlocklist) {
+        ud.set(encoded.base64EncodedString(), forKey: "currentBlockedSelection")
+      }
+
+      // Read current whitelist
+      var currentWhitelist = FamilyActivitySelection()
+      if let whitelistStr = ud.string(forKey: "currentUnblockedSelection"),
+         let whitelistData = Data(base64Encoded: whitelistStr) {
+        currentWhitelist = (try? JSONDecoder().decode(FamilyActivitySelection.self, from: whitelistData)) ?? FamilyActivitySelection()
+      }
+
+      // Apply shield via ManagedSettingsStore (same logic as react-native-device-activity's updateBlock)
+      let store = ManagedSettingsStore()
+      let effectiveApps = updatedBlocklist.applicationTokens.subtracting(currentWhitelist.applicationTokens)
+      let effectiveWebDomains = updatedBlocklist.webDomainTokens.subtracting(currentWhitelist.webDomainTokens)
+      let effectiveCategories = updatedBlocklist.categoryTokens.subtracting(currentWhitelist.categoryTokens)
+
+      store.shield.applications = effectiveApps.isEmpty ? nil : effectiveApps
+      store.shield.webDomains = effectiveWebDomains.isEmpty ? nil : effectiveWebDomains
+
+      if !effectiveCategories.isEmpty {
+        store.shield.applicationCategories = .specific(effectiveCategories, except: currentWhitelist.applicationTokens)
+        store.shield.webDomainCategories = .specific(effectiveCategories, except: currentWhitelist.webDomainTokens)
+      } else {
+        store.shield.applicationCategories = nil
+        store.shield.webDomainCategories = nil
+      }
+
+      ud.synchronize()
     }
 
     WidgetActivityKit.stopHandler = {

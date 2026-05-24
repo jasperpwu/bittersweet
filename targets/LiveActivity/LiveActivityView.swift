@@ -146,17 +146,31 @@ import AppIntents
           Spacer()
 
           if #available(iOS 17.0, *) {
-            Button(intent: StopSessionIntent()) {
-              Text("End")
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundStyle(Color(hex: "#8B4513"))
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
-                .background(Color(hex: "#E0E0E0").opacity(0.5))
-                .clipShape(Capsule())
+            if attributes.sessionType == "unlock" {
+              Button(intent: StopUnlockIntent()) {
+                Text("End")
+                  .font(.title3)
+                  .fontWeight(.semibold)
+                  .foregroundStyle(Color(hex: "#8B4513"))
+                  .padding(.horizontal, 20)
+                  .padding(.vertical, 8)
+                  .background(Color(hex: "#E0E0E0").opacity(0.5))
+                  .clipShape(Capsule())
+              }
+              .buttonStyle(.plain)
+            } else {
+              Button(intent: StopSessionIntent()) {
+                Text("End")
+                  .font(.title3)
+                  .fontWeight(.semibold)
+                  .foregroundStyle(Color(hex: "#8B4513"))
+                  .padding(.horizontal, 20)
+                  .padding(.vertical, 8)
+                  .background(Color(hex: "#E0E0E0").opacity(0.5))
+                  .clipShape(Capsule())
+              }
+              .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
           }
         }
       }

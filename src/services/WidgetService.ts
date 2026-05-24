@@ -9,6 +9,8 @@ const WIDGET_STARTED_SESSION_KEY = 'widgetStartedSession';
 const WIDGET_STOP_ACTION_KEY = 'widgetStopAction';
 const SELECTED_TAG_ID_KEY = 'widgetSelectedTagId';
 const FRUIT_BALANCE_KEY = 'widgetFruitBalance';
+const WIDGET_UNLOCK_STOP_ACTION_KEY = 'widgetUnlockStopAction';
+const CURRENT_SELECTION_ID_KEY = 'widgetCurrentSelectionId';
 
 export interface WidgetSessionData {
   isActive: boolean;
@@ -44,6 +46,11 @@ export interface WidgetStartedSession {
 
 export interface WidgetStopAction {
   action: 'stop';
+  timestamp: number;
+}
+
+export interface WidgetUnlockStopAction {
+  action: 'stopUnlock';
   timestamp: number;
 }
 
@@ -202,6 +209,44 @@ export class WidgetService {
       ReactNativeDeviceActivity.userDefaultsRemove(WIDGET_STARTED_SESSION_KEY);
     } catch (error) {
       console.error('📱 [Widget] Failed to clear widget started session:', error);
+    }
+  }
+
+  /**
+   * Sync the current blocklist selection ID to UserDefaults so the native
+   * StopUnlockIntent can re-block apps without waiting for JS.
+   * Call whenever currentSelectionId changes in the store.
+   */
+  static syncCurrentSelectionId(selectionId: string | null): void {
+    try {
+      if (selectionId) {
+        ReactNativeDeviceActivity.userDefaultsSet(CURRENT_SELECTION_ID_KEY, selectionId);
+      } else {
+        ReactNativeDeviceActivity.userDefaultsRemove(CURRENT_SELECTION_ID_KEY);
+      }
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync current selection ID:', error);
+    }
+  }
+
+  /**
+   * Check if the widget stopped an unlock session (written by StopUnlockIntent).
+   * Reads and clears the widgetUnlockStopAction UserDefaults key.
+   */
+  static checkWidgetUnlockStopAction(): WidgetUnlockStopAction | null {
+    try {
+      const raw = ReactNativeDeviceActivity.userDefaultsGet(WIDGET_UNLOCK_STOP_ACTION_KEY);
+      if (!raw || typeof raw !== 'object') return null;
+
+      const action = raw as WidgetUnlockStopAction;
+      if (!action.timestamp) return null;
+
+      ReactNativeDeviceActivity.userDefaultsRemove(WIDGET_UNLOCK_STOP_ACTION_KEY);
+      console.log('📱 [Widget] Found widget unlock stop action');
+      return action;
+    } catch (error) {
+      console.error('📱 [Widget] Failed to check widget unlock stop action:', error);
+      return null;
     }
   }
 

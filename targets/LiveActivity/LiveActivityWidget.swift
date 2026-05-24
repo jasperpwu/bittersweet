@@ -172,17 +172,31 @@ struct LiveActivityWidget: Widget {
               Spacer()
 
               if #available(iOS 17.0, *) {
-                Button(intent: StopSessionIntent()) {
-                  Text("End")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color(hex: "#8B4513"))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .background(Color(hex: "#E0E0E0").opacity(0.5))
-                    .clipShape(Capsule())
+                if context.attributes.sessionType == "unlock" {
+                  Button(intent: StopUnlockIntent()) {
+                    Text("End")
+                      .font(.subheadline)
+                      .fontWeight(.semibold)
+                      .foregroundStyle(Color(hex: "#8B4513"))
+                      .padding(.horizontal, 16)
+                      .padding(.vertical, 6)
+                      .background(Color(hex: "#E0E0E0").opacity(0.5))
+                      .clipShape(Capsule())
+                  }
+                  .buttonStyle(.plain)
+                } else {
+                  Button(intent: StopSessionIntent()) {
+                    Text("End")
+                      .font(.subheadline)
+                      .fontWeight(.semibold)
+                      .foregroundStyle(Color(hex: "#8B4513"))
+                      .padding(.horizontal, 16)
+                      .padding(.vertical, 6)
+                      .background(Color(hex: "#E0E0E0").opacity(0.5))
+                      .clipShape(Capsule())
+                  }
+                  .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
               }
             }
             .padding(.horizontal, 5)

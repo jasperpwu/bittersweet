@@ -15,6 +15,8 @@ enum WidgetKeys {
   static let widgetStopAction = "widgetStopAction"
   static let selectedTagId = "widgetSelectedTagId"
   static let fruitBalance = "widgetFruitBalance"
+  static let widgetUnlockStopAction = "widgetUnlockStopAction"
+  static let currentSelectionId = "widgetCurrentSelectionId"
 }
 
 // UserDefaults keys used by react-native-device-activity for shield configuration
@@ -205,10 +207,36 @@ struct WidgetDataManager {
     return userDefaults?.dictionary(forKey: WidgetKeys.widgetStopAction)
   }
 
+  // MARK: - Widget Unlock Stop Action (for JS adoption)
+
+  func writeWidgetUnlockStopAction(timestamp: Double) {
+    let dict: [String: Any] = [
+      "action": "stopUnlock",
+      "timestamp": timestamp,
+    ]
+    userDefaults?.set(dict, forKey: WidgetKeys.widgetUnlockStopAction)
+    userDefaults?.synchronize()
+  }
+
+  func clearWidgetUnlockStopAction() {
+    userDefaults?.removeObject(forKey: WidgetKeys.widgetUnlockStopAction)
+    userDefaults?.synchronize()
+  }
+
+  func getWidgetUnlockStopAction() -> [String: Any]? {
+    return userDefaults?.dictionary(forKey: WidgetKeys.widgetUnlockStopAction)
+  }
+
   // MARK: - Fruit Balance (synced from JS for shield updates)
 
   func getFruitBalance() -> Int {
     return userDefaults?.integer(forKey: WidgetKeys.fruitBalance) ?? 0
+  }
+
+  // MARK: - Current Selection ID (for re-blocking from native)
+
+  func getCurrentSelectionId() -> String? {
+    return userDefaults?.string(forKey: WidgetKeys.currentSelectionId)
   }
 
   // MARK: - Shield Configuration

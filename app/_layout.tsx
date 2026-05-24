@@ -245,6 +245,8 @@ export default function RootLayout() {
       checkExpiredUnlockSessions('mount');
       syncShieldConfiguration('mount');
       syncWidgetTagList();
+      // Sync currentSelectionId so native StopUnlockIntent can re-block apps
+      WidgetService.syncCurrentSelectionId(useAppStore.getState().blocklist.currentSelectionId);
     }
   }, [isHydrated, mainStoreHydrated]);
 
@@ -322,6 +324,7 @@ export default function RootLayout() {
         checkExpiredUnlockSessions('foreground');
         syncShieldConfiguration('foreground');
         syncWidgetTagList();
+        WidgetService.syncCurrentSelectionId(useAppStore.getState().blocklist.currentSelectionId);
 
         // Re-check subscription status
         useAppStore.getState().subscription.checkSubscriptionStatus();

@@ -19,6 +19,7 @@ import WidgetKit
 enum WidgetActivityKit {
   nonisolated(unsafe) static var startHandler: ((String, Int, Double, Double, Bool) -> String?)? = nil
   nonisolated(unsafe) static var stopHandler: (() -> Void)? = nil
+  nonisolated(unsafe) static var reblockHandler: (() -> Void)? = nil
 
   /// Lazily registers ActivityKit handlers by dynamically discovering WidgetActivityKitLoader
   /// via the ObjC runtime. In the widget extension, the class doesn't exist so this is a no-op.
@@ -150,6 +151,40 @@ struct StopSessionIntent: LiveActivityIntent {
     // Restore shield to non-focus mode so users can unlock apps with fruits.
     // JS won't run until the app foregrounds, so we update the shield config
     // directly from native to avoid the shield staying stuck in focus mode.
+    WidgetDataManager.shared.restoreShieldForNonFocusMode()
+
+    WidgetDataManager.shared.reloadTimelines()
+
+    return .result()
+  }
+}
+
+// MARK: - Stop Unlock Intent
+
+@available(iOS 17.0, *)
+struct StopUnlockIntent: LiveActivityIntent {
+  static var title: LocalizedStringResource = "Stop Unlock Session"
+  static var description: IntentDescription = "Stops the current unlock session and re-blocks apps"
+
+  init() {}
+
+  func perform() async throws -> some IntentResult {
+    // Ensure ActivityKit handlers are registered (main app target only; no-op in widget extension)
+    WidgetActivityKit.registerIfNeeded()
+
+    // Transition Live Activity to idle focus state (reuse existing stop handler)
+    WidgetActivityKit.stopHandler?()
+
+    // Re-block apps immediately via ManagedSettingsStore (main app process only)
+    WidgetActivityKit.reblockHandler?()
+
+    // Write unlock stop marker for JS to end the unlock session
+    // (refund fruits, update Zustand state)
+    WidgetDataManager.shared.writeWidgetUnlockStopAction(
+      timestamp: Date().timeIntervalSince1970 * 1000
+    )
+
+    // Restore shield to non-focus mode so blocked apps show the unlock UI
     WidgetDataManager.shared.restoreShieldForNonFocusMode()
 
     WidgetDataManager.shared.reloadTimelines()
