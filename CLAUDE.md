@@ -32,6 +32,7 @@ When fixing bugs, follow this structured approach:
 1. **Identify the root cause** — Read the relevant code and trace the data flow to understand *why* the bug happens, not just *what* happens.
 2. **Map the reproduction flow** — Write out the exact sequence of steps/states that trigger the bug, identifying where the logic breaks.
 3. **Propose a minimal fix** — Target the root cause directly. Avoid workarounds that mask the issue.
+4. **When stuck, add targeted logs and ask the user to test** — If multiple root causes are plausible and code reading alone can't narrow it down (e.g., race conditions, async timing, native component behavior), add temporary `console.log` statements at key decision points, ask the user to reproduce the bug, and use the log output to pinpoint the actual cause before writing a fix.
 
 ## Conventions
 - Always reference actual Expo and iOS docs; do not guess APIs or expect user to trial-and-error.

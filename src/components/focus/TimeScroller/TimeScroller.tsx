@@ -185,6 +185,11 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   // finishes, causing a feedback loop (jiggle) between programmatic scrollTo
   // and the native snap.
   const handleMomentumScrollEnd = (event: any) => {
+    // Only handle user-initiated scrolls (started with onScrollBeginDrag).
+    // Programmatic scrolls and initial layout snaps also fire this event,
+    // which would incorrectly overwrite the persisted duration.
+    if (!isUserScrollingRef.current) return;
+
     const scrollXVal = event.nativeEvent.contentOffset.x;
     const snappedIndex = Math.round(scrollXVal / TICK_SPACING);
     const clampedIndex = Math.max(0, Math.min(TIME_VALUES.length - 1, snappedIndex));
