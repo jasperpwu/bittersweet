@@ -6,7 +6,6 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   runOnJS,
-  withDelay,
 } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
 import * as SplashScreen from 'expo-splash-screen';
@@ -45,11 +44,11 @@ const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
 
   const onLottieAnimationFinish = useCallback(() => {
     // Start the exit animation after Lottie finishes with a shorter delay
-    animation.value = withDelay(100, withTiming(1, { duration: 300 }, (isFinished) => {
+    animation.value = withTiming(1, { duration: 200 }, (isFinished) => {
       if (isFinished) {
         runOnJS(setAnimationComplete)(true);
       }
-    }));
+    });
   }, []);
 
   const splashAnimatedStyle = useAnimatedStyle(() => {
@@ -87,7 +86,7 @@ const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: isLight ? '#F5E6D3' : '#000000',
+              backgroundColor: isLight ? '#F5E6D3' : '#1B1C30',
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 1000,
