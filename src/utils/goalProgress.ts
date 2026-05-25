@@ -1,4 +1,4 @@
-import { FocusGoal, FocusSession } from '../store/types';
+import { FocusGoal, FocusSession, TargetHistoryEntry } from '../store/types';
 
 export interface GoalPeriodProgress {
   goalId: string;
@@ -10,7 +10,8 @@ export interface GoalPeriodProgress {
 export const calculateGoalProgress = (
   goals: FocusGoal[],
   sessions: FocusSession[],
-  tagMap?: Record<string, { id: string; name: string }>
+  tagMap?: Record<string, { id: string; name: string }>,
+  weekStartDay: number = 0,
 ): Record<string, number> => {
   const now = new Date();
   const progress: Record<string, number> = {};
@@ -22,7 +23,7 @@ export const calculateGoalProgress = (
   goals.forEach(goal => {
     // Migrate legacy 'yearly' to 'monthly' at runtime
     const period = (goal.period as string) === 'yearly' ? 'monthly' : goal.period;
-    const { periodStart, periodEnd } = getGoalPeriodRange(period as 'daily' | 'weekly' | 'monthly', now);
+    const { periodStart, periodEnd } = getGoalPeriodRange(period as 'daily' | 'weekly' | 'monthly', now, weekStartDay);
     
     // Filter sessions for this goal's tags and time period
     const relevantSessions = sessions.filter(session => {
@@ -52,7 +53,8 @@ export const calculateGoalProgress = (
 
 export const getGoalPeriodRange = (
   period: 'daily' | 'weekly' | 'monthly',
-  referenceDate: Date = new Date()
+  referenceDate: Date = new Date(),
+  weekStartDay: number = 0,
 ): { periodStart: Date; periodEnd: Date } => {
   const now = new Date(referenceDate);
 
@@ -69,9 +71,9 @@ export const getGoalPeriodRange = (
 
     case 'weekly': {
       const dayOfWeek = now.getDay();
+      const diff = (dayOfWeek - weekStartDay + 7) % 7;
       const periodStart = new Date(now);
-      // Start of week (Sunday = 0)
-      periodStart.setDate(now.getDate() - dayOfWeek);
+      periodStart.setDate(now.getDate() - diff);
       periodStart.setHours(0, 0, 0, 0);
 
       const periodEnd = new Date(periodStart);
@@ -100,7 +102,8 @@ export const getGoalPeriodRange = (
 export const getHistoricalPeriodRanges = (
   period: 'daily' | 'weekly' | 'monthly',
   count: number,
-  referenceDate: Date = new Date()
+  referenceDate: Date = new Date(),
+  weekStartDay: number = 0,
 ): { periodStart: Date; periodEnd: Date; label: string }[] => {
   const ranges: { periodStart: Date; periodEnd: Date; label: string }[] = [];
 
@@ -110,7 +113,7 @@ export const getHistoricalPeriodRanges = (
     switch (period) {
       case 'daily': {
         ref.setDate(ref.getDate() - i);
-        const { periodStart, periodEnd } = getGoalPeriodRange('daily', ref);
+        const { periodStart, periodEnd } = getGoalPeriodRange('daily', ref, weekStartDay);
         ranges.push({
           periodStart,
           periodEnd,
@@ -120,7 +123,7 @@ export const getHistoricalPeriodRanges = (
       }
       case 'weekly': {
         ref.setDate(ref.getDate() - i * 7);
-        const { periodStart, periodEnd } = getGoalPeriodRange('weekly', ref);
+        const { periodStart, periodEnd } = getGoalPeriodRange('weekly', ref, weekStartDay);
         ranges.push({
           periodStart,
           periodEnd,
@@ -130,7 +133,7 @@ export const getHistoricalPeriodRanges = (
       }
       case 'monthly': {
         ref.setMonth(ref.getMonth() - i);
-        const { periodStart, periodEnd } = getGoalPeriodRange('monthly', ref);
+        const { periodStart, periodEnd } = getGoalPeriodRange('monthly', ref, weekStartDay);
         ranges.push({
           periodStart,
           periodEnd,
@@ -154,9 +157,58 @@ export const getActiveGoals = (goals: FocusGoal[]): FocusGoal[] => {
 
 export const shouldResetGoalProgress = (
   goal: FocusGoal,
-  currentDate: Date = new Date()
+  currentDate: Date = new Date(),
+  weekStartDay: number = 0,
 ): boolean => {
   const period = goal.period === ('yearly' as string) ? 'monthly' : goal.period;
-  const { periodStart } = getGoalPeriodRange(period as 'daily' | 'weekly' | 'monthly', currentDate);
+  const { periodStart } = getGoalPeriodRange(period as 'daily' | 'weekly' | 'monthly', currentDate, weekStartDay);
   return new Date(goal.lastResetDate) < periodStart;
+};
+
+/**
+ * Returns whether the given date falls on a rest day.
+ */
+export const isRestDay = (date: Date, restDays: number[]): boolean => {
+  return restDays.includes(date.getDay());
+};
+
+/**
+ * Looks up the correct target from a goal's targetHistory for the given date.
+ * Uses the historical restDays snapshot from the entry (not the current preference)
+ * so that past targets are never affected by preference changes.
+ * The `currentRestDays` param is only used as a fallback when no history exists.
+ * Only applies rest day logic to daily goals.
+ */
+export const getTargetForDate = (
+  goal: FocusGoal,
+  date: Date,
+  currentRestDays: number[],
+): number => {
+  const history = goal.targetHistory;
+  const dateStr = date.toISOString().split('T')[0];
+
+  // Default to current goal values if no history
+  if (!history || history.length === 0) {
+    if (goal.period === 'daily' && isRestDay(date, currentRestDays)) {
+      return goal.restDayTargetMinutes ?? goal.targetMinutes;
+    }
+    return goal.targetMinutes;
+  }
+
+  // Find the applicable history entry (last entry with effectiveDate <= dateStr)
+  let applicable: TargetHistoryEntry = history[0];
+  for (const entry of history) {
+    if (entry.effectiveDate <= dateStr) {
+      applicable = entry;
+    } else {
+      break; // history is sorted ascending
+    }
+  }
+
+  // Use the rest days snapshot from the history entry itself
+  const historicalRestDays = applicable.restDays ?? currentRestDays;
+  if (goal.period === 'daily' && isRestDay(date, historicalRestDays)) {
+    return applicable.restDayTargetMinutes;
+  }
+  return applicable.targetMinutes;
 };

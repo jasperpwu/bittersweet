@@ -5,6 +5,7 @@ import { Slider } from '../../ui/Slider';
 import { Toggle } from '../../ui/Toggle';
 import { HorizontalTagSelector } from '../../focus/TagSelector';
 import { useFocus } from '../../../store';
+import { useAppSettings } from '../../../store/unified-store';
 import { FocusGoal } from '../../../store/types';
 
 type GoalPeriod = 'daily' | 'weekly' | 'monthly';
@@ -25,6 +26,7 @@ interface FocusGoalFormProps {
   onSubmit: (goal: {
     name: string;
     targetMinutes: number;
+    restDayTargetMinutes: number;
     period: GoalPeriod;
     tagIds: string[];
     isRepeating: boolean;
@@ -40,14 +42,20 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   editingGoal,
 }) => {
   const [targetHours, setTargetHours] = useState(4);
+  const [restDayTargetHours, setRestDayTargetHours] = useState(4);
   const [period, setPeriod] = useState<GoalPeriod>('daily');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [customGoalName, setCustomGoalName] = useState('');
-  const [isRepeating, setIsRepeating] = useState(true);
   const [showTotalHours, setShowTotalHours] = useState(true);
 
   // Get tags from store
   const { tags } = useFocus();
+  const { preferences } = useAppSettings();
+
+  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const restDaysLabel = (preferences.restDays || [0, 6])
+    .map(d => DAY_LABELS[d])
+    .join(', ');
 
   // Convert normalized tags to array
   const availableTags = (tags.allIds || []).map(id => tags.byId[id]).filter(Boolean);
@@ -56,11 +64,12 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   useEffect(() => {
     if (editingGoal) {
       setTargetHours(Math.round(editingGoal.targetMinutes / 60 * 2) / 2); // round to nearest 0.5
+      const restDayMins = editingGoal.restDayTargetMinutes ?? editingGoal.targetMinutes;
+      setRestDayTargetHours(Math.round(restDayMins / 60 * 2) / 2);
       // Migrate yearly to monthly for editing
       const goalPeriod = editingGoal.period === ('yearly' as string) ? 'monthly' : editingGoal.period;
       setPeriod(goalPeriod as GoalPeriod);
       setSelectedTagIds((editingGoal as any).tagIds || []);
-      setIsRepeating(editingGoal.isRepeating ?? true);
       setShowTotalHours(editingGoal.showTotalHours ?? false);
 
       // Set custom name if it's not the auto-generated pattern (check both old and new formats)
@@ -81,10 +90,10 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
     } else {
       // Reset to defaults when creating new goal
       setTargetHours(4);
+      setRestDayTargetHours(4);
       setPeriod('daily');
       setSelectedTagIds([]);
       setCustomGoalName('');
-      setIsRepeating(true);
       setShowTotalHours(true);
     }
   }, [editingGoal, tags.byId]);
@@ -99,6 +108,14 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
     clamped = Math.max(step, clamped); // at least one step
     if (clamped !== targetHours) {
       setTargetHours(clamped);
+    }
+
+    // Also clamp rest day target
+    let clampedRest = Math.min(restDayTargetHours, max);
+    clampedRest = Math.round(clampedRest / step) * step;
+    clampedRest = Math.max(step, clampedRest);
+    if (clampedRest !== restDayTargetHours) {
+      setRestDayTargetHours(clampedRest);
     }
   }, [period]);
 
@@ -123,9 +140,10 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
     onSubmit({
       name: goalName,
       targetMinutes: totalMinutes,
+      restDayTargetMinutes: period === 'daily' ? restDayTargetHours * 60 : totalMinutes,
       period,
       tagIds: selectedTagIds,
-      isRepeating,
+      isRepeating: true,
       showTotalHours,
     });
   };
@@ -180,35 +198,37 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
         />
       </View>
 
-      {/* Time Period */}
-      <View>
-        <Typography variant="subtitle-16" color="white" className="mb-2">
-          Time Period
-        </Typography>
-        <View className="flex-row gap-x-2">
-          {(['daily', 'weekly', 'monthly'] as const).map((p) => (
-            <Pressable
-              key={p}
-              onPress={() => setPeriod(p)}
-              className={`flex-1 py-2.5 rounded-xl ${
-                period === p ? 'bg-primary' : 'bg-dark-border'
-              }`}
-            >
-              <Typography
-                variant="body-14"
-                className="text-center text-white"
+      {/* Time Period — only shown when creating */}
+      {!editingGoal && (
+        <View>
+          <Typography variant="subtitle-16" color="white" className="mb-2">
+            Time Period
+          </Typography>
+          <View className="flex-row gap-x-2">
+            {(['daily', 'weekly', 'monthly'] as const).map((p) => (
+              <Pressable
+                key={p}
+                onPress={() => setPeriod(p)}
+                className={`flex-1 py-2.5 rounded-xl ${
+                  period === p ? 'bg-primary' : 'bg-dark-border'
+                }`}
               >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </Typography>
-            </Pressable>
-          ))}
+                <Typography
+                  variant="body-14"
+                  className="text-center text-white"
+                >
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </Typography>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Target Duration — Slider */}
       <View>
         <Typography variant="subtitle-16" color="white" className="mb-2">
-          Target Duration
+          {period === 'daily' ? 'Regular Day Target' : 'Target Duration'}
         </Typography>
         <View className="bg-dark-border rounded-xl px-4 py-3 items-center">
           <Typography variant="headline-20" color="white" className="mb-1">
@@ -225,20 +245,42 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
         </View>
       </View>
 
+      {/* Rest Day Target — only for daily goals */}
+      {period === 'daily' && (
+        <View>
+          <Typography variant="subtitle-16" color="white" className="mb-2">
+            Rest Day Target
+          </Typography>
+          <View className="bg-dark-border rounded-xl px-4 py-3 items-center">
+            <Typography variant="headline-20" color="white" className="mb-1">
+              {formatSliderValue(restDayTargetHours)}
+            </Typography>
+            <Slider
+              value={restDayTargetHours}
+              minimumValue={STEP_HOURS[period]}
+              maximumValue={MAX_HOURS[period]}
+              step={STEP_HOURS[period]}
+              onValueChange={setRestDayTargetHours}
+              unit="h"
+            />
+          </View>
+          <Typography variant="body-12" color="secondary" className="mt-1.5">
+            Rest days: {restDaysLabel}. Change in Settings.
+          </Typography>
+        </View>
+      )}
+
+      {/* Target preservation note */}
+      {editingGoal && (
+        <View className="bg-dark-border rounded-xl px-4 py-3">
+          <Typography variant="body-12" color="secondary">
+            Changing the target only affects today onward. Past periods keep the target that was active at the time.
+          </Typography>
+        </View>
+      )}
+
       {/* Settings */}
       <View className="bg-dark-border rounded-xl">
-        <View className="flex-row items-center justify-between p-4">
-          <View className="flex-1 mr-3">
-            <Typography variant="subtitle-16" color="white">
-              Repeat this goal
-            </Typography>
-            <Typography variant="body-12" color="secondary" className="mt-0.5">
-              Track consistency across periods
-            </Typography>
-          </View>
-          <Toggle value={isRepeating} onValueChange={setIsRepeating} />
-        </View>
-        <View className="h-px bg-dark-surface mx-4" />
         <View className="flex-row items-center justify-between p-4">
           <View className="flex-1 mr-3">
             <Typography variant="subtitle-16" color="white">

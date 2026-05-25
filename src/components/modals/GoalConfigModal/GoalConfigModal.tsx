@@ -39,6 +39,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
   const handleCreateGoal = (goalData: {
     name: string;
     targetMinutes: number;
+    restDayTargetMinutes: number;
     period: 'daily' | 'weekly' | 'monthly';
     tagIds: string[];
     isRepeating: boolean;
@@ -47,6 +48,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
     const goalPayload = {
       name: goalData.name,
       targetMinutes: goalData.targetMinutes,
+      restDayTargetMinutes: goalData.restDayTargetMinutes,
       period: goalData.period,
       tagIds: goalData.tagIds,
       isRepeating: goalData.isRepeating,

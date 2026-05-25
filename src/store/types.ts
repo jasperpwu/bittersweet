@@ -91,10 +91,19 @@ export interface Tag extends BaseEntity {
   userId: string;
 }
 
+export interface TargetHistoryEntry {
+  effectiveDate: string; // "YYYY-MM-DD" — changes apply from this date onward
+  targetMinutes: number;
+  restDayTargetMinutes: number;
+  restDays: number[]; // which days (0=Sun..6=Sat) were rest days at this point
+}
+
 export interface FocusGoal extends BaseEntity {
   userId: string;
   name: string;
   targetMinutes: number;
+  restDayTargetMinutes: number;
+  targetHistory: TargetHistoryEntry[];
   period: 'daily' | 'weekly' | 'monthly';
   tagIds: string[]; // empty array means "all tags"
   isActive: boolean;

@@ -283,6 +283,83 @@ export default function SettingsScreen() {
           />
         </SettingsSection>
 
+        {/* Goals */}
+        <SettingsSection title="Goals">
+          {/* Rest Days */}
+          <View className="py-3 border-b border-dark-border">
+            <Typography variant="subtitle-14-medium" color="white" className="mb-1">
+              Rest Days
+            </Typography>
+            <Typography variant="body-12" color="secondary" className="mb-2">
+              Daily goals use a separate target on these days
+            </Typography>
+            <View className="flex-row gap-x-2">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label, dayIndex) => {
+                const isSelected = (preferences.restDays ?? [0, 6]).includes(dayIndex);
+                return (
+                  <Pressable
+                    key={dayIndex}
+                    onPress={async () => {
+                      const current = preferences.restDays ?? [0, 6];
+                      const next = isSelected
+                        ? current.filter(d => d !== dayIndex)
+                        : [...current, dayIndex].sort((a, b) => a - b);
+                      try {
+                        await updatePreferences({ restDays: next } as any);
+                        triggerHaptic('light');
+                      } catch (error) {
+                        console.error('Failed to update rest days:', error);
+                      }
+                    }}
+                    className={`w-9 h-9 rounded-full items-center justify-center ${
+                      isSelected ? 'bg-primary' : 'bg-dark-border'
+                    }`}
+                  >
+                    <Typography variant="body-12" className="text-white font-poppins-medium">
+                      {label}
+                    </Typography>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Week Starts On */}
+          <View className="py-3">
+            <Typography variant="subtitle-14-medium" color="white" className="mb-1">
+              Week Starts On
+            </Typography>
+            <Typography variant="body-12" color="secondary" className="mb-2">
+              Affects weekly goal period boundaries
+            </Typography>
+            <View className="flex-row gap-x-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label, dayIndex) => {
+                const isSelected = (preferences.weekStartDay ?? 0) === dayIndex;
+                return (
+                  <Pressable
+                    key={dayIndex}
+                    onPress={async () => {
+                      try {
+                        await updatePreferences({ weekStartDay: dayIndex } as any);
+                        triggerHaptic('light');
+                      } catch (error) {
+                        console.error('Failed to update week start day:', error);
+                      }
+                    }}
+                    className={`flex-1 py-2 rounded-lg items-center ${
+                      isSelected ? 'bg-primary' : 'bg-dark-border'
+                    }`}
+                  >
+                    <Typography variant="tiny-10" className="text-white font-poppins-medium">
+                      {label}
+                    </Typography>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </SettingsSection>
+
         {/* Focus */}
         <SettingsSection title="Focus">
           <SettingsItem

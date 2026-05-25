@@ -26,6 +26,8 @@ interface AppPreferences {
   language: string;
   notifications: NotificationSettings;
   focus: FocusSettings;
+  restDays: number[];    // day indices (0=Sun..6=Sat), default [0, 6]
+  weekStartDay: number;  // 0=Sun..6=Sat, default 0
 }
 
 interface NotificationSettings {
@@ -149,6 +151,8 @@ const createDefaultPreferences = (): AppPreferences => ({
     autoStartSessions: false,
     timerPickerStyle: 'scroller',
   },
+  restDays: [0, 6],
+  weekStartDay: 0,
 });
 
 const createDefaultStats = (): AppStats => ({

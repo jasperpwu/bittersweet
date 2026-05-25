@@ -183,7 +183,7 @@ const optimizedStorage = new OptimizedStorage();
 export const persistenceConfig = {
   name: STORAGE_KEY,
   storage: createJSONStorage(() => optimizedStorage),
-  version: 2,
+  version: 3,
   migrate: (persistedState: any, version: number) => {
     if (version < 2) {
       console.log('🔄 Migrating store to v2 (adding auth slice)...');
@@ -195,6 +195,36 @@ export const persistenceConfig = {
         };
       }
       console.log('✅ Store migration to v2 complete');
+    }
+
+    if (version < 3) {
+      console.log('🔄 Migrating store to v3 (goal target history + rest days)...');
+      const state = persistedState;
+      if (state?.focus?.goals?.byId) {
+        for (const goalId of Object.keys(state.focus.goals.byId)) {
+          const goal = state.focus.goals.byId[goalId];
+          if (!goal) continue;
+
+          // Set restDayTargetMinutes to same as targetMinutes for existing goals
+          if (goal.restDayTargetMinutes === undefined) {
+            goal.restDayTargetMinutes = goal.targetMinutes;
+          }
+
+          // Initialize targetHistory with one entry
+          if (!goal.targetHistory || !Array.isArray(goal.targetHistory)) {
+            const effectiveDate = goal.createdAt
+              ? new Date(goal.createdAt).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0];
+            goal.targetHistory = [{
+              effectiveDate,
+              targetMinutes: goal.targetMinutes,
+              restDayTargetMinutes: goal.targetMinutes,
+              restDays: [0, 6], // default rest days at migration time
+            }];
+          }
+        }
+      }
+      console.log('✅ Store migration to v3 complete');
     }
 
     if (version === 0) {

@@ -7,6 +7,7 @@ import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
 import { useFocus, useFocusActions } from '../../src/store';
+import { useAppSettings } from '../../src/store/unified-store';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { TimePeriod, FocusGoal, ChartSegment } from '../../src/store/types';
 import { calculateGoalProgress } from '../../src/utils/goalProgress';
@@ -21,6 +22,8 @@ export default function InsightsScreen() {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
   const { canCreateGoal } = useSubscriptionGate();
+  const { preferences } = useAppSettings();
+  const weekStartDay = preferences.weekStartDay ?? 0;
 
   // Get data from focus store
   const { sessions, tags, goals } = useFocus();
@@ -175,9 +178,9 @@ export default function InsightsScreen() {
   const sessionsByDate = useMemo(() => getSessionsByDate(), [safeSessions]);
   
   // Calculate goal progress
-  const goalProgress = useMemo(() => 
-    calculateGoalProgress(storeGoals, safeSessions, tagMap), 
-    [storeGoals, safeSessions, tagMap]
+  const goalProgress = useMemo(() =>
+    calculateGoalProgress(storeGoals, safeSessions, tagMap, weekStartDay),
+    [storeGoals, safeSessions, tagMap, weekStartDay]
   );
   
   // Get today's sessions for statistics view

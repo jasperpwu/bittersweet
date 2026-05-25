@@ -21,7 +21,8 @@ import { captureRef } from 'react-native-view-shot';
 import { Typography } from '../../ui/Typography';
 import { FocusGoal } from '../../../store/types';
 import { useFocus } from '../../../store';
-import { calculateGoalProgress, getHistoricalPeriodRanges } from '../../../utils/goalProgress';
+import { useAppSettings } from '../../../store/unified-store';
+import { calculateGoalProgress, getHistoricalPeriodRanges, getTargetForDate } from '../../../utils/goalProgress';
 import { calculateUrgency, UrgencyLevel } from '../../../utils/goalUrgency';
 
 interface GoalProgressProps {
@@ -35,6 +36,7 @@ interface GoalProgressProps {
 interface ProcessedGoal extends FocusGoal {
   currentProgress: number;
   percentage: number;
+  _effectiveTarget?: number;
 }
 
 const GOAL_THRESHOLD_PERCENT = 84;
@@ -304,6 +306,9 @@ export const GoalProgress: FC<GoalProgressProps> = ({
 
   // Get tags and sessions from store for real data
   const { tags, sessions } = useFocus();
+  const { preferences } = useAppSettings();
+  const restDays = preferences.restDays ?? [0, 6];
+  const weekStartDay = preferences.weekStartDay ?? 0;
 
   // Extract sessions array from normalized state
   const safeSessions = (sessions && sessions.allIds && sessions.byId)
@@ -326,18 +331,19 @@ export const GoalProgress: FC<GoalProgressProps> = ({
 
   // Calculate fresh goal progress from current session data
   const freshGoalProgress = useMemo(() =>
-    calculateGoalProgress(goals || [], safeSessions, tagMap),
-    [goals, safeSessions, tagMap]
+    calculateGoalProgress(goals || [], safeSessions, tagMap, weekStartDay),
+    [goals, safeSessions, tagMap, weekStartDay]
   );
 
   // Process goals to calculate progress (flat list, preserving allIds order)
   const processedGoals: ProcessedGoal[] = useMemo(() => (goals || []).map(goal => {
     const currentProgress = freshGoalProgress[goal.id] || 0;
-    const percentage = goal.targetMinutes > 0
-      ? (currentProgress / goal.targetMinutes) * 100
+    const effectiveTarget = getTargetForDate(goal, new Date(), restDays);
+    const percentage = effectiveTarget > 0
+      ? (currentProgress / effectiveTarget) * 100
       : 0;
-    return { ...goal, currentProgress, percentage };
-  }), [goals, freshGoalProgress]);
+    return { ...goal, currentProgress, percentage, _effectiveTarget: effectiveTarget };
+  }), [goals, freshGoalProgress, restDays]);
 
   const handleGoalPress = useCallback((goal: ProcessedGoal) => {
     if (goal.isRepeating) {
@@ -426,6 +432,8 @@ export const GoalProgress: FC<GoalProgressProps> = ({
                   sessions={safeSessions}
                   tagMap={tagMap}
                   onCollapse={() => setExpandedGoalId(null)}
+                  restDays={restDays}
+                  weekStartDay={weekStartDay}
                 />
               )}
             </View>
@@ -452,9 +460,10 @@ const TRACK_COLORS: Record<UrgencyLevel | 'healthy', string> = {
 };
 
 const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
+  const effectiveTarget = goal._effectiveTarget ?? goal.targetMinutes;
   const urgency = useMemo(
-    () => calculateUrgency(goal, goal.currentProgress),
-    [goal],
+    () => calculateUrgency(goal, goal.currentProgress, effectiveTarget),
+    [goal, effectiveTarget],
   );
 
   const formatTime = (minutes: number): string => {
@@ -467,7 +476,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   };
 
   const tagIds = (goal as any).tagIds || [];
-  const { progressWidth, exceededWidth } = getGoalBarSegments(goal.currentProgress, goal.targetMinutes);
+  const { progressWidth, exceededWidth } = getGoalBarSegments(goal.currentProgress, effectiveTarget);
 
   const periodLabel = goal.period.charAt(0).toUpperCase() + goal.period.slice(1);
 
@@ -521,7 +530,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
 
           <View className="flex-row items-center mt-0.5">
             <Typography variant="body-12" className="text-white font-poppins-medium">
-              {formatTime(goal.currentProgress)} / {formatTime(goal.targetMinutes)}
+              {formatTime(goal.currentProgress)} / {formatTime(effectiveTarget)}
             </Typography>
           </View>
         </View>
@@ -639,9 +648,11 @@ interface GoalConsistencyCalendarProps {
   sessions: any[];
   tagMap: Record<string, { id: string; name: string }>;
   onCollapse: () => void;
+  restDays: number[];
+  weekStartDay: number;
 }
 
-const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessions, tagMap: _tagMap, onCollapse }) => {
+const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessions, tagMap: _tagMap, onCollapse, restDays, weekStartDay }) => {
   const captureAreaRef = useRef<View>(null);
 
   const handleShare = async () => {
@@ -663,7 +674,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
   const periodCounts: Record<string, number> = { daily: 30, weekly: 12, monthly: 12 };
   const count = periodCounts[goal.period] || 12;
-  const ranges = getHistoricalPeriodRanges(goal.period, count);
+  const ranges = getHistoricalPeriodRanges(goal.period, count, new Date(), weekStartDay);
 
   // Compute hit/miss for each range
   const results = ranges.map(range => {
@@ -679,9 +690,11 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
       : rangeSessions.filter(s => goalTagIds.includes((s as any).tagId));
 
     const totalMinutes = relevant.reduce((sum, s) => sum + s.duration, 0);
-    const hit = totalMinutes >= goal.targetMinutes;
-    const fillPercent = goal.targetMinutes > 0
-      ? Math.min(totalMinutes / goal.targetMinutes, 1) * 100
+    // Use historical target for this period's date
+    const periodTarget = getTargetForDate(goal, range.periodStart, restDays);
+    const hit = totalMinutes >= periodTarget;
+    const fillPercent = periodTarget > 0
+      ? Math.min(totalMinutes / periodTarget, 1) * 100
       : 0;
     return { ...range, hit, totalMinutes, fillPercent };
   });
@@ -752,7 +765,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
               <View key={i} className="items-center justify-center" style={{ width: '14.28%', aspectRatio: 1 }}>
                 {r ? (
                   r.hit ? (
-                    <View className="w-5 h-5 rounded-sm bg-green-500" />
+                    <View className="w-5 h-5 rounded-sm" style={{ backgroundColor: TRACK_COLORS.healthy }} />
                   ) : (
                     <View className="w-5 h-5 rounded-sm bg-dark-border overflow-hidden">
                       <View
@@ -800,8 +813,8 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
                 <View key={i} className="items-center" style={{ flex: 1 }}>
                   {r.hit ? (
                     <View
-                      className="rounded-sm mb-1 bg-green-500"
-                      style={{ width: 28, height: 28 }}
+                      className="rounded-sm mb-1"
+                      style={{ width: 28, height: 28, backgroundColor: TRACK_COLORS.healthy }}
                     />
                   ) : (
                     <View
@@ -847,7 +860,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
           {results.map((r, i) => (
             <View key={i} className="items-center" style={{ flex: 1 }}>
               {r.hit ? (
-                <View className="w-5 h-5 rounded-sm mb-1 bg-green-500" />
+                <View className="w-5 h-5 rounded-sm mb-1" style={{ backgroundColor: TRACK_COLORS.healthy }} />
               ) : (
                 <View className="w-5 h-5 rounded-sm mb-1 bg-dark-border overflow-hidden">
                   <View
@@ -980,8 +993,8 @@ const GoalEmptyPlaceholder: FC = () => {
               <View key={i} className="items-center" style={{ flex: 1 }}>
                 {m.hit ? (
                   <View
-                    className="rounded-sm mb-1 bg-green-500"
-                    style={{ width: 28, height: 28 }}
+                    className="rounded-sm mb-1"
+                    style={{ width: 28, height: 28, backgroundColor: TRACK_COLORS.healthy }}
                   />
                 ) : (
                   <View

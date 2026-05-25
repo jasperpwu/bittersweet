@@ -23,8 +23,12 @@ export interface UrgencyResult {
 export const calculateUrgency = (
   goal: FocusGoal,
   currentProgress: number,
+  effectiveTarget?: number,
+  weekStartDay: number = 0,
 ): UrgencyResult => {
-  if (goal.targetMinutes <= 0) {
+  const target = effectiveTarget ?? goal.targetMinutes;
+
+  if (target <= 0) {
     return { isBehindPace: false, score: 0, level: 'low', deficit: 0 };
   }
 
@@ -33,13 +37,14 @@ export const calculateUrgency = (
   const { periodStart, periodEnd } = getGoalPeriodRange(
     period as 'daily' | 'weekly' | 'monthly',
     now,
+    weekStartDay,
   );
 
   const totalPeriodMs = periodEnd.getTime() - periodStart.getTime();
   const elapsedMs = now.getTime() - periodStart.getTime();
   const periodFraction = Math.max(0, Math.min(1, elapsedMs / totalPeriodMs));
 
-  const progressFraction = Math.min(currentProgress / goal.targetMinutes, 1);
+  const progressFraction = Math.min(currentProgress / target, 1);
 
   const isBehindPace = periodFraction > progressFraction;
 
@@ -53,7 +58,7 @@ export const calculateUrgency = (
   const level: UrgencyLevel =
     score <= 0.33 ? 'low' : score <= 0.66 ? 'medium' : 'high';
 
-  const expectedMinutes = periodFraction * goal.targetMinutes;
+  const expectedMinutes = periodFraction * target;
   const deficit = Math.max(0, Math.round(expectedMinutes - currentProgress));
 
   return { isBehindPace, score, level, deficit };

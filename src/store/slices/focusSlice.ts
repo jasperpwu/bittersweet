@@ -14,6 +14,7 @@ import {
 import { FocusSession } from '../../types/models';
 import { createNormalizedState, updateNormalizedState, EntityManager } from '../utils/entityManager';
 import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/eventBus';
+import { useUnifiedStore } from '../unified-store';
 
 // Re-export types for backward compatibility
 export type { FocusSession } from '../../types/models';
@@ -639,16 +640,25 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     // Goal Management
     addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => {
       const state = get();
-      
+      const today = new Date().toISOString().split('T')[0];
+      const currentRestDays = useUnifiedStore.getState().preferences.restDays ?? [0, 6];
+
       const newGoal: FocusGoal = {
         ...goal,
         id: `goal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         userId: 'dev-user', // TODO: Get from auth
+        restDayTargetMinutes: goal.restDayTargetMinutes ?? goal.targetMinutes,
+        targetHistory: [{
+          effectiveDate: today,
+          targetMinutes: goal.targetMinutes,
+          restDayTargetMinutes: goal.restDayTargetMinutes ?? goal.targetMinutes,
+          restDays: currentRestDays,
+        }],
         createdAt: new Date(),
         updatedAt: new Date(),
         lastResetDate: new Date(), // Start tracking from now
       };
-      
+
       set((state: any) => {
         const manager = new EntityManager(state.focus.goals);
         manager.add(newGoal);
@@ -659,16 +669,40 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
           lastUpdated: new Date(),
         };
       });
-      
+
       if (__DEV__) {
         console.log('✅ Goal added:', newGoal);
       }
-      
+
       return newGoal;
     },
 
     updateGoal: (id: string, updates: Partial<FocusGoal>) => {
       set((state: any) => {
+        const existingGoal = state.focus.goals.byId[id];
+        const targetChanged = updates.targetMinutes !== undefined && updates.targetMinutes !== existingGoal?.targetMinutes;
+        const restDayTargetChanged = updates.restDayTargetMinutes !== undefined && updates.restDayTargetMinutes !== existingGoal?.restDayTargetMinutes;
+
+        // If target changed, append to history
+        if (existingGoal && (targetChanged || restDayTargetChanged)) {
+          const today = new Date().toISOString().split('T')[0];
+          const currentRestDays = useUnifiedStore.getState().preferences.restDays ?? [0, 6];
+          const history = [...(existingGoal.targetHistory || [])];
+          const newTarget = updates.targetMinutes ?? existingGoal.targetMinutes;
+          const newRestDayTarget = updates.restDayTargetMinutes ?? existingGoal.restDayTargetMinutes ?? newTarget;
+
+          // If an entry for today already exists, overwrite it; otherwise append
+          const todayIdx = history.findIndex(e => e.effectiveDate === today);
+          const newEntry = { effectiveDate: today, targetMinutes: newTarget, restDayTargetMinutes: newRestDayTarget, restDays: currentRestDays };
+          if (todayIdx >= 0) {
+            history[todayIdx] = newEntry;
+          } else {
+            history.push(newEntry);
+          }
+
+          updates = { ...updates, targetHistory: history };
+        }
+
         const manager = new EntityManager(state.focus.goals);
         manager.update(id, { ...updates, updatedAt: new Date() });
         state.focus.goals = {
@@ -678,7 +712,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
           lastUpdated: new Date(),
         };
       });
-      
+
       if (__DEV__) {
         console.log('✅ Goal updated:', id, updates);
       }
