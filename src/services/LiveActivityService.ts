@@ -1,6 +1,22 @@
 import * as LiveActivity from 'expo-live-activity';
-import { Platform } from 'react-native';
+import { Appearance, Platform } from 'react-native';
 import * as Device from 'expo-device';
+
+// Color palettes for Live Activity based on system appearance
+const LA_COLORS = {
+  light: {
+    backgroundColor: '#F5E6D3',
+    titleColor: '#8B4513',
+    subtitleColor: '#8B4513',
+    progressViewLabelColor: '#8B4513',
+  },
+  dark: {
+    backgroundColor: '#1B1C30',
+    titleColor: '#FFFFFF',
+    subtitleColor: '#CACACA',
+    progressViewLabelColor: '#FFFFFF',
+  },
+} as const;
 
 // Keep original interface for internal tracking
 export interface UnlockCountdownState {
@@ -76,13 +92,14 @@ export class LiveActivityService {
         timerStartDateInMilliseconds: startTimestamp,
       };
 
-      // Configuration for Live Activity
+      // Configuration for Live Activity — pick colors based on current system appearance
+      const palette = Appearance.getColorScheme() === 'dark' ? LA_COLORS.dark : LA_COLORS.light;
       const config: LiveActivity.LiveActivityConfig = {
-        backgroundColor: '#D2B48C',
-        titleColor: '#8B4513',
-        subtitleColor: '#8B4513',
+        backgroundColor: palette.backgroundColor,
+        titleColor: palette.titleColor,
+        subtitleColor: palette.subtitleColor,
         progressViewTint: '#FF6347',
-        progressViewLabelColor: '#8B4513',
+        progressViewLabelColor: palette.progressViewLabelColor,
         // No deepLinkUrl — tapping the live activity opens the app via default iOS
         // behavior without triggering Expo Router navigation to a nonexistent route.
         timerType: 'digital',
@@ -239,13 +256,14 @@ export class LiveActivityService {
         }
       }
 
-      // Configuration for Live Activity
+      // Configuration for Live Activity — pick colors based on current system appearance
+      const palette = Appearance.getColorScheme() === 'dark' ? LA_COLORS.dark : LA_COLORS.light;
       const config: LiveActivity.LiveActivityConfig = {
-        backgroundColor: '#D2B48C',
-        titleColor: '#8B4513',
-        subtitleColor: '#8B4513',
+        backgroundColor: palette.backgroundColor,
+        titleColor: palette.titleColor,
+        subtitleColor: palette.subtitleColor,
         progressViewTint: '#FF6347',
-        progressViewLabelColor: '#8B4513',
+        progressViewLabelColor: palette.progressViewLabelColor,
         // No deepLinkUrl — tapping the live activity opens the app via default iOS
         // behavior without triggering Expo Router navigation to a nonexistent route.
         timerType: 'digital',
@@ -313,12 +331,13 @@ export class LiveActivityService {
         }
       }
 
+      const palette = Appearance.getColorScheme() === 'dark' ? LA_COLORS.dark : LA_COLORS.light;
       const config: LiveActivity.LiveActivityConfig = {
-        backgroundColor: '#D2B48C',
-        titleColor: '#8B4513',
-        subtitleColor: '#8B4513',
+        backgroundColor: palette.backgroundColor,
+        titleColor: palette.titleColor,
+        subtitleColor: palette.subtitleColor,
         progressViewTint: '#FF6347',
-        progressViewLabelColor: '#8B4513',
+        progressViewLabelColor: palette.progressViewLabelColor,
         timerType: 'digital',
       };
 

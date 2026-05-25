@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Pressable, Alert, ActivityIndicator, useColorScheme } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { useAppStore } from '../../store';
 
 export const AccountSection: React.FC = () => {
+  const colorScheme = useColorScheme();
   const { user, isAuthenticated, isLoading, error } = useAppStore(
     (state) => state.auth
   );
@@ -42,19 +43,19 @@ export const AccountSection: React.FC = () => {
   if (isAuthenticated && user) {
     return (
       <View className="px-5 mt-6">
-        <Typography variant="subtitle-14-medium" className="text-primary mb-3">
+        <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
           Account
         </Typography>
-        <View className="bg-[#242540] rounded-2xl px-4">
+        <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
           {/* User info */}
-          <View className="py-3 border-b border-dark-border">
+          <View className="py-3 border-b border-light-border dark:border-dark-border">
             <View className="flex-row items-center">
               <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center mr-3">
                 <Ionicons name="person" size={20} color="#8B7FFF" />
               </View>
               <View className="flex-1">
                 {user.fullName && (
-                  <Typography variant="subtitle-14-medium" color="white">
+                  <Typography variant="subtitle-14-medium" color="primary">
                     {user.fullName}
                   </Typography>
                 )}
@@ -73,13 +74,13 @@ export const AccountSection: React.FC = () => {
           <Pressable
             onPress={handleSignOut}
             disabled={isLoading}
-            className="py-3 border-b border-dark-border active:opacity-70"
+            className="py-3 border-b border-light-border dark:border-dark-border active:opacity-70"
           >
             <View className="flex-row items-center">
               <View className="w-8 items-center mr-3">
-                <Ionicons name="log-out-outline" size={20} color="#CACACA" />
+                <Ionicons name="log-out-outline" size={20} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
               </View>
-              <Typography variant="subtitle-14-medium" color="white">
+              <Typography variant="subtitle-14-medium" color="primary">
                 Sign Out
               </Typography>
               {isLoading && (
@@ -117,10 +118,10 @@ export const AccountSection: React.FC = () => {
   // Signed out state
   return (
     <View className="px-5 mt-6">
-      <Typography variant="subtitle-14-medium" className="text-primary mb-3">
+      <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
         Account
       </Typography>
-      <View className="bg-[#242540] rounded-2xl px-4 py-4">
+      <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-4">
         <Typography variant="body-14" color="secondary" className="mb-4">
           Sign in to sync your data across devices and back up your progress.
         </Typography>

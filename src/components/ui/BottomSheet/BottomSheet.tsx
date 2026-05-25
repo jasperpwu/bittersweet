@@ -131,7 +131,7 @@ export const BottomSheet: FC<BottomSheetProps> = ({
         {/* Bottom Sheet */}
         <GestureDetector gesture={panGesture}>
           <Animated.View
-            className="absolute left-0 right-0 bottom-0 bg-dark-bg rounded-t-3xl"
+            className="absolute left-0 right-0 bottom-0 bg-light-bg dark:bg-dark-bg rounded-t-3xl"
             style={[
               {
                 height: sheetHeight,

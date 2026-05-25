@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, useColorScheme } from 'react-native';
 import Animated, {
   useSharedValue,
   withTiming,
@@ -15,12 +15,17 @@ interface AnimatedSplashScreenProps {
   children: React.ReactNode;
 }
 
+const lottieLight = require('../../../../assets/Cloudgenia.json');
+const lottieDark = require('../../../../assets/Cloudgenia-dark.json');
+
 const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
   children
 }) => {
   const animation = useSharedValue(0);
   const [isAppReady, setAppReady] = useState(false);
   const [isSplashAnimationComplete, setAnimationComplete] = useState(false);
+  const colorScheme = useColorScheme();
+  const isLight = colorScheme === 'light';
 
   useEffect(() => {
     // Hide the native splash screen immediately and start our custom animation
@@ -82,7 +87,7 @@ const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: '#000000',
+              backgroundColor: isLight ? '#F5E6D3' : '#000000',
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 1000,
@@ -99,7 +104,7 @@ const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
               width: 500,
               height: 500,
             }}
-            source={require('../../../../assets/Cloudgenia-dark.json')}
+            source={isLight ? lottieLight : lottieDark}
           />
         </Animated.View>
       )}

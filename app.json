@@ -40,11 +40,11 @@
     },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#f1f1f1"
+      "backgroundColor": "#F5E6D3"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -56,7 +56,12 @@
       "splash": {
         "image": "./assets/splash.png",
         "resizeMode": "contain",
-        "backgroundColor": "#f1f1f1"
+        "backgroundColor": "#F5E6D3",
+        "dark": {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1B1C30"
+        }
       },
       "bundleIdentifier": "com.path2us.bittersweet",
       "entitlements": {

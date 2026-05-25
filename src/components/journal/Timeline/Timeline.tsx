@@ -1,5 +1,5 @@
 import { FC, useMemo, useRef, useEffect } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, useColorScheme } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { SessionBlock } from '../SessionBlock';
 import { FocusSession } from '../../../types/models';
@@ -59,6 +59,7 @@ export const Timeline: FC<TimelineProps> = ({
   scrollToSessionId,
   onScrollComplete,
 }) => {
+  const colorScheme = useColorScheme();
   const scrollViewRef = useRef<ScrollView>(null);
   // Filter sessions for the visible time range and sort by start time
   const sortedSessions = useMemo(() => {
@@ -180,7 +181,7 @@ export const Timeline: FC<TimelineProps> = ({
                     backgroundColor: '#6592E9',
                     borderRadius: 6,
                     borderWidth: 2,
-                    borderColor: '#1B1C30',
+                    borderColor: colorScheme === 'dark' ? '#1B1C30' : '#F5E6D3',
                   }}
                 />
                 {/* Blue line */}

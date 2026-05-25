@@ -1,5 +1,5 @@
 import React, { FC } from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet, useColorScheme } from 'react-native';
 import { Typography } from '../../ui/Typography/Typography';
 
 interface EmptyStateProps {
@@ -25,7 +25,6 @@ const styles = StyleSheet.create({
   backgroundCircle: {
     width: 207,
     height: 299,
-    backgroundColor: '#2C2F48',
     borderRadius: 150,
     position: 'absolute',
     transform: [{ rotate: '270deg' }],
@@ -136,7 +135,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   titleText: {
-    color: '#FFFFFF',
     fontFamily: 'Poppins-SemiBold',
     fontSize: 24,
     fontWeight: '600',
@@ -144,7 +142,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   descriptionText: {
-    color: '#CACACA',
     fontFamily: 'Poppins-Regular',
     fontSize: 14,
     fontWeight: '400',
@@ -155,12 +152,16 @@ const styles = StyleSheet.create({
 });
 
 export const EmptyState: FC<EmptyStateProps> = ({ onAddSession }) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const titleColor = isDark ? '#FFFFFF' : '#5D4E37';
+  const descColor = isDark ? '#CACACA' : '#8B7355';
   return (
     <View style={styles.container}>
       {/* Illustration */}
       <View style={styles.illustration}>
         {/* Background circle */}
-        <View style={styles.backgroundCircle} />
+        <View style={[styles.backgroundCircle, { backgroundColor: isDark ? '#2C2F48' : '#D4C4A8' }]} />
         
         {/* Task cards mockup */}
         <View style={[styles.taskCard, styles.taskCard1]}>
@@ -209,13 +210,13 @@ export const EmptyState: FC<EmptyStateProps> = ({ onAddSession }) => {
       <View style={styles.textContent}>
         <Typography
           variant="headline-24"
-          style={styles.titleText}
+          style={[styles.titleText, { color: titleColor }]}
         >
           No sessions for today
         </Typography>
         <Typography
           variant="paragraph-14"
-          style={styles.descriptionText}
+          style={[styles.descriptionText, { color: descColor }]}
         >
           You don't have any schedule for today.{'\n'}Tap the plus button to create a new focus session
         </Typography>

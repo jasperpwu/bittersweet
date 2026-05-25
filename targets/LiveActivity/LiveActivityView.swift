@@ -4,32 +4,51 @@ import WidgetKit
 #if canImport(ActivityKit)
 import AppIntents
 
-  struct ConditionalForegroundViewModifier: ViewModifier {
-    let color: String?
-
-    func body(content: Content) -> some View {
-      if let color = color {
-        content.foregroundStyle(Color(hex: color))
-      } else {
-        content
-      }
-    }
-  }
-
   struct LiveActivityView: View {
     let contentState: LiveActivityAttributes.ContentState
     let attributes: LiveActivityAttributes
+
+    // MARK: - Colors derived from attributes (set by JS based on system appearance)
+
+    private var bgColor: Color {
+      Color(hex: attributes.backgroundColor ?? "#F5E6D3")
+    }
+
+    private var titleColor: Color {
+      Color(hex: attributes.titleColor ?? "#8B4513")
+    }
+
+    private var subtitleColor: Color {
+      Color(hex: attributes.subtitleColor ?? "#8B4513")
+    }
+
+    private var buttonTextColor: Color {
+      // Derive from background: dark bg → white text, light bg → brown text
+      isDarkBg ? .white : Color(hex: "#8B4513")
+    }
+
+    private var buttonBgColor: Color {
+      isDarkBg ? Color.white.opacity(0.2) : Color(hex: "#E0E0E0").opacity(0.5)
+    }
+
+    private var isDarkBg: Bool {
+      attributes.backgroundColor == "#1B1C30"
+    }
 
     var progressViewTint: Color? {
       attributes.progressViewTint.map { Color(hex: $0) }
     }
 
     var body: some View {
-      if contentState.isIdle == true {
-        idleView
-      } else {
-        activeView
+      Group {
+        if contentState.isIdle == true {
+          idleView
+        } else {
+          activeView
+        }
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(bgColor)
     }
 
     // MARK: - Idle State (tag name + last duration + Start button)
@@ -39,7 +58,7 @@ import AppIntents
         HStack(alignment: .top) {
           Text(contentState.title)
             .font(.system(size: 20, weight: .semibold))
-            .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
+            .foregroundStyle(titleColor)
 
           Spacer()
 
@@ -53,7 +72,7 @@ import AppIntents
               .font(.system(size: 36, weight: .bold, design: subtitle == "∞" ? .rounded : .monospaced))
               .minimumScaleFactor(0.8)
               .multilineTextAlignment(.leading)
-              .modifier(ConditionalForegroundViewModifier(color: attributes.progressViewLabelColor))
+              .foregroundStyle(titleColor)
               .padding(.leading, 3)
               .offset(y: -5)
           }
@@ -68,10 +87,10 @@ import AppIntents
               Text("Start")
                 .font(.title3)
                 .fontWeight(.semibold)
-                .foregroundStyle(Color(hex: "#8B4513"))
+                .foregroundStyle(buttonTextColor)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
-                .background(Color(hex: "#E0E0E0").opacity(0.5))
+                .background(buttonBgColor)
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -90,12 +109,12 @@ import AppIntents
             Text(contentState.title)
               .font(.title2)
               .fontWeight(.semibold)
-              .modifier(ConditionalForegroundViewModifier(color: attributes.titleColor))
+              .foregroundStyle(titleColor)
 
             if let subtitle = contentState.subtitle {
               Text(subtitle)
                 .font(.title3)
-                .modifier(ConditionalForegroundViewModifier(color: attributes.subtitleColor))
+                .foregroundStyle(subtitleColor)
             }
           }
 
@@ -122,7 +141,7 @@ import AppIntents
                 .font(.system(size: 28, weight: .bold, design: .monospaced))
                 .minimumScaleFactor(0.8)
                 .multilineTextAlignment(.leading)
-                .modifier(ConditionalForegroundViewModifier(color: attributes.progressViewLabelColor))
+                .foregroundStyle(titleColor)
             } else {
               // Future date: count DOWN to that time (normal mode)
               let startDate: Date = {
@@ -135,12 +154,12 @@ import AppIntents
                 .font(.system(size: 28, weight: .bold, design: .monospaced))
                 .minimumScaleFactor(0.8)
                 .multilineTextAlignment(.leading)
-                .modifier(ConditionalForegroundViewModifier(color: attributes.progressViewLabelColor))
+                .foregroundStyle(titleColor)
             }
           } else if let progress = contentState.progress {
             ProgressView(value: progress)
               .tint(progressViewTint)
-              .modifier(ConditionalForegroundViewModifier(color: attributes.progressViewLabelColor))
+              .foregroundStyle(titleColor)
           }
 
           Spacer()
@@ -151,10 +170,10 @@ import AppIntents
                 Text("End")
                   .font(.title3)
                   .fontWeight(.semibold)
-                  .foregroundStyle(Color(hex: "#8B4513"))
+                  .foregroundStyle(buttonTextColor)
                   .padding(.horizontal, 20)
                   .padding(.vertical, 8)
-                  .background(Color(hex: "#E0E0E0").opacity(0.5))
+                  .background(buttonBgColor)
                   .clipShape(Capsule())
               }
               .buttonStyle(.plain)
@@ -163,10 +182,10 @@ import AppIntents
                 Text("End")
                   .font(.title3)
                   .fontWeight(.semibold)
-                  .foregroundStyle(Color(hex: "#8B4513"))
+                  .foregroundStyle(buttonTextColor)
                   .padding(.horizontal, 20)
                   .padding(.vertical, 8)
-                  .background(Color(hex: "#E0E0E0").opacity(0.5))
+                  .background(buttonBgColor)
                   .clipShape(Capsule())
               }
               .buttonStyle(.plain)

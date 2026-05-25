@@ -12,12 +12,17 @@ module.exports = {
         success: '#51BC6F',
         error: '#EF786C',
         'text-grey': '#CACACA',
-        
-        // Light mode
-        'light-text-primary': '#4C4C4C',
-        'light-text-secondary': '#8A8A8A',
-        'light-border': '#E1E1E1',
-        'light-bg': '#FFFFFF',
+
+        // Light-mode-safe variants for semantic colors on cream bg
+        'success-light': '#2E7D32',
+        'error-light': '#C62828',
+        'primary-light': '#3B6BBF',
+
+        // Light mode — warm/earthy (aligned with widget)
+        'light-text-primary': '#5D4E37',
+        'light-text-secondary': '#6B5A42',
+        'light-border': '#D4C4A8',
+        'light-bg': '#F5E6D3',
         
         // Dark mode
         'dark-text-primary': '#FFFFFF',

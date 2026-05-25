@@ -41,7 +41,7 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
     <Card className="p-4">
       <View className="flex-row items-center justify-between">
         <View className="flex-1 mr-3">
-          <Typography variant="body-14" color="white">
+          <Typography variant="body-14" color="primary">
             {goal.name}
           </Typography>
           <Typography variant="body-12" color="secondary" className="mt-1">

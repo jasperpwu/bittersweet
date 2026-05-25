@@ -1,6 +1,6 @@
 import React, { FC, useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useIsFocused } from '@react-navigation/native';
-import { View, Pressable, Share, Platform } from 'react-native';
+import { View, Pressable, Share, Platform, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -500,13 +500,13 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   }));
 
   return (
-    <View className="bg-dark-bg border border-dark-border rounded-xl px-4 py-3">
+    <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-3">
       <View className="flex-row items-center">
         {/* Compact progress indicator */}
-        <View className="mr-3 items-center justify-center w-10 h-10 rounded-full bg-dark-border">
+        <View className="mr-3 items-center justify-center w-10 h-10 rounded-full bg-light-border dark:bg-dark-border">
           <Typography
             variant="body-12"
-            className="text-white font-poppins-semibold"
+            className="text-light-text-primary dark:text-white font-poppins-semibold"
           >
             {Math.round(goal.percentage)}%
           </Typography>
@@ -517,7 +517,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
           <View className="flex-row items-center">
             <Typography
               variant="body-14"
-              className="text-white font-poppins-semibold"
+              className="text-light-text-primary dark:text-white font-poppins-semibold"
             >
               {goal.name}
             </Typography>
@@ -529,7 +529,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
           </View>
 
           <View className="flex-row items-center mt-0.5">
-            <Typography variant="body-12" className="text-white font-poppins-medium">
+            <Typography variant="body-12" className="text-light-text-primary dark:text-white font-poppins-medium">
               {formatTime(goal.currentProgress)} / {formatTime(effectiveTarget)}
             </Typography>
           </View>
@@ -568,7 +568,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
       )}
 
       {/* Progress bar */}
-      <View className="mt-2 h-2 rounded-full bg-dark-border overflow-hidden relative">
+      <View className="mt-2 h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden relative">
         <View
           className={`h-full ${goal.percentage >= 100 ? '' : 'bg-primary'}`}
           style={{ width: `${progressWidth}%`, ...(goal.percentage >= 100 && { backgroundColor: TRACK_COLORS.healthy }) }}
@@ -715,7 +715,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
   // Goal header for the screenshot capture
   const goalHeader = (
     <View className="mb-3">
-      <Typography variant="subtitle-16" className="text-white">
+      <Typography variant="subtitle-16" className="text-light-text-primary dark:text-dark-text-primary">
         {goal.name}
       </Typography>
     </View>
@@ -723,10 +723,10 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
   // Footer row with total hours + share button
   const footerRow = (
-    <View className="mt-3 pt-3 border-t border-dark-border flex-row items-center justify-between">
+    <View className="mt-3 pt-3 border-t border-light-border dark:border-dark-border flex-row items-center justify-between">
       <View className="flex-1">
         {(goal as any).showTotalHours && (
-          <Typography variant="body-14" className="text-white font-poppins-semibold">
+          <Typography variant="body-14" className="text-light-text-primary dark:text-dark-text-primary font-poppins-semibold">
             ⏱️ {formatTotalHours(totalMinutesAll)} total
           </Typography>
         )}
@@ -743,7 +743,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
     return (
       <Pressable className="mt-2" onPress={onCollapse}>
-        <View ref={captureAreaRef} collapsable={false} className="bg-dark-bg border border-dark-border rounded-xl p-4">
+        <View ref={captureAreaRef} collapsable={false} className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4">
           {goalHeader}
           <View className="flex-row items-center justify-between mb-3">
             <Typography variant="body-12" color="secondary">
@@ -769,7 +769,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
                   r.hit ? (
                     <View className="w-5 h-5 rounded-sm" style={{ backgroundColor: TRACK_COLORS.healthy }} />
                   ) : (
-                    <View className="w-5 h-5 rounded-sm bg-dark-border overflow-hidden">
+                    <View className="w-5 h-5 rounded-sm bg-light-border dark:bg-dark-border overflow-hidden">
                       <View
                         className="absolute bottom-0 left-0 right-0 bg-primary"
                         style={{ height: `${r.fillPercent}%` }}
@@ -799,7 +799,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
     return (
       <Pressable className="mt-2" onPress={onCollapse}>
-        <View ref={captureAreaRef} collapsable={false} className="bg-dark-bg border border-dark-border rounded-xl p-4">
+        <View ref={captureAreaRef} collapsable={false} className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4">
           {goalHeader}
           <View className="flex-row items-center justify-between mb-3">
             <Typography variant="body-12" color="secondary">
@@ -820,7 +820,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
                     />
                   ) : (
                     <View
-                      className="rounded-sm mb-1 bg-dark-border overflow-hidden"
+                      className="rounded-sm mb-1 bg-light-border dark:bg-dark-border overflow-hidden"
                       style={{ width: 28, height: 28 }}
                     >
                       <View
@@ -848,7 +848,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
   // Weekly — horizontal row of blocks
   return (
     <Pressable className="mt-2" onPress={onCollapse}>
-      <View ref={captureAreaRef} collapsable={false} className="bg-dark-bg border border-dark-border rounded-xl p-4">
+      <View ref={captureAreaRef} collapsable={false} className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4">
         {goalHeader}
         <View className="flex-row items-center justify-between mb-3">
           <Typography variant="body-12" color="secondary">
@@ -864,7 +864,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
               {r.hit ? (
                 <View className="w-5 h-5 rounded-sm mb-1" style={{ backgroundColor: TRACK_COLORS.healthy }} />
               ) : (
-                <View className="w-5 h-5 rounded-sm mb-1 bg-dark-border overflow-hidden">
+                <View className="w-5 h-5 rounded-sm mb-1 bg-light-border dark:bg-dark-border overflow-hidden">
                   <View
                     className="absolute bottom-0 left-0 right-0 bg-primary"
                     style={{ height: `${r.fillPercent}%` }}
@@ -918,9 +918,9 @@ const GoalEmptyPlaceholder: FC = () => {
       </View>
 
       {/* Placeholder Goal Row */}
-      <View className="bg-dark-bg border border-dark-border rounded-xl px-4 py-3 mb-3 opacity-60">
+      <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-3 mb-3 opacity-60">
         <View className="flex-row items-center">
-          <View className="mr-3 items-center justify-center w-10 h-10 rounded-full bg-dark-border">
+          <View className="mr-3 items-center justify-center w-10 h-10 rounded-full bg-light-border dark:bg-dark-border">
             <Typography variant="body-12" className="text-white font-poppins-semibold">
               72%
             </Typography>
@@ -963,7 +963,7 @@ const GoalEmptyPlaceholder: FC = () => {
         </View>
 
         {/* Progress bar */}
-        <View className="mt-2 h-2 rounded-full bg-dark-border overflow-hidden relative">
+        <View className="mt-2 h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden relative">
           <View
             className="h-full bg-primary"
             style={{ width: `${72 * (GOAL_THRESHOLD_PERCENT / 100)}%` }}
@@ -980,7 +980,7 @@ const GoalEmptyPlaceholder: FC = () => {
       </View>
 
       {/* Placeholder Monthly Calendar */}
-      <View className="bg-dark-bg border border-dark-border rounded-xl p-4 mb-4 opacity-60">
+      <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4 mb-4 opacity-60">
         <View className="flex-row items-center justify-between mb-3">
           <Typography variant="body-12" className="text-gray-200">
             Last 12 months
@@ -1000,7 +1000,7 @@ const GoalEmptyPlaceholder: FC = () => {
                   />
                 ) : (
                   <View
-                    className="rounded-sm mb-1 bg-dark-border overflow-hidden"
+                    className="rounded-sm mb-1 bg-light-border dark:bg-dark-border overflow-hidden"
                     style={{ width: 28, height: 28 }}
                   >
                     <View
@@ -1019,7 +1019,7 @@ const GoalEmptyPlaceholder: FC = () => {
             ))}
           </View>
         ))}
-        <View className="mt-3 pt-3 border-t border-dark-border items-center">
+        <View className="mt-3 pt-3 border-t border-light-border dark:border-dark-border items-center">
           <Typography variant="body-14" className="text-white font-poppins-semibold">
             ⏱️ 402h total
           </Typography>

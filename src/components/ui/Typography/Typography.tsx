@@ -28,8 +28,8 @@ const variantClasses = {
 const colorClasses = {
   primary: 'text-light-text-primary dark:text-dark-text-primary',
   secondary: 'text-light-text-secondary dark:text-dark-text-secondary',
-  error: 'text-error',
-  success: 'text-success',
+  error: 'text-error-light dark:text-error',
+  success: 'text-success-light dark:text-success',
   white: 'text-white',
 };
 

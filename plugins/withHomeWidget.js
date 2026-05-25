@@ -70,6 +70,25 @@ const withHomeWidget = (config) => {
         }
       }
 
+      // 1b. Copy Live Activity color sets into widget extension Assets.xcassets
+      const laAssetsSource = path.join(liveActivitySourceDir, "Assets.xcassets");
+      const laAssetsDest = path.join(liveActivityDir, "Assets.xcassets");
+      if (fs.existsSync(laAssetsSource)) {
+        const colorSets = fs.readdirSync(laAssetsSource).filter(d => d.endsWith(".colorset"));
+        for (const colorSet of colorSets) {
+          const srcDir = path.join(laAssetsSource, colorSet);
+          const destDir = path.join(laAssetsDest, colorSet);
+          if (!fs.existsSync(destDir)) {
+            fs.mkdirSync(destDir, { recursive: true });
+          }
+          const files = fs.readdirSync(srcDir);
+          for (const f of files) {
+            fs.copyFileSync(path.join(srcDir, f), path.join(destDir, f));
+          }
+          console.log(`[withHomeWidget] Copied color set ${colorSet} to widget extension assets`);
+        }
+      }
+
       // 2. Copy owned Live Activity Swift files, overwriting library's versions
       for (const file of liveActivityFiles) {
         const src = path.join(liveActivitySourceDir, file);

@@ -37,7 +37,7 @@ export const CalendarView: FC<CalendarViewProps> = ({
   };
 
   return (
-    <View className="bg-white dark:bg-dark-bg">
+    <View className="bg-light-bg dark:bg-dark-bg">
       {/* Calendar Header */}
       <View className="flex-row justify-between items-center px-4 py-3 border-b border-light-border dark:border-dark-border">
         <Typography variant="headline-18" color="primary">

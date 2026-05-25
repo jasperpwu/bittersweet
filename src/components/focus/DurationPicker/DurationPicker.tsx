@@ -7,6 +7,7 @@ import {
   Animated,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  useColorScheme,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../../ui/Typography';
@@ -39,6 +40,7 @@ const formatDisplay = (totalMinutes: number): string => {
 
 
 export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeChange }) => {
+  const colorScheme = useColorScheme();
   const [isOpen, setIsOpen] = useState(false);
   const [pendingHours, setPendingHours] = useState(Math.floor(selectedTime / 60));
   const [pendingMinutes, setPendingMinutes] = useState(selectedTime % 60);
@@ -78,7 +80,7 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
       <Pressable onPress={handleOpen} style={{ alignItems: 'center' }}>
         <Text
           style={{
-            color: '#FFFFFF',
+            color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
             fontSize: 64,
             fontFamily: 'Poppins-Bold',
             textAlign: 'center',
@@ -94,7 +96,7 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
         height={SHEET_HEIGHT}
 >
         <View style={{ paddingTop: 24 }}>
-          <Typography variant="headline-20" color="white" className="mb-3">
+          <Typography variant="headline-20" color="primary" className="mb-3">
             Set Duration
           </Typography>
 

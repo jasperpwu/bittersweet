@@ -1,5 +1,5 @@
 import React, { FC } from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -27,10 +27,12 @@ interface HeaderProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const ActionButton: FC<{ action: HeaderAction; variant?: 'default' | 'danger' }> = ({ 
-  action, 
-  variant = 'default' 
+const ActionButton: FC<{ action: HeaderAction; variant?: 'default' | 'danger' }> = ({
+  action,
+  variant = 'default'
 }) => {
+  const colorScheme = useColorScheme();
+  const iconColor = colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37';
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -58,7 +60,7 @@ const ActionButton: FC<{ action: HeaderAction; variant?: 'default' | 'danger' }>
       <Ionicons 
         name={action.icon as keyof typeof Ionicons.glyphMap}
         size={20}
-        color={variant === 'danger' ? '#EF786C' : '#FFFFFF'}
+        color={variant === 'danger' ? '#EF786C' : iconColor}
       />
     </AnimatedPressable>
   );
@@ -70,17 +72,19 @@ export const Header: FC<HeaderProps> = ({
   leftComponent,
   rightAction,
   variant = 'default',
-  backgroundColor = '#1B1C30',
+  backgroundColor,
   useSafeArea = true,
 }) => {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const defaultBg = colorScheme === 'dark' ? '#1B1C30' : '#F5E6D3';
 
   return (
-    <View 
-      className="bg-dark-bg border-b border-dark-border"
-      style={{ 
+    <View
+      className="bg-light-bg dark:bg-dark-bg border-b border-light-border dark:border-dark-border"
+      style={{
         paddingTop: useSafeArea ? insets.top : 0,
-        backgroundColor,
+        ...(backgroundColor ? { backgroundColor } : { backgroundColor: defaultBg }),
       }}
     >
       <View className="flex-row items-center justify-between h-14 px-4">
@@ -92,7 +96,7 @@ export const Header: FC<HeaderProps> = ({
 
         {/* Title */}
         <View className="flex-1 items-center">
-          <Typography variant="headline-18" color="white">
+          <Typography variant="headline-18" color="primary">
             {title}
           </Typography>
         </View>

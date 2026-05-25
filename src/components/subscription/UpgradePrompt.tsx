@@ -41,10 +41,10 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
   return (
     <BottomSheet isVisible={isVisible} onClose={onClose} height={380}>
       <View className="items-center mb-4">
-        <View className="w-14 h-14 rounded-full bg-[#2A2B4A] items-center justify-center mb-4">
+        <View className="w-14 h-14 rounded-full bg-light-border/30 dark:bg-[#2A2B4A] items-center justify-center mb-4">
           <Ionicons name="diamond-outline" size={28} color="#8B7FFF" />
         </View>
-        <Typography variant="headline-20" color="white" className="text-center mb-2">
+        <Typography variant="headline-20" color="primary" className="text-center mb-2">
           {copy.title}
         </Typography>
         <Typography variant="body-14" color="secondary" className="text-center">
@@ -53,14 +53,14 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
       </View>
 
       {/* Perks */}
-      <View className="bg-[#2A2B4A] rounded-2xl p-4 mb-6">
+      <View className="bg-light-border/30 dark:bg-[#2A2B4A] rounded-2xl p-4 mb-6">
         {PERKS.map((perk, i) => (
           <View
             key={perk.label}
-            className={`flex-row items-center py-2 ${i < PERKS.length - 1 ? 'border-b border-dark-border' : ''}`}
+            className={`flex-row items-center py-2 ${i < PERKS.length - 1 ? 'border-b border-light-border dark:border-dark-border' : ''}`}
           >
             <Ionicons name={perk.icon} size={18} color="#8B7FFF" />
-            <Typography variant="subtitle-14-medium" color="white" className="ml-3">
+            <Typography variant="subtitle-14-medium" color="primary" className="ml-3">
               {perk.label}
             </Typography>
           </View>

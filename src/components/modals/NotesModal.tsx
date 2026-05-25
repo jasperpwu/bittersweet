@@ -1,5 +1,5 @@
 import React, { FC, useState } from 'react';
-import { View, Modal, Pressable, Switch } from 'react-native';
+import { View, Modal, Pressable, Switch, useColorScheme } from 'react-native';
 import { Typography } from '../ui/Typography';
 import { Input } from '../ui/Input';
 
@@ -36,6 +36,7 @@ export const NotesModal: FC<NotesModalProps> = ({
   targetDurationMinutes = 0,
   bonusSeconds = 0,
 }) => {
+  const colorScheme = useColorScheme();
   const [notes, setNotes] = useState(initialNotes);
   const [includeBonusTime, setIncludeBonusTime] = useState(true);
 
@@ -68,11 +69,11 @@ export const NotesModal: FC<NotesModalProps> = ({
       >
         {/* Modal Content */}
         <Pressable className="w-full max-w-md" onPress={(e) => e.stopPropagation()}>
-          <View className="bg-dark-bg rounded-xl p-6 border border-dark-border">
+          <View className="bg-light-bg dark:bg-dark-bg rounded-xl p-6 border border-light-border dark:border-dark-border">
             {/* Header */}
             <Typography
               variant="headline-18"
-              className="text-dark-text-primary mb-4 text-center"
+              className="text-light-text-primary dark:text-dark-text-primary mb-4 text-center"
             >
               Add Session Notes
             </Typography>
@@ -93,7 +94,7 @@ export const NotesModal: FC<NotesModalProps> = ({
             {hadBonusTime && bonusSeconds > 0 && (
               <View className="mb-6">
                 <View className="flex-row items-center justify-between mb-2">
-                  <Typography variant="subtitle-14-semibold" color="white">
+                  <Typography variant="subtitle-14-semibold" color="primary">
                     Include Bonus Time
                   </Typography>
                   <Switch
@@ -116,9 +117,9 @@ export const NotesModal: FC<NotesModalProps> = ({
             <View className="flex-row" style={{ gap: 12 }}>
               <Pressable
                 onPress={handleSkip}
-                className="flex-1 rounded-xl items-center justify-center py-3 border border-dark-border active:opacity-80"
+                className="flex-1 rounded-xl items-center justify-center py-3 border border-light-border dark:border-dark-border active:opacity-80"
               >
-                <Typography variant="subtitle-14-semibold" color="white">
+                <Typography variant="subtitle-14-semibold" color="primary">
                   Skip
                 </Typography>
               </Pressable>
@@ -128,7 +129,7 @@ export const NotesModal: FC<NotesModalProps> = ({
               >
                 <Typography
                   variant="subtitle-14-semibold"
-                  style={{ color: '#1B1C30' }}
+                  style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#F5E6D3' }}
                 >
                   Save Notes
                 </Typography>

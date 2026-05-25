@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, FlatList, useWindowDimensions } from 'react-native';
+import { View, FlatList, useWindowDimensions, useColorScheme } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../src/components/ui/Typography';
@@ -40,6 +40,7 @@ const ONBOARDING_DATA = [
 ];
 
 export default function OnboardingScreen() {
+  const colorScheme = useColorScheme();
   const { width } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -78,13 +79,13 @@ export default function OnboardingScreen() {
       <View style={{ width }} className="flex-1 items-center justify-center px-8">
         <View
           className="mb-12 items-center justify-center rounded-[40px] p-10 shadow-sm"
-          style={{ width: width * 0.7, aspectRatio: 1, backgroundColor: '#2A2A2A' }}>
+          style={{ width: width * 0.7, aspectRatio: 1, backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC' }}>
           <Ionicons name={item.iconName as any} size={100} color={item.iconColor} />
         </View>
-        <Typography variant="headline-24" color="white" className="mb-4 text-center">
+        <Typography variant="headline-24" color="primary" className="mb-4 text-center">
           {item.title}
         </Typography>
-        <Typography variant="body-16" color="white" className="text-center opacity-80">
+        <Typography variant="body-16" color="primary" className="text-center opacity-80">
           {item.description}
         </Typography>
       </View>
@@ -92,7 +93,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <View className="flex-1 bg-dark-bg">
+    <View className="flex-1 bg-light-bg dark:bg-dark-bg">
       <FlatList
         ref={flatListRef}
         data={ONBOARDING_DATA}
@@ -113,7 +114,7 @@ export default function OnboardingScreen() {
             <View
               key={index}
               className={`mx-1 h-2 rounded-full ${
-                index === currentIndex ? 'w-6 bg-primary' : 'w-2 bg-dark-border'
+                index === currentIndex ? 'w-6 bg-primary' : 'w-2 bg-light-border dark:bg-dark-border'
               }`}
             />
           ))}

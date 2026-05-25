@@ -113,7 +113,7 @@ export const TimePicker: FC<TimePickerProps> = ({
   return (
     <View className="w-full">
       {label && (
-        <Typography variant="subtitle-14-medium" color="white" className="mb-2">
+        <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
           {label}
         </Typography>
       )}
@@ -123,7 +123,7 @@ export const TimePicker: FC<TimePickerProps> = ({
         disabled={disabled}
         className={`
           flex-row items-center justify-between
-          bg-transparent border border-dark-border
+          bg-transparent border border-light-border dark:border-dark-border
           rounded-xl px-4 py-3 min-h-12
           ${disabled ? 'opacity-50' : 'active:opacity-80'}
           ${error ? 'border-error' : ''}
@@ -131,7 +131,7 @@ export const TimePicker: FC<TimePickerProps> = ({
         accessibilityRole="button"
         accessibilityLabel={`Select time, currently ${formatTime(value)}`}
         accessibilityHint="Double tap to open time picker">
-        <Typography variant="body-14" color="white">
+        <Typography variant="body-14" color="primary">
           {formatTime(value)}
         </Typography>
 
@@ -148,8 +148,8 @@ export const TimePicker: FC<TimePickerProps> = ({
         (Platform.OS === 'ios' ? (
           <Modal transparent visible animationType="none">
             <View className="flex-1 bg-black/60 justify-center items-center px-6">
-              <View className="bg-dark-bg rounded-3xl p-6 w-full max-w-sm border border-dark-border">
-                <Typography variant="headline-20" color="white" className="mb-4 text-center">
+              <View className="bg-light-bg dark:bg-dark-bg rounded-3xl p-6 w-full max-w-sm border border-light-border dark:border-dark-border">
+                <Typography variant="headline-20" color="primary" className="mb-4 text-center">
                   Select Time
                 </Typography>
 
@@ -180,8 +180,8 @@ export const TimePicker: FC<TimePickerProps> = ({
                 <View className="flex-row justify-end mt-6 gap-3">
                   <Pressable
                     onPress={handleCancel}
-                    className="flex-1 bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80">
-                    <Typography variant="subtitle-14-semibold" color="white">
+                    className="flex-1 bg-light-border/30 dark:bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80">
+                    <Typography variant="subtitle-14-semibold" color="primary">
                       Cancel
                     </Typography>
                   </Pressable>

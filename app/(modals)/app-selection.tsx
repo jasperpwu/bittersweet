@@ -3,7 +3,8 @@ import {
   View,
   SafeAreaView,
   Pressable,
-  Alert
+  Alert,
+  useColorScheme
 } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
 import { useBlocklist, useBlocklistActions } from '../../src/store';
@@ -14,6 +15,7 @@ import { DeviceActivitySelectionView, DeviceActivitySelectionViewPersisted, getF
 import { Stack } from 'expo-router';
 
 export default function AppSelectionScreen() {
+  const colorScheme = useColorScheme();
   const { triggerHaptic } = useDeviceIntegration();
   const { updateBlockedApps } = useBlocklistActions();
   const { settings, currentSelectionId } = useBlocklist();
@@ -197,15 +199,15 @@ export default function AppSelectionScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView className="flex-1 bg-dark-bg">
+      <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
-      <View className="h-[76px] px-5 flex-row items-center justify-between border-b border-dark-border">
+      <View className="h-[76px] px-5 flex-row items-center justify-between border-b border-light-border dark:border-dark-border">
         <Pressable onPress={handleClose} className="active:opacity-70">
           <Typography variant="body-14" className="text-primary">
             Cancel
           </Typography>
         </Pressable>
-        <Typography variant="headline-18" color="white">
+        <Typography variant="headline-18" color="primary">
           Select Apps
         </Typography>
         <Pressable
@@ -230,7 +232,7 @@ export default function AppSelectionScreen() {
         <DeviceActivitySelectionViewPersisted
           style={{
             flex: 1,
-            backgroundColor: '#1A1A1A' // Match your dark theme
+            backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F5E6D3'
           }}
           onSelectionChange={handleSelectionChange}
           familyActivitySelectionId="bittersweet-blocklist"

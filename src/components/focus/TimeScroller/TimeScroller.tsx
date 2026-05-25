@@ -1,5 +1,5 @@
 import { FC, useRef, useEffect, useMemo } from 'react';
-import { View, Dimensions, Animated } from 'react-native';
+import { View, Dimensions, Animated, useColorScheme } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 interface TimeScrollerProps {
@@ -46,7 +46,10 @@ const TickItem: FC<{
   time: number;
   index: number;
   scrollX: Animated.Value;
-}> = ({ time, index, scrollX }) => {
+  textColor: string;
+  minorTickColor: string;
+  majorTickColor: string;
+}> = ({ time, index, scrollX, textColor, minorTickColor, majorTickColor }) => {
   const itemCenter = index * TICK_SPACING; // scroll position when this item is centered
 
   // Distance from center in scroll coordinates
@@ -92,7 +95,7 @@ const TickItem: FC<{
       <View style={{ height: 80, justifyContent: 'center', width: TICK_SPACING }}>
         <Animated.Text
           style={{
-            color: '#FFFFFF',
+            color: textColor,
             fontSize: time >= 60 ? 36 : 56,
             fontFamily: FONT_BOLD,
             textAlign: 'center',
@@ -120,7 +123,7 @@ const TickItem: FC<{
                 left: left - 1,
                 width: 2,
                 height: 10,
-                backgroundColor: 'rgba(255,255,255,0.25)',
+                backgroundColor: minorTickColor,
                 borderRadius: 1,
               }}
             />
@@ -133,7 +136,7 @@ const TickItem: FC<{
         style={{
           width: 3,
           height: 24,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: majorTickColor,
           borderRadius: 1.5,
           opacity: tickOpacity,
         }}
@@ -146,6 +149,12 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   selectedTime,
   onTimeChange,
 }) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const textColor = isDark ? '#FFFFFF' : '#5D4E37';
+  const minorTickColor = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(93,78,55,0.25)';
+  const majorTickColor = isDark ? '#FFFFFF' : '#5D4E37';
+  const indicatorColor = isDark ? '#FFFFFF' : '#5D4E37';
   const scrollViewRef = useRef<typeof Animated.ScrollView | null>(null);
   const isUserScrollingRef = useRef(false);
   const lastSnappedRef = useRef(selectedTime);
@@ -223,7 +232,7 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
             top: 58,
             width: 6,
             height: 40,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: indicatorColor,
             borderRadius: 3,
             zIndex: 10,
           }}
@@ -244,7 +253,7 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
           }}
         >
           {TIME_VALUES.map((time, idx) => (
-            <TickItem key={time} time={time} index={idx} scrollX={scrollX} />
+            <TickItem key={time} time={time} index={idx} scrollX={scrollX} textColor={textColor} minorTickColor={minorTickColor} majorTickColor={majorTickColor} />
           ))}
         </Animated.ScrollView>
       </View>
@@ -261,7 +270,7 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
             borderBottomWidth: 12,
             borderLeftColor: 'transparent',
             borderRightColor: 'transparent',
-            borderBottomColor: '#FFFFFF',
+            borderBottomColor: indicatorColor,
           }}
         />
       </View>

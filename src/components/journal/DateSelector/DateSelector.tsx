@@ -1,5 +1,5 @@
 import { FC, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, Pressable, FlatList, useWindowDimensions } from 'react-native';
+import { View, Pressable, FlatList, useWindowDimensions, useColorScheme } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -62,11 +62,13 @@ const DateItem: FC<{
 }> = ({ date, isSelected, isToday, onPress, itemWidth }) => {
   const scale = useSharedValue(1);
   const backgroundColor = useSharedValue(isSelected ? 1 : 0);
+  const colorScheme = useColorScheme();
+  const unselectedBg = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: withSpring(scale.value, { damping: 15, stiffness: 300 }) }],
     backgroundColor: withTiming(
-      backgroundColor.value === 1 ? '#6592E9' : 'rgba(255,255,255,0.08)',
+      backgroundColor.value === 1 ? '#6592E9' : unselectedBg,
       { duration: 200 }
     ),
   }));

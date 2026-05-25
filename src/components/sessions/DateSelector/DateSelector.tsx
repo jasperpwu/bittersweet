@@ -1,5 +1,5 @@
 import { FC, useRef, useEffect } from 'react';
-import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, ScrollView, Pressable, StyleSheet, useColorScheme } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -44,10 +44,10 @@ const formatDayName = (date: Date) => {
   return date.toLocaleDateString('en-US', { weekday: 'short' });
 };
 
-const styles = StyleSheet.create({
+const createStyles = (isDark: boolean) => StyleSheet.create({
   container: {
     paddingVertical: 16,
-    backgroundColor: '#1B1C30',
+    backgroundColor: isDark ? '#1B1C30' : '#F5E6D3',
   },
   scrollView: {
     flexGrow: 0,
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   dateItemUnselected: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#575757',
+    borderColor: isDark ? '#575757' : '#D4C4A8',
   },
   dateItemSelected: {
     backgroundColor: '#6592E9',
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   dayNumberUnselected: {
-    color: '#FFFFFF',
+    color: isDark ? '#FFFFFF' : '#5D4E37',
   },
   dayName: {
     fontFamily: 'Poppins-Regular',
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   dayNameUnselected: {
-    color: '#CACACA',
+    color: isDark ? '#CACACA' : '#8B7355',
   },
   spacer: {
     height: 4,
@@ -110,6 +110,8 @@ export const DateSelector: FC<DateSelectorProps> = ({
   onNextWeek,
   currentWeekStart,
 }) => {
+  const colorScheme = useColorScheme();
+  const styles = createStyles(colorScheme === 'dark');
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Auto-scroll to selected date on mount

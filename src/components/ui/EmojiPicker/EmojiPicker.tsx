@@ -1,5 +1,5 @@
 import React, { FC } from 'react';
-import { View, Modal, Pressable, ScrollView, Text } from 'react-native';
+import { View, Modal, Pressable, ScrollView, Text, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../Typography';
 
@@ -27,6 +27,9 @@ export const EmojiPickerModal: FC<EmojiPickerModalProps> = ({
   onEmojiSelect,
   title = 'Choose Emoji',
 }) => {
+  const colorScheme = useColorScheme();
+  const closeIconColor = colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37';
+
   return (
     <Modal
       visible={visible}
@@ -35,17 +38,17 @@ export const EmojiPickerModal: FC<EmojiPickerModalProps> = ({
       onRequestClose={onClose}
     >
       <View className="flex-1 bg-black bg-opacity-50 justify-center items-center">
-        <View className="bg-dark-bg rounded-3xl w-11/12 h-3/5">
+        <View className="bg-light-bg dark:bg-dark-bg rounded-3xl w-11/12 h-3/5">
           {/* Header */}
-          <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
-            <Typography variant="headline-20" color="white">
+          <View className="flex-row items-center justify-between p-6 border-b border-light-border dark:border-dark-border">
+            <Typography variant="headline-20" color="primary">
               {title}
             </Typography>
             <Pressable
               onPress={onClose}
-              className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center"
+              className="w-8 h-8 rounded-full bg-light-border/30 dark:bg-gray-700 items-center justify-center"
             >
-              <Ionicons name="close" size={20} color="#FFFFFF" />
+              <Ionicons name="close" size={20} color={closeIconColor} />
             </Pressable>
           </View>
 
@@ -61,7 +64,7 @@ export const EmojiPickerModal: FC<EmojiPickerModalProps> = ({
                     <Pressable
                       key={index}
                       onPress={() => onEmojiSelect(emoji)}
-                      className="w-12 h-12 items-center justify-center m-1 rounded-lg bg-gray-700 active:bg-gray-600"
+                      className="w-12 h-12 items-center justify-center m-1 rounded-lg bg-light-border/30 dark:bg-gray-700 active:bg-light-border dark:active:bg-gray-600"
                     >
                       <Text className="text-2xl">
                         {emoji}

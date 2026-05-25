@@ -141,7 +141,7 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
               px-4 py-2.5 ${onDelete ? 'pr-10' : ''} rounded-xl relative
               ${selected
                 ? 'bg-primary'
-                : 'bg-dark-border'
+                : 'bg-light-border dark:bg-dark-border'
               }
               ${disabled ? 'opacity-50' : 'active:opacity-80'}
               ${isDragging ? 'shadow-lg' : ''}
@@ -211,23 +211,23 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
       onRequestClose={handleCancelDelete}
     >
       <View className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4">
-        <View className="bg-gray-800 rounded-3xl w-full max-w-sm overflow-hidden">
+        <View className="bg-light-bg dark:bg-gray-800 rounded-3xl w-full max-w-sm overflow-hidden">
           {/* Modal Header */}
-          <View className="p-6 border-b border-gray-700">
-            <Typography variant="headline-20" color="white" className="text-center">
+          <View className="p-6 border-b border-light-border dark:border-gray-700">
+            <Typography variant="headline-20" color="primary" className="text-center">
               Delete Tag
             </Typography>
           </View>
 
           {/* Warning content */}
           <View className="p-6">
-            <Typography variant="body-14" color="white" className="leading-5">
+            <Typography variant="body-14" color="primary" className="leading-5">
               Deleting "{tagToDelete?.name}" will permanently remove all focus sessions associated with it. This action cannot be undone.
             </Typography>
           </View>
 
           {/* Action buttons */}
-          <View className="p-4 border-t border-gray-700 flex-row space-x-3">
+          <View className="p-4 border-t border-light-border dark:border-gray-700 flex-row space-x-3">
             <Pressable
               onPress={handleCancelDelete}
               className="flex-1 bg-gray-600 rounded-2xl py-4 items-center active:opacity-80"

@@ -104,9 +104,9 @@ export const DayView: FC<DayViewProps> = ({
   };
 
   return (
-    <View className="flex-1 bg-dark-bg">
+    <View className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Day Header */}
-      <View className="px-4 py-3 border-b border-dark-border">
+      <View className="px-4 py-3 border-b border-light-border dark:border-dark-border">
         <View className="flex-row justify-between items-center mb-2">
           <View className="flex-row items-center">
             <Pressable 
@@ -116,7 +116,7 @@ export const DayView: FC<DayViewProps> = ({
               <Typography variant="body-14" color="primary">‹</Typography>
             </Pressable>
             <View className="mx-3">
-              <Typography variant="headline-18" color="white" className="font-semibold">
+              <Typography variant="headline-18" color="primary" className="font-semibold">
                 {formatDateHeader(selectedDate)}
               </Typography>
             </View>
@@ -135,7 +135,7 @@ export const DayView: FC<DayViewProps> = ({
                 <Pressable
                   key={mode}
                   onPress={() => onViewModeChange(mode)}
-                  className={`px-3 py-1 rounded-full ${mode === 'day' ? 'bg-primary' : 'bg-dark-bg'}`}
+                  className={`px-3 py-1 rounded-full ${mode === 'day' ? 'bg-primary' : 'bg-light-bg dark:bg-dark-bg'}`}
                 >
                   <Typography 
                     variant="body-12" 
@@ -170,7 +170,7 @@ export const DayView: FC<DayViewProps> = ({
           return (
             <View key={hour} className="flex-row">
               {/* Time Column */}
-              <View className="w-16 py-4 px-2 border-r border-dark-border">
+              <View className="w-16 py-4 px-2 border-r border-light-border dark:border-dark-border">
                 <Typography variant="body-12" color="secondary" className="text-right">
                   {displayTime.replace(' AM', '').replace(' PM', '')}
                 </Typography>
@@ -180,10 +180,10 @@ export const DayView: FC<DayViewProps> = ({
               </View>
 
               {/* Content Column */}
-              <View className="flex-1 min-h-[60px] border-b border-dark-border/30">
+              <View className="flex-1 min-h-[60px] border-b border-light-border/30 dark:border-dark-border/30">
                 {isEmpty ? (
                   <Pressable 
-                    className="flex-1 py-4 px-4 active:bg-dark-border/20"
+                    className="flex-1 py-4 px-4 active:bg-light-border/20 dark:active:bg-dark-border/20"
                     onPress={() => onTimeSlotPress?.(hour)}
                   >
                     <Typography variant="body-12" color="secondary" className="opacity-40">
@@ -219,7 +219,7 @@ export const DayView: FC<DayViewProps> = ({
 
       {/* Summary Footer */}
       {daySessionEntries.length > 0 && (
-        <View className="px-4 py-3 border-t border-dark-border bg-dark-bg">
+        <View className="px-4 py-3 border-t border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg">
           <View className="flex-row justify-between">
             <Typography variant="body-12" color="secondary">
               {daySessionEntries.length} session{daySessionEntries.length !== 1 ? 's' : ''}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, SafeAreaView, Pressable, Alert, Share, Linking } from 'react-native';
+import { View, ScrollView, SafeAreaView, Pressable, Alert, Share, Linking, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { Toggle } from '../../src/components/ui/Toggle';
@@ -39,6 +39,9 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
   onPress,
   isLast = false,
 }) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   return (
     <Pressable
       onPress={onPress}
@@ -46,17 +49,17 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
       className={`
         w-full flex-row items-center py-3
         ${onPress ? 'active:opacity-70' : ''}
-        ${!isLast ? 'border-b border-dark-border' : ''}
+        ${!isLast ? 'border-b border-light-border dark:border-dark-border' : ''}
       `}
     >
       {icon && (
         <View className="w-8 items-center mr-3">
-          <Ionicons name={icon} size={20} color="#CACACA" />
+          <Ionicons name={icon} size={20} color={isDark ? '#CACACA' : '#8B7355'} />
         </View>
       )}
 
       <View className="flex-1 mr-3">
-        <Typography variant="subtitle-14-medium" color="white">
+        <Typography variant="subtitle-14-medium" color="primary">
           {title}
         </Typography>
         {subtitle && (
@@ -82,7 +85,7 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
       )}
 
       {hasChevron && (
-        <Ionicons name="chevron-forward" size={16} color="#575757" />
+        <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
       )}
     </Pressable>
   );
@@ -96,10 +99,10 @@ interface SettingsSectionProps {
 const SettingsSection: React.FC<SettingsSectionProps> = ({ title, children }) => {
   return (
     <View className="px-5 mt-6">
-      <Typography variant="subtitle-14-medium" className="text-primary mb-3">
+      <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
         {title}
       </Typography>
-      <View className="bg-[#242540] rounded-2xl px-4">
+      <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
         {children}
       </View>
     </View>
@@ -109,7 +112,8 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ title, children }) =>
 // --- Main screen ---
 
 export default function SettingsScreen() {
-  const { preferences, updatePreferences, theme } = useAppSettings();
+  const colorScheme = useColorScheme();
+  const { preferences, updatePreferences } = useAppSettings();
   const {
     hasNotifications,
     triggerHaptic,
@@ -167,16 +171,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleNightModeToggle = async (value: boolean) => {
-    try {
-      await updatePreferences({ theme: value ? 'dark' : 'light' });
-      triggerHaptic('light');
-    } catch (error) {
-      console.error('Failed to update theme setting:', error);
-      triggerHaptic('error');
-    }
-  };
-
   const handleShareWithFriends = async () => {
     triggerHaptic('light');
     try {
@@ -199,10 +193,10 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-dark-bg">
+    <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
       <View className="h-[56px] px-5 flex-row items-center">
-        <Typography variant="headline-24" color="white">
+        <Typography variant="headline-24" color="primary">
           Settings
         </Typography>
       </View>
@@ -210,7 +204,7 @@ export default function SettingsScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Motivational Quote */}
         <View className="px-5 pt-2 pb-2">
-          <Typography variant="headline-20" color="white">
+          <Typography variant="headline-20" color="primary">
             Make today count.
           </Typography>
           <Typography variant="body-14" color="secondary" className="mt-1">
@@ -286,8 +280,8 @@ export default function SettingsScreen() {
         {/* Goals */}
         <SettingsSection title="Goals">
           {/* Rest Days */}
-          <View className="py-3 border-b border-dark-border">
-            <Typography variant="subtitle-14-medium" color="white" className="mb-1">
+          <View className="py-3 border-b border-light-border dark:border-dark-border">
+            <Typography variant="subtitle-14-medium" color="primary" className="mb-1">
               Rest Days
             </Typography>
             <Typography variant="body-12" color="secondary" className="mb-2">
@@ -312,7 +306,7 @@ export default function SettingsScreen() {
                       }
                     }}
                     className={`w-9 h-9 rounded-full items-center justify-center ${
-                      isSelected ? 'bg-primary' : 'bg-dark-border'
+                      isSelected ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
                     }`}
                   >
                     <Typography variant="body-12" className="text-white font-poppins-medium">
@@ -326,7 +320,7 @@ export default function SettingsScreen() {
 
           {/* Week Starts On */}
           <View className="py-3">
-            <Typography variant="subtitle-14-medium" color="white" className="mb-1">
+            <Typography variant="subtitle-14-medium" color="primary" className="mb-1">
               Week Starts On
             </Typography>
             <Typography variant="body-12" color="secondary" className="mb-2">
@@ -347,7 +341,7 @@ export default function SettingsScreen() {
                       }
                     }}
                     className={`flex-1 py-2 rounded-lg items-center ${
-                      isSelected ? 'bg-primary' : 'bg-dark-border'
+                      isSelected ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
                     }`}
                   >
                     <Typography variant="tiny-10" className="text-white font-poppins-medium">
@@ -380,19 +374,6 @@ export default function SettingsScreen() {
                 console.error('Failed to update timer picker style:', error);
               }
             }}
-            isLast
-          />
-        </SettingsSection>
-
-        {/* Appearance */}
-        <SettingsSection title="Appearance">
-          <SettingsItem
-            title="Night Mode"
-            subtitle="Use dark theme"
-            icon="moon-outline"
-            hasToggle
-            toggleValue={theme === 'dark'}
-            onToggleChange={handleNightModeToggle}
             isLast
           />
         </SettingsSection>
@@ -435,20 +416,20 @@ export default function SettingsScreen() {
         {/* Developer (dev only) */}
         {__DEV__ && (
           <View className="px-5 mt-6">
-            <Typography variant="subtitle-14-medium" className="text-primary mb-3">
+            <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
               Developer
             </Typography>
 
             <Pressable
               onPress={() => router.push('/(modals)/dev-tools')}
-              className="bg-[#242540] rounded-2xl py-3 px-4 mb-4 active:opacity-80"
+              className="bg-light-border/30 dark:bg-[#242540] rounded-2xl py-3 px-4 mb-4 active:opacity-80"
             >
               <Typography variant="subtitle-14-semibold" color="primary">
                 Open Dev Tools
               </Typography>
             </Pressable>
 
-            <View className="bg-[#242540] rounded-2xl p-4">
+            <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4">
               <Typography variant="body-12" color="secondary">
                 Device: {deviceInfo.brand} {deviceInfo.modelName}
               </Typography>
@@ -488,17 +469,17 @@ export default function SettingsScreen() {
         onClose={() => setNotificationSheetVisible(false)}
         height={340}
       >
-        <Typography variant="headline-20" color="white" className="mb-4">
+        <Typography variant="headline-20" color="primary" className="mb-4">
           Notifications
         </Typography>
 
-        <View className="bg-[#242540] rounded-2xl px-4">
-          <View className="flex-row items-center justify-between py-3 border-b border-dark-border">
+        <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+          <View className="flex-row items-center justify-between py-3 border-b border-light-border dark:border-dark-border">
             <View className="flex-row items-center flex-1">
               <View className="w-8 items-center mr-3">
-                <Ionicons name="volume-high-outline" size={20} color="#CACACA" />
+                <Ionicons name="volume-high-outline" size={20} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
               </View>
-              <Typography variant="subtitle-14-medium" color="white">
+              <Typography variant="subtitle-14-medium" color="primary">
                 Sound
               </Typography>
             </View>
@@ -510,12 +491,12 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View className="flex-row items-center justify-between py-3 border-b border-dark-border">
+          <View className="flex-row items-center justify-between py-3 border-b border-light-border dark:border-dark-border">
             <View className="flex-row items-center flex-1">
               <View className="w-8 items-center mr-3">
-                <Ionicons name="phone-portrait-outline" size={20} color="#CACACA" />
+                <Ionicons name="phone-portrait-outline" size={20} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
               </View>
-              <Typography variant="subtitle-14-medium" color="white">
+              <Typography variant="subtitle-14-medium" color="primary">
                 Vibrate
               </Typography>
             </View>
@@ -531,10 +512,10 @@ export default function SettingsScreen() {
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
                 <View className="w-8 items-center mr-3">
-                  <Ionicons name="flag-outline" size={20} color="#CACACA" />
+                  <Ionicons name="flag-outline" size={20} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
                 </View>
                 <View className="flex-1">
-                  <Typography variant="subtitle-14-medium" color="white">
+                  <Typography variant="subtitle-14-medium" color="primary">
                     Goal Reminders
                   </Typography>
                   <Typography variant="body-12" color="secondary" className="mt-0.5">

@@ -24,7 +24,7 @@ export const CalendarView: FC<CalendarViewProps> = ({
   onViewModeChange,
 }) => {
   return (
-    <View className="bg-white dark:bg-gray-800 border-b border-light-border dark:border-dark-border">
+    <View className="bg-light-bg dark:bg-dark-bg border-b border-light-border dark:border-dark-border">
       {/* View Mode Toggle */}
       <View className="flex-row justify-between items-center px-4 py-3">
         <Typography variant="subtitle-16" color="primary">

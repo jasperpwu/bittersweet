@@ -81,7 +81,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
     <BottomSheet isVisible={isVisible} onClose={onClose}>
       {/* Header */}
       <View className="mb-6 flex-row items-center justify-between">
-        <Typography variant="headline-20" color="white">
+        <Typography variant="headline-20" color="primary">
           {activeEditingGoal ? 'Edit Focus Goal' : 'New Focus Goal'}
         </Typography>
         <Pressable onPress={onClose} className="p-2 active:opacity-70">

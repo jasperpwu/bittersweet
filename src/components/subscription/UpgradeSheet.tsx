@@ -35,7 +35,7 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
 
   return (
     <BottomSheet isVisible={isVisible} onClose={onClose} height={480}>
-      <Typography variant="headline-20" color="white" className="mb-2">
+      <Typography variant="headline-20" color="primary" className="mb-2">
         Upgrade to Premium
       </Typography>
       <Typography variant="body-14" color="secondary" className="mb-6">
@@ -54,11 +54,11 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
               monthlyProduct && handlePurchase(monthlyProduct.id)
             }
             disabled={isLoading || !monthlyProduct}
-            className="bg-[#2A2B4A] rounded-2xl p-4 border border-dark-border active:opacity-80"
+            className="bg-light-border/30 dark:bg-[#2A2B4A] rounded-2xl p-4 border border-light-border dark:border-dark-border active:opacity-80"
           >
             <View className="flex-row items-center justify-between">
               <View>
-                <Typography variant="subtitle-14-medium" color="white">
+                <Typography variant="subtitle-14-medium" color="primary">
                   Monthly
                 </Typography>
                 <Typography variant="body-12" color="secondary" className="mt-0.5">
@@ -77,11 +77,11 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
               yearlyProduct && handlePurchase(yearlyProduct.id)
             }
             disabled={isLoading || !yearlyProduct}
-            className="bg-[#2A2B4A] rounded-2xl p-4 border border-dark-border active:opacity-80"
+            className="bg-light-border/30 dark:bg-[#2A2B4A] rounded-2xl p-4 border border-light-border dark:border-dark-border active:opacity-80"
           >
             <View className="flex-row items-center justify-between">
               <View>
-                <Typography variant="subtitle-14-medium" color="white">
+                <Typography variant="subtitle-14-medium" color="primary">
                   Yearly
                 </Typography>
                 <Typography variant="body-12" color="secondary" className="mt-0.5">

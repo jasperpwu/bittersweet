@@ -4,7 +4,8 @@ import '../global.css';
 import { Stack, router, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from '../src/hooks/useFonts';
-import { View, Text } from 'react-native';
+import { View, Text, useColorScheme } from 'react-native';
+import { StatusBar } from '../src/components/ui/StatusBar';
 import { AnimatedSplashScreen } from '../src/components/ui/AnimatedSplashScreen';
 import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
 import { useAppState, initializeUnifiedStore } from '../src/store/unified-store';
@@ -360,6 +361,7 @@ export default function RootLayout() {
 
   const isReady = fontsLoaded && isHydrated;
   const pathname = usePathname();
+  const systemColorScheme = useColorScheme();
 
   useEffect(() => {
     if (isReady) {
@@ -379,6 +381,7 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AnimatedSplashScreen>
         <GestureHandlerRootView style={{ flex: 1 }}>
+          <StatusBar />
           {isReady ? (
             <>
               <Stack>
@@ -424,9 +427,9 @@ export default function RootLayout() {
                 flex: 1,
                 justifyContent: 'center',
                 alignItems: 'center',
-                backgroundColor: '#1B1C30',
+                backgroundColor: systemColorScheme === 'dark' ? '#1B1C30' : '#F5E6D3',
               }}>
-              <Text style={{ color: '#FFFFFF' }}>Loading...</Text>
+              <Text style={{ color: systemColorScheme === 'dark' ? '#FFFFFF' : '#5D4E37' }}>Loading...</Text>
             </View>
           )}
         </GestureHandlerRootView>

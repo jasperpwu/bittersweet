@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View, SafeAreaView, Pressable, TextInput, Alert } from 'react-native';
+import { View, SafeAreaView, Pressable, TextInput, Alert, useColorScheme } from 'react-native';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui';
 import { useRewards, useAppStore, useFocus } from '../../src/store';
 
 export default function DevToolsModal() {
+  const colorScheme = useColorScheme();
   const rewards = useRewards();
   const { sessions } = useFocus();
   const [fruitInput, setFruitInput] = useState(String(rewards.balance));
@@ -49,10 +50,10 @@ export default function DevToolsModal() {
   const sessionCount = sessions.allIds.length;
 
   return (
-    <SafeAreaView className="flex-1 bg-dark-bg">
+    <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 py-4">
-        <Typography variant="headline-18" color="white">
+        <Typography variant="headline-18" color="primary">
           Dev Tools
         </Typography>
         <Pressable onPress={() => router.back()} className="active:opacity-70">
@@ -75,13 +76,13 @@ export default function DevToolsModal() {
               keyboardType="number-pad"
               style={{
                 flex: 1,
-                backgroundColor: '#2A2A2A',
+                backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
                 borderRadius: 12,
                 padding: 14,
                 fontSize: 16,
-                color: '#FFFFFF',
+                color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
                 borderWidth: 1,
-                borderColor: '#444',
+                borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
               }}
             />
             <Pressable

@@ -1,5 +1,5 @@
 import React, { FC } from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, useColorScheme } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -25,6 +25,7 @@ export const UserProfile: FC<UserProfileProps> = ({
   onNotificationPress,
   notificationCount = 0,
 }) => {
+  const colorScheme = useColorScheme();
   const notificationScale = useSharedValue(1);
 
   const handleNotificationPress = () => {
@@ -52,14 +53,14 @@ export const UserProfile: FC<UserProfileProps> = ({
           <Typography 
             variant="headline-20" 
             color="primary"
-            className="text-dark-text-primary"
+            className="text-light-text-primary dark:text-dark-text-primary"
           >
             Hello, {user.name}!
           </Typography>
           <Typography 
             variant="body-14" 
             color="secondary"
-            className="text-dark-text-secondary mt-1"
+            className="text-light-text-secondary dark:text-dark-text-secondary mt-1"
           >
             Be productive today!
           </Typography>
@@ -78,7 +79,7 @@ export const UserProfile: FC<UserProfileProps> = ({
         <Ionicons 
           name="notifications-outline" 
           size={24} 
-          color="#FFFFFF" 
+          color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
         />
         
         {/* Notification Badge */}

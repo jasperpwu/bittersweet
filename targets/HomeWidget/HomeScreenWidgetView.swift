@@ -31,6 +31,19 @@ struct HomeScreenWidgetView: View {
   let entry: HomeWidgetEntry
 
   @Environment(\.widgetFamily) var family
+  @Environment(\.colorScheme) var colorScheme
+
+  // MARK: - Adaptive Colors
+
+  private var widgetBg: Color {
+    colorScheme == .dark ? Color(hex: "#1B1C30") : Color(hex: "#F5E6D3")
+  }
+  private var primaryText: Color {
+    colorScheme == .dark ? .white : Color(hex: "#5D4E37")
+  }
+  private var secondaryText: Color {
+    colorScheme == .dark ? Color(hex: "#CACACA") : Color(hex: "#6B5A42")
+  }
 
   /// Resolve tag color: active session color takes priority, then configured tag color, then fallback
   private var tagColor: Color {
@@ -52,13 +65,13 @@ struct HomeScreenWidgetView: View {
   var body: some View {
     if let session = entry.sessionData, session.isActive {
       activeSessionView(session: session)
-        .widgetBackground(Color(hex: "#F5E6D3"))
+        .widgetBackground(widgetBg)
     } else if let unlock = entry.unlockData, unlock.isActive {
       unlockSessionView(unlock: unlock)
-        .widgetBackground(Color(hex: "#F5E6D3"))
+        .widgetBackground(widgetBg)
     } else {
       idleView
-        .widgetBackground(Color(hex: "#F5E6D3"))
+        .widgetBackground(widgetBg)
     }
   }
 
@@ -100,7 +113,7 @@ struct HomeScreenWidgetView: View {
       if session.isInfinite {
         Text(Date(timeIntervalSince1970: session.startTime / 1000), style: .timer)
           .font(.system(size: 36, weight: .semibold))
-          .foregroundStyle(Color(hex: "#5D4E37"))
+          .foregroundStyle(primaryText)
           .minimumScaleFactor(0.7)
       } else if isBonusTime(session) {
         HStack(spacing: 4) {
@@ -113,7 +126,7 @@ struct HomeScreenWidgetView: View {
       } else {
         Text(timerInterval: Date(timeIntervalSince1970: session.startTime / 1000)...Date(timeIntervalSince1970: session.endTime / 1000), countsDown: true, showsHours: false)
           .font(.system(size: 36, weight: .semibold))
-          .foregroundStyle(Color(hex: "#5D4E37"))
+          .foregroundStyle(primaryText)
           .minimumScaleFactor(0.7)
       }
 
@@ -153,7 +166,7 @@ struct HomeScreenWidgetView: View {
           // Count up from start time
           Text(Date(timeIntervalSince1970: session.startTime / 1000), style: .timer)
             .font(.system(size: 42, weight: .bold, design: .monospaced))
-            .foregroundStyle(Color(hex: "#5D4E37"))
+            .foregroundStyle(primaryText)
             .minimumScaleFactor(0.7)
         } else if isBonusTime(session) {
           // Bonus time — count up from end time in green
@@ -168,13 +181,13 @@ struct HomeScreenWidgetView: View {
           // Count down to end time
           Text(timerInterval: Date(timeIntervalSince1970: session.startTime / 1000)...Date(timeIntervalSince1970: session.endTime / 1000), countsDown: true, showsHours: false)
             .font(.system(size: 42, weight: .bold, design: .monospaced))
-            .foregroundStyle(Color(hex: "#5D4E37"))
+            .foregroundStyle(primaryText)
             .minimumScaleFactor(0.7)
         }
 
         Text(isBonusTime(session) ? "Bonus Time" : "Focusing...")
           .font(.caption)
-          .foregroundStyle(Color(hex: "#8B7355"))
+          .foregroundStyle(secondaryText)
       }
 
       Spacer()
@@ -224,7 +237,7 @@ struct HomeScreenWidgetView: View {
       // Countdown timer
       Text(timerInterval: Date()...endDate, countsDown: true, showsHours: false)
         .font(.system(size: 36, weight: .semibold))
-        .foregroundStyle(Color(hex: "#5D4E37"))
+        .foregroundStyle(primaryText)
         .minimumScaleFactor(0.7)
 
       Spacer()
@@ -262,12 +275,12 @@ struct HomeScreenWidgetView: View {
         // Countdown timer
         Text(timerInterval: Date()...endDate, countsDown: true, showsHours: false)
           .font(.system(size: 42, weight: .bold, design: .monospaced))
-          .foregroundStyle(Color(hex: "#5D4E37"))
+          .foregroundStyle(primaryText)
           .minimumScaleFactor(0.7)
 
         Text("Apps unlocked")
           .font(.caption)
-          .foregroundStyle(Color(hex: "#8B7355"))
+          .foregroundStyle(secondaryText)
       }
 
       Spacer()
@@ -318,7 +331,7 @@ struct HomeScreenWidgetView: View {
       // Duration
       Text(durationLabel.isEmpty ? "∞" : durationLabel)
         .font(.system(size: 36, weight: .semibold))
-        .foregroundStyle(Color(hex: "#5D4E37"))
+        .foregroundStyle(primaryText)
 
       Spacer()
 
@@ -358,11 +371,11 @@ struct HomeScreenWidgetView: View {
         Text("Ready to Focus")
           .font(.headline)
           .fontWeight(.semibold)
-          .foregroundStyle(Color(hex: "#5D4E37"))
+          .foregroundStyle(primaryText)
 
         Text("Open the app to get started")
           .font(.subheadline)
-          .foregroundStyle(Color(hex: "#8B7355"))
+          .foregroundStyle(secondaryText)
       }
       Spacer()
     }

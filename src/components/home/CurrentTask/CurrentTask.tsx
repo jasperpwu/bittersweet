@@ -75,13 +75,13 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
 
   if (!session) {
     return (
-      <Card variant="default" className="mx-5 mb-6 bg-dark-bg border border-dark-border">
+      <Card variant="default" className="mx-5 mb-6 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
         <View className="p-4">
           {/* Header */}
           <View className="flex-row items-center justify-between mb-4">
             <Typography 
               variant="subtitle-14-medium" 
-              className="text-dark-text-secondary"
+              className="text-light-text-secondary dark:text-dark-text-secondary"
             >
               Current session
             </Typography>
@@ -91,13 +91,13 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
           <View className="items-center py-8">
             <Typography 
               variant="subtitle-16" 
-              className="text-dark-text-primary mb-2"
+              className="text-light-text-primary dark:text-dark-text-primary mb-2"
             >
               No active session
             </Typography>
             <Typography 
               variant="body-14" 
-              className="text-dark-text-secondary text-center"
+              className="text-light-text-secondary dark:text-dark-text-secondary text-center"
             >
               Create a focus session to start
             </Typography>
@@ -112,13 +112,13 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
   const tagIcon = getTagIcon(primaryTag);
 
   return (
-    <Card variant="default" className="mx-5 mb-6 bg-dark-bg border border-dark-border">
+    <Card variant="default" className="mx-5 mb-6 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
       <View className="p-4">
         {/* Header */}
         <View className="flex-row items-center justify-between mb-4">
           <Typography 
             variant="subtitle-14-medium" 
-            className="text-dark-text-secondary"
+            className="text-light-text-secondary dark:text-dark-text-secondary"
           >
             Current session
           </Typography>
@@ -129,7 +129,7 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
             />
             <Typography 
               variant="body-12" 
-              className="text-dark-text-secondary"
+              className="text-light-text-secondary dark:text-dark-text-secondary"
             >
               {session.status === 'active' ? 'Active' : session.status === 'paused' ? 'Paused' : 'Scheduled'}
             </Typography>
@@ -155,14 +155,14 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
             <View className="flex-1">
               <Typography 
                 variant="subtitle-16" 
-                className="text-dark-text-primary mb-1"
+                className="text-light-text-primary dark:text-dark-text-primary mb-1"
                 numberOfLines={1}
               >
                 {session.notes || 'Focus Session'}
               </Typography>
               <Typography 
                 variant="body-12" 
-                className="text-dark-text-secondary"
+                className="text-light-text-secondary dark:text-dark-text-secondary"
               >
                 {session.targetDuration} min • {session.tags[0] || 'No tag'}
               </Typography>
@@ -195,7 +195,7 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
           <View className="mt-4">
             <Typography 
               variant="body-12" 
-              className="text-dark-text-secondary text-center"
+              className="text-light-text-secondary dark:text-dark-text-secondary text-center"
             >
               Status: {session.status}
             </Typography>

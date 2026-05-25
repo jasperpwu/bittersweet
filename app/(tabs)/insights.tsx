@@ -230,7 +230,7 @@ export default function InsightsScreen() {
   }, [storeGoals, deleteGoal]);
 
   return (
-    <SafeAreaView className="flex-1 bg-dark-bg">
+    <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
       <View className="px-4 py-4 flex-row items-center justify-between">
         <View className="flex-row items-center">
@@ -239,12 +239,12 @@ export default function InsightsScreen() {
               onPress={handleBackPress}
               className="mr-3 p-1 active:opacity-70"
             >
-              <Typography variant="headline-18" color="white">
+              <Typography variant="headline-18" color="primary">
                 ←
               </Typography>
             </Pressable>
           )}
-          <Typography variant="headline-24" color="white">
+          <Typography variant="headline-24" color="primary">
             {currentView === 'statistics' ? 'Goals' : 'History'}
           </Typography>
         </View>

@@ -53,11 +53,11 @@ export const TimePickerModal: FC<TimePickerModalProps> = ({
       >
         {/* Modal Content */}
         <Pressable className="w-full max-w-sm" onPress={(e) => e.stopPropagation()}>
-          <View className="bg-dark-bg rounded-3xl p-6 border border-dark-border">
+          <View className="bg-light-bg dark:bg-dark-bg rounded-3xl p-6 border border-light-border dark:border-dark-border">
             {/* Header */}
             <Typography 
               variant="headline-20" 
-              className="text-dark-text-primary mb-6 text-center font-semibold"
+              className="text-light-text-primary dark:text-dark-text-primary mb-6 text-center font-semibold"
             >
               {title}
             </Typography>

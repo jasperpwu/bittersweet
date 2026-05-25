@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollView, Platform, useColorScheme } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Typography } from '../../src/components/ui';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions } from '../../src/store';
 
 export default function SessionCompleteModal() {
+  const colorScheme = useColorScheme();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { sessions, tags } = useFocus();
   const { updateSession } = useFocusActions();
@@ -16,7 +17,7 @@ export default function SessionCompleteModal() {
 
   if (!session) {
     return (
-      <SafeAreaView className="flex-1 bg-dark-bg items-center justify-center">
+      <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg items-center justify-center">
         <Typography variant="body-14" color="secondary">
           Session not found
         </Typography>
@@ -53,7 +54,7 @@ export default function SessionCompleteModal() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-dark-bg">
+    <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -65,17 +66,17 @@ export default function SessionCompleteModal() {
         >
           {/* Tag emoji + name */}
           <View className="items-center mb-6">
-            <Typography variant="headline-24" color="white" className="mb-2">
+            <Typography variant="headline-24" color="primary" className="mb-2">
               {tag?.icon || '🏷️'}
             </Typography>
-            <Typography variant="headline-20" color="white">
+            <Typography variant="headline-20" color="primary">
               {tag?.name || 'Focus Session'}
             </Typography>
           </View>
 
           {/* Duration */}
           <View className="items-center">
-            <Typography variant="headline-24" color="white" className="mb-2">
+            <Typography variant="headline-24" color="primary" className="mb-2">
               {formatDuration(session.duration)}
             </Typography>
           </View>
@@ -90,7 +91,7 @@ export default function SessionCompleteModal() {
           {/* Fruits earned */}
           {fruitsEarned > 0 && (
             <View className="items-center mb-8">
-              <View className="bg-gray-700 rounded-2xl px-6 py-4 items-center">
+              <View className="bg-light-border/30 dark:bg-gray-700 rounded-2xl px-6 py-4 items-center">
                 <Typography variant="body-12" color="secondary" className="mb-1">
                   Earned
                 </Typography>
@@ -114,13 +115,13 @@ export default function SessionCompleteModal() {
                 numberOfLines={3}
                 textAlignVertical="top"
                 style={{
-                  backgroundColor: '#2A2A2A',
+                  backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
                   borderRadius: 12,
                   padding: 16,
                   fontSize: 14,
-                  color: '#FFFFFF',
+                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
                   borderWidth: 1,
-                  borderColor: '#444',
+                  borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
                   minHeight: 80,
                 }}
               />
@@ -131,11 +132,11 @@ export default function SessionCompleteModal() {
           )}
 
           {hasExistingNotes && (
-            <View className="w-full bg-gray-700 rounded-xl p-4 mb-6">
+            <View className="w-full bg-light-border/30 dark:bg-gray-700 rounded-xl p-4 mb-6">
               <Typography variant="body-12" color="secondary" className="mb-1">
                 Notes
               </Typography>
-              <Typography variant="body-14" color="white">
+              <Typography variant="body-14" color="primary">
                 {session.notes}
               </Typography>
             </View>
@@ -157,7 +158,7 @@ export default function SessionCompleteModal() {
               <Typography
                 variant="subtitle-16"
                 className="font-semibold"
-                style={{ color: '#1B1C30' }}
+                style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}
               >
                 Done
               </Typography>

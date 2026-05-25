@@ -1,5 +1,5 @@
 import { FC, useMemo } from 'react';
-import { View, ScrollView, Dimensions } from 'react-native';
+import { View, ScrollView, Dimensions, useColorScheme } from 'react-native';
 import { Typography } from '../../ui/Typography/Typography';
 import { TaskBlock } from '../TaskBlock';
 import { EmptyState } from '../EmptyState';
@@ -56,6 +56,8 @@ export const Timeline: FC<TimelineProps> = ({
   onSessionPress,
   onAddSession,
 }) => {
+  const colorScheme = useColorScheme();
+
   // Filter sessions for the selected date and sort by start time
   const sortedSessions = useMemo(() => {
     return sessions
@@ -111,7 +113,7 @@ export const Timeline: FC<TimelineProps> = ({
               >
                 <Typography
                   variant="body-12"
-                  className="text-dark-text-secondary"
+                  className="text-light-text-secondary dark:text-dark-text-secondary"
                 >
                   {formatHour(hour)}
                 </Typography>
@@ -137,7 +139,7 @@ export const Timeline: FC<TimelineProps> = ({
                   right: 0,
                   top: hourIndex * HOUR_HEIGHT,
                   height: 1,
-                  backgroundColor: '#575757',
+                  backgroundColor: colorScheme === 'dark' ? '#575757' : '#D4C4A8',
                   opacity: 0.2,
                 }}
               />
@@ -164,7 +166,7 @@ export const Timeline: FC<TimelineProps> = ({
                     backgroundColor: '#6592E9',
                     borderRadius: 6,
                     borderWidth: 2,
-                    borderColor: '#1B1C30',
+                    borderColor: colorScheme === 'dark' ? '#1B1C30' : '#F5E6D3',
                   }}
                 />
                 {/* Blue line */}

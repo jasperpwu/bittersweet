@@ -1,5 +1,5 @@
 import React, { FC, useState } from 'react';
-import { View, Dimensions, Pressable, Modal } from 'react-native';
+import { View, Dimensions, Pressable, Modal, useColorScheme } from 'react-native';
 import Svg, { Rect, Line, Text, Path, G } from 'react-native-svg';
 import { Typography } from '../../ui/Typography';
 import { Button } from '../../ui/Button';
@@ -60,6 +60,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
   onPeriodChange: _onPeriodChange,
   height = 200
 }) => {
+  const colorScheme = useColorScheme();
   const [selectedBar, setSelectedBar] = useState<ChartDataPoint | null>(null);
 
   // Validate and sanitize data
@@ -87,7 +88,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
           </Button>
         </View>
         <View
-          className="bg-dark-bg border border-dark-border rounded-xl items-center justify-center"
+          className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl items-center justify-center"
           style={{ height }}
         >
           <Typography variant="body-14" color="secondary">
@@ -127,7 +128,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
     <View className="px-4 mb-6">
       {/* Header */}
       <View className="flex-row items-center justify-between mb-4">
-        <Typography variant="subtitle-16" color="white">
+        <Typography variant="subtitle-16" color="primary">
           Focus sessions
         </Typography>
         <Button
@@ -140,7 +141,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
       </View>
 
       {/* Chart */}
-      <View className="bg-dark-bg border border-dark-border rounded-xl p-4">
+      <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4">
         <Svg width={CHART_WIDTH + Y_AXIS_WIDTH} height={height}>
           {/* Y-axis labels and grid lines */}
           {Array.from({ length: GRID_LINES + 1 }).map((_, index) => {
@@ -174,7 +175,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
                   y1={y}
                   x2={CHART_WIDTH + Y_AXIS_WIDTH}
                   y2={y}
-                  stroke="#575757"
+                  stroke={colorScheme === 'dark' ? '#575757' : '#D4C4A8'}
                   strokeOpacity="0.5"
                   strokeWidth="1"
                 />
@@ -284,12 +285,12 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
           onPress={() => setSelectedBar(null)}
         >
           <Pressable
-            className="bg-dark-bg border border-dark-border rounded-2xl p-5"
+            className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-2xl p-5"
             style={{ width: screenWidth - 80 }}
             onPress={() => {/* prevent dismiss when tapping inside */}}
           >
             {/* Title */}
-            <Typography variant="subtitle-16" color="white" className="text-center mb-1">
+            <Typography variant="subtitle-16" color="primary" className="text-center mb-1">
               {selectedBar?.label}
             </Typography>
             <Typography variant="body-12" color="secondary" className="text-center mb-4">
@@ -333,7 +334,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
                     <View
                       style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: segment.color }}
                     />
-                    <Typography variant="body-14" color="white" className="ml-2">
+                    <Typography variant="body-14" color="primary" className="ml-2">
                       {segment.tagName}
                     </Typography>
                   </View>

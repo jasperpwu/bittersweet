@@ -45,9 +45,9 @@ export function StoreInitializer({ children, fallback }: StoreInitializerProps) 
 
   if (isLoading) {
     return fallback || (
-      <View className="flex-1 justify-center items-center bg-dark-bg">
+      <View className="flex-1 justify-center items-center bg-light-bg dark:bg-dark-bg">
         <ActivityIndicator size="large" color="#6592E9" />
-        <Text className="text-dark-text-primary mt-4">Initializing...</Text>
+        <Text className="text-light-text-primary dark:text-dark-text-primary mt-4">Initializing...</Text>
       </View>
     );
   }

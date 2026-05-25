@@ -1,5 +1,5 @@
 import { FC, useRef, useCallback, useEffect } from 'react';
-import { View, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, Animated, NativeSyntheticEvent, NativeScrollEvent, useColorScheme } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../Typography';
 
@@ -12,7 +12,8 @@ const WheelItem: FC<{
   index: number;
   display: string;
   scrollY: Animated.Value;
-}> = ({ index, display, scrollY }) => {
+  textColor: string;
+}> = ({ index, display, scrollY, textColor }) => {
   const itemCenter = index * ITEM_HEIGHT;
 
   const inputRange = [
@@ -39,7 +40,7 @@ const WheelItem: FC<{
     <View style={{ height: ITEM_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
       <Animated.Text
         style={{
-          color: '#FFFFFF',
+          color: textColor,
           fontSize: 22,
           fontFamily: FONT_BOLD,
           textAlign: 'center',
@@ -61,14 +62,18 @@ interface WheelColumnProps {
   indicatorPadding?: number;
 }
 
-export const WheelColumn: FC<WheelColumnProps> = ({ 
-  values, 
-  selectedValue, 
-  onValueChange, 
-  label, 
+export const WheelColumn: FC<WheelColumnProps> = ({
+  values,
+  selectedValue,
+  onValueChange,
+  label,
   formatValue,
-  indicatorPadding = 8 
+  indicatorPadding = 8
 }) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const textColor = isDark ? '#FFFFFF' : '#5D4E37';
+  const separatorColor = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(93,78,55,0.15)';
   const scrollRef = useRef<any>(null);
   const lastSnappedRef = useRef(selectedValue);
   const isUserScrollingRef = useRef(false);
@@ -154,7 +159,7 @@ export const WheelColumn: FC<WheelColumnProps> = ({
             left: indicatorPadding,
             right: indicatorPadding,
             height: 1,
-            backgroundColor: 'rgba(255,255,255,0.15)',
+            backgroundColor: separatorColor,
           }}
           pointerEvents="none"
         />
@@ -165,7 +170,7 @@ export const WheelColumn: FC<WheelColumnProps> = ({
             left: indicatorPadding,
             right: indicatorPadding,
             height: 1,
-            backgroundColor: 'rgba(255,255,255,0.15)',
+            backgroundColor: separatorColor,
           }}
           pointerEvents="none"
         />
@@ -184,7 +189,7 @@ export const WheelColumn: FC<WheelColumnProps> = ({
           contentContainerStyle={{ paddingVertical }}>
           {values.map((v, idx) => {
             const display = formatValue ? formatValue(v) : String(v);
-            return <WheelItem key={v} index={idx} display={display} scrollY={scrollY} />;
+            return <WheelItem key={v} index={idx} display={display} scrollY={scrollY} textColor={textColor} />;
           })}
         </Animated.ScrollView>
       </View>

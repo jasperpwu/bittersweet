@@ -42,13 +42,13 @@ export const FruitCounter: FC<FruitCounterProps> = ({
         alignItems: 'center',
         paddingHorizontal: config.paddingH,
         paddingVertical: config.paddingV,
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         borderRadius: 100,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
         gap: config.gap,
       }}
       className={`
+        bg-light-text-primary/[0.08] dark:bg-white/[0.08]
+        border-light-text-primary/10 dark:border-white/10
         ${onPress ? 'active:opacity-80' : ''}
         ${showAnimation ? 'animate-pulse' : ''}
       `}
@@ -58,7 +58,6 @@ export const FruitCounter: FC<FruitCounterProps> = ({
       </Text>
       <Typography
         variant={size === 'small' ? 'subtitle-14-semibold' : size === 'large' ? 'headline-20' : 'headline-18'}
-        color="white"
       >
         {formatFruitCount(fruitCount)}
       </Typography>

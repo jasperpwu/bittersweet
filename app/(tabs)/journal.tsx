@@ -337,21 +337,20 @@ export default function JournalScreen() {
 
 
   return (
-    <View className="flex-1 bg-dark-bg" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-light-bg dark:bg-dark-bg" style={{ paddingTop: insets.top }}>
       <StatusBar variant="dark" />
 
       {/* Header + Date Selector */}
-      <View style={{ backgroundColor: '#1B1C30' }} className="border-b border-dark-border">
+      <View className="bg-light-bg dark:bg-dark-bg border-b border-light-border dark:border-dark-border">
         {/* Header row */}
         <View className="flex-row items-center justify-between px-4 pt-2 pb-1">
-          <Typography variant="headline-20" color="white" style={{ fontWeight: '700' }}>
+          <Typography variant="headline-20" color="primary" style={{ fontWeight: '700' }}>
             {headerDateString}
           </Typography>
           <View className="flex-row items-center" style={{ gap: 8 }}>
             <Pressable
               onPress={openManualEntryModal}
-              className="w-9 h-9 items-center justify-center  rounded-lg active:opacity-80"
-              style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+              className="w-9 h-9 items-center justify-center rounded-lg active:opacity-80 bg-black/10 dark:bg-white/10"
               accessibilityLabel="Add manual focus session"
             >
               <Ionicons name="add" size={20} color="#FFFFFF" />
@@ -415,7 +414,7 @@ export default function JournalScreen() {
       <Modal isVisible={!!selectedSession} onClose={closeSessionModal} size="medium">
         {selectedSession && (
           <View>
-            <Typography variant="headline-20" color="white" className="mb-1">
+            <Typography variant="headline-20" color="primary" className="mb-1">
               {isManual ? 'Focus Session (Manual)' : 'Focus Session'}
             </Typography>
 
@@ -440,7 +439,7 @@ export default function JournalScreen() {
             </View>
 
             {!isManual ? (
-              <View className="bg-gray-700 rounded-xl p-4 mb-5">
+              <View className="bg-light-border/30 dark:bg-gray-700 rounded-xl p-4 mb-5">
                 <View className="flex-row items-center justify-between">
                   <Typography variant="body-12" color="secondary">
                     Fruits after adjustment
@@ -458,7 +457,7 @@ export default function JournalScreen() {
                 )}
               </View>
             ) : (
-              <View className="bg-[#2A2B42] rounded-xl p-4 mb-5 flex-row items-start">
+              <View className="bg-light-border/30 dark:bg-[#2A2B42] rounded-xl p-4 mb-5 flex-row items-start">
                 <Ionicons name="information-circle-outline" size={20} color="#6592E9" className="mr-2" />
                 <Typography variant="body-12" color="secondary" className="flex-1 ml-2">
                   No fruits are associated with Manual Focus sessions.
@@ -467,11 +466,11 @@ export default function JournalScreen() {
             )}
 
             {selectedSession.notes && (
-              <View className="bg-gray-700 rounded-xl p-4 mb-5">
+              <View className="bg-light-border/30 dark:bg-gray-700 rounded-xl p-4 mb-5">
                 <Typography variant="body-12" color="secondary" className="mb-1">
                   Notes
                 </Typography>
-                <Typography variant="body-14" color="white">
+                <Typography variant="body-14" color="primary">
                   {selectedSession.notes}
                 </Typography>
               </View>
@@ -502,7 +501,7 @@ export default function JournalScreen() {
       {/* Manual Entry Modal */}
       <Modal isVisible={isManualEntryModalVisible} onClose={closeManualEntryModal} size="large">
         <Animated.View style={manualEntryShakeStyle}>
-          <Typography variant="headline-20" color="white" className="mb-4">
+          <Typography variant="headline-20" color="primary" className="mb-4">
             Add Focus Session
           </Typography>
 
@@ -516,7 +515,7 @@ export default function JournalScreen() {
               />
             </View>
 
-            <Typography variant="subtitle-14-medium" color="white" className="mb-2">
+            <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
               Time Range
             </Typography>
             <View className="flex-row items-center justify-between mb-4">
@@ -536,7 +535,7 @@ export default function JournalScreen() {
               </View>
             </View>
             
-            <Typography variant="subtitle-14-medium" color="white" className="mb-2 mt-2">
+            <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
               Tag
             </Typography>
             <View className="mb-4">
@@ -554,7 +553,7 @@ export default function JournalScreen() {
               </Typography>
             )}
 
-            <View className="bg-[#2A2B42] rounded-xl p-4 mb-6">
+            <View className="bg-light-border/30 dark:bg-[#2A2B42] rounded-xl p-4 mb-6">
               <View className="flex-row items-start">
                 <Ionicons name="information-circle-outline" size={20} color="#6592E9" className="mr-2" />
                 <Typography variant="body-12" color="secondary" className="flex-1 ml-2">
@@ -566,9 +565,9 @@ export default function JournalScreen() {
             <View className="flex-row gap-3">
               <Pressable
                 onPress={closeManualEntryModal}
-                className="flex-1 bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80"
+                className="flex-1 bg-light-border/30 dark:bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80"
               >
-                <Typography variant="subtitle-14-semibold" color="white">
+                <Typography variant="subtitle-14-semibold" color="primary">
                   Cancel
                 </Typography>
               </Pressable>

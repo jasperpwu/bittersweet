@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform, Alert, LayoutChangeEvent } from 'react-native';
+import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform, Alert, LayoutChangeEvent, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
@@ -49,6 +49,7 @@ function DraggableTagRow({
   tag, index, selectedTag, lastDuration, isDragging, dragOriginalIndex, dragTargetIndex,
   onSelect, onEdit, onDelete, onDragStart, onDragMove, onDragEnd,
 }: DraggableTagRowProps) {
+  const colorScheme = useColorScheme();
   const isBeingDragged = isDragging && dragOriginalIndex === index;
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -138,7 +139,7 @@ function DraggableTagRow({
         ]}
       >
         <View
-          className={`mb-3 rounded-2xl p-4 pr-24 flex-row items-center relative ${isSelected ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-gray-700'}`}
+          className={`mb-3 rounded-2xl p-4 pr-24 flex-row items-center relative ${isSelected ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-light-border/30 dark:bg-gray-700'}`}
           style={[
             {
               borderLeftWidth: 4,
@@ -164,7 +165,7 @@ function DraggableTagRow({
             <View className="flex-1">
               <Typography
                 variant="subtitle-16"
-                color="white"
+                color="primary"
                 className={isSelected ? 'font-semibold' : ''}
               >
                 {tag.name}
@@ -182,7 +183,7 @@ function DraggableTagRow({
               className="w-12 items-center justify-center active:opacity-60"
               style={{ backgroundColor: 'rgba(200, 200, 200, 0.15)' }}
             >
-              <Ionicons name="pencil-outline" size={16} color="white" />
+              <Ionicons name="pencil-outline" size={16} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
             </Pressable>
             <Pressable
               onPress={(event) => onDelete(tag, event)}
@@ -209,6 +210,7 @@ type PersistedSession = {
 };
 
 export default function FocusScreen() {
+  const colorScheme = useColorScheme();
   // Get tags from store
   const { tags, lastSelectedTagId, lastDurationByTagId } = useFocus();
   const { createTag, updateTag, deleteTag, reorderTags, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag } = useFocusActions();
@@ -1359,7 +1361,7 @@ export default function FocusScreen() {
     ? `+${formatTime(bonusSeconds)}`
     : isInfinite ? formatTime(elapsedSeconds) : formatTime(remainingSeconds);
   const timerDisplayTime = isUnlockActive ? formatTime(unlockRemainingSeconds) : displayTime;
-  const timerTextColor = isBonusTime && !isUnlockActive ? '#4CAF7C' : '#FFFFFF';
+  const timerTextColor = isBonusTime && !isUnlockActive ? '#4CAF7C' : (colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37');
 
   const selectedTagObj = selectedTag ? tags.byId[selectedTag] : null;
   const selectedTagName = selectedTagObj?.name || null;
@@ -1422,7 +1424,7 @@ export default function FocusScreen() {
 
 
   return (
-    <SafeAreaView className="flex-1 bg-dark-bg">
+    <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header: Blocklist Icon (Left) + Fruit Counter (Right) */}
       <View
         className="absolute top-16 left-0 right-0 z-50 flex-row items-center justify-between px-8"
@@ -1436,8 +1438,8 @@ export default function FocusScreen() {
             className="flex-row items-center active:opacity-70"
             hitSlop={8}
           >
-            <Ionicons name="ban-outline" size={22} color="#CACACA" />
-            <Text style={{ color: '#CACACA', fontSize: 13, fontWeight: '500', marginLeft: 6 }}>Block List</Text>
+            <Ionicons name="ban-outline" size={22} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
+            <Text style={{ color: colorScheme === 'dark' ? '#CACACA' : '#8B7355', fontSize: 13, fontWeight: '500', marginLeft: 6 }}>Block List</Text>
             {blockedCount > 0 && (
               <View className="ml-1.5 bg-primary rounded-full px-1.5 py-0.5 min-w-[20px] items-center">
                 <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '600' }}>{blockedCount}</Text>
@@ -1468,11 +1470,11 @@ export default function FocusScreen() {
             {isRunning && !isBonusTime && !isUnlockActive && (
               <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
                 {selectedTagName && (
-                  <Text style={{ color: '#FFFFFF', fontSize: 24, lineHeight: 28, fontFamily: 'Poppins-SemiBold', textAlign: 'center', marginBottom: 4 }}>
+                  <Text style={{ color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37', fontSize: 24, lineHeight: 28, fontFamily: 'Poppins-SemiBold', textAlign: 'center', marginBottom: 4 }}>
                     {selectedTagObj?.icon ? `${selectedTagObj.icon} ` : ''}{selectedTagName}
                   </Text>
                 )}
-                <Text style={{ color: '#CACACA', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
+                <Text style={{ color: colorScheme === 'dark' ? '#CACACA' : '#8B7355', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
                   5 min = 1 🍎. Finish session to get 1 extra bonus 🍎!
                 </Text>
               </View>
@@ -1482,7 +1484,7 @@ export default function FocusScreen() {
                 <Text style={{ color: '#4CAF7C', fontSize: 20, lineHeight: 26, fontFamily: 'Poppins-SemiBold', textAlign: 'center' }}>
                   Session complete!
                 </Text>
-                <Text style={{ color: '#CACACA', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
+                <Text style={{ color: colorScheme === 'dark' ? '#CACACA' : '#8B7355', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
                   bonus 🍎 earned
                 </Text>
               </View>
@@ -1500,14 +1502,14 @@ export default function FocusScreen() {
           <Animated.View style={{ opacity: isUnlockActive ? 0 : tagsOpacity }} pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
             <Pressable
               onPress={() => setShowTagModal(true)}
-              className="bg-gray-700 rounded-2xl py-4 px-6 flex-row items-center justify-between active:opacity-80"
+              className="bg-light-border/30 dark:bg-gray-700 rounded-2xl py-4 px-6 flex-row items-center justify-between active:opacity-80"
             >
               <View className="flex-row items-center">
-                <Typography variant="subtitle-16" color="white">
+                <Typography variant="subtitle-16" color="primary">
                   {availableTags.length === 0 ? 'Create a new tag' : (selectedTagName || 'Select a tag')}
                 </Typography>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+              <Ionicons name="chevron-forward" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
             </Pressable>
           </Animated.View>
         </View>
@@ -1517,7 +1519,7 @@ export default function FocusScreen() {
       <View className="px-4 pb-8">
         <Pressable
           onPress={handleStartFocus}
-          className="bg-white rounded-2xl py-4 items-center active:opacity-80"
+          className="bg-white dark:bg-white rounded-2xl py-4 items-center active:opacity-80"
           style={{
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
@@ -1529,7 +1531,7 @@ export default function FocusScreen() {
           <Typography
             variant="subtitle-16"
             className="font-semibold"
-            style={{ color: '#1B1C30' }}
+            style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}
           >
             {isUnlockActive
               ? 'Stop Unlocked'
@@ -1555,18 +1557,18 @@ export default function FocusScreen() {
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             onPress={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
           />
-          <View className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
+          <View className="bg-light-bg dark:bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
             {/* Modal Header */}
-            <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
-              <Typography variant="headline-20" color="white">
+            <View className="flex-row items-center justify-between p-6 border-b border-light-border dark:border-gray-700">
+              <Typography variant="headline-20" color="primary">
                 Select Focus
               </Typography>
               <Pressable
                 onPress={() => setShowTagModal(false)}
-                className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center"
+                className="w-8 h-8 rounded-full bg-light-border/50 dark:bg-gray-700 items-center justify-center"
                 hitSlop={8}
               >
-                <Ionicons name="close" size={20} color="#FFFFFF" />
+                <Ionicons name="close" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
               </Pressable>
             </View>
 
@@ -1593,7 +1595,7 @@ export default function FocusScreen() {
             </ScrollView>
 
             {/* New Tag Button */}
-            <View className="p-4 border-t border-gray-700">
+            <View className="p-4 border-t border-light-border dark:border-gray-700">
               <Pressable
                 onPress={() => {
                   if (!canCreateTag) {
@@ -1615,10 +1617,10 @@ export default function FocusScreen() {
             {/* Edit Tag Overlay - appears within tag modal */}
             {showEditTagModal && (
               <View className="absolute inset-0 bg-black bg-opacity-70 rounded-3xl flex-1 justify-center items-center p-4">
-                <View className="bg-gray-800 rounded-2xl w-full max-w-xs overflow-hidden">
+                <View className="bg-light-border/50 dark:bg-gray-800 rounded-2xl w-full max-w-xs overflow-hidden">
                   {/* Edit Header */}
-                  <View className="p-4 border-b border-gray-700">
-                    <Typography variant="headline-18" color="white">
+                  <View className="p-4 border-b border-light-border dark:border-gray-700">
+                    <Typography variant="headline-18" color="primary">
                       Edit Tag
                     </Typography>
                   </View>
@@ -1640,20 +1642,20 @@ export default function FocusScreen() {
                         placeholderTextColor="#666"
                         className="flex-1"
                         style={{
-                          backgroundColor: '#2A2A2A',
+                          backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
                           borderRadius: 12,
                           padding: 14,
                           fontSize: 16,
-                          color: '#FFFFFF',
+                          color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
                           borderWidth: 1,
-                          borderColor: '#444',
+                          borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
                         }}
                       />
                     </View>
 
                     {/* Color Selection */}
                     <View>
-                      <Typography variant="body-14" color="white" className="mb-3">
+                      <Typography variant="body-14" color="primary" className="mb-3">
                         Color
                       </Typography>
                       <View className="flex-row flex-wrap" style={{ gap: 12 }}>
@@ -1677,7 +1679,7 @@ export default function FocusScreen() {
 
                   {/* Inline Emoji Picker */}
                   {showEditEmojiGrid && (
-                    <ScrollView style={{ maxHeight: 200 }} className="px-4 pb-2 border-t border-gray-700" nestedScrollEnabled>
+                    <ScrollView style={{ maxHeight: 200 }} className="px-4 pb-2 border-t border-light-border dark:border-gray-700" nestedScrollEnabled>
                       {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
                         <View key={category} className="mt-3">
                           <Typography variant="body-12" color="secondary" className="mb-2">
@@ -1703,7 +1705,7 @@ export default function FocusScreen() {
                   )}
 
                   {/* Action buttons */}
-                  <View className="p-3 border-t border-gray-700 flex-row space-x-2">
+                  <View className="p-3 border-t border-light-border dark:border-gray-700 flex-row space-x-2">
                     <Pressable
                       onPress={() => { setShowEditTagModal(false); setEditingTag(null); setShowEditEmojiGrid(false); }}
                       className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
@@ -1729,23 +1731,23 @@ export default function FocusScreen() {
             {/* Delete Confirmation Popup - appears as overlay within tag modal */}
             {showDeleteModal && (
               <View className="absolute inset-0 bg-black bg-opacity-70 rounded-3xl flex-1 justify-center items-center p-4">
-                <Pressable className="bg-gray-800 rounded-2xl w-full max-w-xs">
+                <Pressable className="bg-light-border/50 dark:bg-gray-800 rounded-2xl w-full max-w-xs">
                   {/* Delete Popup Header */}
-                  <View className="p-4 border-b border-gray-700">
-                    <Typography variant="headline-18" color="white" className="text-center">
+                  <View className="p-4 border-b border-light-border dark:border-gray-700">
+                    <Typography variant="headline-18" color="primary" className="text-center">
                       Delete Tag
                     </Typography>
                   </View>
 
                   {/* Warning content */}
                   <View className="p-4">
-                    <Typography variant="body-14" color="white" className="leading-5">
+                    <Typography variant="body-14" color="primary" className="leading-5">
                       Deleting {tagToDelete?.name ? `"${tagToDelete.name}"` : 'this tag'} will permanently remove all associated focus sessions. This cannot be undone.
                     </Typography>
                   </View>
 
                   {/* Action buttons */}
-                  <View className="p-3 border-t border-gray-700 flex-row space-x-2">
+                  <View className="p-3 border-t border-light-border dark:border-gray-700 flex-row space-x-2">
                     <Pressable
                       onPress={handleCancelDelete}
                       className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
@@ -1795,10 +1797,10 @@ export default function FocusScreen() {
               setNewTagColor('#6592E9');
             }}
           >
-            <Pressable onPress={() => {}} className="bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
+            <Pressable onPress={() => {}} className="bg-light-bg dark:bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
               {/* Modal Header */}
-              <View className="flex-row items-center justify-between p-6 border-b border-gray-700">
-                <Typography variant="headline-20" color="white">
+              <View className="flex-row items-center justify-between p-6 border-b border-light-border dark:border-gray-700">
+                <Typography variant="headline-20" color="primary">
                   Create New Tag
                 </Typography>
                 <Pressable
@@ -1808,9 +1810,9 @@ export default function FocusScreen() {
                     setNewTagEmoji('');
                     setNewTagColor('#6592E9');
                   }}
-                  className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center"
+                  className="w-8 h-8 rounded-full bg-light-border/50 dark:bg-gray-700 items-center justify-center"
                 >
-                  <Ionicons name="close" size={20} color="#FFFFFF" />
+                  <Ionicons name="close" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
                 </Pressable>
               </View>
 
@@ -1820,7 +1822,7 @@ export default function FocusScreen() {
                 <View className="mb-6 flex-row items-center" style={{ gap: 12 }}>
                   <Pressable
                     onPress={handleNewTagEmojiPress}
-                    className="w-12 h-12 rounded-xl bg-gray-700 items-center justify-center border border-gray-500 active:opacity-80"
+                    className="w-12 h-12 rounded-xl bg-light-border/30 dark:bg-gray-700 items-center justify-center border border-light-border dark:border-gray-500 active:opacity-80"
                   >
                     {newTagEmoji ? (
                       <Text className="text-2xl">{newTagEmoji}</Text>
@@ -1835,13 +1837,13 @@ export default function FocusScreen() {
                     placeholderTextColor="#666"
                     className="flex-1"
                     style={{
-                      backgroundColor: '#2A2A2A',
+                      backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
                       borderRadius: 12,
                       padding: 14,
                       fontSize: 16,
-                      color: '#FFFFFF',
+                      color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
                       borderWidth: 1,
-                      borderColor: '#444',
+                      borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
                     }}
                     autoFocus={true}
                   />
@@ -1849,7 +1851,7 @@ export default function FocusScreen() {
 
                 {/* Color Selection */}
                 <View>
-                  <Typography variant="body-14" color="white" className="mb-3">
+                  <Typography variant="body-14" color="primary" className="mb-3">
                     Color
                   </Typography>
                   <View className="flex-row flex-wrap" style={{ gap: 12 }}>
@@ -1872,7 +1874,7 @@ export default function FocusScreen() {
               </View>
 
               {/* Action Buttons */}
-              <View className="p-4 border-t border-gray-700 flex-row space-x-3">
+              <View className="p-4 border-t border-light-border dark:border-gray-700 flex-row space-x-3">
                 <Pressable
                   onPress={() => {
                     setShowNewTagModal(false);
@@ -1917,11 +1919,11 @@ export default function FocusScreen() {
           className="flex-1 bg-black/50 justify-center items-center px-6"
           onPress={() => setShowBlocklistTip(false)}
         >
-          <Pressable onPress={() => {}} className="bg-dark-bg rounded-2xl w-full max-w-sm overflow-hidden p-6">
-            <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600', marginBottom: 12 }}>
+          <Pressable onPress={() => {}} className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-sm overflow-hidden p-6">
+            <Text style={{ color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37', fontSize: 17, fontWeight: '600', marginBottom: 12 }}>
               Block List
             </Text>
-            <Text style={{ color: '#AAAAAA', fontSize: 14, lineHeight: 20, marginBottom: 24 }}>
+            <Text style={{ color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355', fontSize: 14, lineHeight: 20, marginBottom: 24 }}>
               This is where you add apps that are unnecessary for achieving your goals and also distracting.{'\n\n'}Your first setup is free. After that, each edit costs fruits — starting at 1 and doubling each time, resetting weekly.
             </Text>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
@@ -1929,7 +1931,7 @@ export default function FocusScreen() {
                 onPress={() => setShowBlocklistTip(false)}
                 style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
               >
-                <Text style={{ color: '#888888', fontSize: 15, fontWeight: '500' }}>Cancel</Text>
+                <Text style={{ color: colorScheme === 'dark' ? '#888888' : '#8B7355', fontSize: 15, fontWeight: '500' }}>Cancel</Text>
               </Pressable>
               <Pressable
                 onPress={handleBlocklistTipUnderstood}
@@ -1953,14 +1955,14 @@ export default function FocusScreen() {
           className="flex-1 bg-black/50 justify-center items-center px-6"
           onPress={() => setShowEditCostModal(false)}
         >
-          <Pressable onPress={() => {}} className="bg-dark-bg rounded-2xl w-full max-w-sm overflow-hidden p-6">
-            <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600', marginBottom: 12 }}>
+          <Pressable onPress={() => {}} className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-sm overflow-hidden p-6">
+            <Text style={{ color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37', fontSize: 17, fontWeight: '600', marginBottom: 12 }}>
               Edit Block List
             </Text>
-            <Text style={{ color: '#AAAAAA', fontSize: 14, lineHeight: 20, marginBottom: 15 }}>
+            <Text style={{ color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355', fontSize: 14, lineHeight: 20, marginBottom: 15 }}>
               Editing the blocklist is a thoughtful process. The cost starts at 1 fruit and doubles with each edit, resetting weekly.
             </Text>
-            <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500', marginBottom: 15 }}>
+            <Text style={{ color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37', fontSize: 15, fontWeight: '500', marginBottom: 15 }}>
               This edit will cost {blocklistEditCost.cost} 🍎
             </Text>
             {!blocklistEditCost.canAfford && (
@@ -1973,7 +1975,7 @@ export default function FocusScreen() {
                 onPress={() => setShowEditCostModal(false)}
                 style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
               >
-                <Text style={{ color: '#888888', fontSize: 15, fontWeight: '500' }}>Cancel</Text>
+                <Text style={{ color: colorScheme === 'dark' ? '#888888' : '#8B7355', fontSize: 15, fontWeight: '500' }}>Cancel</Text>
               </Pressable>
               <Pressable
                 onPress={async () => {

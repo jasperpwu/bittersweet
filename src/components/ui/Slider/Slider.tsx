@@ -109,7 +109,7 @@ export const Slider: FC<SliderProps> = ({
     <View className="items-center">
       {label && (
         <View className="flex-row items-center justify-between w-full mb-2">
-          <Typography variant="subtitle-14-medium" color="white">
+          <Typography variant="subtitle-14-medium" color="primary">
             {label}
           </Typography>
           <Typography variant="subtitle-14-semibold" color="primary">
@@ -122,7 +122,7 @@ export const Slider: FC<SliderProps> = ({
         <Animated.View style={[trackStyle, { justifyContent: 'center' }]}>
           {/* Track Background */}
           <View 
-            className="bg-dark-border rounded-full"
+            className="bg-light-border dark:bg-dark-border rounded-full"
             style={{ 
               width: width, 
               height: 4,
