@@ -570,8 +570,8 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
       {/* Progress bar */}
       <View className="mt-2 h-2 rounded-full bg-dark-border overflow-hidden relative">
         <View
-          className="h-full bg-primary"
-          style={{ width: `${progressWidth}%` }}
+          className={`h-full ${goal.percentage >= 100 ? '' : 'bg-primary'}`}
+          style={{ width: `${progressWidth}%`, ...(goal.percentage >= 100 && { backgroundColor: TRACK_COLORS.healthy }) }}
         />
         {exceededWidth > 0 && (
           <View
@@ -593,50 +593,52 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
       </View>
 
       {/* Urgency hint line — only covers the unfilled portion, with forward shimmer */}
-      <View
-        style={{
-          marginLeft: `${progressWidth}%`,
-          marginTop: -5,
-          height: 6,
-          overflow: 'hidden',
-          borderTopRightRadius: 999,
-          borderBottomRightRadius: 999,
-        }}
-      >
-        {/* Static base line */}
+      {goal.percentage < 100 && (
         <View
           style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 2,
-            height: 2,
-            backgroundColor: trackColor,
-            opacity: 0.5,
+            marginLeft: `${progressWidth}%`,
+            marginTop: -5,
+            height: 6,
+            overflow: 'hidden',
             borderTopRightRadius: 999,
             borderBottomRightRadius: 999,
           }}
-        />
-        {/* Sweeping highlight */}
-        <Reanimated.View
-          style={[
-            {
+        >
+          {/* Static base line */}
+          <View
+            style={{
               position: 'absolute',
-              top: 1,
-              width: 40,
-              height: 4,
-              borderRadius: 999,
+              left: 0,
+              right: 0,
+              top: 2,
+              height: 2,
               backgroundColor: trackColor,
-              shadowColor: trackColor,
-              shadowOpacity: 1,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 10,
-            },
-            shimmerStyle,
-          ]}
-        />
-      </View>
+              opacity: 0.5,
+              borderTopRightRadius: 999,
+              borderBottomRightRadius: 999,
+            }}
+          />
+          {/* Sweeping highlight */}
+          <Reanimated.View
+            style={[
+              {
+                position: 'absolute',
+                top: 1,
+                width: 40,
+                height: 4,
+                borderRadius: 999,
+                backgroundColor: trackColor,
+                shadowColor: trackColor,
+                shadowOpacity: 1,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 2 },
+                elevation: 10,
+              },
+              shimmerStyle,
+            ]}
+          />
+        </View>
+      )}
     </View>
   );
 };
