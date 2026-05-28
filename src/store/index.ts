@@ -141,9 +141,12 @@ interface AppStore {
     totalSpent: number;
     transactions: any[];
     unlockableApps: any[];
+    accelerateCard: { activatedAt: string; expiresAt: string } | null;
     earnFruits: (amount: number, source: string, metadata?: any) => void;
     spendFruits: (amount: number, purpose: string, metadata?: any) => void;
     unlockApp: (appId: string) => Promise<boolean>;
+    activateAccelerateCard: () => void;
+    isAccelerateActive: () => boolean;
   };
 
   // Auth
@@ -217,14 +220,14 @@ const generateId = () => {
   return `${timestamp}-${randomStr}`;
 };
 
-export const calculateFruitsEarnedForDuration = (duration: number, targetDuration: number = duration) => {
+export const calculateFruitsEarnedForDuration = (duration: number, targetDuration: number = duration, multiplier: number = 1) => {
   const earnedMinutes = Math.max(0, Math.floor(duration));
   // Only count minutes up to the target duration for fruit earning
   const countedMinutes = Math.min(earnedMinutes, Math.max(0, Math.floor(targetDuration)));
   const baseFruits = Math.floor(countedMinutes / 5);
   // +1 bonus fruit for completing the full set duration
   const completionBonus = earnedMinutes >= Math.floor(targetDuration) && targetDuration > 0 ? 1 : 0;
-  return baseFruits + completionBonus;
+  return (baseFruits + completionBonus) * multiplier;
 };
 
 export const useAppStore = create<AppStore>()(
@@ -321,7 +324,8 @@ export const useAppStore = create<AppStore>()(
           }
           
           // Calculate and award fruits (+1 bonus for completing set duration)
-          const fruitsEarned = calculateFruitsEarnedForDuration(duration);
+          const accelerateMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
+          const fruitsEarned = calculateFruitsEarnedForDuration(duration, duration, accelerateMultiplier);
           if (fruitsEarned > 0) {
             get().rewards.earnFruits(fruitsEarned, 'focus_session', {
               sessionId: sessionId,
@@ -368,8 +372,9 @@ export const useAppStore = create<AppStore>()(
           const previousAdjustedDuration = session.adjustedDuration ?? session.duration;
           const nextAdjustedDuration = Math.max(0, Math.min(actualDuration, Math.round(adjustedDuration)));
           const targetDuration = session.initialSetDuration ?? session.duration;
-          const previousFruits = session.isManualEntry ? 0 : calculateFruitsEarnedForDuration(previousAdjustedDuration, targetDuration);
-          const nextFruits = session.isManualEntry ? 0 : calculateFruitsEarnedForDuration(nextAdjustedDuration, targetDuration);
+          const adjustMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
+          const previousFruits = session.isManualEntry ? 0 : calculateFruitsEarnedForDuration(previousAdjustedDuration, targetDuration, adjustMultiplier);
+          const nextFruits = session.isManualEntry ? 0 : calculateFruitsEarnedForDuration(nextAdjustedDuration, targetDuration, adjustMultiplier);
           const fruitDelta = nextFruits - previousFruits;
 
           set((state) => ({
@@ -552,7 +557,8 @@ export const useAppStore = create<AppStore>()(
               // Duration is already set when creating the session
               
               // Calculate and award fruits (+1 bonus for completing set duration)
-              const fruitsEarned = calculateFruitsEarnedForDuration(actualDuration, session.initialSetDuration ?? actualDuration);
+              const completeMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
+              const fruitsEarned = calculateFruitsEarnedForDuration(actualDuration, session.initialSetDuration ?? actualDuration, completeMultiplier);
               if (fruitsEarned > 0) {
                 get().rewards.earnFruits(fruitsEarned, 'focus_session', {
                   sessionId: id,
@@ -632,7 +638,8 @@ export const useAppStore = create<AppStore>()(
           }
 
           // Calculate and award fruits (+1 bonus for completing set duration)
-          const fruitsEarned = params.isManualEntry ? 0 : calculateFruitsEarnedForDuration(params.duration, params.targetDuration);
+          const createCompletedMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
+          const fruitsEarned = params.isManualEntry ? 0 : calculateFruitsEarnedForDuration(params.duration, params.targetDuration, createCompletedMultiplier);
           if (fruitsEarned > 0) {
             get().rewards.earnFruits(fruitsEarned, 'focus_session', {
               sessionId: sessionId,
@@ -1003,6 +1010,7 @@ export const useAppStore = create<AppStore>()(
         totalSpent: 0,
         transactions: [],
         unlockableApps: [],
+        accelerateCard: null,
         earnFruits: (amount, source, metadata) => {
           set((state) => ({
             rewards: {
@@ -1050,7 +1058,31 @@ export const useAppStore = create<AppStore>()(
             return true;
           }
           return false;
-        }
+        },
+        activateAccelerateCard: () => {
+          const cost = 50;
+          const balance = get().rewards.balance;
+          if (balance < cost) {
+            throw new Error(`Insufficient fruits. Required: ${cost}, Available: ${balance}`);
+          }
+          const now = new Date();
+          const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 1 day
+          get().rewards.spendFruits(cost, 'accelerate_card', { duration: '1 day' });
+          set((state) => ({
+            rewards: {
+              ...state.rewards,
+              accelerateCard: {
+                activatedAt: now.toISOString(),
+                expiresAt: expiresAt.toISOString(),
+              },
+            },
+          }));
+        },
+        isAccelerateActive: () => {
+          const card = get().rewards.accelerateCard;
+          if (!card) return false;
+          return new Date(card.expiresAt) > new Date();
+        },
       },
 
       // Blocklist state

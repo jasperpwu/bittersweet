@@ -406,6 +406,10 @@ export default function RootLayout() {
                     gestureEnabled: true,
                   }}
                 />
+                <Stack.Screen
+                  name="fruit-store"
+                  options={{ headerShown: false }}
+                />
               </Stack>
 
               {/* Unlock bottom sheet overlay */}

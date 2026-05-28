@@ -1447,7 +1447,12 @@ export default function FocusScreen() {
             )}
           </Pressable>
         </Animated.View>
-        <FruitCounter fruitCount={rewards.balance} size="small" />
+        <Animated.View
+          style={{ opacity: isUnlockActive ? 0 : headerOpacity }}
+          pointerEvents={isSessionActive || isUnlockActive ? 'none' : 'auto'}
+        >
+          <FruitCounter fruitCount={rewards.balance} size="small" onPress={() => router.push('/fruit-store')} />
+        </Animated.View>
       </View>
 
       <View className="flex-1 items-center justify-center px-4">

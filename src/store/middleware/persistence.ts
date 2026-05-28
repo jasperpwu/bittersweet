@@ -310,6 +310,7 @@ export const persistenceConfig = {
       totalSpent: state.rewards.totalSpent,
       transactions: state.rewards.transactions,
       unlockableApps: state.rewards.unlockableApps,
+      accelerateCard: state.rewards.accelerateCard,
     },
     blocklist: {
       settings: state.blocklist.settings,
