@@ -22,12 +22,58 @@ That's our social moat.
 
 ### Grove opt-in (social layer, requires sign-in)
 - A separate, explicit step where a signed-in user chooses to be social
-- Involves: setting a display name / avatar, choosing what to share, getting a friend link
+- Involves: completing a profile setup flow (name, handle, avatar, gender, job),
+  choosing what to share, getting a friend link
 - The social profile is a separate entity attached to the account only when they choose
 - Can be disabled at any time — hides tab, pauses sharing, keeps account intact
 
 **Key rule:** The backend user record exists independently of any social profile. A user
 can have an account for years and never touch Grove.
+
+---
+
+## Profile Setup Flow (Grove Onboarding)
+
+When a user taps "Set Up Grove," they enter a multi-step onboarding flow. Each step is
+a single focused screen. The user can go back to any previous step but must complete all
+required fields to finish setup.
+
+### Step 1 — Name & Handle
+- **Display name** (required): How you appear on cards, rankings, and notifications.
+  Free text, max 20 characters. Can be a real name, nickname, or alias.
+- **Handle** (required): A unique `@username` for search and mentions. Lowercase
+  alphanumeric + underscores, 3–20 characters. Checked for uniqueness in real time.
+  This is how friends find you via "Search by username."
+
+### Step 2 — Avatar
+- **Avatar** (optional, with default): Upload a photo from camera roll, take a new
+  photo, or choose from a set of preset illustrated avatars (fruit/plant themed to
+  match the app's aesthetic).
+- If skipped, a default avatar is assigned based on the first letter of the display name
+  with a randomly assigned color from the app palette.
+- Avatar is cropped to a circle on upload. Max file size enforced client-side.
+
+### Step 3 — About You
+- **Gender** (optional): Select from a predefined list (e.g., Male, Female, Non-binary,
+  Prefer not to say). Private — never displayed to friends. Used for personalization
+  and aggregate analytics only.
+- **Job / Role** (optional): Free text, max 30 characters (e.g., "Student", "Designer",
+  "Engineer"). Private — never displayed to friends. Used for personalization and
+  aggregate analytics only. Can be left blank.
+
+### Step 4 — Privacy Defaults
+- Quick toggles for initial sharing preferences (what tags to share, notes on/off,
+  live status on/off). Same controls available later in Settings > Grove.
+- Brief explanation of what friends will and won't see.
+
+### Completion
+- Profile is created. Grove tab appears in the tab bar.
+- User lands on the Grove tab with an empty state prompting them to add friends
+  (share link, contacts, QR code).
+
+### Profile editing after setup
+All profile fields (name, handle, avatar, gender, job) are editable at any time from
+Settings > Grove > Profile.
 
 ---
 
@@ -69,11 +115,12 @@ Settings
 │   ├── IF not opted in:
 │   │     "Focus with friends" card
 │   │     Brief pitch + "Set Up Grove" button
-│   │     Tapping → profile setup (name, avatar, privacy defaults)
+│   │     Tapping → profile setup flow (name, handle, avatar, gender, job, privacy)
 │   │     → Grove tab appears after completion
 │   │
 │   └── IF opted in:
-│         Display name, avatar, privacy controls
+│         Profile (display name, handle, avatar, gender, job)
+│         Privacy controls (tag sharing, notes, live status, visibility)
 │         Friend management, invite link
 │         "Disable Grove" option (hides tab, pauses sharing)
 ```
@@ -92,14 +139,19 @@ recent activity — avatar, name, session details, all in one visual unit. No se
 avatar row + feed list. One card = one friend's latest highlight.
 
 ```
-┌─────────────────────────────────┐
-│                                 │
-│  🧑 Ali              2h ago    │
-│                                 │
-│  📚 Deep Reading                │
-│  45 min                         │
-│  "Finally finished chapter 12"  │
-│                                 │
+┌─────────────────────────────────┐  ┌─────────────────────────────────┐
+│                                 │  │                                 │
+│  🧑 Ali              2h ago    │  │  🧑 Sam              1h ago    │
+│                                 │  │                                 │
+│  📚 Deep Reading                │  │  🏆 Goal Streak Snapshot        │
+│  45 min                         │  │                                 │
+│  ┌───────────────────────────┐  │  │  🏃 Exercise                    │
+│  │                           │  │  │  🔥 21-day streak              │
+│  │      [session photo]      │  │  │  ████████████████▓▓▓░  85%     │
+│  │                           │  │  │                                 │
+│  └───────────────────────────┘  │  │                      [👏]       │
+│  "Finally finished chapter 12"  │  │                                 │
+│                                 │  └─────────────────────────────────┘
 │                      🍎 +9      │
 │                                 │
 │  🔥 5-day streak    [👏]       │
@@ -108,13 +160,29 @@ avatar row + feed list. One card = one friend's latest highlight.
   ●  ○  ○  ○                  [+]
 ```
 
-- Each card shows: avatar + name, tag emoji + name, duration, optional note,
-  fruits earned, current streak
+**Feed content types:**
+
+A card in the carousel represents one of two content types:
+
+1. **Finished session** (auto-shared for allowed tags) — The primary feed unit.
+   - **Always shown:** tag emoji + tag name, duration
+   - **Optional:** photo (if the user attached one on the session summary form),
+     note (if added and the user has notes sharing enabled)
+   - Only sessions with tags the user has marked as shareable appear in the feed.
+     Sessions with private tags are never shared.
+
+2. **Goal streak snapshot** (manually shared) — A user can share their current
+   goal streak progress from the goal streak view. This creates a one-off card
+   showing the streak count, goal name, and progress visualization. This is
+   always an explicit action — never auto-shared.
+
+**Card details:**
+- Each card shows: avatar + name, content type indicator, and a single-tap
+  reaction button (e.g., 👏) — sends encouragement. No comments, no likes count.
+  Key to "without pressure" positioning.
 - **Live sessions** get distinct visual treatment — green-tinted card, pulse
   animation, "Live" badge, "Join" button (starts your own session with same tag)
 - **Recency** shown per card — "2h ago", "Live", "Yesterday"
-- **Single-tap reaction** button on each card (e.g., 👏) — sends encouragement.
-  No comments, no likes count. Key to "without pressure" positioning.
 - **Scope:** Today + yesterday only. Not an infinite feed.
 - **[+] button** at the end of the carousel opens the Add Friends flow
 - Tapping the card opens a detail view: their recent sessions list, weekly total,
@@ -173,34 +241,60 @@ ranking (no placeholder, no "N/A").
 - Show "Your personal best this week" alongside rankings — motivate, not shame
 - Never show "0 minutes" for a bad week — show streak or lifetime total instead
 
-**Group filter (created from the leaderboard):**
+**Groups (tag-based communities):**
 
-The rankings section is where groups are born. A dropdown/picker above the leaderboard
-lets you scope rankings to a specific group or "All Friends" (default).
+Each group is created around a **shared tag** — a managed focus tag that defines the
+group's purpose (e.g., "Study Group", "Morning Run", "Deep Work Club"). The shared tag
+is the atomic unit that ties the group together: rankings within the group are scoped
+to sessions logged under that tag.
 
-- **Create a group:** From the rankings header, tap the group picker → "New Group" →
-  name it → select existing friends to add. Lightweight — no group leader concept,
-  just a named collection.
-- **Group view shows only group members.** When a group is selected, the ranking
-  list is exclusively that group's members — not your full friend list with highlights.
+A dropdown/picker above the leaderboard lets you scope rankings to a specific group
+or "All Friends" (default).
+
+**Creating a group:**
+- From the rankings header, tap the group picker → "New Group"
+- Name the group and choose (or create) the shared tag it's built around
+- Invite existing friends or generate an invite link anyone can use to join
+- Lightweight — no group leader concept, just a named collection with a shared tag
+
+**Joining a group:**
+- Via invite link or direct invite from a current member
+- On join, the shared tag is added to the user's tag list automatically
+- The user immediately sees the group's rankings and can start logging sessions
+  under the shared tag to participate
+
+**Group rankings:**
+- **Scoped to the shared tag.** Rankings show only sessions logged under the group's
+  tag — not all focus activity. This keeps comparisons relevant and fair.
+- When a group is selected, the ranking list is exclusively that group's members.
   The point is a scoped comparison.
-- **Group visibility:** Everyone in the group can see each other's rankings within
-  that group, even if they aren't direct friends yet.
-- **Friend discovery from groups:** If you see someone in a group ranking who you
-  aren't friends with, you can tap their card and send a friend request directly.
-  This makes groups a natural channel for expanding your Grove without sharing links
-  or scanning QR codes.
+
+**Member profiles (tappable from rankings):**
+- Tapping any member's row in the group ranking opens their **profile view**:
+  - Name and avatar
+  - Their activity feed (sessions shared to the group's tag — respects their
+    privacy settings for notes/photos)
+  - Friend status: "Already friends" (with option to view full profile), or
+    "Add as friend" button to send a friend request directly
+- This makes groups a natural channel for expanding your Grove without sharing
+  links or scanning QR codes separately.
+
+**Group membership rules:**
 - **Anyone in the group can add members:** No single owner bottleneck. Any member
-  can invite their existing friends into the group.
-- **Groups only affect rankings.** The carousel and activity feed always show all
-  your direct friends — no group filtering there. Groups are a leaderboard lens only.
+  can invite their existing friends or share the group invite link.
+- **Everyone in the group can see each other** in that group's rankings, even if
+  they aren't direct friends yet — enabling organic friend discovery.
+
+**Groups only affect rankings.** The carousel and activity feed always show all
+your direct friends — no group filtering there. Groups are a leaderboard lens only.
 
 ---
 
 ## Heartbeat — Inner Circle Check-ins
 
-A passive wellness signal. Your focus sessions are your "heartbeat." If you go silent
-for too long, your closest friends get a gentle prompt to check in on you.
+A passive wellness signal. Your **app login activity** is your "heartbeat." The backend
+tracks the user's last login timestamp. If a user goes dark — or takes certain explicit
+actions — their closest friends are notified so they can check in.
 
 ### Inner Circle (separate trust layer)
 
@@ -210,52 +304,62 @@ for too long, your closest friends get a gentle prompt to check in on you.
 - **Directional** — you can be in someone's Inner Circle without them being in yours.
 - Setup: Settings > Grove > Inner Circle
 
-### Quiet Threshold
+### What Triggers a Notification to Inner Circle
 
-- **Default: 3 days** of zero focus sessions before anything triggers.
-- Configurable: 3, 5, 7, 14 days. Can be fine-tuned later based on user behavior data.
-- Generous enough to filter out normal life fluctuations (busy day, weekend off).
+Three events send a push notification to the user's Inner Circle friends:
 
-### "I'm okay" Pause (Vacation Mode)
+1. **No login for X days (quiet threshold):**
+   - The user has not opened the app for a configurable number of days.
+   - **Default: 3 days.** Configurable: 3, 5, 7, 14 days.
+   - Based on login activity (app open), not focus sessions — a user who opens the
+     app but doesn't focus is still "alive."
+   - Generous enough to filter out normal life fluctuations (busy day, weekend off).
+
+2. **Block list edit:**
+   - The user edits their screen time block list (adds or removes apps/categories).
+   - This is a potential signal of struggle — loosening restrictions may indicate the
+     user is having a hard time. Inner Circle friends get a heads-up.
+   - The notification is neutral in tone — no judgment, just awareness.
+
+3. **Heartbeat paused:**
+   - The user explicitly pauses their heartbeat (see below). Inner Circle friends
+     are notified that the user is taking a break.
+   - This is a courtesy signal — "I'm stepping away intentionally."
+
+### Notification Content
+
+All heartbeat notifications are **gentle and non-specific:**
+- Quiet threshold: "You haven't heard from [Name] in a while. Check in?"
+- Block list edit: "[Name] might need some support. Check in?"
+- Heartbeat paused: "[Name] is taking a break from Bittersweet."
+
+No details about what changed or what the user did. The notification is a prompt to
+reach out through normal channels (text, call), not within the app.
+
+### Heartbeat Pause
 
 - One-tap pause from the Grove tab header (heart icon) or Settings > Grove > Inner Circle.
 - Set duration: 1 week, 2 weeks, 1 month, or indefinite.
-- Inner Circle friends see "Ali is on a break" — no details, no explanation required.
-- Suppresses all heartbeat alerts for the pause period.
-
-### The Check-in Alert (Gentle, Not Alarming)
-
-**What happens when the threshold is crossed:**
-
-1. The friend's carousel card in Grove shifts to a **muted/faded state** with a soft
-   prompt: "You haven't seen Ali in a while. Send a check-in?"
-2. Tapping sends a **pre-written gentle nudge** — not a custom message. Something like
-   "Hey, thinking of you" with a small heart/wave animation.
-3. The recipient sees it **next time they open the app** — not as a push notification.
-   No urgency theater.
-
-**Optional escalation (off by default, user-configured):**
-- The user who sets up their heartbeat can opt in to escalation.
-- If threshold + 3 more days pass with no app activity and no response to the check-in,
-  THEN send a push notification to the Inner Circle member.
-- This is explicitly opted into by the heartbeat owner, not the watcher.
+- Pausing sends a one-time notification to Inner Circle (see trigger #3 above).
+- While paused, quiet threshold and block list edit triggers are suppressed.
 
 ### What Heartbeat is NOT
 
+- Not based on focus sessions — login activity is the signal
 - Not a daily activity tracker for friends ("Ali focused 0 minutes today")
-- Not a push notification on day 1 of inactivity
 - Not visible to regular Grove friends — only Inner Circle
 - Not automatic — every part is explicit opt-in on both sides
 - Not a source of guilt — the generous threshold + pause mode ensure users never feel
-  forced to focus just to keep their heartbeat alive
+  surveilled or forced to open the app just to keep their heartbeat alive
 
 ### Where It Lives in the UI
 
 - **Setup:** Settings > Grove > Inner Circle
 - **Your status:** Small heart icon on the Grove tab header. Tap to see heartbeat
   status or pause. Pulsing = active, static = paused.
-- **Friend alert:** Muted carousel card state + check-in prompt (only for Inner Circle
-  friends who crossed the threshold)
+- **Friend alert:** Push notification to Inner Circle friends when any trigger fires.
+  Additionally, the friend's carousel card in Grove shifts to a muted/faded state
+  with a prompt: "Check in on [Name]?"
 
 ---
 
@@ -363,10 +467,22 @@ pressure, just shared growth.
 
 ---
 
+## Pre-requisites (New Capabilities Needed Before Grove)
+
+- **Session photo attachment:** The session summary form (shown after a focus session
+  ends) must support an optional photo attachment. The user can take a photo or pick
+  from their camera roll. The photo is stored with the session record and, if the user
+  has Grove enabled and the tag is shareable, included in the feed card. This feature
+  is useful even for solo users (personal session journaling) and should ship
+  independently of Grove.
+
 ## Integration Points (Existing Codebase)
 
-- **Session completion** (session-complete.tsx): Add "Share to Grove" toggle + share
-  card button
+- **Session completion** (session-complete.tsx): Add optional photo attachment to the
+  session summary form. Add "Share to Grove" toggle + share card button.
+- **Goal streak view**: The existing share button should gain a "Share to Grove" option
+  alongside external sharing. Tapping it publishes a goal streak snapshot card to the
+  user's friends feed.
 - **Focus screen** (index.tsx): Small indicator "2 friends focusing now" above tag
   selector — subtle social nudge (only for Grove users)
 - **Store**: New `social` slice in Zustand store for friend list, feed data, reactions

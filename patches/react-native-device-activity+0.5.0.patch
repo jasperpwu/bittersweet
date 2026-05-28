@@ -19,16 +19,3 @@ index 01c36ba..02a62dc 100644
        return userDefaults?.removeObject(forKey: forKey)
      }
  
-diff --git a/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist b/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist
-index 84601bb..d96bd58 100644
---- a/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist
-+++ b/node_modules/react-native-device-activity/targets/ShieldConfiguration/Info.plist
-@@ -2,6 +2,8 @@
- <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
- <plist version="1.0">
- <dict>
-+	<key>UIUserInterfaceStyle</key>
-+	<string>Dark</string>
- 	<key>REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP</key>
-   <string>$(REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP)</string>
- 	<key>NSExtension</key>

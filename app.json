@@ -19,7 +19,8 @@
         "react-native-device-activity",
         {
           "appleTeamId": "WFHA987U5W",
-          "appGroup": "group.com.path2us.bittersweet.appblocker"
+          "appGroup": "group.com.path2us.bittersweet.appblocker",
+          "copyToTargetFolder": false
         }
       ],
       [

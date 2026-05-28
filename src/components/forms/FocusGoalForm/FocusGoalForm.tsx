@@ -110,10 +110,10 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       setTargetHours(clamped);
     }
 
-    // Also clamp rest day target
+    // Also clamp rest day target (allow 0 for rest days)
     let clampedRest = Math.min(restDayTargetHours, max);
     clampedRest = Math.round(clampedRest / step) * step;
-    clampedRest = Math.max(step, clampedRest);
+    clampedRest = Math.max(0, clampedRest);
     if (clampedRest !== restDayTargetHours) {
       setRestDayTargetHours(clampedRest);
     }
@@ -159,6 +159,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   const isValid = targetHours > 0 && selectedTagIds.length > 0;
 
   const formatSliderValue = (hours: number): string => {
+    if (hours === 0) return '0h';
     const wholeHours = Math.floor(hours);
     const minutes = Math.round((hours - wholeHours) * 60);
     if (minutes === 0) return `${wholeHours}h`;
@@ -257,7 +258,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
             </Typography>
             <Slider
               value={restDayTargetHours}
-              minimumValue={STEP_HOURS[period]}
+              minimumValue={0}
               maximumValue={MAX_HOURS[period]}
               step={STEP_HOURS[period]}
               onValueChange={setRestDayTargetHours}

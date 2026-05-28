@@ -262,7 +262,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
       />
 
       {/* Bottom sheet snackbar */}
-      <View className="bg-gray-900 rounded-t-3xl mx-4 mb-8 px-6 py-6 border border-gray-700 shadow-2xl">
+      <View className="bg-light-bg dark:bg-gray-900 rounded-t-3xl mx-4 mb-8 px-6 py-6 border border-light-border dark:border-gray-700 shadow-2xl">
 
         {/* Header */}
         <View className="flex-row items-center mb-4">
@@ -272,7 +272,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
             </Typography>
           </View>
           <View className="flex-1">
-            <Typography variant="subtitle-16" color="white">
+            <Typography variant="subtitle-16" color="primary">
               {appName} is blocked
             </Typography>
             <Typography variant="body-12" color="secondary">
@@ -313,7 +313,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
         <View className="flex-row gap-3">
           <Pressable
             onPress={onDismiss}
-            className="flex-1 py-3 rounded-xl border border-gray-600 active:opacity-80"
+            className="flex-1 py-3 rounded-xl border border-light-border dark:border-gray-600 active:opacity-80"
           >
             <Typography variant="body-14" color="secondary" className="text-center">
               Dismiss
@@ -327,7 +327,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
               flex-1 py-3 rounded-xl active:opacity-80
               ${currentBalance >= (selectedDuration * settings.unlockCostPerMinute)
                 ? 'bg-primary'
-                : 'bg-gray-600'
+                : 'bg-light-border dark:bg-gray-600'
               }
             `}
           >
