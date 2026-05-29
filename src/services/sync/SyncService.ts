@@ -140,19 +140,12 @@ export class SyncService {
         ),
       },
       rewards: {
-        // For rewards, take whichever has higher totalEarned (more activity)
-        balance:
-          (remote.rewards?.totalEarned ?? 0) >=
-          (local.rewards?.totalEarned ?? 0)
-            ? remote.rewards.balance
-            : local.rewards.balance,
-        totalEarned: Math.max(
-          remote.rewards?.totalEarned ?? 0,
-          local.rewards?.totalEarned ?? 0
-        ),
-        totalSpent: Math.max(
-          remote.rewards?.totalSpent ?? 0,
-          local.rewards?.totalSpent ?? 0
+        // Last-write-wins: whichever side has the later updatedAt wins aggregate fields
+        ...(
+          new Date(local.rewards?.updatedAt ?? 0).getTime() >=
+          new Date(remote.rewards?.updatedAt ?? 0).getTime()
+            ? { balance: local.rewards.balance, totalEarned: local.rewards.totalEarned, totalSpent: local.rewards.totalSpent, updatedAt: local.rewards.updatedAt }
+            : { balance: remote.rewards.balance, totalEarned: remote.rewards.totalEarned, totalSpent: remote.rewards.totalSpent, updatedAt: remote.rewards.updatedAt }
         ),
         transactions: SyncService.mergeTransactions(
           local.rewards?.transactions ?? [],

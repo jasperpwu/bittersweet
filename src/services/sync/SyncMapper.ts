@@ -167,6 +167,7 @@ export function rewardsToRow(rewards: any, userId: string): Record<string, any> 
     balance: rewards.balance,
     total_earned: rewards.totalEarned,
     total_spent: rewards.totalSpent,
+    updated_at: rewards.updatedAt ?? new Date().toISOString(),
   };
 }
 
@@ -175,6 +176,7 @@ export function rowToRewards(row: Record<string, any>): any {
     balance: row.balance ?? 0,
     totalEarned: row.total_earned ?? 0,
     totalSpent: row.total_spent ?? 0,
+    updatedAt: row.updated_at ?? null,
   };
 }
 

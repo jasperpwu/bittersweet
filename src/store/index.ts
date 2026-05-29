@@ -399,6 +399,7 @@ export const useAppStore = create<AppStore>()(
               ...state.rewards,
               balance: state.rewards.balance + fruitDelta,
               totalEarned: state.rewards.totalEarned + fruitDelta,
+              updatedAt: new Date().toISOString(),
               transactions: [
                 ...state.rewards.transactions,
                 {
@@ -469,6 +470,7 @@ export const useAppStore = create<AppStore>()(
                 transactions: filteredTransactions,
                 balance: state.rewards.balance - fruitsToDeduct,
                 totalEarned: state.rewards.totalEarned - fruitsToDeduct,
+                updatedAt: new Date().toISOString(),
               }
             };
           });
@@ -1008,6 +1010,7 @@ export const useAppStore = create<AppStore>()(
         balance: 0,
         totalEarned: 0,
         totalSpent: 0,
+        updatedAt: null as string | null,
         transactions: [],
         unlockableApps: [],
         accelerateCard: null,
@@ -1017,6 +1020,7 @@ export const useAppStore = create<AppStore>()(
               ...state.rewards,
               balance: state.rewards.balance + amount,
               totalEarned: state.rewards.totalEarned + amount,
+              updatedAt: new Date().toISOString(),
               transactions: [...state.rewards.transactions, { id: generateId(), amount, source, metadata, type: 'earn', timestamp: new Date() }]
             }
           }));
@@ -1033,6 +1037,7 @@ export const useAppStore = create<AppStore>()(
               ...state.rewards,
               balance: state.rewards.balance - amount,
               totalSpent: state.rewards.totalSpent + amount,
+              updatedAt: new Date().toISOString(),
               transactions: [...state.rewards.transactions, { id: generateId(), amount, purpose, metadata, type: 'spend', timestamp: new Date() }]
             }
           }));
@@ -1051,6 +1056,7 @@ export const useAppStore = create<AppStore>()(
                 ...state.rewards,
                 balance: state.rewards.balance - app.price,
                 totalSpent: state.rewards.totalSpent + app.price,
+                updatedAt: new Date().toISOString(),
                 transactions: [...state.rewards.transactions, { id: generateId(), amount: app.price, purpose: 'unlock', metadata: { appId }, type: 'spend', timestamp: new Date() }],
                 unlockableApps: state.rewards.unlockableApps.filter(a => a.id !== appId)
               }

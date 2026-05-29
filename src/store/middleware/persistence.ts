@@ -308,6 +308,7 @@ export const persistenceConfig = {
       balance: state.rewards.balance,
       totalEarned: state.rewards.totalEarned,
       totalSpent: state.rewards.totalSpent,
+      updatedAt: state.rewards.updatedAt,
       transactions: state.rewards.transactions,
       unlockableApps: state.rewards.unlockableApps,
       accelerateCard: state.rewards.accelerateCard,

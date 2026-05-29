@@ -1,10 +1,12 @@
-import React, { useRef, useState } from 'react';
-import { View, FlatList, useWindowDimensions, useColorScheme } from 'react-native';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { View, FlatList, useWindowDimensions, useColorScheme, Pressable, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../src/components/ui/Typography';
 import { Button } from '../src/components/ui/Button';
 import { useUnifiedStore } from '../src/store/unified-store';
+import { useAppStore } from '../src/store';
 
 const ONBOARDING_DATA = [
   {
@@ -42,8 +44,34 @@ const ONBOARDING_DATA = [
 export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+
+  const { isLoading: isSigningIn, error: signInError } = useAppStore((state) => state.auth);
+  const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
+  const clearAuthError = useAppStore((state) => state.auth.clearAuthError);
+
+  const handleSignIn = useCallback(async () => {
+    await signInWithApple();
+    // Check if sign-in succeeded (auth state updated synchronously in store)
+    const { isAuthenticated } = useAppStore.getState().auth;
+    if (isAuthenticated) {
+      const updatePreferences = useUnifiedStore.getState().updatePreferences;
+      if (updatePreferences) {
+        await updatePreferences({ hasSeenOnboarding: true });
+      }
+      router.replace('/(tabs)');
+    }
+  }, [signInWithApple]);
+
+  // Auto-clear error after 3 seconds
+  useEffect(() => {
+    if (signInError) {
+      const timer = setTimeout(clearAuthError, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [signInError, clearAuthError]);
 
   const completeOnboarding = async () => {
     // Set hasSeenOnboarding to true in the store
@@ -94,6 +122,31 @@ export default function OnboardingScreen() {
 
   return (
     <View className="flex-1 bg-light-bg dark:bg-dark-bg">
+      {/* Sign-in button */}
+      <View style={{ paddingTop: insets.top + 8 }} className="flex-row justify-end px-5">
+        <Pressable
+          onPress={handleSignIn}
+          disabled={isSigningIn}
+          className="flex-row items-center py-2 px-3 active:opacity-70"
+        >
+          {isSigningIn ? (
+            <ActivityIndicator size="small" color="#8B7FFF" />
+          ) : (
+            <Typography variant="body-14" className="text-primary">
+              Already a user? Sign in
+            </Typography>
+          )}
+        </Pressable>
+      </View>
+
+      {signInError && (
+        <View className="px-5">
+          <Typography variant="body-12" className="text-[#FF6B6B] text-center">
+            {signInError}
+          </Typography>
+        </View>
+      )}
+
       <FlatList
         ref={flatListRef}
         data={ONBOARDING_DATA}
