@@ -112,6 +112,25 @@ const withHomeWidget = (config) => {
         }
       }
 
+      // 3b. Raise widget extension deployment target to iOS 18 for
+      // Apple Watch supplementalActivityFamilies support
+      const updateDeploymentTarget = (proj, targetName, newTarget) => {
+        const configs = proj.pbxXCBuildConfigurationSection();
+        const targetUuid = findTargetUuid(proj, targetName);
+        if (!targetUuid) return;
+        const target = proj.pbxNativeTargetSection()[targetUuid];
+        if (!target || !target.buildConfigurationList) return;
+        const configList = proj.hash.project.objects["XCConfigurationList"][target.buildConfigurationList];
+        if (!configList || !configList.buildConfigurations) return;
+        for (const ref of configList.buildConfigurations) {
+          const cfg = configs[ref.value];
+          if (cfg && cfg.buildSettings) {
+            cfg.buildSettings.IPHONEOS_DEPLOYMENT_TARGET = newTarget;
+          }
+        }
+        console.log(`[withHomeWidget] Set ${targetName} deployment target to iOS ${newTarget}`);
+      };
+
       // 4. Add files to pbxproj
       const xcodeProjectPath = path.join(
         platformRoot,
@@ -168,6 +187,9 @@ const withHomeWidget = (config) => {
             "[withHomeWidget] Could not find main app target " + mainAppTargetName
           );
         }
+
+        // Raise widget extension deployment target to iOS 18
+        updateDeploymentTarget(project, widgetTargetName, "18.0");
 
         fs.writeFileSync(xcodeProjectPath, project.writeSync());
       }

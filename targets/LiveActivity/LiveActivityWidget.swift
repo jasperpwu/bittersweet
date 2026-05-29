@@ -146,6 +146,231 @@ struct StaleBonusBannerView: View {
   }
 }
 
+// MARK: - Apple Watch Smart Stack View
+
+struct WatchActivityView: View {
+  let contentState: LiveActivityAttributes.ContentState
+  let attributes: LiveActivityAttributes
+  let isStale: Bool
+
+  var body: some View {
+    if isStale, attributes.sessionType == "unlock" {
+      watchStaleUnlockView
+    } else if isStale {
+      watchBonusView
+    } else if contentState.isIdle == true {
+      watchIdleView
+    } else if attributes.sessionType == "unlock" {
+      watchUnlockView
+    } else {
+      watchActiveView
+    }
+  }
+
+  // MARK: - Idle: tag name + duration + play glyph
+
+  private var watchIdleView: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(contentState.title)
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(.primary)
+        .lineLimit(1)
+
+      HStack {
+        if let subtitle = contentState.subtitle {
+          Text(subtitle)
+            .font(.system(size: 28, weight: .bold, design: subtitle == "∞" ? .rounded : .monospaced))
+            .foregroundStyle(.primary)
+            .minimumScaleFactor(0.7)
+        }
+
+        Spacer()
+
+        Button(intent: StartSessionIntent(
+          tagId: contentState.tagId,
+          duration: contentState.durationMinutes
+        )) {
+          Image(systemName: "play.fill")
+            .font(.system(size: 18))
+            .foregroundStyle(.white)
+            .frame(width: 36, height: 36)
+            .background(.tint, in: Circle())
+        }
+        .buttonStyle(.plain)
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+  }
+
+  // MARK: - Active: tag name + timer + stop glyph
+
+  private var watchActiveView: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(contentState.title)
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(.primary)
+        .lineLimit(1)
+
+      HStack {
+        if let date = contentState.timerEndDateInMilliseconds {
+          let target = Date(timeIntervalSince1970: date / 1000)
+          if target <= Date.now {
+            // Count up (infinite / elapsed)
+            Text(target, style: .timer)
+              .font(.system(size: 28, weight: .bold, design: .monospaced))
+              .foregroundStyle(.primary)
+              .minimumScaleFactor(0.7)
+          } else {
+            // Count down
+            let startDate: Date = {
+              if let ms = contentState.timerStartDateInMilliseconds {
+                return Date(timeIntervalSince1970: ms / 1000)
+              }
+              return Date.now
+            }()
+            Text(timerInterval: startDate...target, countsDown: true, showsHours: false)
+              .font(.system(size: 28, weight: .bold, design: .monospaced))
+              .foregroundStyle(.primary)
+              .minimumScaleFactor(0.7)
+          }
+        }
+
+        Spacer()
+
+        Button(intent: StopSessionIntent()) {
+          Image(systemName: "stop.fill")
+            .font(.system(size: 18))
+            .foregroundStyle(.white)
+            .frame(width: 36, height: 36)
+            .background(.red, in: Circle())
+        }
+        .buttonStyle(.plain)
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+  }
+
+  // MARK: - Unlock: "Unlocked" + timer + stop glyph
+
+  private var watchUnlockView: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 4) {
+        Text("\u{1F513}")
+          .font(.system(size: 13))
+        Text("Unlocked")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(Color(hex: "#4CAF7C"))
+          .lineLimit(1)
+      }
+
+      HStack {
+        if let date = contentState.timerEndDateInMilliseconds {
+          let target = Date(timeIntervalSince1970: date / 1000)
+          Text(timerInterval: Date()...max(target, Date().addingTimeInterval(1)), countsDown: true, showsHours: false)
+            .font(.system(size: 28, weight: .bold, design: .monospaced))
+            .foregroundStyle(.primary)
+            .minimumScaleFactor(0.7)
+        }
+
+        Spacer()
+
+        Button(intent: StopUnlockIntent()) {
+          Image(systemName: "stop.fill")
+            .font(.system(size: 18))
+            .foregroundStyle(.white)
+            .frame(width: 36, height: 36)
+            .background(Color(hex: "#B22222"), in: Circle())
+        }
+        .buttonStyle(.plain)
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+  }
+
+  // MARK: - Stale Bonus: tag name + green count-up + stop glyph
+
+  private var watchBonusView: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(contentState.title)
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(.primary)
+        .lineLimit(1)
+
+      HStack {
+        if let date = contentState.timerEndDateInMilliseconds {
+          HStack(spacing: 2) {
+            Text("+")
+            Text(Date(timeIntervalSince1970: date / 1000), style: .timer)
+          }
+          .font(.system(size: 28, weight: .bold, design: .monospaced))
+          .foregroundStyle(Color(hex: "#4CAF7C"))
+          .minimumScaleFactor(0.7)
+        }
+
+        Spacer()
+
+        Button(intent: StopSessionIntent()) {
+          Image(systemName: "stop.fill")
+            .font(.system(size: 18))
+            .foregroundStyle(.white)
+            .frame(width: 36, height: 36)
+            .background(.red, in: Circle())
+        }
+        .buttonStyle(.plain)
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+  }
+
+  // MARK: - Stale Unlock Expired
+
+  private var watchStaleUnlockView: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text("Unblock Expired")
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(.primary)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+}
+
+// MARK: - Content Router (phone vs watch)
+
+struct LiveActivityContentRouter: View {
+  @Environment(\.activityFamily) var activityFamily
+  let contentState: LiveActivityAttributes.ContentState
+  let attributes: LiveActivityAttributes
+  let isStale: Bool
+
+  var body: some View {
+    switch activityFamily {
+    case .small:
+      WatchActivityView(contentState: contentState, attributes: attributes, isStale: isStale)
+    case .medium:
+      phoneView
+    @unknown default:
+      phoneView
+    }
+  }
+
+  @ViewBuilder
+  private var phoneView: some View {
+    if isStale, attributes.sessionType == "unlock" {
+      StaleUnlockBannerView(attributes: attributes, state: contentState)
+    } else if isStale {
+      StaleBonusBannerView(attributes: attributes, state: contentState)
+    } else {
+      LiveActivityBannerWrapper(contentState: contentState, attributes: attributes)
+    }
+  }
+}
+
 // MARK: - Dynamic Island Bottom Views
 
 struct DynamicIslandIdleBottomView: View {
@@ -242,16 +467,12 @@ struct DynamicIslandActiveBottomView: View {
 struct LiveActivityWidget: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: LiveActivityAttributes.self) { context in
-      if context.isStale, context.attributes.sessionType == "unlock" {
-        StaleUnlockBannerView(attributes: context.attributes, state: context.state)
-          .applyWidgetURL(from: context.attributes.deepLinkUrl)
-      } else if context.isStale {
-        StaleBonusBannerView(attributes: context.attributes, state: context.state)
-          .applyWidgetURL(from: context.attributes.deepLinkUrl)
-      } else {
-        LiveActivityBannerWrapper(contentState: context.state, attributes: context.attributes)
-          .applyWidgetURL(from: context.attributes.deepLinkUrl)
-      }
+      LiveActivityContentRouter(
+        contentState: context.state,
+        attributes: context.attributes,
+        isStale: context.isStale
+      )
+      .applyWidgetURL(from: context.attributes.deepLinkUrl)
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading, priority: 1) {
@@ -363,6 +584,7 @@ struct LiveActivityWidget: Widget {
         }
       }
     }
+    .supplementalActivityFamilies([.small])
   }
 
   @ViewBuilder
@@ -438,3 +660,4 @@ struct LiveActivityWidget: Widget {
     .progressViewStyle(.circular)
   }
 }
+
