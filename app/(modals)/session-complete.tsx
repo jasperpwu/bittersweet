@@ -3,7 +3,7 @@ import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollV
 import { router, useLocalSearchParams } from 'expo-router';
 import { Typography } from '../../src/components/ui';
 import { FruitCounter } from '../../src/components/rewards';
-import { calculateFruitsEarnedForDuration, useFocus, useFocusActions } from '../../src/store';
+import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
 
 export default function SessionCompleteModal() {
   const colorScheme = useColorScheme();
@@ -26,9 +26,11 @@ export default function SessionCompleteModal() {
   }
 
   const tag = session.tagId ? tags.byId[session.tagId] : null;
+  const accelerateMultiplier = useAppStore((s) => s.rewards.isAccelerateActive()) ? 2 : 1;
   const fruitsEarned = calculateFruitsEarnedForDuration(
     session.duration,
-    session.initialSetDuration ?? session.duration
+    session.initialSetDuration ?? session.duration,
+    accelerateMultiplier
   );
 
   const formatDuration = (minutes: number) => {

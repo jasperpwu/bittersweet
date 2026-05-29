@@ -19,7 +19,7 @@ import { Modal, Slider, Typography, TimePicker, DatePicker } from '../../src/com
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { DateSelector, Timeline } from '../../src/components/journal';
 import { FruitCounter } from '../../src/components/rewards';
-import { calculateFruitsEarnedForDuration, useFocus, useFocusActions } from '../../src/store';
+import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
 import { isToday } from '../../src/utils/dateUtils';
 import { FocusSession } from '../../src/types/models';
 
@@ -290,11 +290,13 @@ export default function JournalScreen() {
   const selectedInitialDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
   const selectedTargetDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
   const isManual = selectedSession?.isManualEntry;
+  const journalAccelerateMultiplier = useAppStore((s) => s.rewards.isAccelerateActive()) ? 2 : 1;
   const currentFruits = isManual ? 0 : calculateFruitsEarnedForDuration(
     selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0,
-    selectedTargetDuration
+    selectedTargetDuration,
+    journalAccelerateMultiplier
   );
-  const adjustedFruits = isManual ? 0 : calculateFruitsEarnedForDuration(adjustedDuration, selectedTargetDuration);
+  const adjustedFruits = isManual ? 0 : calculateFruitsEarnedForDuration(adjustedDuration, selectedTargetDuration, journalAccelerateMultiplier);
   const fruitDelta = adjustedFruits - currentFruits;
 
   // Convert store sessions to component format and filter for selected date
