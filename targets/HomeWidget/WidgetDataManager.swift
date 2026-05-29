@@ -296,12 +296,13 @@ struct WidgetDataManager {
       "primaryButtonLabel": "Unlock App",
       "secondaryButtonLabel": "Close",
       "iconSystemName": "hand.raised.fill",
+      "backgroundBlurStyle": 18, // UIBlurEffect.Style.systemMaterialDark
       "backgroundColor": ["red": 178.0, "green": 25.0, "blue": 25.0, "alpha": 1.0],
       "titleColor": ["red": 255.0, "green": 255.0, "blue": 255.0, "alpha": 1.0],
       "subtitleColor": ["red": 230.0, "green": 230.0, "blue": 230.0, "alpha": 1.0],
       "primaryButtonLabelColor": ["red": 255.0, "green": 255.0, "blue": 255.0, "alpha": 1.0],
       "primaryButtonBackgroundColor": ["red": 51.0, "green": 153.0, "blue": 51.0, "alpha": 1.0],
-      "secondaryButtonLabelColor": ["red": 178.0, "green": 178.0, "blue": 178.0, "alpha": 1.0],
+      "secondaryButtonLabelColor": ["red": 100.0, "green": 100.0, "blue": 100.0, "alpha": 1.0],
     ]
 
     let shieldActions: [String: Any] = [
@@ -329,6 +330,7 @@ struct WidgetDataManager {
       "subtitle": "Focus session in progress\nStay focused!",
       "primaryButtonLabel": "Close",
       "iconSystemName": "hand.raised.fill",
+      "backgroundBlurStyle": 18, // UIBlurEffect.Style.systemMaterialDark
       "backgroundColor": ["red": 178.0, "green": 25.0, "blue": 25.0, "alpha": 1.0],
       "titleColor": ["red": 255.0, "green": 255.0, "blue": 255.0, "alpha": 1.0],
       "subtitleColor": ["red": 230.0, "green": 230.0, "blue": 230.0, "alpha": 1.0],

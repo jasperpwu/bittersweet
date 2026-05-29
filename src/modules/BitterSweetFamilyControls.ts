@@ -66,6 +66,7 @@ class BitterSweetFamilyControlsModule {
             subtitle: 'Focus session in progress\nStay focused!',
             primaryButtonLabel: 'Close',
             iconSystemName: 'hand.raised.fill',
+            backgroundBlurStyle: 18, // UIBlurEffect.Style.systemMaterialDark - force dark material in light mode
             backgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Dark red
             titleColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
             subtitleColor: { red: 230, green: 230, blue: 230, alpha: 1.0 }, // Light gray
@@ -78,12 +79,13 @@ class BitterSweetFamilyControlsModule {
             primaryButtonLabel: 'Unlock App',
             secondaryButtonLabel: 'Close',
             iconSystemName: 'hand.raised.fill',
+            backgroundBlurStyle: 18, // UIBlurEffect.Style.systemMaterialDark - force dark material in light mode
             backgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Dark red
             titleColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
             subtitleColor: { red: 230, green: 230, blue: 230, alpha: 1.0 }, // Light gray
             primaryButtonLabelColor: { red: 255, green: 255, blue: 255, alpha: 1.0 }, // White
             primaryButtonBackgroundColor: { red: 51, green: 153, blue: 51, alpha: 1.0 }, // Green
-            secondaryButtonLabelColor: { red: 178, green: 178, blue: 178, alpha: 1.0 }, // Gray
+            secondaryButtonLabelColor: { red: 100, green: 100, blue: 100, alpha: 1.0 }, // Dark gray (readable on light secondary button bg)
           };
 
       // Configure shield actions - during focus session, just close; otherwise open app for unlock
