@@ -107,6 +107,7 @@ export function tagToRow(tag: any, userId: string): Record<string, any> {
   // Only include timestamps if they exist — otherwise let DB defaults apply
   if (tag.createdAt instanceof Date) row.created_at = tag.createdAt.toISOString();
   if (tag.updatedAt instanceof Date) row.updated_at = tag.updatedAt.toISOString();
+  if (tag.deletedAt instanceof Date) row.deleted_at = tag.deletedAt.toISOString();
   return row;
 }
 
@@ -118,6 +119,7 @@ export function rowToTag(row: Record<string, any>): any {
     color: row.color,
     usageCount: row.usage_count ?? 0,
     isDefault: row.is_default ?? false,
+    ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
   };
 }
 

@@ -594,46 +594,36 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     },
     
     deleteTag: (id: string) => {
-      // Find all sessions associated with this tag
-      const sessions = get().focus.sessions;
-      const sessionsToDelete = sessions.allIds
-        .map(sessionId => sessions.byId[sessionId])
-        .filter(Boolean)
-        .filter(session => session.tagId && session.tagId === id);
-      
       if (__DEV__) {
-        console.log(`🗑️ Deleting tag ${id} and ${sessionsToDelete.length} associated sessions`);
+        console.log(`🗑️ Soft-deleting tag ${id}`);
       }
-      
+
       set((state: any) => {
-        // Delete all sessions associated with this tag
-        const sessionManager = new EntityManager(state.focus.sessions);
-        sessionsToDelete.forEach(session => {
-          sessionManager.remove(session.id);
-        });
-        
-        // Delete the tag itself
-        const tagManager = new EntityManager(state.focus.tags);
-        tagManager.remove(id);
-        
-        // Update state
-        state.focus.sessions = {
-          ...sessionManager.getState(),
-          loading: false,
-          error: null,
-          lastUpdated: new Date(),
-        };
-        
-        state.focus.tags = {
-          ...tagManager.getState(),
-          loading: false,
-          error: null,
-          lastUpdated: new Date(),
-        };
+        const tag = state.focus.tags.byId[id];
+        if (tag) {
+          state.focus.tags.byId[id] = {
+            ...tag,
+            deletedAt: new Date(),
+            updatedAt: new Date(),
+          };
+          state.focus.tags.lastUpdated = new Date();
+
+          // Remove this tag from any goal's tagIds
+          for (const goalId of state.focus.goals.allIds) {
+            const goal = state.focus.goals.byId[goalId];
+            if (goal && goal.tagIds?.includes(id)) {
+              state.focus.goals.byId[goalId] = {
+                ...goal,
+                tagIds: goal.tagIds.filter((tid: string) => tid !== id),
+                updatedAt: new Date(),
+              };
+            }
+          }
+        }
       });
-      
+
       if (__DEV__) {
-        console.log(`✅ Tag ${id} and ${sessionsToDelete.length} sessions deleted`);
+        console.log(`✅ Tag ${id} soft-deleted`);
       }
     },
 

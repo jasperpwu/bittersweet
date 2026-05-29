@@ -89,6 +89,7 @@ export interface Tag extends BaseEntity {
   name: string;
   icon: string;
   userId: string;
+  deletedAt?: Date;
 }
 
 export interface TargetHistoryEntry {

@@ -58,7 +58,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
     .join(', ');
 
   // Convert normalized tags to array
-  const availableTags = (tags.allIds || []).map(id => tags.byId[id]).filter(Boolean);
+  const availableTags = (tags.allIds || []).map(id => tags.byId[id]).filter(t => t && !t.deletedAt);
 
   // Populate form fields when editing
   useEffect(() => {

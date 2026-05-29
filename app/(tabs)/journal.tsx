@@ -542,7 +542,7 @@ export default function JournalScreen() {
             </Typography>
             <View className="mb-4">
               <HorizontalTagSelector
-                tags={tags.allIds.map(id => tags.byId[id]).filter(Boolean)}
+                tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt)}
                 selectedTags={manualTag ? [manualTag] : []}
                 onTagSelect={setManualTag}
                 maxSelections={1}

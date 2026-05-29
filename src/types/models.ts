@@ -56,6 +56,7 @@ export interface SessionTag {
   color: string; // Hex color string like '#6592E9'
   usageCount: number;
   isDefault?: boolean; // For built-in tags like 'work', 'study', etc.
+  deletedAt?: Date;
 }
 
 // Analytics Types

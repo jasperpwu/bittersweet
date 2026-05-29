@@ -222,7 +222,7 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
           {/* Warning content */}
           <View className="p-6">
             <Typography variant="body-14" color="primary" className="leading-5">
-              Deleting "{tagToDelete?.name}" will permanently remove all focus sessions associated with it. This action cannot be undone.
+              Are you sure you want to delete "{tagToDelete?.name}"? Existing focus sessions will be kept.
             </Typography>
           </View>
 

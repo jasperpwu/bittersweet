@@ -212,7 +212,7 @@ type PersistedSession = {
 export default function FocusScreen() {
   const colorScheme = useColorScheme();
   // Get tags from store
-  const { tags, lastSelectedTagId, lastDurationByTagId } = useFocus();
+  const { tags, lastSelectedTagId, lastDurationByTagId, goals } = useFocus();
   const { createTag, updateTag, deleteTag, reorderTags, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag } = useFocusActions();
   const rewards = useRewards();
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
@@ -223,7 +223,7 @@ export default function FocusScreen() {
   const { preferences } = useAppSettings();
   const timerPickerStyle = preferences.focus.timerPickerStyle ?? 'scroller';
   const { canCreateTag } = useSubscriptionGate();
-  const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean);
+  const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean).filter(t => !t.deletedAt);
   
   const [selectedTime, setSelectedTime] = useState(15); // minutes; 0 => ∞
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -314,7 +314,7 @@ export default function FocusScreen() {
     dragTargetIdxRef.current = -1;
   }, [reorderTags]);
 
-  const orderedTags = dragOrderIds.map(id => tags.byId[id]).filter(Boolean);
+  const orderedTags = dragOrderIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt);
 
   // Blocklist tip modal
   const [showBlocklistTip, setShowBlocklistTip] = useState(false);
@@ -1332,17 +1332,14 @@ export default function FocusScreen() {
       setLastDurationForTag(selectedTag, time);
       // Sync updated duration to widget immediately
       const updatedDurations = { ...lastDurationByTagId, [selectedTag]: time };
-      const tagList = tags.allIds.map(id => {
-        const tag = tags.byId[id];
-        return {
+      const tagList = tags.allIds.map(id => tags.byId[id]).filter(tag => tag && !tag.deletedAt).map(tag => ({
           id: tag.id,
           name: tag.name,
           icon: tag.icon || '🎯',
           color: tag.color || '#8B4513',
-          lastDuration: updatedDurations[id] ?? 15,
+          lastDuration: updatedDurations[tag.id] ?? 15,
           usageCount: tag.usageCount ?? 0,
-        };
-      });
+      }));
       WidgetService.syncTagList(tagList);
       // Update idle Live Activity if one is showing
       if (!isRunning && LiveActivityService.hasFocusActivity) {
@@ -1751,8 +1748,13 @@ export default function FocusScreen() {
                   {/* Warning content */}
                   <View className="p-4">
                     <Typography variant="body-14" color="primary" className="leading-5">
-                      Deleting {tagToDelete?.name ? `"${tagToDelete.name}"` : 'this tag'} will permanently remove all associated focus sessions. This cannot be undone.
+                      Are you sure you want to delete {tagToDelete?.name ? `"${tagToDelete.name}"` : 'this tag'}? Existing focus sessions will be kept.
                     </Typography>
+                    {tagToDelete && goals.allIds.some(gid => goals.byId[gid]?.tagIds?.includes(tagToDelete.id)) && (
+                      <Typography variant="body-14" color="primary" className="leading-5 mt-2">
+                        This tag will also be removed from any goals that use it. If you want to keep the goal, consider editing the tag instead.
+                      </Typography>
+                    )}
                   </View>
 
                   {/* Action buttons */}

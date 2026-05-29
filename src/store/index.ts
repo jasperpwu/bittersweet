@@ -838,57 +838,51 @@ export const useAppStore = create<AppStore>()(
         },
 
         deleteTag: (tagId) => {
-          console.log('🗑️ Deleting tag:', tagId);
+          console.log('🗑️ Soft-deleting tag:', tagId);
           const tag = get().focus.tags.byId[tagId];
 
           if (tag) {
-            // Find all sessions associated with this tag
-            const sessions = get().focus.sessions;
-            const sessionsToDelete = sessions.allIds
-              .map(sessionId => sessions.byId[sessionId])
-              .filter(Boolean)
-              .filter(session => session.tagId === tagId);
-
-            console.log(`🗑️ Deleting tag ${tag.name} and ${sessionsToDelete.length} associated sessions`);
-
             set((state) => {
-              // Delete all sessions associated with this tag
-              const remainingSessions = { ...state.focus.sessions.byId };
-              const remainingSessionIds = [...state.focus.sessions.allIds];
-
-              sessionsToDelete.forEach(session => {
-                delete remainingSessions[session.id];
-                const index = remainingSessionIds.indexOf(session.id);
-                if (index > -1) {
-                  remainingSessionIds.splice(index, 1);
-                }
-              });
-
-              // Delete the tag
-              const { [tagId]: removed, ...remainingTags } = state.focus.tags.byId;
-
               // Remove last duration entry for this tag
               const { [tagId]: _removedDuration, ...remainingDurations } = state.focus.lastDurationByTagId;
+
+              // Remove this tag from any goal's tagIds
+              const updatedGoals = { ...state.focus.goals.byId };
+              for (const goalId of state.focus.goals.allIds) {
+                const goal = updatedGoals[goalId];
+                if (goal && goal.tagIds?.includes(tagId)) {
+                  updatedGoals[goalId] = {
+                    ...goal,
+                    tagIds: goal.tagIds.filter((id: string) => id !== tagId),
+                    updatedAt: new Date(),
+                  };
+                }
+              }
 
               return {
                 focus: {
                   ...state.focus,
                   lastDurationByTagId: remainingDurations,
-                  sessions: {
-                    ...state.focus.sessions,
-                    byId: remainingSessions,
-                    allIds: remainingSessionIds,
-                  },
                   tags: {
                     ...state.focus.tags,
-                    byId: remainingTags,
-                    allIds: state.focus.tags.allIds.filter(id => id !== tagId),
-                  }
+                    byId: {
+                      ...state.focus.tags.byId,
+                      [tagId]: {
+                        ...state.focus.tags.byId[tagId],
+                        deletedAt: new Date(),
+                        updatedAt: new Date(),
+                      },
+                    },
+                  },
+                  goals: {
+                    ...state.focus.goals,
+                    byId: updatedGoals,
+                  },
                 }
               };
             });
 
-            console.log(`✅ Tag ${tag.name} and ${sessionsToDelete.length} sessions deleted`);
+            console.log(`✅ Tag ${tag.name} soft-deleted`);
           }
         },
 

@@ -233,17 +233,14 @@ export default function RootLayout() {
     try {
       const store = useAppStore.getState();
       const { tags, lastDurationByTagId } = store.focus;
-      const tagList = tags.allIds.map(id => {
-        const tag = tags.byId[id];
-        return {
+      const tagList = tags.allIds.map(id => tags.byId[id]).filter(tag => tag && !tag.deletedAt).map(tag => ({
           id: tag.id,
           name: tag.name,
           icon: tag.icon || '🎯',
           color: tag.color || '#8B4513',
-          lastDuration: lastDurationByTagId[id] ?? 15,
+          lastDuration: lastDurationByTagId[tag.id] ?? 15,
           usageCount: tag.usageCount ?? 0,
-        };
-      });
+      }));
       WidgetService.syncTagList(tagList);
 
       // Sync the currently selected tag for the small widget

@@ -32,6 +32,7 @@ export interface Tag {
     isDefault: boolean;
     createdAt: Date;
     updatedAt: Date;
+    deletedAt?: Date;
 }
 
 // Simple Rewards Types
