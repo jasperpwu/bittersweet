@@ -1,15 +1,16 @@
 import { useState, useMemo, useCallback } from 'react';
-import { View, SafeAreaView, Pressable, Alert } from 'react-native';
+import { View, SafeAreaView, Alert, ScrollView } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
 import { GoalProgress } from '../../src/components/analytics/GoalProgress';
+import { BadgeCollection } from '../../src/components/analytics/BadgeCollection';
 import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
-import { useFocus, useFocusActions } from '../../src/store';
+import { useFocus, useFocusActions, useAppStore } from '../../src/store';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
-import { TimePeriod, FocusGoal, ChartSegment } from '../../src/store/types';
+import { TimePeriod, FocusGoal, Badge, ChartSegment } from '../../src/store/types';
 import { calculateGoalProgress } from '../../src/utils/goalProgress';
 
 type ViewMode = 'statistics' | 'history';
@@ -19,29 +20,49 @@ export default function InsightsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('weekly');
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [activatingTagId, setActivatingTagId] = useState<string | undefined>(undefined);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
-  const { canCreateGoal } = useSubscriptionGate();
+  const { canActivateGoal } = useSubscriptionGate();
   const { preferences } = useAppSettings();
   const weekStartDay = preferences.weekStartDay ?? 0;
 
   // Get data from focus store
   const { sessions, tags, goals } = useFocus();
-  const { getActiveGoals, deleteGoal, reorderGoals } = useFocusActions();
+  const { deleteGoal, concludeGoal, deleteBadge, reorderGoals } = useFocusActions();
 
   // Extract sessions array from normalized state
   const safeSessions = (sessions && sessions.allIds && sessions.byId)
     ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean)
     : [];
 
-  // Get goals preserving allIds order (instead of Object.values which loses order)
+  // Get active goals preserving allIds order
   const storeGoals = useMemo(() => {
     if (!goals?.allIds || !goals?.byId) return [];
     return goals.allIds
       .map(id => goals.byId[id])
       .filter((g): g is FocusGoal => !!g && g.isActive);
   }, [goals]);
-  
+
+  // Get inactive goals (not active, tag not deleted)
+  const inactiveGoals = useMemo(() => {
+    if (!goals?.allIds || !goals?.byId) return [];
+    return goals.allIds
+      .map(id => goals.byId[id])
+      .filter((g): g is FocusGoal => {
+        if (!g || g.isActive) return false;
+        const tag = tags?.byId?.[g.tagId];
+        return !!tag && !tag.deletedAt;
+      });
+  }, [goals, tags]);
+
+  // Get badges from store
+  const badgeStore = useAppStore((state) => state.focus.badges);
+  const badges = useMemo((): Badge[] => {
+    if (!badgeStore?.allIds || !badgeStore?.byId) return [];
+    return badgeStore.allIds.map((id: string) => badgeStore.byId[id]).filter(Boolean);
+  }, [badgeStore]);
+
   // Create tag map for goal progress calculation
   const tagMap = useMemo(() =>
     (tags && tags.allIds && tags.byId ? tags.allIds : []).reduce((map, id) => {
@@ -55,18 +76,16 @@ export default function InsightsScreen() {
     }, {} as Record<string, { id: string; name: string }>),
     [tags]
   );
-  
+
   // Placeholder functions until focus slice is fully implemented
   const getSessionsByDate = () => ({});
   const deleteSession = (sessionId: string) => {
     console.log('Deleting session:', sessionId);
   };
-  
+
   const getTagColor = (tagIdOrName: string): string => {
-    // Try looking up by ID first, then fall back
     const tag = tags?.byId?.[tagIdOrName];
     if (tag) return tag.color || '#6592E9';
-    // Fallback: search by name (for legacy chart segments)
     if (tags?.allIds) {
       for (const id of tags.allIds) {
         const t = tags.byId[id];
@@ -176,13 +195,13 @@ export default function InsightsScreen() {
   // Memoized data processing
   const chartData = useMemo(() => getChartData(selectedPeriod), [selectedPeriod, safeSessions]);
   const sessionsByDate = useMemo(() => getSessionsByDate(), [safeSessions]);
-  
+
   // Calculate goal progress
   const goalProgress = useMemo(() =>
     calculateGoalProgress(storeGoals, safeSessions, tagMap, weekStartDay),
     [storeGoals, safeSessions, tagMap, weekStartDay]
   );
-  
+
   // Get today's sessions for statistics view
   const todaysSessions = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -201,33 +220,69 @@ export default function InsightsScreen() {
     setCurrentView('statistics');
   };
 
-  const handleDeleteSession = (sessionId: string) => {
-    deleteSession(sessionId);
-  };
-
   const handleEditGoal = useCallback((goalId: string) => {
     setEditingGoalId(goalId);
+    setActivatingTagId(undefined);
     setShowGoalModal(true);
   }, []);
 
   const handleDeleteGoal = useCallback((goalId: string) => {
     const goal = storeGoals.find(g => g.id === goalId);
-    const goalName = goal?.name ?? 'this goal';
+    const goalTagId = goal?.tagId || (goal as any)?.tagIds?.[0];
+    const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
+    const goalName = goal?.customName || (tag ? `${tag.icon} ${tag.name} Goal` : 'this goal');
 
     Alert.alert(
-      'Delete goal?',
-      `Delete "${goalName}"? This cannot be undone.`,
+      'Deactivate goal?',
+      `Deactivate "${goalName}"? You can reactivate it later.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Deactivate',
           style: 'destructive',
           onPress: () => deleteGoal(goalId),
         },
       ],
       { cancelable: true }
     );
-  }, [storeGoals, deleteGoal]);
+  }, [storeGoals, tags, deleteGoal]);
+
+  const handleConcludeGoal = useCallback((goalId: string) => {
+    const goal = storeGoals.find(g => g.id === goalId);
+    const goalTagId = goal?.tagId || (goal as any)?.tagIds?.[0];
+    const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
+    const goalName = goal?.customName || (tag ? `${tag.icon} ${tag.name} Goal` : 'this goal');
+
+    const hasExistingBadge = badges.some(b => b.goalId === goalId);
+    const message = hasExistingBadge
+      ? `Conclude "${goalName}"? Your existing badge will be updated summarizing your performance, and the goal will be deactivated.`
+      : `Conclude "${goalName}"? A badge will be created summarizing your performance, and the goal will be deactivated.`;
+
+    Alert.alert(
+      'Conclude goal?',
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Conclude',
+          style: 'default',
+          onPress: () => concludeGoal(goalId),
+        },
+      ],
+      { cancelable: true }
+    );
+  }, [storeGoals, tags, badges, concludeGoal]);
+
+  const handleActivateGoal = useCallback((goalId: string) => {
+    if (!canActivateGoal) {
+      setShowUpgradePrompt(true);
+      return;
+    }
+    const goal = goals?.byId?.[goalId];
+    setEditingGoalId(goalId);
+    setActivatingTagId(goal?.tagId);
+    setShowGoalModal(true);
+  }, [canActivateGoal, goals]);
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
@@ -235,49 +290,39 @@ export default function InsightsScreen() {
       <View className="px-4 py-4 flex-row items-center justify-between">
         <View className="flex-row items-center">
           {currentView === 'history' && (
-            <Pressable 
-              onPress={handleBackPress}
-              className="mr-3 p-1 active:opacity-70"
-            >
+            <View className="mr-3 p-1">
               <Typography variant="headline-18" color="primary">
                 ←
               </Typography>
-            </Pressable>
+            </View>
           )}
           <Typography variant="headline-24" color="primary">
             {currentView === 'statistics' ? 'Goals' : 'History'}
           </Typography>
         </View>
-        
-        {/* Settings icon */}
-        <Pressable
-          onPress={() => {
-            if (!canCreateGoal && !editingGoalId) {
-              setShowUpgradePrompt(true);
-            } else {
-              setShowGoalModal(true);
-            }
-          }}
-          className="p-2 active:opacity-70"
-        >
-          <Typography variant="headline-18" color="secondary">
-            🎯
-          </Typography>
-        </Pressable>
       </View>
 
       {/* Content */}
       {currentView === 'statistics' ? (
-        <View className="flex-1">
+        <ScrollView className="flex-1">
           {/* Goal Progress Section */}
           <GoalProgress
             goals={storeGoals}
+            inactiveGoals={inactiveGoals}
             currentPeriodProgress={goalProgress}
             onEditGoal={handleEditGoal}
             onDeleteGoal={handleDeleteGoal}
+            onConcludeGoal={handleConcludeGoal}
+            onActivateGoal={handleActivateGoal}
             onReorderGoals={reorderGoals}
           />
-          
+
+          {/* Badge Collection */}
+          <BadgeCollection
+            badges={badges}
+            onDeleteBadge={deleteBadge}
+          />
+
           {/* Statistics View */}
           <StatisticsView
             chartData={chartData}
@@ -286,7 +331,7 @@ export default function InsightsScreen() {
             onPeriodChange={handlePeriodChange}
             onViewAllPress={handleViewAllPress}
           />
-        </View>
+        </ScrollView>
       ) : (
         <View className="flex-1">Empty View</View>
       )}
@@ -297,8 +342,10 @@ export default function InsightsScreen() {
         onClose={() => {
           setShowGoalModal(false);
           setEditingGoalId(null);
+          setActivatingTagId(undefined);
         }}
         editingGoalId={editingGoalId}
+        tagId={activatingTagId}
         onUpgrade={() => setShowUpgradePrompt(true)}
       />
 

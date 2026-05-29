@@ -62,17 +62,23 @@ export const calculateGoalProgress = (
   if (!sessions || !Array.isArray(sessions)) return progress;
 
   goals.forEach(goal => {
-    // Migrate legacy 'yearly' to 'monthly' at runtime
-    const period = (goal.period as string) === 'yearly' ? 'monthly' : goal.period;
-    const { periodStart, periodEnd } = getGoalPeriodRange(period as 'daily' | 'weekly' | 'monthly', now, weekStartDay);
+    // Use activePeriod (new model) with fallback to period (legacy)
+    const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+    const normalizedPeriod = period === 'yearly' ? 'monthly' : period;
+    const { periodStart, periodEnd } = getGoalPeriodRange(normalizedPeriod as 'daily' | 'weekly' | 'monthly', now, weekStartDay);
 
     // Calculate total minutes from sessions that overlap with this period
     const totalMinutes = sessions.reduce((sum, session) => {
-      // Check tag filter
-      const goalTagIds = (goal as any).tagIds || [];
-      if (goalTagIds.length > 0) {
-        const hasMatchingTag = (session as any).tagId && goalTagIds.includes((session as any).tagId);
-        if (!hasMatchingTag) return sum;
+      // 1:1 tag filter (new model: tagId)
+      if (goal.tagId) {
+        if ((session as any).tagId !== goal.tagId) return sum;
+      } else {
+        // Legacy fallback: tagIds array
+        const goalTagIds = (goal as any).tagIds || [];
+        if (goalTagIds.length > 0) {
+          const hasMatchingTag = (session as any).tagId && goalTagIds.includes((session as any).tagId);
+          if (!hasMatchingTag) return sum;
+        }
       }
 
       return sum + getSessionMinutesInPeriod(session, periodStart, periodEnd);
@@ -193,8 +199,9 @@ export const shouldResetGoalProgress = (
   currentDate: Date = new Date(),
   weekStartDay: number = 0,
 ): boolean => {
-  const period = goal.period === ('yearly' as string) ? 'monthly' : goal.period;
-  const { periodStart } = getGoalPeriodRange(period as 'daily' | 'weekly' | 'monthly', currentDate, weekStartDay);
+  const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+  const normalizedPeriod = period === 'yearly' ? 'monthly' : period;
+  const { periodStart } = getGoalPeriodRange(normalizedPeriod as 'daily' | 'weekly' | 'monthly', currentDate, weekStartDay);
   return new Date(goal.lastResetDate) < periodStart;
 };
 
@@ -206,31 +213,53 @@ export const isRestDay = (date: Date, restDays: number[]): boolean => {
 };
 
 /**
+ * Helper to get the current target minutes from a goal based on its activePeriod.
+ * Falls back to legacy targetMinutes if per-period fields aren't set.
+ */
+export const getGoalCurrentTarget = (goal: FocusGoal): number => {
+  const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+  if (period === 'daily') return goal.dailyTargetMinutes || (goal as any).targetMinutes || 0;
+  if (period === 'weekly') return goal.weeklyTargetMinutes || (goal as any).targetMinutes || 0;
+  if (period === 'monthly') return goal.monthlyTargetMinutes || (goal as any).targetMinutes || 0;
+  return (goal as any).targetMinutes || 0;
+};
+
+/**
  * Looks up the correct target from a goal's targetHistory for the given date.
  * Uses the historical restDays snapshot from the entry (not the current preference)
  * so that past targets are never affected by preference changes.
  * The `currentRestDays` param is only used as a fallback when no history exists.
  * Only applies rest day logic to daily goals.
+ * The optional `period` parameter allows looking up a specific period's target;
+ * defaults to the goal's activePeriod.
  */
 export const getTargetForDate = (
   goal: FocusGoal,
   date: Date,
   currentRestDays: number[],
+  period?: 'daily' | 'weekly' | 'monthly',
 ): number => {
+  const goalPeriod = period || (goal as any).activePeriod || (goal as any).period || 'daily';
+  const normalizedPeriod = goalPeriod === 'yearly' ? 'monthly' : goalPeriod;
   const history = goal.targetHistory;
   const dateStr = date.toISOString().split('T')[0];
 
   // Default to current goal values if no history
   if (!history || history.length === 0) {
-    if (goal.period === 'daily' && isRestDay(date, currentRestDays)) {
-      return goal.restDayTargetMinutes ?? goal.targetMinutes;
+    const currentTarget = getGoalCurrentTarget(goal);
+    if (normalizedPeriod === 'daily' && isRestDay(date, currentRestDays)) {
+      return goal.dailyRestDayTargetMinutes ?? (goal as any).restDayTargetMinutes ?? currentTarget;
     }
-    return goal.targetMinutes;
+    return currentTarget;
   }
 
+  // Filter history by period if entries have the period field
+  const periodHistory = history.filter((e: any) => !e.period || e.period === normalizedPeriod);
+  const searchHistory = periodHistory.length > 0 ? periodHistory : history;
+
   // Find the applicable history entry (last entry with effectiveDate <= dateStr)
-  let applicable: TargetHistoryEntry = history[0];
-  for (const entry of history) {
+  let applicable: TargetHistoryEntry = searchHistory[0];
+  for (const entry of searchHistory) {
     if (entry.effectiveDate <= dateStr) {
       applicable = entry;
     } else {
@@ -240,7 +269,7 @@ export const getTargetForDate = (
 
   // Use the rest days snapshot from the history entry itself
   const historicalRestDays = applicable.restDays ?? currentRestDays;
-  if (goal.period === 'daily' && isRestDay(date, historicalRestDays)) {
+  if (normalizedPeriod === 'daily' && isRestDay(date, historicalRestDays)) {
     return applicable.restDayTargetMinutes;
   }
   return applicable.targetMinutes;

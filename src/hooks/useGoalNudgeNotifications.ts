@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { useAppStore } from '../store';
 import { useUnifiedStore } from '../store/unified-store';
 import { scheduleGoalNudges, cancelAllGoalNudges } from '../services/notifications/local';
+import { getGoalCurrentTarget } from '../utils/goalProgress';
 import type { FocusGoal, FocusSession } from '../store/types';
 
 /**
@@ -66,7 +67,7 @@ export const useGoalNudgeNotifications = () => {
     // Read focus data imperatively (not via subscription)
     const { goals, sessions, tagMap } = getFocusData();
 
-    const goalsKey = goals.map(g => `${g.id}:${g.targetMinutes}`).join(',');
+    const goalsKey = goals.map(g => `${g.id}:${getGoalCurrentTarget(g)}`).join(',');
     const newKey = `${goalsKey}|${sessions.length}|${goalReminderTime}`;
 
     if (newKey === cacheKeyRef.current) return;

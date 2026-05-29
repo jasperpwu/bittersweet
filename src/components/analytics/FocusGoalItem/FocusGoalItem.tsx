@@ -3,16 +3,11 @@ import { View, Pressable } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { Card } from '../../ui/Card';
 import { useFocus } from '../../../store';
+import { FocusGoal } from '../../../store/types';
+import { getGoalCurrentTarget } from '../../../utils/goalProgress';
 
 interface FocusGoalItemProps {
-  goal: {
-    id: string;
-    name: string;
-    targetMinutes: number;
-    period: 'daily' | 'weekly' | 'monthly';
-    tagIds: string[];
-    isActive: boolean;
-  };
+  goal: FocusGoal;
   onEdit?: (goalId: string) => void;
   onDelete?: (goalId: string) => void;
 }
@@ -23,6 +18,8 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
   onDelete,
 }) => {
   const { tags } = useFocus();
+  const tag = goal.tagId ? tags.byId[goal.tagId] : null;
+
   const formatTime = (minutes: number): string => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -33,19 +30,20 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
     return `${mins}m`;
   };
 
-  const getPeriodLabel = (period: string): string => {
-    return period.charAt(0).toUpperCase() + period.slice(1);
-  };
+  const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+  const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
+  const target = getGoalCurrentTarget(goal);
+  const displayName = goal.customName || (tag ? `${tag.icon} ${tag.name} Goal` : 'Goal');
 
   return (
     <Card className="p-4">
       <View className="flex-row items-center justify-between">
         <View className="flex-1 mr-3">
           <Typography variant="body-14" color="primary">
-            {goal.name}
+            {displayName}
           </Typography>
           <Typography variant="body-12" color="secondary" className="mt-1">
-            {getPeriodLabel(goal.period)} · {formatTime(goal.targetMinutes)}
+            {periodLabel} · {formatTime(target)}
           </Typography>
         </View>
         <View className="flex-row items-center space-x-2">
@@ -76,22 +74,20 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
         </View>
       </View>
 
-      {/* Tags */}
-      {goal.tagIds.length > 0 && (
+      {/* Tag */}
+      {tag && (
         <View className="flex-row flex-wrap mt-2">
-          {goal.tagIds.map((tagId) => {
-            const tag = tags.byId[tagId];
-            return (
-              <View
-                key={tagId}
-                className="bg-primary/20 rounded-full px-2 py-1 mr-2 mt-1"
-              >
-                <Typography variant="tiny-10" className="text-primary">
-                  {tag?.name || tagId}
-                </Typography>
-              </View>
-            );
-          })}
+          <View
+            className="flex-row items-center rounded-full px-2 py-1"
+            style={{ backgroundColor: tag.color || '#6592E9' }}
+          >
+            <Typography variant="tiny-10" className="mr-1">
+              {tag.icon}
+            </Typography>
+            <Typography variant="tiny-10" className="text-white font-poppins-medium">
+              {tag.name}
+            </Typography>
+          </View>
         </View>
       )}
     </Card>

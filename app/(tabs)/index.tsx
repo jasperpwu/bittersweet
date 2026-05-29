@@ -529,10 +529,10 @@ export default function FocusScreen() {
     }
   };
 
-  const tagHasGoal = (tagId: string) =>
+  const tagHasActiveGoal = (tagId: string) =>
     goals.allIds.some(gid => {
       const goal = goals.byId[gid];
-      return goal && goal.tagIds?.includes(tagId);
+      return goal && goal.tagId === tagId && goal.isActive;
     });
 
   const handleDeleteTag = (tag: any, event: any) => {
@@ -1747,7 +1747,7 @@ export default function FocusScreen() {
         {showDeleteModal && (
           <View className="absolute inset-0 bg-black/50 justify-center items-center p-4">
             <Pressable className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-xs">
-              {tagToDelete && tagHasGoal(tagToDelete.id) ? (
+              {tagToDelete && tagHasActiveGoal(tagToDelete.id) ? (
                 <>
                   {/* Cannot Delete Header */}
                   <View className="p-4 border-b border-light-border dark:border-gray-700">
@@ -1759,7 +1759,7 @@ export default function FocusScreen() {
                   {/* Explanation */}
                   <View className="p-4">
                     <Typography variant="body-14" color="primary" className="leading-5">
-                      "{tagToDelete.name}" is still associated with a goal. Please remove it from the goal first before deleting.
+                      "{tagToDelete.name}" has an active goal. Please conclude or deactivate the goal first before deleting.
                     </Typography>
                   </View>
 

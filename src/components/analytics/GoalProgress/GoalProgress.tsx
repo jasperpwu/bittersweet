@@ -22,14 +22,17 @@ import { Typography } from '../../ui/Typography';
 import { FocusGoal } from '../../../store/types';
 import { useFocus } from '../../../store';
 import { useAppSettings } from '../../../store/unified-store';
-import { calculateGoalProgress, getHistoricalPeriodRanges, getTargetForDate, getSessionMinutesInPeriod } from '../../../utils/goalProgress';
+import { calculateGoalProgress, getHistoricalPeriodRanges, getTargetForDate, getSessionMinutesInPeriod, getGoalCurrentTarget } from '../../../utils/goalProgress';
 import { calculateUrgency, UrgencyLevel } from '../../../utils/goalUrgency';
 
 interface GoalProgressProps {
   goals: FocusGoal[];
+  inactiveGoals?: FocusGoal[];
   currentPeriodProgress: Record<string, number>;
   onEditGoal?: (goalId: string) => void;
   onDeleteGoal?: (goalId: string) => void;
+  onConcludeGoal?: (goalId: string) => void;
+  onActivateGoal?: (goalId: string) => void;
   onReorderGoals?: (orderedIds: string[]) => void;
 }
 
@@ -82,6 +85,7 @@ type DraggableGoalRowProps = {
   onPress: () => void;
   onEdit?: (goalId: string) => void;
   onDelete?: (goalId: string) => void;
+  onConclude?: (goalId: string) => void;
   onSwipeOpen?: (ref: any) => void;
   onDragStart: (index: number) => void;
   onDragMove: (translationY: number) => void;
@@ -91,7 +95,7 @@ type DraggableGoalRowProps = {
 
 function DraggableGoalRow({
   goal, index, tags, isDragging, dragOriginalIndex, dragTargetIndex,
-  onPress, onEdit, onDelete, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
+  onPress, onEdit, onDelete, onConclude, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
   shouldNudge,
 }: DraggableGoalRowProps) {
   const isBeingDragged = isDragging && dragOriginalIndex === index;
@@ -195,12 +199,24 @@ function DraggableGoalRow({
       <Pressable
         onPress={() => {
           swipeableRef.current?.close();
+          onConclude?.(goal.id);
+        }}
+        className="rounded-lg w-16 h-full items-center justify-center mr-2"
+        style={{ backgroundColor: '#F59E0B' }}
+      >
+        <Typography variant="body-14" color="white">
+          Done
+        </Typography>
+      </Pressable>
+      <Pressable
+        onPress={() => {
+          swipeableRef.current?.close();
           onDelete?.(goal.id);
         }}
         className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
       >
         <Typography variant="body-14" color="white">
-          Delete
+          Off
         </Typography>
       </Pressable>
     </View>
@@ -275,9 +291,12 @@ function DraggableGoalRow({
 
 export const GoalProgress: FC<GoalProgressProps> = ({
   goals,
+  inactiveGoals,
   currentPeriodProgress: _currentPeriodProgress,
   onEditGoal,
   onDeleteGoal,
+  onConcludeGoal,
+  onActivateGoal,
   onReorderGoals,
 }) => {
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
@@ -396,50 +415,94 @@ export const GoalProgress: FC<GoalProgressProps> = ({
     dragTargetIdxRef.current = -1;
   }, [processedGoals, onReorderGoals]);
 
-  // Show placeholder when no goals exist (after all hooks)
-  if (!goals || goals.length === 0) {
-    return <GoalEmptyPlaceholder />;
-  }
+  // Show placeholder when no active goals and no inactive goals
+  const hasActiveGoals = goals && goals.length > 0;
+  const hasInactiveGoals = inactiveGoals && inactiveGoals.length > 0;
 
   return (
     <View className="px-5 mb-6">
-      <View className="gap-y-3">
-        {processedGoals.map((goal, index) => {
-          const isExpanded = goal.isRepeating && expandedGoalId === goal.id;
-          return (
-            <View key={goal.id}>
-              {!isExpanded && (
-                <DraggableGoalRow
-                  goal={goal}
-                  index={index}
-                  tags={tags}
-                  isDragging={isDragging}
-                  dragOriginalIndex={dragOriginalIdx}
-                  dragTargetIndex={dragTargetIdx}
-                  onPress={() => handleGoalPress(goal)}
-                  onEdit={onEditGoal}
-                  onDelete={onDeleteGoal}
-                  onSwipeOpen={handleSwipeOpen}
-                  onDragStart={handleDragStart}
-                  onDragMove={handleDragMove}
-                  onDragEnd={handleDragEnd}
-                  shouldNudge={shouldNudge}
-                />
-              )}
-              {isExpanded && (
-                <GoalConsistencyCalendar
-                  goal={goal}
-                  sessions={safeSessions}
-                  tagMap={tagMap}
-                  onCollapse={() => setExpandedGoalId(null)}
-                  restDays={restDays}
-                  weekStartDay={weekStartDay}
-                />
-              )}
-            </View>
-          );
-        })}
-      </View>
+      {/* Placeholder when no active goals */}
+      {!hasActiveGoals && <GoalEmptyPlaceholder />}
+
+      {/* Active Goals */}
+      {hasActiveGoals && (
+        <View className="gap-y-3">
+          {processedGoals.map((goal, index) => {
+            const isExpanded = goal.isRepeating && expandedGoalId === goal.id;
+            return (
+              <View key={goal.id}>
+                {!isExpanded && (
+                  <DraggableGoalRow
+                    goal={goal}
+                    index={index}
+                    tags={tags}
+                    isDragging={isDragging}
+                    dragOriginalIndex={dragOriginalIdx}
+                    dragTargetIndex={dragTargetIdx}
+                    onPress={() => handleGoalPress(goal)}
+                    onEdit={onEditGoal}
+                    onDelete={onDeleteGoal}
+                    onConclude={onConcludeGoal}
+                    onSwipeOpen={handleSwipeOpen}
+                    onDragStart={handleDragStart}
+                    onDragMove={handleDragMove}
+                    onDragEnd={handleDragEnd}
+                    shouldNudge={shouldNudge}
+                  />
+                )}
+                {isExpanded && (
+                  <GoalConsistencyCalendar
+                    goal={goal}
+                    sessions={safeSessions}
+                    tagMap={tagMap}
+                    onCollapse={() => setExpandedGoalId(null)}
+                    restDays={restDays}
+                    weekStartDay={weekStartDay}
+                  />
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Inactive Goals Section */}
+      {hasInactiveGoals && (
+        <View className={hasActiveGoals ? 'mt-6' : ''}>
+          <View className="flex-row items-center mb-3">
+            <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
+            <Typography variant="body-12" color="secondary" className="mx-3">
+              Not Activated
+            </Typography>
+            <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
+          </View>
+          <View className="gap-y-2">
+            {inactiveGoals!.map((goal) => {
+              const tag = tags.byId[goal.tagId];
+              if (!tag) return null;
+              const derivedName = `${tag.icon} ${tag.name}`;
+              return (
+                <View
+                  key={goal.id}
+                  className="flex-row items-center bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-3"
+                >
+                  <Typography variant="body-14" className="text-light-text-primary dark:text-white flex-1">
+                    {derivedName}
+                  </Typography>
+                  <Pressable
+                    onPress={() => onActivateGoal?.(goal.id)}
+                    className="bg-primary rounded-lg px-4 py-2 active:opacity-70"
+                  >
+                    <Typography variant="body-12" color="white">
+                      Activate
+                    </Typography>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -460,7 +523,7 @@ const TRACK_COLORS: Record<UrgencyLevel | 'healthy', string> = {
 };
 
 const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
-  const effectiveTarget = goal._effectiveTarget ?? goal.targetMinutes;
+  const effectiveTarget = goal._effectiveTarget ?? getGoalCurrentTarget(goal);
   const urgency = useMemo(
     () => calculateUrgency(goal, goal.currentProgress, effectiveTarget),
     [goal, effectiveTarget],
@@ -475,10 +538,15 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
     return `${mins}m`;
   };
 
-  const tagIds = (goal as any).tagIds || [];
+  const goalTagId = (goal as any).tagId;
   const { progressWidth, exceededWidth } = getGoalBarSegments(goal.currentProgress, effectiveTarget);
 
-  const periodLabel = goal.period.charAt(0).toUpperCase() + goal.period.slice(1);
+  const goalPeriod = (goal as any).activePeriod || (goal as any).period || 'daily';
+  const periodLabel = goalPeriod.charAt(0).toUpperCase() + goalPeriod.slice(1);
+
+  // Goal display name
+  const tag = goalTagId ? tags.byId[goalTagId] : null;
+  const displayName = (goal as any).customName || (tag ? `${tag.icon} ${tag.name} Goal` : (goal as any).name || 'Goal');
 
   // Urgency-driven track color for the unfilled portion of the progress bar
   const isHealthy = !urgency.isBehindPace || urgency.level === 'low';
@@ -519,7 +587,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
               variant="body-14"
               className="text-light-text-primary dark:text-white font-poppins-semibold"
             >
-              {goal.name}
+              {displayName}
             </Typography>
             {goal.isRepeating && (
               <Typography variant="tiny-10" className="text-primary ml-2">
@@ -543,27 +611,20 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
         </View>
       </View>
 
-      {/* Tag Pills */}
-      {tagIds.length > 0 && (
+      {/* Tag Pill — only show if customName is set (to clarify which tag) */}
+      {(goal as any).customName && tag && (
         <View className="flex-row flex-wrap gap-1.5 mt-2">
-          {tagIds.map((tagId: string) => {
-            const tag = tags.byId[tagId];
-            if (!tag) return null;
-            return (
-              <View
-                key={tagId}
-                className="flex-row items-center rounded-full px-2.5 py-1"
-                style={{ backgroundColor: tag.color || '#6592E9' }}
-              >
-                <Typography variant="tiny-10" className="mr-1">
-                  {tag.icon}
-                </Typography>
-                <Typography variant="tiny-10" className="text-white font-poppins-medium">
-                  {tag.name}
-                </Typography>
-              </View>
-            );
-          })}
+          <View
+            className="flex-row items-center rounded-full px-2.5 py-1"
+            style={{ backgroundColor: tag.color || '#6592E9' }}
+          >
+            <Typography variant="tiny-10" className="mr-1">
+              {tag.icon}
+            </Typography>
+            <Typography variant="tiny-10" className="text-white font-poppins-medium">
+              {tag.name}
+            </Typography>
+          </View>
         </View>
       )}
 
@@ -656,6 +717,10 @@ interface GoalConsistencyCalendarProps {
 
 const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessions, tagMap: _tagMap, onCollapse, restDays, weekStartDay }) => {
   const captureAreaRef = useRef<View>(null);
+  const colorScheme = useColorScheme();
+  const { tags: calendarTags } = useFocus();
+  const calendarTag = (goal as any).tagId ? calendarTags.byId[(goal as any).tagId] : null;
+  const calendarGoalName = (goal as any).customName || (calendarTag ? `${calendarTag.icon} ${calendarTag.name} Goal` : (goal as any).name || 'Goal');
 
   const handleShare = async () => {
     try {
@@ -667,24 +732,25 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
       await Share.share(
         Platform.OS === 'ios'
           ? { url: uri }
-          : { message: `Check out my focus streak for "${goal.name}"!`, url: uri }
+          : { message: `Check out my focus streak for "${(goal as any).customName || (goal as any).name || 'my goal'}"!`, url: uri }
       );
     } catch (_e) {
       // User cancelled or share failed silently
     }
   };
 
+  const goalPeriod = (goal as any).activePeriod || (goal as any).period || 'daily';
   const periodCounts: Record<string, number> = { daily: 30, weekly: 12, monthly: 12 };
-  const count = periodCounts[goal.period] || 12;
-  const ranges = getHistoricalPeriodRanges(goal.period, count, new Date(), weekStartDay);
+  const count = periodCounts[goalPeriod] || 12;
+  const ranges = getHistoricalPeriodRanges(goalPeriod, count, new Date(), weekStartDay);
 
   // Compute hit/miss for each range
   const results = ranges.map(range => {
-    // Filter by goal's tags
-    const goalTagIds = (goal as any).tagIds || [];
-    const relevant = goalTagIds.length === 0
-      ? sessions
-      : sessions.filter(s => goalTagIds.includes((s as any).tagId));
+    // Filter by goal's tag (1:1 relationship)
+    const goalTagId = (goal as any).tagId;
+    const relevant = goalTagId
+      ? sessions.filter(s => (s as any).tagId === goalTagId)
+      : sessions;
 
     // Split session time at period boundaries for cross-day sessions
     const totalMinutes = relevant.reduce((sum, s) => {
@@ -714,7 +780,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
   const goalHeader = (
     <View className="mb-3">
       <Typography variant="subtitle-16" className="text-light-text-primary dark:text-dark-text-primary">
-        {goal.name}
+        {calendarGoalName}
       </Typography>
     </View>
   );
@@ -730,12 +796,12 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
         )}
       </View>
       <Pressable onPress={handleShare} className="active:opacity-70 p-1">
-        <Ionicons name="share-outline" size={18} color="#FFFFFF" />
+        <Ionicons name="share-outline" size={18} color={colorScheme === 'dark' ? '#FFFFFF' : '#1C1C1E'} />
       </Pressable>
     </View>
   );
 
-  if (goal.period === 'daily') {
+  if (goalPeriod === 'daily') {
     const firstDay = results[0]?.periodStart.getDay() ?? 0;
     const paddedResults = [...Array(firstDay).fill(null), ...results];
 
@@ -786,7 +852,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
     );
   }
 
-  if (goal.period === 'monthly') {
+  if (goalPeriod === 'monthly') {
     const topRow = results.slice(0, 6);
     const bottomRow = results.slice(6);
 
@@ -884,33 +950,30 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 // ---------- Empty State Placeholder ----------
 
 const GoalEmptyPlaceholder: FC = () => {
-  const targetHours = 40;
-  const placeholderMonths = [
-    { label: 'Jun', hours: 42, hit: true },
-    { label: 'Jul', hours: 38, hit: true },
-    { label: 'Aug', hours: 15, hit: false },
-    { label: 'Sep', hours: 46, hit: true },
-    { label: 'Oct', hours: 30, hit: true },
-    { label: 'Nov', hours: 12, hit: false },
-    { label: 'Dec', hours: 35, hit: true },
-    { label: 'Jan', hours: 40, hit: true },
-    { label: 'Feb', hours: 28, hit: false },
-    { label: 'Mar', hours: 44, hit: true },
-    { label: 'Apr', hours: 50, hit: true },
-    { label: 'May', hours: 22, hit: false },
-  ].map(m => ({ ...m, fillPercent: Math.min(m.hours / targetHours, 1) * 100 }));
-
-  const topRow = placeholderMonths.slice(0, 6);
-  const bottomRow = placeholderMonths.slice(6);
+  const targetHours = 10;
+  const placeholderWeeks = [
+    { label: 'W40', hours: 11, hit: true },
+    { label: 'W41', hours: 10, hit: true },
+    { label: 'W42', hours: 8, hit: false },
+    { label: 'W43', hours: 12, hit: true },
+    { label: 'W44', hours: 9, hit: false },
+    { label: 'W45', hours: 10, hit: true },
+    { label: 'W46', hours: 11, hit: true },
+    { label: 'W47', hours: 10, hit: true },
+    { label: 'W48', hours: 7, hit: false },
+    { label: 'W49', hours: 11, hit: true },
+    { label: 'W50', hours: 12, hit: true },
+    { label: 'W51', hours: 5, hit: false },
+  ].map(w => ({ ...w, fillPercent: Math.min(w.hours / targetHours, 1) * 100 }));
 
   return (
     <View className="px-5 mb-6">
       {/* Call to action */}
       <View className="items-center mb-4">
-        <Typography variant="body-14" className="text-white text-center">
-          Tap the top right 🎯 to create new goals
+        <Typography variant="body-14" className="text-light-text-primary dark:text-white text-center">
+          Activate goals!
         </Typography>
-        <Typography variant="body-12" className="text-gray-200 text-center mt-1">
+        <Typography variant="body-12" className="text-light-text-secondary dark:text-gray-200 text-center mt-1">
           Here&apos;s what a goal looks like
         </Typography>
       </View>
@@ -919,13 +982,13 @@ const GoalEmptyPlaceholder: FC = () => {
       <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-3 mb-3 opacity-60">
         <View className="flex-row items-center">
           <View className="mr-3 items-center justify-center w-10 h-10 rounded-full bg-light-border dark:bg-dark-border">
-            <Typography variant="body-12" className="text-white font-poppins-semibold">
+            <Typography variant="body-12" className="text-light-text-primary dark:text-white font-poppins-semibold">
               72%
             </Typography>
           </View>
           <View className="flex-1">
             <View className="flex-row items-center">
-              <Typography variant="body-14" className="text-white font-poppins-semibold">
+              <Typography variant="body-14" className="text-light-text-primary dark:text-white font-poppins-semibold">
                 Study Goal
               </Typography>
               <Typography variant="tiny-10" className="text-primary ml-2">
@@ -933,14 +996,14 @@ const GoalEmptyPlaceholder: FC = () => {
               </Typography>
             </View>
             <View className="flex-row items-center mt-0.5">
-              <Typography variant="body-12" className="text-white font-poppins-medium">
-                28h 48m / 40h 0m
+              <Typography variant="body-12" className="text-light-text-primary dark:text-white font-poppins-medium">
+                7h 12m / 10h 0m
               </Typography>
             </View>
           </View>
           <View className="rounded-full px-3 py-1" style={{ backgroundColor: '#3B82F6' }}>
             <Typography variant="body-12" className="text-white font-poppins-medium">
-              Monthly
+              Weekly
             </Typography>
           </View>
         </View>
@@ -977,49 +1040,38 @@ const GoalEmptyPlaceholder: FC = () => {
         </View>
       </View>
 
-      {/* Placeholder Monthly Calendar */}
+      {/* Placeholder Weekly Calendar */}
       <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4 mb-4 opacity-60">
         <View className="flex-row items-center justify-between mb-3">
           <Typography variant="body-12" className="text-gray-200">
-            Last 12 months
+            Last 12 weeks
           </Typography>
           <Typography variant="body-12" className="text-[#6592E9]">
             8/12 hit
           </Typography>
         </View>
-        {[topRow, bottomRow].map((row, rowIdx) => (
-          <View key={rowIdx} className={`flex-row justify-between ${rowIdx === 0 ? 'mb-2' : ''}`}>
-            {row.map((m, i) => (
-              <View key={i} className="items-center" style={{ flex: 1 }}>
-                {m.hit ? (
+        <View className="flex-row justify-between">
+          {placeholderWeeks.map((w, i) => (
+            <View key={i} className="items-center" style={{ flex: 1 }}>
+              {w.hit ? (
+                <View className="w-5 h-5 rounded-sm mb-1" style={{ backgroundColor: TRACK_COLORS.healthy }} />
+              ) : (
+                <View className="w-5 h-5 rounded-sm mb-1 bg-light-border dark:bg-dark-border overflow-hidden">
                   <View
-                    className="rounded-sm mb-1"
-                    style={{ width: 28, height: 28, backgroundColor: TRACK_COLORS.healthy }}
+                    className="absolute bottom-0 left-0 right-0 bg-primary"
+                    style={{ height: `${w.fillPercent}%` }}
                   />
-                ) : (
-                  <View
-                    className="rounded-sm mb-1 bg-light-border dark:bg-dark-border overflow-hidden"
-                    style={{ width: 28, height: 28 }}
-                  >
-                    <View
-                      className="absolute bottom-0 left-0 right-0 bg-primary"
-                      style={{ height: `${m.fillPercent}%` }}
-                    />
-                  </View>
-                )}
-                <Typography variant="tiny-10" className="text-gray-300 text-center">
-                  {m.label}
-                </Typography>
-                <Typography variant="tiny-10" className={`text-center ${m.hit ? 'text-[#6592E9]' : 'text-gray-400'}`}>
-                  {m.hours}h
-                </Typography>
-              </View>
-            ))}
-          </View>
-        ))}
+                </View>
+              )}
+              <Typography variant="tiny-10" className="text-gray-300 text-center">
+                {w.label}
+              </Typography>
+            </View>
+          ))}
+        </View>
         <View className="mt-3 pt-3 border-t border-light-border dark:border-dark-border items-center">
-          <Typography variant="body-14" className="text-white font-poppins-semibold">
-            ⏱️ 402h total
+          <Typography variant="body-14" className="text-light-text-primary font-poppins-semibold">
+            ⏱️ 116h total
           </Typography>
         </View>
       </View>

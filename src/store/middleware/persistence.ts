@@ -183,7 +183,7 @@ const optimizedStorage = new OptimizedStorage();
 export const persistenceConfig = {
   name: STORAGE_KEY,
   storage: createJSONStorage(() => optimizedStorage),
-  version: 3,
+  version: 4,
   migrate: (persistedState: any, version: number) => {
     if (version < 2) {
       console.log('🔄 Migrating store to v2 (adding auth slice)...');
@@ -225,6 +225,121 @@ export const persistenceConfig = {
         }
       }
       console.log('✅ Store migration to v3 complete');
+    }
+
+    if (version < 4) {
+      console.log('🔄 Migrating store to v4 (goal model refactor: tagIds→tagId, per-period targets, badges)...');
+      const state = persistedState;
+
+      if (state?.focus?.goals?.byId) {
+        const oldGoals = state.focus.goals.byId;
+        const oldAllIds = state.focus.goals.allIds || Object.keys(oldGoals);
+        const newById: Record<string, any> = {};
+        const newAllIds: string[] = [];
+
+        for (const goalId of oldAllIds) {
+          const goal = oldGoals[goalId];
+          if (!goal) continue;
+
+          const tagIds: string[] = goal.tagIds || [];
+
+          // Drop goals with no tags (they targeted "all tags" which no longer makes sense)
+          if (tagIds.length === 0) continue;
+
+          // Split goals with multiple tags into one goal per tag
+          const tagsToProcess = tagIds.length >= 1 ? tagIds : [tagIds[0]];
+
+          for (let i = 0; i < tagsToProcess.length; i++) {
+            const tagId = tagsToProcess[i];
+            const newId = i === 0 ? goalId : `${goalId}-split-${i}`;
+            const oldPeriod = (goal.period as string) === 'yearly' ? 'monthly' : (goal.period || 'daily');
+            const targetMinutes = goal.targetMinutes || 0;
+            const restDayTargetMinutes = goal.restDayTargetMinutes ?? targetMinutes;
+
+            // Map old targetHistory entries: add period field
+            const oldHistory = goal.targetHistory || [];
+            const newHistory = oldHistory.map((entry: any) => ({
+              ...entry,
+              period: oldPeriod,
+            }));
+
+            // Determine customName: if it matches auto-generated pattern, leave empty
+            let customName: string | undefined = goal.name;
+            if (customName) {
+              // Check common auto-name patterns
+              const autoPatterns = ['Focus Goal', 'Goal'];
+              const isAuto = autoPatterns.some(p => customName === p) ||
+                /^(Daily|Weekly|Monthly)\s+\w+\s+Goal$/.test(customName) ||
+                /^\w+\s+Goal$/.test(customName);
+              if (isAuto) customName = undefined;
+            }
+
+            const newGoal = {
+              ...goal,
+              id: newId,
+              tagId,
+              customName,
+              activePeriod: oldPeriod,
+              dailyTargetMinutes: oldPeriod === 'daily' ? targetMinutes : 0,
+              dailyRestDayTargetMinutes: oldPeriod === 'daily' ? restDayTargetMinutes : 0,
+              weeklyTargetMinutes: oldPeriod === 'weekly' ? targetMinutes : 0,
+              monthlyTargetMinutes: oldPeriod === 'monthly' ? targetMinutes : 0,
+              targetHistory: newHistory,
+            };
+
+            // Remove old fields
+            delete newGoal.tagIds;
+            delete newGoal.name;
+            delete newGoal.period;
+            delete newGoal.targetMinutes;
+            delete newGoal.restDayTargetMinutes;
+
+            newById[newId] = newGoal;
+            newAllIds.push(newId);
+          }
+        }
+
+        // Create deactivated goals for tags that don't have one
+        const existingTagIds = new Set(newAllIds.map(id => newById[id]?.tagId).filter(Boolean));
+        const allTagIds = state.focus?.tags?.allIds || [];
+        for (const tagId of allTagIds) {
+          const tag = state.focus?.tags?.byId?.[tagId];
+          if (!tag || tag.deletedAt) continue;
+          if (existingTagIds.has(tagId)) continue;
+
+          const newGoalId = `goal-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}-${tagId.slice(-4)}`;
+          newById[newGoalId] = {
+            id: newGoalId,
+            userId: tag.userId || 'dev-user',
+            tagId,
+            customName: undefined,
+            activePeriod: 'daily',
+            dailyTargetMinutes: 0,
+            dailyRestDayTargetMinutes: 0,
+            weeklyTargetMinutes: 0,
+            monthlyTargetMinutes: 0,
+            targetHistory: [],
+            isActive: false,
+            isRepeating: true,
+            showTotalHours: true,
+            currentProgress: 0,
+            lastResetDate: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          newAllIds.push(newGoalId);
+        }
+
+        state.focus.goals.byId = newById;
+        state.focus.goals.allIds = newAllIds;
+      }
+
+      // Initialize badges storage
+      if (!state.focus.badges) {
+        state.focus.badges = { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null };
+      }
+
+      console.log('✅ Store migration to v4 complete');
     }
 
     if (version === 0) {
@@ -296,6 +411,7 @@ export const persistenceConfig = {
       sessions: state.focus.sessions,
       tags: state.focus.tags,
       goals: state.focus.goals,
+      badges: state.focus.badges,
       currentSession: state.focus.currentSession,
       selectedDate: state.focus.selectedDate,
       viewMode: state.focus.viewMode,

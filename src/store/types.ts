@@ -94,6 +94,7 @@ export interface Tag extends BaseEntity {
 
 export interface TargetHistoryEntry {
   effectiveDate: string; // "YYYY-MM-DD" — changes apply from this date onward
+  period: 'daily' | 'weekly' | 'monthly';
   targetMinutes: number;
   restDayTargetMinutes: number;
   restDays: number[]; // which days (0=Sun..6=Sat) were rest days at this point
@@ -101,17 +102,43 @@ export interface TargetHistoryEntry {
 
 export interface FocusGoal extends BaseEntity {
   userId: string;
-  name: string;
-  targetMinutes: number;
-  restDayTargetMinutes: number;
+  customName?: string; // if empty/undefined, derive from tag
+  tagId: string; // 1:1 with tag
+  activePeriod: 'daily' | 'weekly' | 'monthly';
+  dailyTargetMinutes: number; // 0 = not configured
+  dailyRestDayTargetMinutes: number;
+  weeklyTargetMinutes: number;
+  monthlyTargetMinutes: number;
   targetHistory: TargetHistoryEntry[];
-  period: 'daily' | 'weekly' | 'monthly';
-  tagIds: string[]; // empty array means "all tags"
   isActive: boolean;
   isRepeating: boolean;
   showTotalHours: boolean;
   currentProgress: number;
   lastResetDate: Date;
+}
+
+export interface Badge extends BaseEntity {
+  goalId?: string;
+  tagIcon: string;
+  tagName: string;
+  tagColor: string;
+  goalName: string;
+  totalMinutes: number;
+  totalSessions: number;
+  dailyStats?: { longestStreak: number; periodsGoalMet: number; totalPeriods: number };
+  weeklyStats?: { longestStreak: number; periodsGoalMet: number; totalPeriods: number };
+  monthlyStats?: { longestStreak: number; periodsGoalMet: number; totalPeriods: number };
+  durationDistribution: {
+    avgMinutesPerSession: number;
+    shortestSession: number;
+    longestSession: number;
+    peakHour: number;
+    peakDay: string;
+  };
+  notesCount: number;
+  recentNotes: string[];
+  startDate: string;
+  endDate: string;
 }
 
 export interface FocusSettings {
@@ -242,9 +269,10 @@ export interface FocusSlice {
   deleteTag: (id: string) => void;
   
   // Goal Management
-  addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
   deleteGoal: (id: string) => void;
+  concludeGoal: (id: string) => void;
+  deleteBadge: (id: string) => void;
   updateGoalProgress: (goalId: string, minutesToAdd: number) => void;
   
   // Selectors

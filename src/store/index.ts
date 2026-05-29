@@ -10,6 +10,7 @@ import { LiveActivityService } from '../services/LiveActivityService';
 import { WidgetService } from '../services/WidgetService';
 import { FocusGoal } from './types';
 import { persistenceConfig } from './middleware/persistence';
+import { computeBadgeStats } from '../utils/badgeStats';
 import * as Notifications from 'expo-notifications';
 import { AuthSlice, createAuthSlice } from './slices/authSlice';
 import { SubscriptionSlice, createSubscriptionSlice } from './slices/subscriptionSlice';
@@ -102,8 +103,19 @@ interface AppStore {
     addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
     updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
     deleteGoal: (id: string) => void;
+    concludeGoal: (id: string) => void;
+    deleteBadge: (id: string) => void;
     reorderGoals: (orderedIds: string[]) => void;
     getActiveGoals: () => FocusGoal[];
+
+    // Badges
+    badges: {
+      byId: Record<string, any>;
+      allIds: string[];
+      loading: boolean;
+      error: string | null;
+      lastUpdated: Date | null;
+    };
   };
   
   // UI
@@ -244,12 +256,19 @@ export const useAppStore = create<AppStore>()(
           error: null,
           lastUpdated: null
         },
-        goals: { 
-          byId: {}, 
-          allIds: [], 
-          loading: false, 
-          error: null, 
-          lastUpdated: null 
+        goals: {
+          byId: {},
+          allIds: [],
+          loading: false,
+          error: null,
+          lastUpdated: null
+        },
+        badges: {
+          byId: {},
+          allIds: [],
+          loading: false,
+          error: null,
+          lastUpdated: null
         },
         currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },
         selectedDate: new Date(),
@@ -744,22 +763,105 @@ export const useAppStore = create<AppStore>()(
         },
         
         deleteGoal: (goalId) => {
-          console.log('🗑️ Deleting goal:', goalId);
+          console.log('🚫 Deactivating goal:', goalId);
           set((state) => {
-            const { [goalId]: removed, ...remainingGoals } = state.focus.goals.byId;
+            const goal = state.focus.goals.byId[goalId];
+            if (!goal) return state;
             return {
               focus: {
                 ...state.focus,
                 goals: {
                   ...state.focus.goals,
-                  byId: remainingGoals,
-                  allIds: state.focus.goals.allIds.filter(id => id !== goalId),
+                  byId: {
+                    ...state.focus.goals.byId,
+                    [goalId]: { ...goal, isActive: false, updatedAt: new Date() },
+                  },
                 }
               }
             };
           });
         },
-        
+
+        concludeGoal: (goalId) => {
+          const state = get();
+          const goal = state.focus.goals.byId[goalId];
+          if (!goal) return;
+
+          const tag = state.focus.tags.byId[goal.tagId];
+          const sessions = state.focus.sessions.allIds
+            .map((sid: string) => state.focus.sessions.byId[sid])
+            .filter(Boolean);
+
+          const weekStartDay = (state as any).preferences?.weekStartDay ?? 0;
+          const restDays = (goal as any).restDays || [0, 6];
+
+          const badgeData = computeBadgeStats(
+            goal,
+            sessions,
+            { icon: tag?.icon || '', name: tag?.name || '', color: tag?.color },
+            weekStartDay,
+            restDays,
+          );
+
+          set((state) => {
+            const existingGoal = state.focus.goals.byId[goalId];
+            if (!existingGoal) return state;
+            const badges = state.focus.badges || { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null };
+
+            const existingBadge = Object.values(badges.byId).find((b: any) => b.goalId === goalId) as any;
+            const badgeId = existingBadge ? existingBadge.id : `badge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+            const badge = {
+              ...badgeData,
+              id: badgeId,
+              goalId,
+              createdAt: existingBadge ? existingBadge.createdAt : new Date(),
+              updatedAt: new Date(),
+            };
+
+            return {
+              focus: {
+                ...state.focus,
+                goals: {
+                  ...state.focus.goals,
+                  byId: {
+                    ...state.focus.goals.byId,
+                    [goalId]: { ...existingGoal, isActive: false, updatedAt: new Date() },
+                  },
+                },
+                badges: {
+                  ...badges,
+                  byId: { ...badges.byId, [badge.id]: badge },
+                  allIds: existingBadge ? badges.allIds : [...badges.allIds, badge.id],
+                  lastUpdated: new Date(),
+                },
+              }
+            };
+          });
+
+          if (__DEV__) {
+            console.log('✅ Goal concluded, badge created or updated for goal:', goalId);
+          }
+        },
+
+        deleteBadge: (badgeId) => {
+          set((state) => {
+            const badges = state.focus.badges || { byId: {}, allIds: [] };
+            const { [badgeId]: removed, ...remainingBadges } = badges.byId;
+            return {
+              focus: {
+                ...state.focus,
+                badges: {
+                  ...badges,
+                  byId: remainingBadges,
+                  allIds: badges.allIds.filter((id: string) => id !== badgeId),
+                  lastUpdated: new Date(),
+                }
+              }
+            };
+          });
+        },
+
         reorderGoals: (orderedIds) => {
           set((state) => ({
             focus: {
@@ -801,6 +903,26 @@ export const useAppStore = create<AppStore>()(
             usageCount: 0,
           };
 
+          const goalId = generateId();
+          const newGoal: FocusGoal = {
+            id: goalId,
+            userId: 'local-user',
+            tagId: tagId,
+            activePeriod: 'daily',
+            dailyTargetMinutes: 0,
+            dailyRestDayTargetMinutes: 0,
+            weeklyTargetMinutes: 0,
+            monthlyTargetMinutes: 0,
+            targetHistory: [],
+            isActive: false,
+            isRepeating: true,
+            showTotalHours: true,
+            currentProgress: 0,
+            lastResetDate: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+
           set((state) => ({
             focus: {
               ...state.focus,
@@ -808,6 +930,11 @@ export const useAppStore = create<AppStore>()(
                 ...state.focus.tags,
                 byId: { ...state.focus.tags.byId, [tagId]: tag },
                 allIds: [...state.focus.tags.allIds, tagId],
+              },
+              goals: {
+                ...state.focus.goals,
+                byId: { ...state.focus.goals.byId, [goalId]: newGoal },
+                allIds: [...state.focus.goals.allIds, goalId],
               }
             }
           }));
@@ -846,14 +973,14 @@ export const useAppStore = create<AppStore>()(
               // Remove last duration entry for this tag
               const { [tagId]: _removedDuration, ...remainingDurations } = state.focus.lastDurationByTagId;
 
-              // Remove this tag from any goal's tagIds
+              // Deactivate the associated goal (1:1 tag-goal relationship)
               const updatedGoals = { ...state.focus.goals.byId };
               for (const goalId of state.focus.goals.allIds) {
                 const goal = updatedGoals[goalId];
-                if (goal && goal.tagIds?.includes(tagId)) {
+                if (goal && goal.tagId === tagId) {
                   updatedGoals[goalId] = {
                     ...goal,
-                    tagIds: goal.tagIds.filter((id: string) => id !== tagId),
+                    isActive: false,
                     updatedAt: new Date(),
                   };
                 }
@@ -1541,6 +1668,8 @@ export const useFocusActions = () => useAppStore((state) => ({
   addGoal: state.focus.addGoal,
   updateGoal: state.focus.updateGoal,
   deleteGoal: state.focus.deleteGoal,
+  concludeGoal: state.focus.concludeGoal,
+  deleteBadge: state.focus.deleteBadge,
   reorderGoals: state.focus.reorderGoals,
   getActiveGoals: state.focus.getActiveGoals,
 }));
@@ -1666,6 +1795,37 @@ function populateDefaults() {
       if (tag && !tag.color) {
         currentState.focus.updateTag(tagId, { color: defaultColorMap[tag.name] || '#6592E9' });
       }
+    }
+
+    // Backfill deactivated goals for tags that don't have one (1:1 tag-goal relationship)
+    const refreshedState = getStoreState();
+    const existingGoalTagIds = new Set(
+      refreshedState.focus.goals.allIds
+        .map((id: string) => refreshedState.focus.goals.byId[id]?.tagId)
+        .filter(Boolean)
+    );
+    for (const tagId of refreshedState.focus.tags.allIds) {
+      const tag = refreshedState.focus.tags.byId[tagId];
+      if (!tag || tag.deletedAt) continue;
+      if (existingGoalTagIds.has(tagId)) continue;
+
+      console.log(`🎯 Backfilling deactivated goal for tag: ${tag.name}`);
+      refreshedState.focus.addGoal({
+        userId: 'dev-user',
+        tagId,
+        customName: undefined,
+        activePeriod: 'daily',
+        dailyTargetMinutes: 0,
+        dailyRestDayTargetMinutes: 0,
+        weeklyTargetMinutes: 0,
+        monthlyTargetMinutes: 0,
+        targetHistory: [],
+        isActive: false,
+        isRepeating: true,
+        showTotalHours: true,
+        currentProgress: 0,
+        lastResetDate: new Date(),
+      } as any);
     }
 
     console.log('✅ Store initialized successfully');

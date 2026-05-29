@@ -6,39 +6,10 @@ import { Typography } from '../ui/Typography';
 import { useAppStore } from '../../store';
 
 export const AccountSection: React.FC = () => {
-  const colorScheme = useColorScheme();
   const { user, isAuthenticated, isLoading, error } = useAppStore(
     (state) => state.auth
   );
   const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
-  const signOut = useAppStore((state) => state.auth.signOut);
-  const deleteAccount = useAppStore((state) => state.auth.deleteAccount);
-
-  const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: signOut,
-      },
-    ]);
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and all synced data. Local data on this device will not be affected. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Account',
-          style: 'destructive',
-          onPress: deleteAccount,
-        },
-      ]
-    );
-  };
 
   if (isAuthenticated && user) {
     return (
@@ -48,62 +19,18 @@ export const AccountSection: React.FC = () => {
         </Typography>
         <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
           {/* User info */}
-          <View className="py-3 border-b border-light-border dark:border-dark-border">
+          <View className="py-3">
             <View className="flex-row items-center">
               <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center mr-3">
                 <Ionicons name="person" size={20} color="#8B7FFF" />
               </View>
               <View className="flex-1">
-                {user.fullName && (
-                  <Typography variant="subtitle-14-medium" color="primary">
-                    {user.fullName}
-                  </Typography>
-                )}
-                <Typography
-                  variant="body-12"
-                  color="secondary"
-                  className={user.fullName ? 'mt-0.5' : ''}
-                >
-                  {user.email || 'Apple ID'}
+                <Typography variant="subtitle-14-medium" color="primary">
+                  {user.fullName || 'Apple User'}
                 </Typography>
               </View>
             </View>
           </View>
-
-          {/* Sign out */}
-          <Pressable
-            onPress={handleSignOut}
-            disabled={isLoading}
-            className="py-3 border-b border-light-border dark:border-dark-border active:opacity-70"
-          >
-            <View className="flex-row items-center">
-              <View className="w-8 items-center mr-3">
-                <Ionicons name="log-out-outline" size={20} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
-              </View>
-              <Typography variant="subtitle-14-medium" color="primary">
-                Sign Out
-              </Typography>
-              {isLoading && (
-                <ActivityIndicator size="small" color="#8B7FFF" className="ml-auto" />
-              )}
-            </View>
-          </Pressable>
-
-          {/* Delete account */}
-          <Pressable
-            onPress={handleDeleteAccount}
-            disabled={isLoading}
-            className="py-3 active:opacity-70"
-          >
-            <View className="flex-row items-center">
-              <View className="w-8 items-center mr-3">
-                <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-              </View>
-              <Typography variant="subtitle-14-medium" className="text-[#FF6B6B]">
-                Delete Account
-              </Typography>
-            </View>
-          </Pressable>
         </View>
 
         {error && (
@@ -149,3 +76,81 @@ export const AccountSection: React.FC = () => {
     </View>
   );
 };
+
+export const AccountActions: React.FC = () => {
+  const colorScheme = useColorScheme();
+  const { isAuthenticated, isLoading } = useAppStore((state) => state.auth);
+  const signOut = useAppStore((state) => state.auth.signOut);
+  const deleteAccount = useAppStore((state) => state.auth.deleteAccount);
+
+  if (!isAuthenticated) return null;
+
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: signOut,
+      },
+    ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all synced data. Local data on this device will not be affected. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: deleteAccount,
+        },
+      ]
+    );
+  };
+
+  return (
+    <View className="px-5 mt-6">
+      <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
+        Other
+      </Typography>
+      <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+        <Pressable
+          onPress={handleSignOut}
+          disabled={isLoading}
+          className="py-3 border-b border-light-border dark:border-dark-border active:opacity-70"
+        >
+          <View className="flex-row items-center">
+            <View className="w-8 items-center mr-3">
+              <Ionicons name="log-out-outline" size={20} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
+            </View>
+            <Typography variant="subtitle-14-medium" color="primary">
+              Sign Out
+            </Typography>
+            {isLoading && (
+              <ActivityIndicator size="small" color="#8B7FFF" className="ml-auto" />
+            )}
+          </View>
+        </Pressable>
+
+        <Pressable
+          onPress={handleDeleteAccount}
+          disabled={isLoading}
+          className="py-3 active:opacity-70"
+        >
+          <View className="flex-row items-center">
+            <View className="w-8 items-center mr-3">
+              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+            </View>
+            <Typography variant="subtitle-14-medium" className="text-[#FF6B6B]">
+              Delete Account
+            </Typography>
+          </View>
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+

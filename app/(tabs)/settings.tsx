@@ -8,7 +8,7 @@ import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { TimePicker } from '../../src/components/ui/TimePicker';
 import { router } from 'expo-router';
-import { AccountSection } from '../../src/components/auth/AccountSection';
+import { AccountSection, AccountActions } from '../../src/components/auth/AccountSection';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { useAppStore } from '../../src/store';
 import { openChat } from '../../src/services/crisp';
@@ -402,6 +402,9 @@ export default function SettingsScreen() {
             isLast
           />
         </SettingsSection>
+
+        {/* Account Actions */}
+        <AccountActions />
 
         {/* Developer (dev only) */}
         {__DEV__ && (

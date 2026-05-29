@@ -1,5 +1,5 @@
 import { FocusGoal } from '../store/types';
-import { getGoalPeriodRange } from './goalProgress';
+import { getGoalPeriodRange, getGoalCurrentTarget } from './goalProgress';
 
 export type UrgencyLevel = 'low' | 'medium' | 'high';
 
@@ -26,16 +26,17 @@ export const calculateUrgency = (
   effectiveTarget?: number,
   weekStartDay: number = 0,
 ): UrgencyResult => {
-  const target = effectiveTarget ?? goal.targetMinutes;
+  const target = effectiveTarget ?? getGoalCurrentTarget(goal);
 
   if (target <= 0) {
     return { isBehindPace: false, score: 0, level: 'low', deficit: 0 };
   }
 
   const now = new Date();
-  const period = (goal.period as string) === 'yearly' ? 'monthly' : goal.period;
+  const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+  const normalizedPeriod = period === 'yearly' ? 'monthly' : period;
   const { periodStart, periodEnd } = getGoalPeriodRange(
-    period as 'daily' | 'weekly' | 'monthly',
+    normalizedPeriod as 'daily' | 'weekly' | 'monthly',
     now,
     weekStartDay,
   );

@@ -15,6 +15,7 @@ import { FocusSession } from '../../types/models';
 import { createNormalizedState, updateNormalizedState, EntityManager } from '../utils/entityManager';
 import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/eventBus';
 import { useUnifiedStore } from '../unified-store';
+import { computeBadgeStats } from '../../utils/badgeStats';
 
 // Re-export types for backward compatibility
 export type { FocusSession } from '../../types/models';
@@ -63,6 +64,8 @@ interface FocusSlice {
   addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => FocusGoal;
   updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
   deleteGoal: (id: string) => void;
+  concludeGoal: (id: string) => void;
+  deleteBadge: (id: string) => void;
   
   // Selectors
   getSessionById: (id: string) => FocusSession | undefined;
@@ -549,7 +552,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     // Tag Management
     addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => {
       const state = get();
-      
+
       const newTag: Tag = {
         ...tag,
         id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -557,22 +560,52 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      
+
+      // Also create a deactivated goal for this tag
+      const newGoal: FocusGoal = {
+        id: `goal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        userId: 'dev-user',
+        tagId: newTag.id,
+        customName: undefined,
+        activePeriod: 'daily',
+        dailyTargetMinutes: 0,
+        dailyRestDayTargetMinutes: 0,
+        weeklyTargetMinutes: 0,
+        monthlyTargetMinutes: 0,
+        targetHistory: [],
+        isActive: false,
+        isRepeating: true,
+        showTotalHours: true,
+        currentProgress: 0,
+        lastResetDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
       set((state: any) => {
-        const manager = new EntityManager(state.focus.tags);
-        manager.add(newTag);
+        const tagManager = new EntityManager(state.focus.tags);
+        tagManager.add(newTag);
         state.focus.tags = {
-          ...manager.getState(),
+          ...tagManager.getState(),
+          loading: false,
+          error: null,
+          lastUpdated: new Date(),
+        };
+
+        const goalManager = new EntityManager(state.focus.goals);
+        goalManager.add(newGoal);
+        state.focus.goals = {
+          ...goalManager.getState(),
           loading: false,
           error: null,
           lastUpdated: new Date(),
         };
       });
-      
+
       if (__DEV__) {
-        console.log('✅ Tag added:', newTag.name);
+        console.log('✅ Tag added:', newTag.name, '+ deactivated goal created');
       }
-      
+
       return newTag;
     },
     
@@ -608,13 +641,13 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
           };
           state.focus.tags.lastUpdated = new Date();
 
-          // Remove this tag from any goal's tagIds
+          // Deactivate the associated goal (1:1 tag-goal relationship)
           for (const goalId of state.focus.goals.allIds) {
             const goal = state.focus.goals.byId[goalId];
-            if (goal && goal.tagIds?.includes(id)) {
+            if (goal && goal.tagId === id) {
               state.focus.goals.byId[goalId] = {
                 ...goal,
-                tagIds: goal.tagIds.filter((tid: string) => tid !== id),
+                isActive: false,
                 updatedAt: new Date(),
               };
             }
@@ -629,24 +662,27 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
 
     // Goal Management
     addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => {
-      const state = get();
       const today = new Date().toISOString().split('T')[0];
       const currentRestDays = useUnifiedStore.getState().preferences.restDays ?? [0, 6];
+      const activePeriod = goal.activePeriod || 'daily';
+      const targetMinutes = activePeriod === 'daily' ? goal.dailyTargetMinutes
+        : activePeriod === 'weekly' ? goal.weeklyTargetMinutes
+        : goal.monthlyTargetMinutes;
 
       const newGoal: FocusGoal = {
         ...goal,
         id: `goal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        userId: 'dev-user', // TODO: Get from auth
-        restDayTargetMinutes: goal.restDayTargetMinutes ?? goal.targetMinutes,
-        targetHistory: [{
+        userId: 'dev-user',
+        targetHistory: targetMinutes > 0 ? [{
           effectiveDate: today,
-          targetMinutes: goal.targetMinutes,
-          restDayTargetMinutes: goal.restDayTargetMinutes ?? goal.targetMinutes,
+          period: activePeriod,
+          targetMinutes,
+          restDayTargetMinutes: activePeriod === 'daily' ? goal.dailyRestDayTargetMinutes : targetMinutes,
           restDays: currentRestDays,
-        }],
+        }] : [],
         createdAt: new Date(),
         updatedAt: new Date(),
-        lastResetDate: new Date(), // Start tracking from now
+        lastResetDate: new Date(),
       };
 
       set((state: any) => {
@@ -670,27 +706,54 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
     updateGoal: (id: string, updates: Partial<FocusGoal>) => {
       set((state: any) => {
         const existingGoal = state.focus.goals.byId[id];
-        const targetChanged = updates.targetMinutes !== undefined && updates.targetMinutes !== existingGoal?.targetMinutes;
-        const restDayTargetChanged = updates.restDayTargetMinutes !== undefined && updates.restDayTargetMinutes !== existingGoal?.restDayTargetMinutes;
+        if (!existingGoal) return;
 
-        // If target changed, append to history
-        if (existingGoal && (targetChanged || restDayTargetChanged)) {
-          const today = new Date().toISOString().split('T')[0];
-          const currentRestDays = useUnifiedStore.getState().preferences.restDays ?? [0, 6];
+        const today = new Date().toISOString().split('T')[0];
+        const currentRestDays = useUnifiedStore.getState().preferences.restDays ?? [0, 6];
+        const period = updates.activePeriod ?? existingGoal.activePeriod ?? 'daily';
+
+        // Check if any per-period target changed
+        const dailyChanged = updates.dailyTargetMinutes !== undefined && updates.dailyTargetMinutes !== existingGoal.dailyTargetMinutes;
+        const dailyRestChanged = updates.dailyRestDayTargetMinutes !== undefined && updates.dailyRestDayTargetMinutes !== existingGoal.dailyRestDayTargetMinutes;
+        const weeklyChanged = updates.weeklyTargetMinutes !== undefined && updates.weeklyTargetMinutes !== existingGoal.weeklyTargetMinutes;
+        const monthlyChanged = updates.monthlyTargetMinutes !== undefined && updates.monthlyTargetMinutes !== existingGoal.monthlyTargetMinutes;
+
+        // Detect activation (inactive → active)
+        const isActivating = !existingGoal.isActive && updates.isActive === true;
+
+        if (dailyChanged || dailyRestChanged || weeklyChanged || monthlyChanged || isActivating) {
           const history = [...(existingGoal.targetHistory || [])];
-          const newTarget = updates.targetMinutes ?? existingGoal.targetMinutes;
-          const newRestDayTarget = updates.restDayTargetMinutes ?? existingGoal.restDayTargetMinutes ?? newTarget;
 
-          // If an entry for today already exists, overwrite it; otherwise append
-          const todayIdx = history.findIndex(e => e.effectiveDate === today);
-          const newEntry = { effectiveDate: today, targetMinutes: newTarget, restDayTargetMinutes: newRestDayTarget, restDays: currentRestDays };
-          if (todayIdx >= 0) {
-            history[todayIdx] = newEntry;
-          } else {
-            history.push(newEntry);
+          // Determine which period's target to record
+          const targetMinutes = period === 'daily'
+            ? (updates.dailyTargetMinutes ?? existingGoal.dailyTargetMinutes)
+            : period === 'weekly'
+            ? (updates.weeklyTargetMinutes ?? existingGoal.weeklyTargetMinutes)
+            : (updates.monthlyTargetMinutes ?? existingGoal.monthlyTargetMinutes);
+
+          const restDayTarget = period === 'daily'
+            ? (updates.dailyRestDayTargetMinutes ?? existingGoal.dailyRestDayTargetMinutes)
+            : targetMinutes;
+
+          if (targetMinutes > 0) {
+            const newEntry = {
+              effectiveDate: today,
+              period,
+              targetMinutes,
+              restDayTargetMinutes: restDayTarget,
+              restDays: currentRestDays,
+            };
+
+            // If an entry for today+period already exists, overwrite it
+            const todayIdx = history.findIndex(e => e.effectiveDate === today && e.period === period);
+            if (todayIdx >= 0) {
+              history[todayIdx] = newEntry;
+            } else {
+              history.push(newEntry);
+            }
+
+            updates = { ...updates, targetHistory: history };
           }
-
-          updates = { ...updates, targetHistory: history };
         }
 
         const manager = new EntityManager(state.focus.goals);
@@ -710,18 +773,87 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
 
     deleteGoal: (id: string) => {
       set((state: any) => {
-        const manager = new EntityManager(state.focus.goals);
-        manager.remove(id);
-        state.focus.goals = {
-          ...manager.getState(),
-          loading: false,
-          error: null,
-          lastUpdated: new Date(),
-        };
+        if (state.focus.goals.byId[id]) {
+          state.focus.goals.byId[id] = {
+            ...state.focus.goals.byId[id],
+            isActive: false,
+            updatedAt: new Date(),
+          };
+          state.focus.goals.lastUpdated = new Date();
+        }
       });
-      
+
       if (__DEV__) {
-        console.log('✅ Goal deleted:', id);
+        console.log('✅ Goal deactivated:', id);
+      }
+    },
+
+    concludeGoal: (id: string) => {
+      const state = get();
+      const goal = state.focus.goals.byId[id];
+      if (!goal) return;
+
+      const goalTagId = goal.tagId || (goal as any).tagIds?.[0];
+      const tag = goalTagId ? state.focus.tags.byId[goalTagId] : undefined;
+      const sessions = state.focus.sessions.allIds
+        .map((sid: string) => state.focus.sessions.byId[sid])
+        .filter(Boolean);
+
+      // Get user preferences for week start and rest days
+      const weekStartDay = (state as any).preferences?.weekStartDay ?? 0;
+      const restDays = goal.restDays || [0, 6];
+
+      const badgeData = computeBadgeStats(
+        goal,
+        sessions,
+        { icon: tag?.icon || '', name: tag?.name || '', color: tag?.color },
+        weekStartDay,
+        restDays,
+      );
+
+      const badge = {
+        ...badgeData,
+        id: `badge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      set((state: any) => {
+        // Deactivate goal
+        if (state.focus.goals.byId[id]) {
+          state.focus.goals.byId[id] = {
+            ...state.focus.goals.byId[id],
+            isActive: false,
+            updatedAt: new Date(),
+          };
+          state.focus.goals.lastUpdated = new Date();
+        }
+
+        // Add badge
+        if (!state.focus.badges) {
+          state.focus.badges = { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null };
+        }
+        state.focus.badges.byId[badge.id] = badge;
+        state.focus.badges.allIds.push(badge.id);
+        state.focus.badges.lastUpdated = new Date();
+      });
+
+      if (__DEV__) {
+        console.log('✅ Goal concluded, badge created:', badge.id);
+      }
+    },
+
+    deleteBadge: (id: string) => {
+      set((state: any) => {
+        if (state.focus.badges?.byId?.[id]) {
+          delete state.focus.badges.byId[id];
+          state.focus.badges.allIds = state.focus.badges.allIds.filter((bid: string) => bid !== id);
+          state.focus.badges.lastUpdated = new Date();
+        }
+      });
+
+      if (__DEV__) {
+        console.log('✅ Badge deleted:', id);
       }
     },
     
@@ -767,7 +899,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       const goal = goals.byId[id];
       if (!goal) return undefined;
       const migrated = { ...goal };
-      if ((migrated.period as string) === 'yearly') migrated.period = 'monthly';
+      if ((migrated.activePeriod as string) === 'yearly') migrated.activePeriod = 'monthly';
       if (migrated.isRepeating === undefined) migrated.isRepeating = true;
       return migrated;
     },
@@ -776,7 +908,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       const goals = get().focus.goals;
       return goals.allIds.map(id => goals.byId[id]).filter(Boolean).map(goal => {
         const migrated = { ...goal };
-        if ((migrated.period as string) === 'yearly') migrated.period = 'monthly';
+        if ((migrated.activePeriod as string) === 'yearly') migrated.activePeriod = 'monthly';
         if (migrated.isRepeating === undefined) migrated.isRepeating = true;
         return migrated;
       });
@@ -790,7 +922,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         .filter(goal => goal.isActive)
         .map(goal => {
           const migrated = { ...goal };
-          if ((migrated.period as string) === 'yearly') migrated.period = 'monthly';
+          if ((migrated.activePeriod as string) === 'yearly') migrated.activePeriod = 'monthly';
           if (migrated.isRepeating === undefined) migrated.isRepeating = true;
           return migrated;
         });
