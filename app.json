@@ -33,7 +33,13 @@
       "expo-apple-authentication",
       "expo-iap",
       "./plugins/withFmtFix",
-      "./plugins/withHomeWidget"
+      "./plugins/withHomeWidget",
+      ["expo-build-properties", {
+        "ios": { "deploymentTarget": "18.0" }
+      }],
+      ["crisp-sdk-react-native", {
+        "websiteId": "cd116fcd-5d88-476c-8051-06566eea723a"
+      }]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -52,7 +58,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "deploymentTarget": "16.2",
+      "deploymentTarget": "18.0",
       "appleTeamId": "WFHA987U5W",
       "splash": {
         "image": "./assets/splash.png",

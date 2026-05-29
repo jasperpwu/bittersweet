@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { AccountSection } from '../../src/components/auth/AccountSection';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { useAppStore } from '../../src/store';
+import { openChat } from '../../src/services/crisp';
 
 // --- Inline sub-components ---
 
@@ -182,14 +183,9 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleSendFeedback = () => {
+  const handleHelpAndFeedback = () => {
     triggerHaptic('light');
-    Linking.openURL('mailto:junxwoo@icloud.com?subject=Bittersweet%20Feedback');
-  };
-
-  const handleHelpCenter = () => {
-    triggerHaptic('light');
-    console.log('Open help center');
+    openChat();
   };
 
   return (
@@ -388,11 +384,11 @@ export default function SettingsScreen() {
             onPress={handleShareWithFriends}
           />
           <SettingsItem
-            title="Send Feedback"
-            subtitle="junxwoo@icloud.com"
-            icon="mail-outline"
+            title="Help & Feedback"
+            subtitle="Chat with us"
+            icon="chatbubble-ellipses-outline"
             hasChevron
-            onPress={handleSendFeedback}
+            onPress={handleHelpAndFeedback}
             isLast
           />
         </SettingsSection>
@@ -403,12 +399,6 @@ export default function SettingsScreen() {
             title="Version"
             icon="information-circle-outline"
             valueLabel="1.0.0"
-          />
-          <SettingsItem
-            title="Help Center"
-            icon="help-circle-outline"
-            hasChevron
-            onPress={handleHelpCenter}
             isLast
           />
         </SettingsSection>

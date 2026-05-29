@@ -25,6 +25,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '../src/store';
 import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
+import { configureCrisp } from '../src/services/crisp';
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
@@ -109,6 +110,7 @@ export default function RootLayout() {
   useEffect(() => {
     initializeUnifiedStore();
     autoInitializeMockData(); // Initialize main store with mock data
+    configureCrisp();
 
     // Request notification permissions for focus timer completion sound
     Notifications.requestPermissionsAsync();
