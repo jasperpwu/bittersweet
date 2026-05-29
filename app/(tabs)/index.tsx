@@ -529,13 +529,19 @@ export default function FocusScreen() {
     }
   };
 
+  const tagHasGoal = (tagId: string) =>
+    goals.allIds.some(gid => {
+      const goal = goals.byId[gid];
+      return goal && goal.tagIds?.includes(tagId);
+    });
+
   const handleDeleteTag = (tag: any, event: any) => {
     event.stopPropagation(); // Prevent tag selection when clicking delete
     setTagToDelete(tag);
     setShowDeleteModal(true);
     // Keep tag modal open - don't call setShowTagModal(false)
   };
-  
+
   const handleConfirmDelete = () => {
     if (tagToDelete) {
       deleteTag(tagToDelete.id);
@@ -1558,7 +1564,7 @@ export default function FocusScreen() {
         animationType="fade"
         onRequestClose={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
       >
-        <View className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4">
+        <View className="flex-1 bg-black/50 justify-center items-center px-4">
           <Pressable
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             onPress={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
@@ -1620,124 +1626,157 @@ export default function FocusScreen() {
               </Pressable>
             </View>
             
-            {/* Edit Tag Overlay - appears within tag modal */}
-            {showEditTagModal && (
-              <View className="absolute inset-0 bg-black bg-opacity-70 rounded-3xl flex-1 justify-center items-center p-4">
-                <View className="bg-light-border/50 dark:bg-gray-800 rounded-2xl w-full max-w-xs overflow-hidden">
-                  {/* Edit Header */}
-                  <View className="p-4 border-b border-light-border dark:border-gray-700">
-                    <Typography variant="headline-18" color="primary">
-                      Edit Tag
-                    </Typography>
-                  </View>
+          </View>
+        </View>
 
-                  {/* Edit Form */}
-                  <View className="p-4">
-                    {/* Emoji + Name row */}
-                    <View className="mb-4 flex-row items-center" style={{ gap: 12 }}>
+        {/* Edit Tag Overlay - covers entire screen including tag picker */}
+        {showEditTagModal && (
+          <View className="absolute inset-0 bg-black/50 justify-center items-center p-4">
+            <View className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-xs overflow-hidden">
+              {/* Edit Header */}
+              <View className="p-4 border-b border-light-border dark:border-gray-700">
+                <Typography variant="headline-18" color="primary">
+                  Edit Tag
+                </Typography>
+              </View>
+
+              {/* Edit Form */}
+              <View className="p-4">
+                {/* Emoji + Name row */}
+                <View className="mb-4 flex-row items-center" style={{ gap: 12 }}>
+                  <Pressable
+                    onPress={handleEditTagEmojiPress}
+                    className="w-12 h-12 rounded-xl bg-gray-700 items-center justify-center border border-gray-500 active:opacity-80"
+                  >
+                    <Text className="text-2xl">{editTagEmoji || '🏷️'}</Text>
+                  </Pressable>
+                  <TextInput
+                    value={editTagName}
+                    onChangeText={setEditTagName}
+                    placeholder="Tag name"
+                    placeholderTextColor="#666"
+                    className="flex-1"
+                    style={{
+                      backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                      borderRadius: 12,
+                      padding: 14,
+                      fontSize: 16,
+                      color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                      borderWidth: 1,
+                      borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                    }}
+                  />
+                </View>
+
+                {/* Color Selection */}
+                <View>
+                  <Typography variant="body-14" color="primary" className="mb-3">
+                    Color
+                  </Typography>
+                  <View className="flex-row flex-wrap" style={{ gap: 12 }}>
+                    {(['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'] as const).map((color) => (
                       <Pressable
-                        onPress={handleEditTagEmojiPress}
-                        className="w-12 h-12 rounded-xl bg-gray-700 items-center justify-center border border-gray-500 active:opacity-80"
-                      >
-                        <Text className="text-2xl">{editTagEmoji || '🏷️'}</Text>
-                      </Pressable>
-                      <TextInput
-                        value={editTagName}
-                        onChangeText={setEditTagName}
-                        placeholder="Tag name"
-                        placeholderTextColor="#666"
-                        className="flex-1"
+                        key={color}
+                        onPress={() => setEditTagColor(color)}
                         style={{
-                          backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
-                          borderRadius: 12,
-                          padding: 14,
-                          fontSize: 16,
-                          color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
-                          borderWidth: 1,
-                          borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: color,
+                          borderWidth: editTagColor === color ? 3 : 0,
+                          borderColor: '#FFFFFF',
                         }}
                       />
-                    </View>
-
-                    {/* Color Selection */}
-                    <View>
-                      <Typography variant="body-14" color="primary" className="mb-3">
-                        Color
-                      </Typography>
-                      <View className="flex-row flex-wrap" style={{ gap: 12 }}>
-                        {(['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'] as const).map((color) => (
-                          <Pressable
-                            key={color}
-                            onPress={() => setEditTagColor(color)}
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 18,
-                              backgroundColor: color,
-                              borderWidth: editTagColor === color ? 3 : 0,
-                              borderColor: '#FFFFFF',
-                            }}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Inline Emoji Picker */}
-                  {showEditEmojiGrid && (
-                    <ScrollView style={{ maxHeight: 200 }} className="px-4 pb-2 border-t border-light-border dark:border-gray-700" nestedScrollEnabled>
-                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
-                        <View key={category} className="mt-3">
-                          <Typography variant="body-12" color="secondary" className="mb-2">
-                            {category}
-                          </Typography>
-                          <View className="flex-row flex-wrap" style={{ gap: 6 }}>
-                            {emojis.map((emoji, index) => (
-                              <Pressable
-                                key={index}
-                                onPress={() => {
-                                  setEditTagEmoji(emoji);
-                                  setShowEditEmojiGrid(false);
-                                }}
-                                className="w-10 h-10 items-center justify-center rounded-lg bg-gray-700 active:bg-gray-600"
-                              >
-                                <Text className="text-xl">{emoji}</Text>
-                              </Pressable>
-                            ))}
-                          </View>
-                        </View>
-                      ))}
-                    </ScrollView>
-                  )}
-
-                  {/* Action buttons */}
-                  <View className="p-3 border-t border-light-border dark:border-gray-700 flex-row space-x-2">
-                    <Pressable
-                      onPress={() => { setShowEditTagModal(false); setEditingTag(null); setShowEditEmojiGrid(false); }}
-                      className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
-                    >
-                      <Typography variant="body-14" color="white">
-                        Cancel
-                      </Typography>
-                    </Pressable>
-                    <Pressable
-                      onPress={handleSaveEditTag}
-                      disabled={!editTagName.trim()}
-                      className={`flex-1 rounded-xl py-3 items-center ${editTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}
-                    >
-                      <Typography variant="body-14" color="white" className="font-semibold">
-                        Save
-                      </Typography>
-                    </Pressable>
+                    ))}
                   </View>
                 </View>
               </View>
-            )}
 
-            {/* Delete Confirmation Popup - appears as overlay within tag modal */}
-            {showDeleteModal && (
-              <View className="absolute inset-0 bg-black bg-opacity-70 rounded-3xl flex-1 justify-center items-center p-4">
-                <Pressable className="bg-light-border/50 dark:bg-gray-800 rounded-2xl w-full max-w-xs">
+              {/* Inline Emoji Picker */}
+              {showEditEmojiGrid && (
+                <ScrollView style={{ maxHeight: 200 }} className="px-4 pb-2 border-t border-light-border dark:border-gray-700" nestedScrollEnabled>
+                  {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
+                    <View key={category} className="mt-3">
+                      <Typography variant="body-12" color="secondary" className="mb-2">
+                        {category}
+                      </Typography>
+                      <View className="flex-row flex-wrap" style={{ gap: 6 }}>
+                        {emojis.map((emoji, index) => (
+                          <Pressable
+                            key={index}
+                            onPress={() => {
+                              setEditTagEmoji(emoji);
+                              setShowEditEmojiGrid(false);
+                            }}
+                            className="w-10 h-10 items-center justify-center rounded-lg bg-gray-700 active:bg-gray-600"
+                          >
+                            <Text className="text-xl">{emoji}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+
+              {/* Action buttons */}
+              <View className="p-3 border-t border-light-border dark:border-gray-700 flex-row" style={{ gap: 8 }}>
+                <Pressable
+                  onPress={() => { setShowEditTagModal(false); setEditingTag(null); setShowEditEmojiGrid(false); }}
+                  className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
+                >
+                  <Typography variant="body-14" color="white">
+                    Cancel
+                  </Typography>
+                </Pressable>
+                <Pressable
+                  onPress={handleSaveEditTag}
+                  disabled={!editTagName.trim()}
+                  className={`flex-1 rounded-xl py-3 items-center ${editTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}
+                >
+                  <Typography variant="body-14" color="white" className="font-semibold">
+                    Save
+                  </Typography>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Delete Confirmation Popup - covers entire screen including tag picker */}
+        {showDeleteModal && (
+          <View className="absolute inset-0 bg-black/50 justify-center items-center p-4">
+            <Pressable className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-xs">
+              {tagToDelete && tagHasGoal(tagToDelete.id) ? (
+                <>
+                  {/* Cannot Delete Header */}
+                  <View className="p-4 border-b border-light-border dark:border-gray-700">
+                    <Typography variant="headline-18" color="primary" className="text-center">
+                      Cannot Delete Tag
+                    </Typography>
+                  </View>
+
+                  {/* Explanation */}
+                  <View className="p-4">
+                    <Typography variant="body-14" color="primary" className="leading-5">
+                      "{tagToDelete.name}" is still associated with a goal. Please remove it from the goal first before deleting.
+                    </Typography>
+                  </View>
+
+                  {/* OK button */}
+                  <View className="p-3 border-t border-light-border dark:border-gray-700">
+                    <Pressable
+                      onPress={handleCancelDelete}
+                      className="w-full bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
+                    >
+                      <Typography variant="body-14" color="white">
+                        OK
+                      </Typography>
+                    </Pressable>
+                  </View>
+                </>
+              ) : (
+                <>
                   {/* Delete Popup Header */}
                   <View className="p-4 border-b border-light-border dark:border-gray-700">
                     <Typography variant="headline-18" color="primary" className="text-center">
@@ -1750,15 +1789,10 @@ export default function FocusScreen() {
                     <Typography variant="body-14" color="primary" className="leading-5">
                       Are you sure you want to delete {tagToDelete?.name ? `"${tagToDelete.name}"` : 'this tag'}? Existing focus sessions will be kept.
                     </Typography>
-                    {tagToDelete && goals.allIds.some(gid => goals.byId[gid]?.tagIds?.includes(tagToDelete.id)) && (
-                      <Typography variant="body-14" color="primary" className="leading-5 mt-2">
-                        This tag will also be removed from any goals that use it. If you want to keep the goal, consider editing the tag instead.
-                      </Typography>
-                    )}
                   </View>
 
                   {/* Action buttons */}
-                  <View className="p-3 border-t border-light-border dark:border-gray-700 flex-row space-x-2">
+                  <View className="p-3 border-t border-light-border dark:border-gray-700 flex-row" style={{ gap: 8 }}>
                     <Pressable
                       onPress={handleCancelDelete}
                       className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
@@ -1776,11 +1810,11 @@ export default function FocusScreen() {
                       </Typography>
                     </Pressable>
                   </View>
-                </Pressable>
-              </View>
-            )}
+                </>
+              )}
+            </Pressable>
           </View>
-        </View>
+        )}
       </Modal>
 
       {/* New Tag Creation Modal */}
