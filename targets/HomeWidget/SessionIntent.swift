@@ -1,5 +1,6 @@
 import AppIntents
 import Foundation
+import UserNotifications
 import WidgetKit
 
 // MARK: - Start Session Intent
@@ -132,6 +133,12 @@ struct StopSessionIntent: LiveActivityIntent {
 
     // Stop all Live Activities (runs in main app process via LiveActivityIntent)
     WidgetActivityKit.stopHandler?()
+
+    // Cancel the JS-scheduled completion notification immediately so it doesn't
+    // fire after the session is stopped (JS can't cancel it until app foregrounds)
+    if let notificationId = WidgetDataManager.shared.getAndClearScheduledNotificationId() {
+      UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [notificationId])
+    }
 
     // NOTE: Do NOT clear widgetStartedSession here. The JS side needs it to
     // record the completed session in adoptAndRecoverSession(). It will be

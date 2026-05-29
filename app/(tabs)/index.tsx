@@ -687,6 +687,8 @@ export default function FocusScreen() {
         },
       }).then(id => {
         scheduledNotificationRef.current = id;
+        // Sync to shared UserDefaults so native StopSessionIntent can cancel it
+        WidgetService.syncScheduledNotificationId(id);
         // Update persisted session with notification ID so it can be cancelled after app restart
         AsyncStorage.getItem(ACTIVE_SESSION_KEY).then(raw => {
           if (raw) {
@@ -812,6 +814,8 @@ export default function FocusScreen() {
       Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
       scheduledNotificationRef.current = null;
     }
+    // Clear from shared UserDefaults (native may have already cancelled it)
+    WidgetService.syncScheduledNotificationId(null);
 
     return activityId;
   };

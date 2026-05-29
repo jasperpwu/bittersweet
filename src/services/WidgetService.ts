@@ -12,6 +12,7 @@ const FRUIT_BALANCE_KEY = 'widgetFruitBalance';
 const WIDGET_UNLOCK_STOP_ACTION_KEY = 'widgetUnlockStopAction';
 const CURRENT_SELECTION_ID_KEY = 'widgetCurrentSelectionId';
 const UNLOCK_SESSION_DATA_KEY = 'widgetUnlockSessionData';
+const SCHEDULED_NOTIFICATION_ID_KEY = 'widgetScheduledNotificationId';
 
 export interface WidgetSessionData {
   isActive: boolean;
@@ -234,6 +235,23 @@ export class WidgetService {
       ReactNativeDeviceActivity.userDefaultsRemove(WIDGET_STARTED_SESSION_KEY);
     } catch (error) {
       console.error('📱 [Widget] Failed to clear widget started session:', error);
+    }
+  }
+
+  /**
+   * Sync the scheduled completion notification ID to shared UserDefaults so
+   * the native StopSessionIntent can cancel it immediately without waiting
+   * for JS to foreground.
+   */
+  static syncScheduledNotificationId(id: string | null): void {
+    try {
+      if (id) {
+        ReactNativeDeviceActivity.userDefaultsSet(SCHEDULED_NOTIFICATION_ID_KEY, id);
+      } else {
+        ReactNativeDeviceActivity.userDefaultsRemove(SCHEDULED_NOTIFICATION_ID_KEY);
+      }
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync scheduled notification ID:', error);
     }
   }
 

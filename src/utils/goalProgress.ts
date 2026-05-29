@@ -7,10 +7,51 @@ export interface GoalPeriodProgress {
   periodEnd: Date;
 }
 
+/**
+ * Calculates how many minutes of a session fall within a given period.
+ * For sessions that cross period boundaries (e.g. midnight), this returns
+ * only the proportional duration that overlaps with the period.
+ */
+export const getSessionMinutesInPeriod = (
+  session: FocusSession,
+  periodStart: Date,
+  periodEnd: Date,
+): number => {
+  const sessionStart = new Date(session.startTime).getTime();
+
+  // If no endTime, fall back to startTime-based attribution
+  if (!session.endTime) {
+    const isInPeriod = sessionStart >= periodStart.getTime() && sessionStart <= periodEnd.getTime();
+    return isInPeriod ? session.duration : 0;
+  }
+
+  const sessionEnd = new Date(session.endTime).getTime();
+
+  // No overlap
+  if (sessionEnd <= periodStart.getTime() || sessionStart >= periodEnd.getTime()) {
+    return 0;
+  }
+
+  const totalWallTime = sessionEnd - sessionStart;
+
+  // Session fits entirely within period, or wall time is zero/negative
+  if (totalWallTime <= 0 || (sessionStart >= periodStart.getTime() && sessionEnd <= periodEnd.getTime())) {
+    return session.duration;
+  }
+
+  // Calculate overlapping wall-clock time and proportionally split duration
+  const overlapStart = Math.max(sessionStart, periodStart.getTime());
+  const overlapEnd = Math.min(sessionEnd, periodEnd.getTime());
+  const overlapTime = overlapEnd - overlapStart;
+  const fraction = overlapTime / totalWallTime;
+
+  return session.duration * fraction;
+};
+
 export const calculateGoalProgress = (
   goals: FocusGoal[],
   sessions: FocusSession[],
-  tagMap?: Record<string, { id: string; name: string }>,
+  _tagMap?: Record<string, { id: string; name: string }>,
   weekStartDay: number = 0,
 ): Record<string, number> => {
   const now = new Date();
@@ -24,25 +65,17 @@ export const calculateGoalProgress = (
     // Migrate legacy 'yearly' to 'monthly' at runtime
     const period = (goal.period as string) === 'yearly' ? 'monthly' : goal.period;
     const { periodStart, periodEnd } = getGoalPeriodRange(period as 'daily' | 'weekly' | 'monthly', now, weekStartDay);
-    
-    // Filter sessions for this goal's tags and time period
-    const relevantSessions = sessions.filter(session => {
-      const sessionDate = new Date(session.startTime);
-      const isInPeriod = sessionDate >= periodStart && sessionDate <= periodEnd;
 
-      // If goal has no tags, count all sessions
+    // Calculate total minutes from sessions that overlap with this period
+    const totalMinutes = sessions.reduce((sum, session) => {
+      // Check tag filter
       const goalTagIds = (goal as any).tagIds || [];
-      if (goalTagIds.length === 0) return isInPeriod;
+      if (goalTagIds.length > 0) {
+        const hasMatchingTag = (session as any).tagId && goalTagIds.includes((session as any).tagId);
+        if (!hasMatchingTag) return sum;
+      }
 
-      // Sessions store single tag in tagId, goals store tag IDs in tagIds
-      const hasMatchingTag = (session as any).tagId && goalTagIds.includes((session as any).tagId);
-
-      return isInPeriod && hasMatchingTag;
-    });
-
-    // Calculate total minutes from relevant sessions
-    const totalMinutes = relevantSessions.reduce((sum, session) => {
-      return sum + session.duration;
+      return sum + getSessionMinutesInPeriod(session, periodStart, periodEnd);
     }, 0);
 
     progress[goal.id] = totalMinutes;

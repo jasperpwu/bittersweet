@@ -18,6 +18,7 @@ enum WidgetKeys {
   static let widgetUnlockStopAction = "widgetUnlockStopAction"
   static let currentSelectionId = "widgetCurrentSelectionId"
   static let unlockSessionData = "widgetUnlockSessionData"
+  static let scheduledNotificationId = "widgetScheduledNotificationId"
 }
 
 // UserDefaults keys used by react-native-device-activity for shield configuration
@@ -256,6 +257,17 @@ struct WidgetDataManager {
 
   func getWidgetUnlockStopAction() -> [String: Any]? {
     return userDefaults?.dictionary(forKey: WidgetKeys.widgetUnlockStopAction)
+  }
+
+  // MARK: - Scheduled Notification ID (for native cancellation on stop)
+
+  func getAndClearScheduledNotificationId() -> String? {
+    let id = userDefaults?.string(forKey: WidgetKeys.scheduledNotificationId)
+    if id != nil {
+      userDefaults?.removeObject(forKey: WidgetKeys.scheduledNotificationId)
+      userDefaults?.synchronize()
+    }
+    return id
   }
 
   // MARK: - Fruit Balance (synced from JS for shield updates)

@@ -22,7 +22,7 @@ import { Typography } from '../../ui/Typography';
 import { FocusGoal } from '../../../store/types';
 import { useFocus } from '../../../store';
 import { useAppSettings } from '../../../store/unified-store';
-import { calculateGoalProgress, getHistoricalPeriodRanges, getTargetForDate } from '../../../utils/goalProgress';
+import { calculateGoalProgress, getHistoricalPeriodRanges, getTargetForDate, getSessionMinutesInPeriod } from '../../../utils/goalProgress';
 import { calculateUrgency, UrgencyLevel } from '../../../utils/goalUrgency';
 
 interface GoalProgressProps {
@@ -680,18 +680,16 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
   // Compute hit/miss for each range
   const results = ranges.map(range => {
-    const rangeSessions = sessions.filter(s => {
-      const d = new Date(s.startTime);
-      return d >= range.periodStart && d <= range.periodEnd;
-    });
-
     // Filter by goal's tags
     const goalTagIds = (goal as any).tagIds || [];
     const relevant = goalTagIds.length === 0
-      ? rangeSessions
-      : rangeSessions.filter(s => goalTagIds.includes((s as any).tagId));
+      ? sessions
+      : sessions.filter(s => goalTagIds.includes((s as any).tagId));
 
-    const totalMinutes = relevant.reduce((sum, s) => sum + s.duration, 0);
+    // Split session time at period boundaries for cross-day sessions
+    const totalMinutes = relevant.reduce((sum, s) => {
+      return sum + getSessionMinutesInPeriod(s, range.periodStart, range.periodEnd);
+    }, 0);
     // Use historical target for this period's date
     const periodTarget = getTargetForDate(goal, range.periodStart, restDays);
     const hit = totalMinutes >= periodTarget;

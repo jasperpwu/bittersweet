@@ -747,8 +747,13 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         .map(id => sessions.byId[id])
         .filter(Boolean)
         .filter(session => {
-          const sessionDate = new Date(session.startTime);
-          return sessionDate >= start && sessionDate <= end;
+          const sessionStart = new Date(session.startTime).getTime();
+          const sessionEnd = session.endTime
+            ? new Date(session.endTime).getTime()
+            : sessionStart;
+          // Include sessions that overlap with the date range
+          // (not just sessions that started within it)
+          return sessionStart <= end.getTime() && sessionEnd >= start.getTime();
         });
     },
     
