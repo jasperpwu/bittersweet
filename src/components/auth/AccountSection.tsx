@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable, Alert, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, Pressable, Alert, ActivityIndicator, Linking, useColorScheme } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
@@ -72,6 +72,22 @@ export const AccountSection: React.FC = () => {
             {error}
           </Typography>
         )}
+
+        <View className="flex-row justify-center items-center mt-3">
+          <Pressable onPress={() => Linking.openURL('https://example.com/terms')}>
+            <Typography variant="body-12" color="secondary" className="underline">
+              Terms of Service
+            </Typography>
+          </Pressable>
+          <Typography variant="body-12" color="secondary" className="mx-2">
+            ·
+          </Typography>
+          <Pressable onPress={() => Linking.openURL('https://example.com/privacy')}>
+            <Typography variant="body-12" color="secondary" className="underline">
+              Privacy Policy
+            </Typography>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
