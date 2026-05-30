@@ -1,0 +1,97 @@
+import React, { useRef, useState, useCallback } from 'react';
+import { FlatList, View, ViewToken } from 'react-native';
+import { FriendActivityCard } from './FriendActivityCard';
+import { AddFriendCard } from './AddFriendCard';
+import { PageIndicator } from './PageIndicator';
+import type { FeedItem } from '../../services/grove/GroveFeedService';
+
+interface FriendCarouselProps {
+  feed: FeedItem[];
+  lastGroveVisit: string | null;
+  onReactionToggle: (sharedSessionId: string) => void;
+  onAddFriend: () => void;
+}
+
+const CARD_WIDTH = 280;
+const CARD_GAP = 12;
+const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
+
+export const FriendCarousel: React.FC<FriendCarouselProps> = ({
+  feed,
+  lastGroveVisit,
+  onReactionToggle,
+  onAddFriend,
+}) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const flatListRef = useRef<FlatList>(null);
+
+  // Total items = feed cards + add friend card
+  const totalItems = feed.length + 1;
+
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+        setActiveIndex(viewableItems[0].index);
+      }
+    },
+    []
+  );
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+  }).current;
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: FeedItem | null; index: number }) => {
+      // Last item is the add friend card
+      if (index === feed.length) {
+        return (
+          <View style={{ width: CARD_WIDTH, marginRight: CARD_GAP }}>
+            <AddFriendCard onPress={onAddFriend} />
+          </View>
+        );
+      }
+
+      if (!item) return null;
+
+      const isNew = lastGroveVisit
+        ? new Date(item.sharedSession.shared_at) > new Date(lastGroveVisit)
+        : false;
+
+      return (
+        <View style={{ width: CARD_WIDTH, marginRight: CARD_GAP }}>
+          <FriendActivityCard
+            item={item}
+            onReactionToggle={onReactionToggle}
+            isNew={isNew}
+          />
+        </View>
+      );
+    },
+    [feed.length, lastGroveVisit, onReactionToggle, onAddFriend]
+  );
+
+  // Data array: feed items + null sentinel for add card
+  const data = [...feed, null] as (FeedItem | null)[];
+
+  return (
+    <View>
+      <FlatList
+        ref={flatListRef}
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={(item, index) =>
+          item ? item.sharedSession.id : 'add-friend'
+        }
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={SNAP_INTERVAL}
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4 }}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+      />
+      <PageIndicator count={totalItems} activeIndex={activeIndex} />
+    </View>
+  );
+};

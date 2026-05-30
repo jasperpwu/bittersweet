@@ -26,6 +26,7 @@ import { useAppStore } from '../src/store';
 import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
 import { configureCrisp } from '../src/services/crisp';
+import { useDeepLinkHandler } from '../src/hooks/useDeepLinkHandler';
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
@@ -61,6 +62,9 @@ export default function RootLayout() {
 
   // Schedule/cancel goal nudge notifications
   useGoalNudgeNotifications();
+
+  // Handle invite deep links
+  useDeepLinkHandler();
 
   const checkExpiredUnlockSessions = (trigger: string) => {
     try {
@@ -163,6 +167,7 @@ export default function RootLayout() {
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
           resetSyncSnapshot();
+          useAppStore.getState().grove.resetGrove();
           useAppStore.setState((state) => ({
             auth: {
               ...state.auth,
@@ -207,6 +212,20 @@ export default function RootLayout() {
             // Both empty — nothing to do
           } catch (error) {
             console.error('Post sign-in sync error:', error);
+          }
+
+          // Fetch grove profile and social data after sign-in
+          try {
+            await useAppStore.getState().grove.fetchProfile();
+            const groveState = useAppStore.getState().grove;
+            if (groveState.profile && groveState.isActive) {
+              groveState.fetchFriends();
+              groveState.fetchFeed();
+              groveState.fetchFriendRequests();
+              groveState.fetchChallenges();
+            }
+          } catch (error) {
+            console.error('Post sign-in grove fetch error:', error);
           }
         }
       }
@@ -399,6 +418,46 @@ export default function RootLayout() {
                 />
                 <Stack.Screen
                   name="(modals)/dev-tools"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="(modals)/grove-setup"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="(modals)/add-friends"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="(modals)/friend-requests"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="(modals)/challenges"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="(modals)/create-challenge"
                   options={{
                     headerShown: false,
                     presentation: 'modal',

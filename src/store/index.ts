@@ -15,6 +15,7 @@ import * as Notifications from 'expo-notifications';
 import { AuthSlice, createAuthSlice } from './slices/authSlice';
 import { SubscriptionSlice, createSubscriptionSlice } from './slices/subscriptionSlice';
 import { SyncSlice, createSyncSlice } from './slices/syncSlice';
+import { GroveSlice, createGroveSlice } from './slices/groveSlice';
 
 interface AppStore {
   // Focus sessions and tags
@@ -169,6 +170,9 @@ interface AppStore {
 
   // Sync
   sync: SyncSlice;
+
+  // Grove (social profile)
+  grove: GroveSlice;
 
   // Blocklist
   blocklist: {
@@ -1035,6 +1039,9 @@ export const useAppStore = create<AppStore>()(
       // Sync state
       sync: createSyncSlice(set, get),
 
+      // Grove (social profile) state
+      grove: createGroveSlice(set, get),
+
       // UI state
       ui: {
         isHydrated: false,
@@ -1640,6 +1647,39 @@ export const useSettings = () => useAppStore((state) => state.settings);
 export const useUI = () => useAppStore((state) => state.ui);
 export const useRewards = () => useAppStore((state) => state.rewards);
 export const useBlocklist = () => useAppStore((state) => state.blocklist);
+export const useGrove = () => useAppStore((state) => state.grove);
+export const useGroveActions = () => useAppStore((state) => ({
+  fetchProfile: state.grove.fetchProfile,
+  createProfile: state.grove.createProfile,
+  updateProfile: state.grove.updateProfile,
+  updatePrivacySettings: state.grove.updatePrivacySettings,
+  uploadAvatar: state.grove.uploadAvatar,
+  removeAvatar: state.grove.removeAvatar,
+  toggleGroveActive: state.grove.toggleGroveActive,
+  clearGroveError: state.grove.clearGroveError,
+  resetGrove: state.grove.resetGrove,
+  // Phase 2
+  fetchFriends: state.grove.fetchFriends,
+  removeFriend: state.grove.removeFriend,
+  acceptFriendRequest: state.grove.acceptFriendRequest,
+  rejectFriendRequest: state.grove.rejectFriendRequest,
+  fetchFriendRequests: state.grove.fetchFriendRequests,
+  fetchFeed: state.grove.fetchFeed,
+  shareSession: state.grove.shareSession,
+  addReaction: state.grove.addReaction,
+  removeReaction: state.grove.removeReaction,
+  updateLastGroveVisit: state.grove.updateLastGroveVisit,
+  generateInviteLink: state.grove.generateInviteLink,
+  resolveInviteCode: state.grove.resolveInviteCode,
+  // Phase 3
+  fetchRankings: state.grove.fetchRankings,
+  setRankingsPeriod: state.grove.setRankingsPeriod,
+  fetchChallenges: state.grove.fetchChallenges,
+  createChallenge: state.grove.createChallenge,
+  acceptChallenge: state.grove.acceptChallenge,
+  declineChallenge: state.grove.declineChallenge,
+  recordChallengeProgress: state.grove.recordChallengeProgress,
+}));
 
 /**
  * Store actions hooks

@@ -1,0 +1,80 @@
+import React from 'react';
+import { View, Image } from 'react-native';
+import { Typography } from '../ui/Typography';
+import { DefaultAvatar } from './DefaultAvatar';
+import type { RankingItem } from '../../services/grove/GroveRankingService';
+
+interface LeaderboardRowProps {
+  item: RankingItem;
+  maxMinutes: number;
+}
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
+export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({ item, maxMinutes }) => {
+  const progressWidth = maxMinutes > 0 ? (item.totalMinutes / maxMinutes) * 100 : 0;
+
+  return (
+    <View
+      className={`flex-row items-center py-3 px-4 ${
+        item.isCurrentUser ? 'bg-primary/10 rounded-xl' : ''
+      }`}
+    >
+      {/* Rank */}
+      <View className="w-7 items-center mr-2">
+        <Typography variant="subtitle-14-medium" color={item.rank <= 3 ? 'primary' : 'secondary'}>
+          {item.rank}
+        </Typography>
+      </View>
+
+      {/* Tree icon */}
+      <Typography variant="body-14" className="mr-2">
+        {item.treeIcon}
+      </Typography>
+
+      {/* Avatar */}
+      {item.avatarUrl ? (
+        <Image
+          source={{ uri: item.avatarUrl }}
+          style={{ width: 32, height: 32, borderRadius: 16, marginRight: 10 }}
+        />
+      ) : (
+        <View className="mr-2.5">
+          <DefaultAvatar
+            displayName={item.displayName}
+            color={item.avatarColor}
+            size={32}
+          />
+        </View>
+      )}
+
+      {/* Name + progress bar */}
+      <View className="flex-1 mr-3">
+        <Typography
+          variant="subtitle-14-medium"
+          color="primary"
+          numberOfLines={1}
+        >
+          {item.isCurrentUser ? 'You' : item.displayName}
+        </Typography>
+        <View className="h-1.5 bg-light-border/50 dark:bg-[#2A2B45] rounded-full mt-1">
+          <View
+            className="h-1.5 bg-primary rounded-full"
+            style={{ width: `${Math.max(progressWidth, 2)}%` }}
+          />
+        </View>
+      </View>
+
+      {/* Duration */}
+      <Typography variant="subtitle-14-medium" color="primary">
+        {formatDuration(item.totalMinutes)}
+      </Typography>
+    </View>
+  );
+};

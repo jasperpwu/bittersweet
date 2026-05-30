@@ -1,7 +1,7 @@
 # Grove — Social Feed for Bittersweet
-Inspired by:
-Ios health sharing https://www.youtube.com/shorts/59l4sJNa6uE
-App "Are you dead"
+The general idea is inspired by:
+* Ios health sharing https://www.youtube.com/shorts/59l4sJNa6uE
+* App "Are you dead" for checking in with friends
 ## The Core Insight
 
 The app already has the perfect atomic unit for social: **the focus session**. Each

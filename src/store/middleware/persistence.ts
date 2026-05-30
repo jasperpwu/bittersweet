@@ -183,7 +183,7 @@ const optimizedStorage = new OptimizedStorage();
 export const persistenceConfig = {
   name: STORAGE_KEY,
   storage: createJSONStorage(() => optimizedStorage),
-  version: 4,
+  version: 7,
   migrate: (persistedState: any, version: number) => {
     if (version < 2) {
       console.log('🔄 Migrating store to v2 (adding auth slice)...');
@@ -342,6 +342,41 @@ export const persistenceConfig = {
       console.log('✅ Store migration to v4 complete');
     }
 
+    if (version < 5) {
+      console.log('🔄 Migrating store to v5 (adding grove slice)...');
+      const state = persistedState;
+      if (!state.grove) {
+        state.grove = {
+          profile: null,
+          privacySettings: null,
+          isActive: false,
+        };
+      }
+      console.log('✅ Store migration to v5 complete');
+    }
+
+    if (version < 6) {
+      console.log('🔄 Migrating store to v6 (grove Phase 2: lastGroveVisit)...');
+      const state = persistedState;
+      if (!state.grove) {
+        state.grove = {
+          profile: null,
+          privacySettings: null,
+          isActive: false,
+          lastGroveVisit: null,
+        };
+      } else {
+        state.grove.lastGroveVisit = state.grove.lastGroveVisit ?? null;
+      }
+      console.log('✅ Store migration to v6 complete');
+    }
+
+    if (version < 7) {
+      console.log('🔄 Migrating store to v7 (grove Phase 3: rankings + challenges)...');
+      // No-op: rankings and challenges are server-authoritative, not persisted.
+      console.log('✅ Store migration to v7 complete');
+    }
+
     if (version === 0) {
       console.log('🔄 Migrating store from v0 → v1 (tag IDs)...');
       const state = persistedState;
@@ -450,6 +485,12 @@ export const persistenceConfig = {
     sync: {
       lastSyncTime: state.sync?.lastSyncTime ?? null,
     },
+    grove: {
+      profile: state.grove?.profile ?? null,
+      privacySettings: state.grove?.privacySettings ?? null,
+      isActive: state.grove?.isActive ?? false,
+      lastGroveVisit: state.grove?.lastGroveVisit ?? null,
+    },
   }),
 
   // Hydration callback
@@ -530,6 +571,18 @@ export const persistenceConfig = {
           isAuthenticated: false,
           isLoading: false,
           error: null,
+        };
+      }
+
+      // Restore grove slice if missing
+      if (!state.grove) {
+        state.grove = {
+          profile: null,
+          privacySettings: null,
+          isActive: false,
+          isLoading: false,
+          error: null,
+          lastGroveVisit: null,
         };
       }
 

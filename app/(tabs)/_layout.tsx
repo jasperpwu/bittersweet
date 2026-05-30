@@ -1,10 +1,18 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, useColorScheme } from 'react-native';
+import { useAppStore } from '../../src/store';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+
+  const isGroveActive = useAppStore(
+    (s) => s.grove?.profile !== null && s.grove?.isActive !== false
+  );
+  const pendingRequestCount = useAppStore((s) => s.grove?.pendingRequestCount ?? 0);
+  const pendingChallengeCount = useAppStore((s) => s.grove?.pendingChallengeCount ?? 0);
+  const groveBadgeCount = pendingRequestCount + pendingChallengeCount;
 
   return (
     <Tabs
@@ -32,7 +40,7 @@ export default function TabLayout() {
             <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
               <Ionicons name="book-outline" size={24} color={color} />
               {focused && (
-                <View 
+                <View
                   style={{
                     width: 14,
                     height: 4,
@@ -54,7 +62,7 @@ export default function TabLayout() {
             <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
               <Ionicons name="play" size={30} color={color} />
               {focused && (
-                <View 
+                <View
                   style={{
                     width: 14,
                     height: 4,
@@ -76,7 +84,32 @@ export default function TabLayout() {
             <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
               <Ionicons name="trophy-outline" size={24} color={color} />
               {focused && (
-                <View 
+                <View
+                  style={{
+                    width: 14,
+                    height: 4,
+                    backgroundColor: '#6592E9',
+                    borderRadius: 100,
+                    marginTop: 6,
+                  }}
+                />
+              )}
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="grove"
+        options={{
+          title: 'Grove',
+          href: isGroveActive ? '/(tabs)/grove' : null,
+          tabBarBadge: isGroveActive && groveBadgeCount > 0 ? groveBadgeCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#6592E9', fontSize: 10, minWidth: 18, height: 18 },
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
+              <Ionicons name="people-outline" size={24} color={color} />
+              {focused && (
+                <View
                   style={{
                     width: 14,
                     height: 4,
@@ -98,7 +131,7 @@ export default function TabLayout() {
             <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
               <Ionicons name="settings-outline" size={24} color={color} />
               {focused && (
-                <View 
+                <View
                   style={{
                     width: 14,
                     height: 4,

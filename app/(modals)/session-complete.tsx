@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Typography } from '../../src/components/ui';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
+import { showToast } from '../../src/components/ui/Toast';
 
 export default function SessionCompleteModal() {
   const colorScheme = useColorScheme();
@@ -48,10 +49,49 @@ export default function SessionCompleteModal() {
 
   const hasExistingNotes = !!session.notes;
 
-  const handleDone = () => {
+  const handleDone = async () => {
     if (notes.trim()) {
       updateSession(session.id, { notes: notes.trim() });
     }
+
+    // Auto-share to Grove if tag is in shared_tag_ids
+    const grove = useAppStore.getState().grove;
+    if (grove.profile && grove.isActive && grove.privacySettings && session.tagId) {
+      const sharedTagIds = grove.privacySettings.shared_tag_ids || [];
+      if (sharedTagIds.includes(session.tagId)) {
+        const shareNotes = grove.privacySettings.share_notes ? (notes.trim() || session.notes || null) : null;
+        grove.shareSession({
+          sessionId: session.id,
+          tagId: session.tagId,
+          tagName: tag?.name || 'Focus',
+          tagIcon: tag?.icon || '🎯',
+          duration: session.duration,
+          startTime: new Date(session.startTime).toISOString(),
+          endTime: new Date(session.endTime).toISOString(),
+          notes: shareNotes,
+        });
+        showToast('Shared to Grove', 'success');
+      }
+
+      // Check for active challenges matching this tag
+      const activeChallenges = grove.challenges.filter(
+        (c) => c.status === 'active' && c.tagId === session.tagId
+      );
+      for (const challenge of activeChallenges) {
+        try {
+          const result = await grove.recordChallengeProgress(challenge.id);
+          if (result.status === 'completed' && result.reward) {
+            useAppStore.getState().rewards.earnFruits(result.reward, 'Challenge completed');
+            showToast(`Challenge complete! +${result.reward} fruits`, 'success');
+          } else if (result.status === 'progress') {
+            showToast(`Streak updated! Day ${result.streak}`, 'success');
+          }
+        } catch (error) {
+          console.error('Failed to record challenge progress:', error);
+        }
+      }
+    }
+
     router.back();
   };
 
