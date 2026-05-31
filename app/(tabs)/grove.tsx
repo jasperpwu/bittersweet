@@ -110,33 +110,38 @@ export default function GroveScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
         <View className="px-5">
-          <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mt-1">
-            <View className="flex-row items-center">
-              {profile.avatar_url ? (
-                <Image
-                  source={{ uri: profile.avatar_url }}
-                  style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
-                />
-              ) : (
-                <View className="mr-3">
-                  <DefaultAvatar
-                    displayName={profile.display_name}
-                    color={profile.avatar_color}
-                    size={48}
+          <Pressable
+            onPress={() => router.push('/(modals)/my-session-feed')}
+            className="active:opacity-80"
+          >
+            <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mt-1">
+              <View className="flex-row items-center">
+                {profile.avatar_url ? (
+                  <Image
+                    source={{ uri: profile.avatar_url }}
+                    style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
                   />
+                ) : (
+                  <View className="mr-3">
+                    <DefaultAvatar
+                      displayName={profile.display_name}
+                      color={profile.avatar_color}
+                      size={48}
+                    />
+                  </View>
+                )}
+                <View className="flex-1">
+                  <Typography variant="headline-18" color="primary">
+                    {profile.display_name}
+                  </Typography>
+                  <Typography variant="body-12" color="secondary">
+                    @{profile.handle}
+                    {hasFriends && ` · ${friends.length} ${friends.length === 1 ? 'friend' : 'friends'}`}
+                  </Typography>
                 </View>
-              )}
-              <View className="flex-1">
-                <Typography variant="headline-18" color="primary">
-                  {profile.display_name}
-                </Typography>
-                <Typography variant="body-12" color="secondary">
-                  @{profile.handle}
-                  {hasFriends && ` · ${friends.length} ${friends.length === 1 ? 'friend' : 'friends'}`}
-                </Typography>
               </View>
             </View>
-          </View>
+          </Pressable>
         </View>
 
         {/* Friend Request Banner */}

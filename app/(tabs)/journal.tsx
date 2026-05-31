@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Pressable, useWindowDimensions } from 'react-native';
+import { View, Pressable, useWindowDimensions, TextInput, Image, useColorScheme, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -15,13 +15,16 @@ import Animated, {
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from '../../src/components/ui/StatusBar';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { Modal, Slider, Typography, TimePicker, DatePicker } from '../../src/components/ui';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { DateSelector, Timeline } from '../../src/components/journal';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
+import { showToast } from '../../src/components/ui/Toast';
 import { isToday } from '../../src/utils/dateUtils';
 import { FocusSession } from '../../src/types/models';
+import { saveSessionPhoto } from '../../src/services/sessionPhotoService';
 
 
 export default function JournalScreen() {
@@ -31,7 +34,7 @@ export default function JournalScreen() {
   const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
   const [adjustedDuration, setAdjustedDuration] = useState(0);
   const { sessions, tags } = useFocus();
-  const { adjustSessionDuration, deleteSession, createCompletedSession } = useFocusActions();
+  const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession } = useFocusActions();
 
   // Manual Entry State
   const [isManualEntryModalVisible, setIsManualEntryModalVisible] = useState(false);
@@ -43,7 +46,17 @@ export default function JournalScreen() {
   const [manualEndTime, setManualEndTime] = useState(new Date());
   const [manualDate, setManualDate] = useState(new Date());
   const [manualTag, setManualTag] = useState<string>('');
+  const [manualNotes, setManualNotes] = useState('');
+  const [manualPhotoUri, setManualPhotoUri] = useState<string | null>(null);
   const [manualEntryError, setManualEntryError] = useState<string | null>(null);
+  const [isManualSaving, setIsManualSaving] = useState(false);
+
+  // Edit session state (notes + photo for existing sessions)
+  const [editNotes, setEditNotes] = useState('');
+  const [editPhotoUri, setEditPhotoUri] = useState<string | null>(null);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+
+  const colorScheme = useColorScheme();
 
   // Shake animation for manual entry modal
   const manualEntryShakeX = useSharedValue(0);
@@ -84,6 +97,8 @@ export default function JournalScreen() {
     setManualEndTime(now);
     setManualDate(selectedDate);
     setManualTag('');
+    setManualNotes('');
+    setManualPhotoUri(null);
     setManualEntryError(null);
     setIsManualEntryModalVisible(true);
   };
@@ -92,7 +107,7 @@ export default function JournalScreen() {
     setIsManualEntryModalVisible(false);
   };
 
-  const handleManualEntrySave = () => {
+  const handleManualEntrySave = async () => {
     if (!manualTag) {
       setManualEntryError('Please select a tag');
       return;
@@ -137,14 +152,30 @@ export default function JournalScreen() {
 
     const duration = Math.round((finalEnd.getTime() - finalStart.getTime()) / (1000 * 60));
 
-    createCompletedSession({
+    setIsManualSaving(true);
+
+    const createdSession = createCompletedSession({
       startTime: finalStart,
       endTime: finalEnd,
       duration: duration,
       targetDuration: duration,
       tagId: manualTag,
+      notes: manualNotes.trim() || undefined,
       isManualEntry: true,
     });
+
+    // Upload photo if one was selected
+    if (manualPhotoUri && createdSession) {
+      try {
+        const photoUrl = await saveSessionPhoto(manualPhotoUri, createdSession.id);
+        updateSession(createdSession.id, { photoUrl });
+      } catch (error) {
+        console.error('Failed to save session photo:', error);
+        showToast('Failed to save photo', 'error');
+      }
+    }
+
+    setIsManualSaving(false);
 
     // Navigate the journal calendar to the session's date so the user can see it
     setSelectedDate(new Date(manualDate));
@@ -235,6 +266,26 @@ export default function JournalScreen() {
     opacity: withTiming(isSwiping.value ? 0.5 : 1, { duration: 100 }),
   }));
 
+  const pickImage = async (
+    source: 'library' | 'camera',
+    onPicked: (uri: string) => void
+  ) => {
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.8,
+    };
+
+    const result =
+      source === 'camera'
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+
+    if (!result.canceled && result.assets[0]) {
+      onPicked(result.assets[0].uri);
+    }
+  };
+
   const handleSessionPress = (sessionId: string) => {
     const session = sessions.byId[sessionId];
     if (!session) return;
@@ -242,16 +293,39 @@ export default function JournalScreen() {
     const currentAdjustedDuration = session.adjustedDuration ?? session.duration;
     setSelectedSession(session);
     setAdjustedDuration(Math.max(0, Math.min(actualDuration, currentAdjustedDuration)));
+    setEditNotes(session.notes ?? '');
+    setEditPhotoUri(null);
   };
 
   const closeSessionModal = () => {
     setSelectedSession(null);
   };
 
-  const handleSessionDone = () => {
-    if (selectedSession) {
-      adjustSessionDuration(selectedSession.id, adjustedDuration);
+  const handleSessionDone = async () => {
+    if (!selectedSession) return;
+
+    setIsEditSaving(true);
+
+    adjustSessionDuration(selectedSession.id, adjustedDuration);
+
+    // Save notes if changed
+    const trimmedNotes = editNotes.trim();
+    if (trimmedNotes !== (selectedSession.notes ?? '')) {
+      updateSession(selectedSession.id, { notes: trimmedNotes || undefined });
     }
+
+    // Upload photo if selected and session doesn't already have a photo
+    if (editPhotoUri && !selectedSession.photoUrl) {
+      try {
+        const photoUrl = await saveSessionPhoto(editPhotoUri, selectedSession.id);
+        updateSession(selectedSession.id, { photoUrl });
+      } catch (error) {
+        console.error('Failed to save session photo:', error);
+        showToast('Failed to save photo', 'error');
+      }
+    }
+
+    setIsEditSaving(false);
     closeSessionModal();
   };
 
@@ -467,20 +541,99 @@ export default function JournalScreen() {
               </View>
             )}
 
-            {selectedSession.notes && (
-              <View className="bg-light-border/30 dark:bg-gray-700 rounded-xl p-4 mb-5">
-                <Typography variant="body-12" color="secondary" className="mb-1">
-                  Notes
+            {/* Notes section */}
+            <View className="mb-5">
+              <Typography variant="body-12" color="secondary" className="mb-2">
+                Note
+              </Typography>
+              <TextInput
+                value={editNotes}
+                onChangeText={setEditNotes}
+                placeholder="How did this session go?"
+                placeholderTextColor="#666"
+                multiline
+                numberOfLines={2}
+                textAlignVertical="top"
+                style={{
+                  backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 14,
+                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  borderWidth: 1,
+                  borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                  minHeight: 60,
+                }}
+              />
+            </View>
+
+            {/* Photo section */}
+            {selectedSession.photoUrl ? (
+              <View className="mb-5">
+                <Typography variant="body-12" color="secondary" className="mb-2">
+                  Photo
                 </Typography>
-                <Typography variant="body-14" color="primary">
-                  {selectedSession.notes}
+                <Image
+                  source={{ uri: selectedSession.photoUrl }}
+                  style={{ width: '100%', height: 160, borderRadius: 12 }}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : (
+              <View className="mb-5">
+                <Typography variant="body-12" color="secondary" className="mb-2">
+                  Add a photo
                 </Typography>
+                {editPhotoUri ? (
+                  <View className="items-center">
+                    <Image
+                      source={{ uri: editPhotoUri }}
+                      style={{ width: '100%', height: 160, borderRadius: 12 }}
+                      resizeMode="cover"
+                    />
+                    <Pressable
+                      onPress={() => setEditPhotoUri(null)}
+                      className="mt-2 flex-row items-center active:opacity-70"
+                    >
+                      <Ionicons
+                        name="close-circle-outline"
+                        size={18}
+                        color={colorScheme === 'dark' ? '#999' : '#8B7355'}
+                      />
+                      <Typography variant="body-12" color="secondary" className="ml-1">
+                        Remove
+                      </Typography>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View className="flex-row gap-x-3">
+                    <Pressable
+                      onPress={() => pickImage('library', setEditPhotoUri)}
+                      className="flex-row items-center bg-primary/20 rounded-xl px-4 py-2.5 active:opacity-70"
+                    >
+                      <Ionicons name="images-outline" size={16} color="#6592E9" />
+                      <Typography variant="body-12" className="text-primary ml-1.5">
+                        Library
+                      </Typography>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => pickImage('camera', setEditPhotoUri)}
+                      className="flex-row items-center bg-primary/20 rounded-xl px-4 py-2.5 active:opacity-70"
+                    >
+                      <Ionicons name="camera-outline" size={16} color="#6592E9" />
+                      <Typography variant="body-12" className="text-primary ml-1.5">
+                        Camera
+                      </Typography>
+                    </Pressable>
+                  </View>
+                )}
               </View>
             )}
 
             <View className="flex-row gap-3">
               <Pressable
                 onPress={handleSessionDelete}
+                disabled={isEditSaving}
                 className="flex-1 rounded-xl py-3 items-center justify-center active:opacity-80"
               >
                 <Typography variant="subtitle-14-semibold" style={{ color: '#EF4444' }}>
@@ -489,11 +642,22 @@ export default function JournalScreen() {
               </Pressable>
               <Pressable
                 onPress={handleSessionDone}
+                disabled={isEditSaving}
                 className="flex-1 bg-white rounded-xl py-3 items-center active:opacity-80"
+                style={{ opacity: isEditSaving ? 0.6 : 1 }}
               >
-                <Typography variant="subtitle-14-semibold" style={{ color: '#1B1C30' }}>
-                  Done
-                </Typography>
+                {isEditSaving ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="#1B1C30" />
+                    <Typography variant="subtitle-14-semibold" style={{ color: '#1B1C30' }} className="ml-2">
+                      Saving...
+                    </Typography>
+                  </View>
+                ) : (
+                  <Typography variant="subtitle-14-semibold" style={{ color: '#1B1C30' }}>
+                    Done
+                  </Typography>
+                )}
               </Pressable>
             </View>
           </View>
@@ -549,6 +713,79 @@ export default function JournalScreen() {
               />
             </View>
 
+            {/* Notes input */}
+            <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
+              Note (optional)
+            </Typography>
+            <TextInput
+              value={manualNotes}
+              onChangeText={setManualNotes}
+              placeholder="How did this session go?"
+              placeholderTextColor="#666"
+              multiline
+              numberOfLines={2}
+              textAlignVertical="top"
+              style={{
+                backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                borderRadius: 12,
+                padding: 12,
+                fontSize: 14,
+                color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                borderWidth: 1,
+                borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                minHeight: 60,
+                marginBottom: 16,
+              }}
+            />
+
+            {/* Photo picker */}
+            <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
+              Photo (optional)
+            </Typography>
+            {manualPhotoUri ? (
+              <View className="items-center mb-4">
+                <Image
+                  source={{ uri: manualPhotoUri }}
+                  style={{ width: '100%', height: 160, borderRadius: 12 }}
+                  resizeMode="cover"
+                />
+                <Pressable
+                  onPress={() => setManualPhotoUri(null)}
+                  className="mt-2 flex-row items-center active:opacity-70"
+                >
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={18}
+                    color={colorScheme === 'dark' ? '#999' : '#8B7355'}
+                  />
+                  <Typography variant="body-12" color="secondary" className="ml-1">
+                    Remove
+                  </Typography>
+                </Pressable>
+              </View>
+            ) : (
+              <View className="flex-row gap-x-3 mb-4">
+                <Pressable
+                  onPress={() => pickImage('library', setManualPhotoUri)}
+                  className="flex-row items-center bg-primary/20 rounded-xl px-4 py-2.5 active:opacity-70"
+                >
+                  <Ionicons name="images-outline" size={16} color="#6592E9" />
+                  <Typography variant="body-12" className="text-primary ml-1.5">
+                    Library
+                  </Typography>
+                </Pressable>
+                <Pressable
+                  onPress={() => pickImage('camera', setManualPhotoUri)}
+                  className="flex-row items-center bg-primary/20 rounded-xl px-4 py-2.5 active:opacity-70"
+                >
+                  <Ionicons name="camera-outline" size={16} color="#6592E9" />
+                  <Typography variant="body-12" className="text-primary ml-1.5">
+                    Camera
+                  </Typography>
+                </Pressable>
+              </View>
+            )}
+
             {manualEntryError && (
               <Typography variant="body-14" color="error" className="mb-4">
                 {manualEntryError}
@@ -567,6 +804,7 @@ export default function JournalScreen() {
             <View className="flex-row gap-3">
               <Pressable
                 onPress={closeManualEntryModal}
+                disabled={isManualSaving}
                 className="flex-1 bg-light-border/30 dark:bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80"
               >
                 <Typography variant="subtitle-14-semibold" color="primary">
@@ -575,11 +813,22 @@ export default function JournalScreen() {
               </Pressable>
               <Pressable
                 onPress={handleManualEntrySave}
+                disabled={isManualSaving}
                 className="flex-1 bg-[#6592E9] rounded-xl py-3 items-center justify-center active:opacity-80"
+                style={{ opacity: isManualSaving ? 0.6 : 1 }}
               >
-                <Typography variant="subtitle-14-semibold" color="white">
-                  Save Session
-                </Typography>
+                {isManualSaving ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <Typography variant="subtitle-14-semibold" color="white" className="ml-2">
+                      Saving...
+                    </Typography>
+                  </View>
+                ) : (
+                  <Typography variant="subtitle-14-semibold" color="white">
+                    Save Session
+                  </Typography>
+                )}
               </Pressable>
             </View>
           </View>

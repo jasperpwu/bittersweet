@@ -25,6 +25,7 @@ export interface FocusSettings {
 export interface FocusSession {
   id: string;
   notes?: string;
+  photoUrl?: string;
 
   // Timing
   startTime: Date;

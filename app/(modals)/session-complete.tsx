@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollView, Platform, useColorScheme } from 'react-native';
+import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollView, Platform, useColorScheme, Image, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { Typography } from '../../src/components/ui';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
+import { saveSessionPhoto } from '../../src/services/sessionPhotoService';
 
 export default function SessionCompleteModal() {
   const colorScheme = useColorScheme();
@@ -14,7 +17,9 @@ export default function SessionCompleteModal() {
 
   const session = sessionId ? sessions.byId[sessionId] : null;
 
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(session?.notes ?? '');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [isSavingPhoto, setIsUploadingPhoto] = useState(false);
 
   if (!session) {
     return (
@@ -47,11 +52,44 @@ export default function SessionCompleteModal() {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const hasExistingNotes = !!session.notes;
+  const hasExistingPhoto = !!session.photoUrl;
+
+  const pickImage = async (source: 'library' | 'camera') => {
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.8,
+    };
+
+    const result =
+      source === 'camera'
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
 
   const handleDone = async () => {
-    if (notes.trim()) {
-      updateSession(session.id, { notes: notes.trim() });
+    const trimmedNotes = notes.trim();
+    if (trimmedNotes !== (session.notes ?? '')) {
+      updateSession(session.id, { notes: trimmedNotes || undefined });
+    }
+
+    // Upload photo if one was selected
+    if (photoUri) {
+      setIsUploadingPhoto(true);
+      try {
+        const photoUrl = await saveSessionPhoto(photoUri, session.id);
+        updateSession(session.id, { photoUrl });
+      } catch (error) {
+        console.error('Failed to save session photo:', error);
+        showToast('Failed to save photo', 'error');
+        setIsUploadingPhoto(false);
+        return;
+      }
+      setIsUploadingPhoto(false);
     }
 
     // Auto-share to Grove if tag is in shared_tag_ids
@@ -59,7 +97,7 @@ export default function SessionCompleteModal() {
     if (grove.profile && grove.isActive && grove.privacySettings && session.tagId) {
       const sharedTagIds = grove.privacySettings.shared_tag_ids || [];
       if (sharedTagIds.includes(session.tagId)) {
-        const shareNotes = grove.privacySettings.share_notes ? (notes.trim() || session.notes || null) : null;
+        const shareNotes = grove.privacySettings.share_notes ? (trimmedNotes || null) : null;
         grove.shareSession({
           sessionId: session.id,
           tagId: session.tagId,
@@ -142,45 +180,100 @@ export default function SessionCompleteModal() {
             </View>
           )}
 
-          {/* Inline notes input (only if no notes on the session) */}
-          {!hasExistingNotes && (
+          {/* Notes input */}
+          <View className="w-full mb-6">
+            <Typography variant="body-14" color="secondary" className="mb-2">
+              Note
+            </Typography>
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="How did this session go?"
+              placeholderTextColor="#666"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              style={{
+                backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                borderRadius: 12,
+                padding: 16,
+                fontSize: 14,
+                color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                borderWidth: 1,
+                borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                minHeight: 80,
+              }}
+            />
+            <Typography variant="body-12" color="secondary" className="mt-2" style={{ opacity: 0.6 }}>
+              Your notes help summarize your week and generate tips.
+            </Typography>
+          </View>
+
+          {/* Photo section */}
+          {!hasExistingPhoto && (
             <View className="w-full mb-6">
               <Typography variant="body-14" color="secondary" className="mb-2">
-                Add a note
+                Add a photo
               </Typography>
-              <TextInput
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="How did this session go?"
-                placeholderTextColor="#666"
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                style={{
-                  backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
-                  borderRadius: 12,
-                  padding: 16,
-                  fontSize: 14,
-                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
-                  borderWidth: 1,
-                  borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
-                  minHeight: 80,
-                }}
-              />
-              <Typography variant="body-12" color="secondary" className="mt-2" style={{ opacity: 0.6 }}>
-                Your notes help summarize your week and generate tips.
-              </Typography>
+              {photoUri ? (
+                <View className="items-center">
+                  <Image
+                    source={{ uri: photoUri }}
+                    style={{ width: '100%', height: 200, borderRadius: 12 }}
+                    resizeMode="cover"
+                  />
+                  <Pressable
+                    onPress={() => setPhotoUri(null)}
+                    className="mt-2 flex-row items-center active:opacity-70"
+                  >
+                    <Ionicons
+                      name="close-circle-outline"
+                      size={18}
+                      color={colorScheme === 'dark' ? '#999' : '#8B7355'}
+                    />
+                    <Typography variant="body-12" color="secondary" className="ml-1">
+                      Remove
+                    </Typography>
+                  </Pressable>
+                </View>
+              ) : (
+                <View className="flex-row gap-x-3">
+                  <Pressable
+                    onPress={() => pickImage('library')}
+                    disabled={isSavingPhoto}
+                    className="flex-row items-center bg-primary/20 rounded-xl px-4 py-3 active:opacity-70"
+                  >
+                    <Ionicons name="images-outline" size={18} color="#6592E9" />
+                    <Typography variant="subtitle-14-medium" className="text-primary ml-2">
+                      Library
+                    </Typography>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => pickImage('camera')}
+                    disabled={isSavingPhoto}
+                    className="flex-row items-center bg-primary/20 rounded-xl px-4 py-3 active:opacity-70"
+                  >
+                    <Ionicons name="camera-outline" size={18} color="#6592E9" />
+                    <Typography variant="subtitle-14-medium" className="text-primary ml-2">
+                      Camera
+                    </Typography>
+                  </Pressable>
+                </View>
+              )}
             </View>
           )}
 
-          {hasExistingNotes && (
-            <View className="w-full bg-light-border/30 dark:bg-gray-700 rounded-xl p-4 mb-6">
-              <Typography variant="body-12" color="secondary" className="mb-1">
-                Notes
+          {hasExistingPhoto && (
+            <View className="w-full mb-6">
+              <Typography variant="body-12" color="secondary" className="mb-2">
+                Photo
               </Typography>
-              <Typography variant="body-14" color="primary">
-                {session.notes}
-              </Typography>
+              <Image
+                source={{ uri: session.photoUrl }}
+                style={{ width: '100%', height: 200, borderRadius: 12 }}
+                resizeMode="cover"
+              />
             </View>
           )}
 
@@ -188,6 +281,7 @@ export default function SessionCompleteModal() {
           <View className="mt-4">
             <Pressable
               onPress={handleDone}
+              disabled={isSavingPhoto}
               className="bg-white rounded-2xl py-4 items-center active:opacity-80"
               style={{
                 shadowColor: '#000',
@@ -195,15 +289,29 @@ export default function SessionCompleteModal() {
                 shadowOpacity: 0.3,
                 shadowRadius: 8,
                 elevation: 8,
+                opacity: isSavingPhoto ? 0.6 : 1,
               }}
             >
-              <Typography
-                variant="subtitle-16"
-                className="font-semibold"
-                style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}
-              >
-                Done
-              </Typography>
+              {isSavingPhoto ? (
+                <View className="flex-row items-center">
+                  <ActivityIndicator size="small" color={colorScheme === 'dark' ? '#1B1C30' : '#5D4E37'} />
+                  <Typography
+                    variant="subtitle-16"
+                    className="font-semibold ml-2"
+                    style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}
+                  >
+                    Saving...
+                  </Typography>
+                </View>
+              ) : (
+                <Typography
+                  variant="subtitle-16"
+                  className="font-semibold"
+                  style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}
+                >
+                  Done
+                </Typography>
+              )}
             </Pressable>
           </View>
         </ScrollView>

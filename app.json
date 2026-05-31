@@ -73,6 +73,8 @@
       "bundleIdentifier": "com.path2us.bittersweet",
       "infoPlist": {
         "NSFamilyControlsUsageDescription": "This app uses Family Controls to help you manage app usage and focus time by blocking selected apps during work sessions.",
+        "NSPhotoLibraryUsageDescription": "Bittersweet uses your photo library to let you attach photos to focus session summaries.",
+        "NSCameraUsageDescription": "Bittersweet uses the camera to let you take photos for focus session summaries.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true
       }
