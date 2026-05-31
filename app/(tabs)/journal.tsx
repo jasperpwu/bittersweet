@@ -13,7 +13,6 @@ import Animated, {
   FadeOut,
 } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
-import { StatusBar } from '../../src/components/ui/StatusBar';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Modal, Slider, Typography, TimePicker, DatePicker } from '../../src/components/ui';
@@ -414,8 +413,6 @@ export default function JournalScreen() {
 
   return (
     <View className="flex-1 bg-light-bg dark:bg-dark-bg" style={{ paddingTop: insets.top }}>
-      <StatusBar variant="dark" />
-
       {/* Header + Date Selector */}
       <View className="bg-light-bg dark:bg-dark-bg border-b border-light-border dark:border-dark-border">
         {/* Header row */}
