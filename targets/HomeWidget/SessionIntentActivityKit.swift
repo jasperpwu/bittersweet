@@ -113,7 +113,8 @@ class WidgetActivityKitLoader: NSObject {
         return
       }
 
-      let appGroupId = "group.com.path2us.bittersweet.appblocker"
+      let appGroupId = Bundle.main.object(forInfoDictionaryKey: "REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP") as? String
+        ?? "group.com.path2us.bittersweet.appblocker"
       guard let ud = UserDefaults(suiteName: appGroupId) else {
         return
       }

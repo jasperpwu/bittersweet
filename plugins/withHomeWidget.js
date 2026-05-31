@@ -2,6 +2,7 @@ const { withFinalizedMod } = require("@expo/config-plugins/build/plugins/withFin
 const fs = require("fs");
 const path = require("path");
 const xcode = require("xcode");
+const plist = require("@expo/plist");
 
 /**
  * Expo config plugin that adds Home Screen Widget Swift files to the existing
@@ -109,6 +110,23 @@ const withHomeWidget = (config) => {
           console.log(`[withHomeWidget] Copied ${file} to main app`);
         } else {
           console.warn(`[withHomeWidget] Source file not found: ${src}`);
+        }
+      }
+
+      // 3. Inject REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP into the live activity
+      //    extension's Info.plist so Swift code can read the app group at runtime.
+      //    The RNDA plugin sets this as a project-level build setting and injects it
+      //    into the main app + RNDA-managed extension Info.plists, but NOT the live
+      //    activity extension which is managed by expo-live-activity.
+      const liveActivityInfoPlistPath = path.join(liveActivityDir, "Info.plist");
+      if (fs.existsSync(liveActivityInfoPlistPath)) {
+        const infoPlistContent = fs.readFileSync(liveActivityInfoPlistPath, "utf8");
+        const infoPlist = plist.default.parse(infoPlistContent);
+        if (!infoPlist["REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP"]) {
+          infoPlist["REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP"] =
+            "$(REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP)";
+          fs.writeFileSync(liveActivityInfoPlistPath, plist.default.build(infoPlist), "utf8");
+          console.log("[withHomeWidget] Injected REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP into live activity Info.plist");
         }
       }
 

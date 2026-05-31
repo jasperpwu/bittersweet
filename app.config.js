@@ -1,36 +1,110 @@
 const IS_DEV = process.env.APP_VARIANT === 'development';
 
+const PROD_BUNDLE_ID = 'com.path2us.bittersweet';
+const PROD_APP_GROUP = 'group.com.path2us.bittersweet.appblocker';
+
+const APP_GROUP = IS_DEV
+  ? 'group.com.path2us.bittersweet.appblocker.dev'
+  : PROD_APP_GROUP;
+
+const BUNDLE_ID = IS_DEV ? `${PROD_BUNDLE_ID}.dev` : PROD_BUNDLE_ID;
+
 export default ({ config }) => {
-  const name = IS_DEV ? `${config.name} (Dev)` : config.name;
+  // Keep the internal project name unchanged so the Xcode project directory
+  // and extension target names remain consistent across dev/prod builds.
+  // Use CFBundleDisplayName for the user-visible app name instead.
   const scheme = IS_DEV ? `${config.scheme}-dev` : config.scheme;
-  
+
   // Create a deep copy of config to avoid modifying the original config object directly
   const newConfig = JSON.parse(JSON.stringify(config));
-  
-  newConfig.name = name;
+
   newConfig.scheme = scheme;
-  
-  if (newConfig.ios) {
-    newConfig.ios.bundleIdentifier = IS_DEV 
-      ? `${config.ios.bundleIdentifier}.dev` 
-      : config.ios.bundleIdentifier;
+
+  if (IS_DEV) {
+    newConfig.icon = './assets/icon-dev.png';
+    // Set the user-visible name on the home screen without changing the Xcode project name
+    if (newConfig.ios && newConfig.ios.infoPlist) {
+      newConfig.ios.infoPlist.CFBundleDisplayName = `${config.name} (Dev)`;
+    }
   }
-  
+
+  if (newConfig.ios) {
+    newConfig.ios.bundleIdentifier = BUNDLE_ID;
+
+    // Dynamic entitlements
+    newConfig.ios.entitlements = {
+      'com.apple.developer.family-controls': true,
+      'com.apple.security.application-groups': [APP_GROUP],
+    };
+  }
+
   if (newConfig.android) {
-    newConfig.android.package = IS_DEV 
-      ? `${config.android.package}.dev` 
+    newConfig.android.package = IS_DEV
+      ? `${config.android.package}.dev`
       : config.android.package;
   }
 
-  // Update app extensions bundle identifiers if they exist
-  if (newConfig.extra?.eas?.build?.experimental?.ios?.appExtensions) {
-    newConfig.extra.eas.build.experimental.ios.appExtensions = newConfig.extra.eas.build.experimental.ios.appExtensions.map(ext => ({
-      ...ext,
-      bundleIdentifier: IS_DEV 
-        ? ext.bundleIdentifier.replace(config.ios.bundleIdentifier, `${config.ios.bundleIdentifier}.dev`) 
-        : ext.bundleIdentifier,
-    }));
+  // Dynamic plugin configs for app group
+  if (newConfig.plugins) {
+    newConfig.plugins = newConfig.plugins.map((plugin) => {
+      if (!Array.isArray(plugin)) return plugin;
+      const [pluginName, pluginConfig] = plugin;
+
+      if (pluginName === 'react-native-device-activity') {
+        return [pluginName, { ...pluginConfig, appGroup: APP_GROUP }];
+      }
+      if (pluginName === 'expo-live-activity') {
+        return [pluginName, { ...pluginConfig, appGroupIdentifier: APP_GROUP }];
+      }
+      return plugin;
+    });
   }
+
+  // Dynamic app extensions with correct bundle IDs and app groups (deduplicated)
+  const appExtensions = [
+    {
+      bundleIdentifier: `${BUNDLE_ID}.ShieldConfiguration`,
+      targetName: 'ShieldConfiguration',
+      entitlements: {
+        'com.apple.developer.family-controls': true,
+        'com.apple.security.application-groups': [APP_GROUP],
+      },
+    },
+    {
+      bundleIdentifier: `${BUNDLE_ID}.ShieldAction`,
+      targetName: 'ShieldAction',
+      entitlements: {
+        'com.apple.developer.family-controls': true,
+        'com.apple.security.application-groups': [APP_GROUP],
+      },
+    },
+    {
+      bundleIdentifier: `${BUNDLE_ID}.ActivityMonitorExtension`,
+      targetName: 'ActivityMonitorExtension',
+      entitlements: {
+        'com.apple.developer.family-controls': true,
+        'com.apple.security.application-groups': [APP_GROUP],
+      },
+    },
+    {
+      bundleIdentifier: `${BUNDLE_ID}.bittersweetmobileLiveActivity`,
+      targetName: 'bittersweetmobileLiveActivity',
+      entitlements: {
+        'com.apple.security.application-groups': [APP_GROUP],
+      },
+    },
+  ];
+
+  if (!newConfig.extra) newConfig.extra = {};
+  if (!newConfig.extra.eas) newConfig.extra.eas = {};
+  if (!newConfig.extra.eas.build) newConfig.extra.eas.build = {};
+  if (!newConfig.extra.eas.build.experimental) newConfig.extra.eas.build.experimental = {};
+  if (!newConfig.extra.eas.build.experimental.ios) newConfig.extra.eas.build.experimental.ios = {};
+
+  newConfig.extra.eas.build.experimental.ios.appExtensions = appExtensions;
+
+  // Expose app group ID for TypeScript code via expo-constants
+  newConfig.extra.appGroupId = APP_GROUP;
 
   return newConfig;
 };

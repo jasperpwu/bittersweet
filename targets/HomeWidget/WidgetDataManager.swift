@@ -1,9 +1,12 @@
 import Foundation
 import WidgetKit
 
-// MARK: - Shared App Group
+// MARK: - Shared App Group (read from Info.plist, set at build time by react-native-device-activity plugin)
 
-private let appGroupId = "group.com.path2us.bittersweet.appblocker"
+private let appGroupId: String = {
+  Bundle.main.object(forInfoDictionaryKey: "REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP") as? String
+    ?? "group.com.path2us.bittersweet.appblocker"
+}()
 
 // MARK: - UserDefaults Keys
 
@@ -309,7 +312,7 @@ struct WidgetDataManager {
       "primary": [
         "behavior": "defer",
         "actions": [
-          ["type": "openAppWithBundleId", "bundleId": "com.path2us.bittersweet"]
+          ["type": "openAppWithBundleId", "bundleId": Bundle.main.bundleIdentifier ?? "com.path2us.bittersweet"]
         ]
       ] as [String: Any],
       "secondary": [

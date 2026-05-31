@@ -1,6 +1,7 @@
 import { FamilyActivitySelection } from '../types/models';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WidgetService } from '../services/WidgetService';
+import Constants from 'expo-constants';
 
 // Import react-native-device-activity with proper types
 import * as ReactNativeDeviceActivity from 'react-native-device-activity';
@@ -16,7 +17,10 @@ import type {
 
 const SHIELD_CONFIGURATION_KEY = 'shieldConfiguration';
 const SHIELD_ACTIONS_KEY = 'shieldActions';
-const APP_GROUP_ID = 'group.com.path2us.bittersweet.appblocker';
+const APP_GROUP_ID =
+  Constants.expoConfig?.extra?.appGroupId ?? 'group.com.path2us.bittersweet.appblocker';
+const MAIN_APP_BUNDLE_ID =
+  Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.path2us.bittersweet';
 
 // MARK: - Custom Data Types (for events only, not shield config)
 
@@ -104,7 +108,7 @@ class BitterSweetFamilyControlsModule {
               actions: [
                 {
                   type: 'openAppWithBundleId',
-                  bundleId: 'com.path2us.bittersweet',
+                  bundleId: MAIN_APP_BUNDLE_ID,
                 },
               ],
             },
