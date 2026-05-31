@@ -93,10 +93,10 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
             </View>
             <View className="flex-1">
               <Typography variant="subtitle-14-medium" color="primary">
-                Share Notes
+                Share Notes & Photos
               </Typography>
               <Typography variant="body-12" color="secondary">
-                Let friends see your session notes
+                Let friends see your session notes and photos
               </Typography>
             </View>
           </View>

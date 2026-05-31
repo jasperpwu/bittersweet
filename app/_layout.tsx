@@ -473,6 +473,14 @@ export default function RootLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="(modals)/grove-edit"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
                   name="fruit-store"
                   options={{ headerShown: false }}
                 />
