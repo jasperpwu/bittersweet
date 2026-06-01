@@ -555,9 +555,14 @@ export default function RootLayout() {
                   name="(modals)/invite-preview"
                   options={{
                     headerShown: false,
-                    presentation: 'modal',
-                    gestureEnabled: true,
+                    presentation: 'transparentModal',
+                    animation: 'none',
+                    gestureEnabled: false,
                   }}
+                />
+                <Stack.Screen
+                  name="invite/[code]"
+                  options={{ headerShown: false }}
                 />
                 <Stack.Screen
                   name="fruit-store"

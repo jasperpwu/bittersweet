@@ -241,6 +241,7 @@ export default function GroveScreen() {
                   lastGroveVisit={lastGroveVisit}
                   onReactionToggle={handleReactionToggle}
                   onAddFriend={handleAddFriend}
+                  showAddFriend={!hasFriends}
                 />
               ) : (
                 <View className="px-5 py-8 items-center">

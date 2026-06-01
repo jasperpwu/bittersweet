@@ -1,16 +1,53 @@
-import React, { useState } from 'react';
-import { View, SafeAreaView, Pressable, Image, Alert, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Image, Alert, ActivityIndicator, Pressable, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Typography } from '../../src/components/ui/Typography';
+import { Button } from '../../src/components/ui/Button/Button';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
 
+const SHEET_HEIGHT = Dimensions.get('window').height * 0.42;
+const DISMISS_THRESHOLD = 100;
+
 export default function InvitePreviewModal() {
+  const insets = useSafeAreaInsets();
   const pendingInvite = useAppStore((s) => s.grove.pendingInvite);
   const acceptPendingInvite = useAppStore((s) => s.grove.acceptPendingInvite);
   const clearPendingInvite = useAppStore((s) => s.grove.clearPendingInvite);
   const [isAccepting, setIsAccepting] = useState(false);
+
+  const sheetHeight = SHEET_HEIGHT + insets.bottom;
+  const translateY = useSharedValue(sheetHeight);
+  const contextY = useSharedValue(0);
+
+  const dismiss = useCallback(() => {
+    clearPendingInvite();
+    router.back();
+  }, [clearPendingInvite]);
+
+  const animateOut = useCallback(() => {
+    translateY.value = withTiming(sheetHeight, { duration: 250 }, (finished) => {
+      if (finished) {
+        runOnJS(dismiss)();
+      }
+    });
+  }, [translateY, sheetHeight, dismiss]);
+
+  // Animate in on mount
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 300 });
+  }, []);
 
   const handleAccept = async () => {
     setIsAccepting(true);
@@ -24,18 +61,45 @@ export default function InvitePreviewModal() {
     }
   };
 
-  const handleCancel = () => {
-    clearPendingInvite();
-    router.back();
-  };
+  const panGesture = Gesture.Pan()
+    .activeOffsetY(10)
+    .failOffsetY(-10)
+    .onStart(() => {
+      contextY.value = translateY.value;
+    })
+    .onUpdate((event) => {
+      translateY.value = Math.max(0, contextY.value + event.translationY);
+    })
+    .onEnd((event) => {
+      if (translateY.value > DISMISS_THRESHOLD || event.velocityY > 500) {
+        translateY.value = withTiming(sheetHeight, { duration: 250 }, (finished) => {
+          if (finished) {
+            runOnJS(dismiss)();
+          }
+        });
+      } else {
+        translateY.value = withTiming(0, { duration: 200 });
+      }
+    });
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      translateY.value,
+      [0, sheetHeight],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
+  }));
 
   if (!pendingInvite) {
     return (
-      <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg items-center justify-center">
-        <Typography variant="body-14" color="secondary">
-          No pending invite
-        </Typography>
-      </SafeAreaView>
+      <View className="flex-1">
+        <Pressable className="flex-1" onPress={() => router.back()} />
+      </View>
     );
   }
 
@@ -43,83 +107,85 @@ export default function InvitePreviewModal() {
   const isAlreadyFriends = status === 'already_friends';
 
   return (
-    <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
-      {/* Header */}
-      <View className="h-[56px] px-5 flex-row items-center">
-        <Pressable
-          onPress={handleCancel}
-          className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
-          hitSlop={8}
+    <GestureHandlerRootView className="flex-1">
+      {/* Backdrop */}
+      <Animated.View className="flex-1 bg-black/50" style={backdropStyle}>
+        <Pressable className="flex-1" onPress={animateOut} />
+      </Animated.View>
+
+      {/* Sheet */}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          className="absolute left-0 right-0 bottom-0 bg-light-bg dark:bg-dark-bg rounded-t-3xl"
+          style={[{ height: sheetHeight, paddingBottom: insets.bottom }, sheetStyle]}
         >
-          <Ionicons name="close" size={24} color="#8A8A8A" />
-        </Pressable>
-      </View>
+          {/* Handle */}
+          <View className="items-center py-3">
+            <View className="w-10 h-[5px] bg-gray-500 rounded-full" />
+          </View>
 
-      {/* Profile Card */}
-      <View className="flex-1 items-center justify-center px-8">
-        <View className="items-center">
-          {profile.avatar_url ? (
-            <Image
-              source={{ uri: profile.avatar_url }}
-              style={{ width: 96, height: 96, borderRadius: 48 }}
-            />
-          ) : (
-            <DefaultAvatar
-              displayName={profile.display_name}
-              color={profile.avatar_color}
-              size={96}
-            />
-          )}
+          {/* Content */}
+          <View className="flex-1 px-6">
+            {/* Profile */}
+            <View className="items-center mt-2">
+              {profile.avatar_url ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={{ width: 80, height: 80, borderRadius: 40 }}
+                />
+              ) : (
+                <DefaultAvatar
+                  displayName={profile.display_name}
+                  color={profile.avatar_color}
+                  size={80}
+                />
+              )}
 
-          <Typography variant="headline-24" color="primary" className="mt-5">
-            {profile.display_name}
-          </Typography>
-          <Typography variant="body-14" color="secondary" className="mt-1">
-            @{profile.handle}
-          </Typography>
-
-          {isAlreadyFriends ? (
-            <View className="mt-8 items-center">
-              <Ionicons name="checkmark-circle" size={32} color="#65E9A3" />
-              <Typography variant="body-14" color="secondary" className="mt-3 text-center">
-                You're already friends with {profile.display_name}
+              <Typography variant="headline-24" color="primary" className="mt-4">
+                {profile.display_name}
               </Typography>
-              <Pressable
-                onPress={handleCancel}
-                className="mt-6 px-8 py-3 rounded-full bg-light-border dark:bg-dark-border active:opacity-70"
-              >
-                <Typography variant="subtitle-14-medium" color="primary">
-                  Dismiss
-                </Typography>
-              </Pressable>
+              <Typography variant="body-14" color="secondary" className="mt-1">
+                @{profile.handle}
+              </Typography>
             </View>
-          ) : (
-            <View className="mt-8 w-full gap-3">
-              <Pressable
-                onPress={handleAccept}
-                disabled={isAccepting}
-                className="w-full py-3.5 rounded-full bg-primary items-center justify-center active:opacity-80"
-              >
-                {isAccepting ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Typography variant="subtitle-14-medium" color="white">
-                    Add Friend
+
+            {/* Actions */}
+            {isAlreadyFriends ? (
+              <View className="mt-8 items-center">
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name="checkmark-circle" size={20} color="#65E9A3" />
+                  <Typography variant="body-14" color="secondary">
+                    Already friends with {profile.display_name}
                   </Typography>
+                </View>
+                <View className="mt-6 w-full">
+                  <Button variant="secondary" size="large" onPress={animateOut}>
+                    Dismiss
+                  </Button>
+                </View>
+              </View>
+            ) : (
+              <View className="mt-8 gap-3">
+                {isAccepting ? (
+                  <Pressable
+                    disabled
+                    className="bg-primary opacity-50 px-6 py-4 min-h-14 rounded-xl items-center justify-center"
+                  >
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  </Pressable>
+                ) : (
+                  <Button variant="primary" size="large" onPress={handleAccept}>
+                    Add Friend
+                  </Button>
                 )}
-              </Pressable>
-              <Pressable
-                onPress={handleCancel}
-                className="w-full py-3.5 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
-              >
-                <Typography variant="subtitle-14-medium" color="primary">
+                <Button variant="secondary" size="large" onPress={animateOut}>
                   Cancel
-                </Typography>
-              </Pressable>
-            </View>
-          )}
-        </View>
-      </View>
-    </SafeAreaView>
+                </Button>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+      </GestureDetector>
+    </GestureHandlerRootView>
   );
 }

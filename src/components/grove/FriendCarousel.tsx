@@ -10,6 +10,7 @@ interface FriendCarouselProps {
   lastGroveVisit: string | null;
   onReactionToggle: (sharedSessionId: string) => void;
   onAddFriend: () => void;
+  showAddFriend?: boolean;
 }
 
 const CARD_WIDTH = 280;
@@ -21,12 +22,12 @@ export const FriendCarousel: React.FC<FriendCarouselProps> = ({
   lastGroveVisit,
   onReactionToggle,
   onAddFriend,
+  showAddFriend = true,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  // Total items = feed cards + add friend card
-  const totalItems = feed.length + 1;
+  const totalItems = feed.length + (showAddFriend ? 1 : 0);
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -43,8 +44,8 @@ export const FriendCarousel: React.FC<FriendCarouselProps> = ({
 
   const renderItem = useCallback(
     ({ item, index }: { item: FeedItem | null; index: number }) => {
-      // Last item is the add friend card
-      if (index === feed.length) {
+      // Last item is the add friend card (only when showAddFriend is true)
+      if (showAddFriend && index === feed.length) {
         return (
           <View style={{ width: CARD_WIDTH, marginRight: CARD_GAP }}>
             <AddFriendCard onPress={onAddFriend} />
@@ -68,11 +69,13 @@ export const FriendCarousel: React.FC<FriendCarouselProps> = ({
         </View>
       );
     },
-    [feed.length, lastGroveVisit, onReactionToggle, onAddFriend]
+    [feed.length, lastGroveVisit, onReactionToggle, onAddFriend, showAddFriend]
   );
 
-  // Data array: feed items + null sentinel for add card
-  const data = [...feed, null] as (FeedItem | null)[];
+  // Data array: feed items + optional null sentinel for add card
+  const data = showAddFriend
+    ? ([...feed, null] as (FeedItem | null)[])
+    : feed;
 
   return (
     <View>

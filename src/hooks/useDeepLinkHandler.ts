@@ -3,11 +3,12 @@ import { Linking, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useAppStore } from '../store';
 
-const INVITE_PREFIX = 'bittersweet-mobile://invite/';
+const INVITE_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/invite\/(.+)/;
 
 function extractInviteCode(url: string): string | null {
-  if (url.startsWith(INVITE_PREFIX)) {
-    const code = url.slice(INVITE_PREFIX.length).split('?')[0].split('#')[0];
+  const match = url.match(INVITE_PATTERN);
+  if (match) {
+    const code = match[1].split('?')[0].split('#')[0];
     return code || null;
   }
   return null;
