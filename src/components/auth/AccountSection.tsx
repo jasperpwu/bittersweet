@@ -211,6 +211,29 @@ export const AccountSection: React.FC = () => {
             </Pressable>
           )}
 
+          {/* Inner Circle (only when Grove is active) */}
+          {profile && isActive && (
+            <Pressable
+              onPress={() => router.push('/(modals)/inner-circle')}
+              className="flex-row items-center justify-between py-3 border-b border-light-border dark:border-dark-border active:opacity-70"
+            >
+              <View className="flex-row items-center flex-1">
+                <View className="w-8 items-center mr-3">
+                  <Ionicons name="heart-outline" size={20} color={iconColor} />
+                </View>
+                <View className="flex-1">
+                  <Typography variant="subtitle-14-medium" color="primary">
+                    Inner Circle
+                  </Typography>
+                  <Typography variant="body-12" color="secondary">
+                    Your safety net friends
+                  </Typography>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+            </Pressable>
+          )}
+
           {/* Toggle Grove active (only when profile exists) */}
           {profile && (
             <Pressable

@@ -9,11 +9,13 @@ import {
   GroveFeedService,
   GroveRankingService,
   GroveChallengeService,
+  GroveHeartbeatService,
 } from '../../services/grove';
 import type { FriendItem, FriendRequest } from '../../services/grove/GroveFriendService';
 import type { FeedItem, ShareSessionInput } from '../../services/grove/GroveFeedService';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
 import type { ChallengeItem, CreateChallengeInput, ChallengeProgressResult } from '../../services/grove/GroveChallengeService';
+import type { HeartbeatSettings, InnerCircleMember, HeartbeatAlert } from '../../services/grove/GroveHeartbeatService';
 
 export interface GroveSlice {
   // Phase 1
@@ -74,6 +76,31 @@ export interface GroveSlice {
   acceptChallenge: (challengeId: string) => Promise<void>;
   declineChallenge: (challengeId: string) => Promise<void>;
   recordChallengeProgress: (challengeId: string) => Promise<ChallengeProgressResult>;
+
+  // Phase 4 — Heartbeat / Inner Circle
+  heartbeatSettings: HeartbeatSettings | null;
+  heartbeatLoading: boolean;
+  innerCircle: InnerCircleMember[];
+  innerCircleLoading: boolean;
+  incomingCircleInvites: InnerCircleMember[];
+  heartbeatAlerts: HeartbeatAlert[];
+  pendingCircleInviteCount: number;
+
+  // Phase 4 actions
+  fetchHeartbeatSettings: () => Promise<void>;
+  updateHeartbeatSettings: (updates: { isEnabled?: boolean; quietThresholdDays?: 3 | 5 | 7 | 14 }) => Promise<void>;
+  pauseHeartbeat: (duration: '1_week' | '2_weeks' | '1_month') => Promise<void>;
+  resumeHeartbeat: () => Promise<void>;
+  fetchInnerCircle: () => Promise<void>;
+  inviteToInnerCircle: (friendUserId: string) => Promise<void>;
+  removeFromInnerCircle: (memberId: string) => Promise<void>;
+  fetchIncomingCircleInvites: () => Promise<void>;
+  acceptCircleInvite: (inviteId: string) => Promise<void>;
+  declineCircleInvite: (inviteId: string) => Promise<void>;
+  fetchHeartbeatAlerts: () => Promise<void>;
+  markHeartbeatAlertRead: (alertId: string) => Promise<void>;
+  recordHeartbeatActivity: () => Promise<void>;
+  notifyBlocklistEdit: () => Promise<void>;
 }
 
 const initialState = {
@@ -99,6 +126,14 @@ const initialState = {
   challenges: [],
   challengesLoading: false,
   pendingChallengeCount: 0,
+  // Phase 4
+  heartbeatSettings: null,
+  heartbeatLoading: false,
+  innerCircle: [],
+  innerCircleLoading: false,
+  incomingCircleInvites: [],
+  heartbeatAlerts: [],
+  pendingCircleInviteCount: 0,
 };
 
 export const createGroveSlice = (set: any, get: any): GroveSlice => ({
@@ -631,6 +666,229 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     } catch (error: any) {
       console.error('Failed to record challenge progress:', error);
       throw error;
+    }
+  },
+
+  // ========== Phase 4 Actions — Heartbeat / Inner Circle ==========
+
+  fetchHeartbeatSettings: async () => {
+    set((state: any) => ({
+      grove: { ...state.grove, heartbeatLoading: true },
+    }));
+
+    try {
+      const settings = await GroveHeartbeatService.fetchSettings();
+      set((state: any) => ({
+        grove: { ...state.grove, heartbeatSettings: settings, heartbeatLoading: false },
+      }));
+    } catch (error: any) {
+      console.error('Failed to fetch heartbeat settings:', error);
+      set((state: any) => ({
+        grove: { ...state.grove, heartbeatLoading: false },
+      }));
+    }
+  },
+
+  updateHeartbeatSettings: async (updates: { isEnabled?: boolean; quietThresholdDays?: 3 | 5 | 7 | 14 }) => {
+    try {
+      const settings = await GroveHeartbeatService.updateSettings(updates);
+      set((state: any) => ({
+        grove: { ...state.grove, heartbeatSettings: settings },
+      }));
+    } catch (error: any) {
+      console.error('Failed to update heartbeat settings:', error);
+      throw error;
+    }
+  },
+
+  pauseHeartbeat: async (duration: '1_week' | '2_weeks' | '1_month') => {
+    try {
+      const settings = await GroveHeartbeatService.pauseHeartbeat(duration);
+      set((state: any) => ({
+        grove: { ...state.grove, heartbeatSettings: settings },
+      }));
+    } catch (error: any) {
+      console.error('Failed to pause heartbeat:', error);
+      throw error;
+    }
+  },
+
+  resumeHeartbeat: async () => {
+    try {
+      const settings = await GroveHeartbeatService.resumeHeartbeat();
+      set((state: any) => ({
+        grove: { ...state.grove, heartbeatSettings: settings },
+      }));
+    } catch (error: any) {
+      console.error('Failed to resume heartbeat:', error);
+      throw error;
+    }
+  },
+
+  fetchInnerCircle: async () => {
+    set((state: any) => ({
+      grove: { ...state.grove, innerCircleLoading: true },
+    }));
+
+    try {
+      const innerCircle = await GroveHeartbeatService.fetchInnerCircle();
+      set((state: any) => ({
+        grove: { ...state.grove, innerCircle, innerCircleLoading: false },
+      }));
+    } catch (error: any) {
+      console.error('Failed to fetch inner circle:', error);
+      set((state: any) => ({
+        grove: { ...state.grove, innerCircleLoading: false },
+      }));
+    }
+  },
+
+  inviteToInnerCircle: async (friendUserId: string) => {
+    try {
+      const member = await GroveHeartbeatService.inviteToInnerCircle(friendUserId);
+      set((state: any) => ({
+        grove: {
+          ...state.grove,
+          innerCircle: [...state.grove.innerCircle, member],
+        },
+      }));
+    } catch (error: any) {
+      console.error('Failed to invite to inner circle:', error);
+      throw error;
+    }
+  },
+
+  removeFromInnerCircle: async (memberId: string) => {
+    try {
+      await GroveHeartbeatService.removeFromInnerCircle(memberId);
+      set((state: any) => ({
+        grove: {
+          ...state.grove,
+          innerCircle: state.grove.innerCircle.filter(
+            (m: InnerCircleMember) => m.id !== memberId
+          ),
+        },
+      }));
+    } catch (error: any) {
+      console.error('Failed to remove from inner circle:', error);
+      throw error;
+    }
+  },
+
+  fetchIncomingCircleInvites: async () => {
+    try {
+      const invites = await GroveHeartbeatService.fetchIncomingInvites();
+      set((state: any) => ({
+        grove: {
+          ...state.grove,
+          incomingCircleInvites: invites,
+          pendingCircleInviteCount: invites.length,
+        },
+      }));
+    } catch (error: any) {
+      console.error('Failed to fetch incoming circle invites:', error);
+    }
+  },
+
+  acceptCircleInvite: async (inviteId: string) => {
+    try {
+      await GroveHeartbeatService.acceptInvite(inviteId);
+      set((state: any) => {
+        const updated = state.grove.incomingCircleInvites.filter(
+          (i: InnerCircleMember) => i.id !== inviteId
+        );
+        return {
+          grove: {
+            ...state.grove,
+            incomingCircleInvites: updated,
+            pendingCircleInviteCount: updated.length,
+          },
+        };
+      });
+    } catch (error: any) {
+      console.error('Failed to accept circle invite:', error);
+      throw error;
+    }
+  },
+
+  declineCircleInvite: async (inviteId: string) => {
+    try {
+      await GroveHeartbeatService.declineInvite(inviteId);
+      set((state: any) => {
+        const updated = state.grove.incomingCircleInvites.filter(
+          (i: InnerCircleMember) => i.id !== inviteId
+        );
+        return {
+          grove: {
+            ...state.grove,
+            incomingCircleInvites: updated,
+            pendingCircleInviteCount: updated.length,
+          },
+        };
+      });
+    } catch (error: any) {
+      console.error('Failed to decline circle invite:', error);
+      throw error;
+    }
+  },
+
+  fetchHeartbeatAlerts: async () => {
+    try {
+      const alerts = await GroveHeartbeatService.fetchAlerts();
+      set((state: any) => ({
+        grove: { ...state.grove, heartbeatAlerts: alerts },
+      }));
+    } catch (error: any) {
+      console.error('Failed to fetch heartbeat alerts:', error);
+    }
+  },
+
+  markHeartbeatAlertRead: async (alertId: string) => {
+    // Optimistic update
+    set((state: any) => ({
+      grove: {
+        ...state.grove,
+        heartbeatAlerts: state.grove.heartbeatAlerts.map((a: HeartbeatAlert) =>
+          a.id === alertId ? { ...a, readAt: new Date().toISOString() } : a
+        ),
+      },
+    }));
+
+    try {
+      await GroveHeartbeatService.markAlertRead(alertId);
+    } catch (error: any) {
+      // Revert optimistic update
+      set((state: any) => ({
+        grove: {
+          ...state.grove,
+          heartbeatAlerts: state.grove.heartbeatAlerts.map((a: HeartbeatAlert) =>
+            a.id === alertId ? { ...a, readAt: null } : a
+          ),
+        },
+      }));
+      console.error('Failed to mark heartbeat alert read:', error);
+    }
+  },
+
+  recordHeartbeatActivity: async () => {
+    // Skip recording activity if heartbeat is paused or not enabled
+    const settings = get().grove.heartbeatSettings;
+    if (settings?.isPaused || settings?.isEnabled === false) return;
+
+    try {
+      await GroveHeartbeatService.recordActivity();
+    } catch (error: any) {
+      // Fire-and-forget: silent fail
+      console.error('Failed to record heartbeat activity:', error);
+    }
+  },
+
+  notifyBlocklistEdit: async () => {
+    try {
+      await GroveHeartbeatService.notifyBlocklistEdit();
+    } catch (error: any) {
+      // Fire-and-forget: silent fail
+      console.error('Failed to notify blocklist edit:', error);
     }
   },
 });

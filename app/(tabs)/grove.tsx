@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, SafeAreaView, Image, ActivityIndicator, ScrollView, Pressable } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,10 @@ import { ChallengeCard } from '../../src/components/grove/ChallengeCard';
 import { EmptyChallengesState } from '../../src/components/grove/EmptyChallengesState';
 import { Leaderboard } from '../../src/components/grove/Leaderboard';
 import { EmptyGroveState } from '../../src/components/grove/EmptyGroveState';
+import { HeartbeatIndicator } from '../../src/components/grove/HeartbeatIndicator';
+import { HeartbeatAlertCard } from '../../src/components/grove/HeartbeatAlertCard';
+import { InnerCircleInviteBanner } from '../../src/components/grove/InnerCircleInviteBanner';
+import { HeartbeatPauseSheet } from '../../src/components/grove/HeartbeatPauseSheet';
 import { useAppStore } from '../../src/store';
 
 export default function GroveScreen() {
@@ -36,6 +40,18 @@ export default function GroveScreen() {
   const updateLastGroveVisit = useAppStore((s) => s.grove.updateLastGroveVisit);
   const addReaction = useAppStore((s) => s.grove.addReaction);
   const removeReaction = useAppStore((s) => s.grove.removeReaction);
+  const heartbeatSettings = useAppStore((s) => s.grove.heartbeatSettings);
+  const heartbeatAlerts = useAppStore((s) => s.grove.heartbeatAlerts);
+  const pendingCircleInviteCount = useAppStore((s) => s.grove.pendingCircleInviteCount);
+  const fetchHeartbeatSettings = useAppStore((s) => s.grove.fetchHeartbeatSettings);
+  const fetchHeartbeatAlerts = useAppStore((s) => s.grove.fetchHeartbeatAlerts);
+  const fetchIncomingCircleInvites = useAppStore((s) => s.grove.fetchIncomingCircleInvites);
+  const markHeartbeatAlertRead = useAppStore((s) => s.grove.markHeartbeatAlertRead);
+  const recordHeartbeatActivity = useAppStore((s) => s.grove.recordHeartbeatActivity);
+  const pauseHeartbeat = useAppStore((s) => s.grove.pauseHeartbeat);
+  const resumeHeartbeat = useAppStore((s) => s.grove.resumeHeartbeat);
+
+  const [showPauseSheet, setShowPauseSheet] = useState(false);
 
   // Fetch data on tab focus
   useFocusEffect(
@@ -46,6 +62,10 @@ export default function GroveScreen() {
         fetchFriendRequests();
         fetchRankings();
         fetchChallenges();
+        fetchHeartbeatSettings();
+        fetchHeartbeatAlerts();
+        fetchIncomingCircleInvites();
+        recordHeartbeatActivity();
       }
 
       // Update last visit when leaving the tab
@@ -83,6 +103,24 @@ export default function GroveScreen() {
     router.push('/(modals)/create-challenge');
   }, []);
 
+  const handleInnerCircle = useCallback(() => {
+    router.push('/(modals)/inner-circle');
+  }, []);
+
+  const handleHeartbeatPress = useCallback(() => {
+    setShowPauseSheet(true);
+  }, []);
+
+  const handleCheckIn = useCallback(
+    (alert: { id: string }) => {
+      markHeartbeatAlertRead(alert.id);
+    },
+    [markHeartbeatAlertRead]
+  );
+
+  const unreadAlerts = heartbeatAlerts.filter((a) => !a.readAt);
+  const hasHeartbeat = heartbeatSettings?.isEnabled ?? false;
+
   if (!profile) {
     return (
       <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg items-center justify-center">
@@ -101,10 +139,17 @@ export default function GroveScreen() {
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
-      <View className="h-[56px] px-5 flex-row items-center">
+      <View className="h-[56px] px-5 flex-row items-center justify-between">
         <Typography variant="headline-24" color="primary">
           Grove
         </Typography>
+        {hasHeartbeat && (
+          <HeartbeatIndicator
+            isPaused={heartbeatSettings?.isPaused ?? false}
+            hasUnreadAlerts={unreadAlerts.length > 0}
+            onPress={handleHeartbeatPress}
+          />
+        )}
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -147,8 +192,21 @@ export default function GroveScreen() {
         {/* Friend Request Banner */}
         <FriendRequestBanner count={pendingRequestCount} onPress={handleFriendRequests} />
 
+        {/* Inner Circle Invite Banner */}
+        <InnerCircleInviteBanner count={pendingCircleInviteCount} onPress={handleInnerCircle} />
+
         {/* Challenge Banner (pending incoming) */}
         <ChallengeBanner count={pendingChallengeCount} onPress={handleChallenges} />
+
+        {/* Heartbeat Alerts */}
+        {unreadAlerts.map((alert) => (
+          <HeartbeatAlertCard
+            key={alert.id}
+            alert={alert}
+            onCheckIn={handleCheckIn}
+            onDismiss={markHeartbeatAlertRead}
+          />
+        ))}
 
         {/* Content */}
         {isLoading && !hasFeed && !hasFriends ? (
@@ -239,6 +297,14 @@ export default function GroveScreen() {
           <EmptyGroveState onAddFriend={handleAddFriend} />
         )}
       </ScrollView>
+
+      <HeartbeatPauseSheet
+        isVisible={showPauseSheet}
+        onClose={() => setShowPauseSheet(false)}
+        settings={heartbeatSettings}
+        onPause={pauseHeartbeat}
+        onResume={resumeHeartbeat}
+      />
     </SafeAreaView>
   );
 }

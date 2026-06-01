@@ -364,6 +364,259 @@ END;
 $$;
 
 -- ============================================================
+-- Grove Phase 4: Heartbeat / Inner Circle
+-- ============================================================
+
+-- Table: heartbeat_settings
+-- One row per user. Stores heartbeat config + pause state + last activity timestamp.
+CREATE TABLE heartbeat_settings (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  quiet_threshold_days INTEGER NOT NULL DEFAULT 3
+    CHECK (quiet_threshold_days IN (3, 5, 7, 14)),
+  is_paused BOOLEAN NOT NULL DEFAULT FALSE,
+  pause_duration TEXT CHECK (pause_duration IN ('1_week', '2_weeks', '1_month')),
+  pause_started_at TIMESTAMPTZ,
+  pause_expires_at TIMESTAMPTZ,
+  last_active_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE heartbeat_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own heartbeat settings" ON heartbeat_settings FOR ALL
+  USING (auth.uid() = user_id);
+
+-- Auto-update updated_at
+CREATE TRIGGER set_heartbeat_settings_updated_at
+  BEFORE UPDATE ON heartbeat_settings
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Table: heartbeat_inner_circle
+-- Each row is an invite from user_id to circle_member_id.
+-- A user can have at most 3 active (pending + accepted) members.
+CREATE TABLE heartbeat_inner_circle (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  circle_member_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'accepted', 'declined', 'removed')),
+  invited_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  accepted_at TIMESTAMPTZ,
+  CONSTRAINT unique_circle_membership UNIQUE (user_id, circle_member_id),
+  CONSTRAINT no_self_circle CHECK (user_id <> circle_member_id)
+);
+
+CREATE INDEX idx_inner_circle_user ON heartbeat_inner_circle(user_id, status);
+CREATE INDEX idx_inner_circle_member ON heartbeat_inner_circle(circle_member_id, status);
+
+ALTER TABLE heartbeat_inner_circle ENABLE ROW LEVEL SECURITY;
+
+-- Owner can see all their outgoing invites
+CREATE POLICY "Users can view own inner circle" ON heartbeat_inner_circle FOR SELECT
+  USING (auth.uid() = user_id OR auth.uid() = circle_member_id);
+-- Owner can send invites
+CREATE POLICY "Users can invite to inner circle" ON heartbeat_inner_circle FOR INSERT
+  WITH CHECK (auth.uid() = user_id AND status = 'pending');
+-- Both parties can update (accept/decline/remove)
+CREATE POLICY "Users can update inner circle" ON heartbeat_inner_circle FOR UPDATE
+  USING (auth.uid() = user_id OR auth.uid() = circle_member_id);
+
+-- Enforce max 3 active members per user via a trigger
+CREATE OR REPLACE FUNCTION enforce_inner_circle_limit()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+  active_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO active_count
+  FROM heartbeat_inner_circle
+  WHERE user_id = NEW.user_id
+    AND status IN ('pending', 'accepted')
+    AND id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid);
+
+  IF active_count >= 3 THEN
+    RAISE EXCEPTION 'Inner circle is full (max 3 members)';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER check_inner_circle_limit
+  BEFORE INSERT ON heartbeat_inner_circle
+  FOR EACH ROW EXECUTE FUNCTION enforce_inner_circle_limit();
+
+-- Table: heartbeat_notifications
+-- Alerts sent to inner circle members when triggers fire.
+CREATE TABLE heartbeat_notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  target_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  about_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  trigger_type TEXT NOT NULL
+    CHECK (trigger_type IN ('quiet_threshold', 'blocklist_edit', 'heartbeat_paused')),
+  notification_text TEXT NOT NULL,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  read_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_heartbeat_notifications_target ON heartbeat_notifications(target_user_id, sent_at DESC);
+CREATE INDEX idx_heartbeat_notifications_unread ON heartbeat_notifications(target_user_id)
+  WHERE read_at IS NULL;
+
+ALTER TABLE heartbeat_notifications ENABLE ROW LEVEL SECURITY;
+
+-- Recipients can read and update (mark read) their own notifications
+CREATE POLICY "Users can view own heartbeat notifications" ON heartbeat_notifications FOR SELECT
+  USING (auth.uid() = target_user_id);
+CREATE POLICY "Users can mark own notifications read" ON heartbeat_notifications FOR UPDATE
+  USING (auth.uid() = target_user_id);
+
+-- ============================================================
+-- Heartbeat RPC: check_heartbeat_quiet
+-- Called by a cron job. Finds users past their quiet threshold
+-- and inserts notifications for their inner circle members.
+-- ============================================================
+CREATE OR REPLACE FUNCTION check_heartbeat_quiet()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  quiet_user RECORD;
+  circle_member RECORD;
+  display TEXT;
+BEGIN
+  -- Find users who are enabled, not paused, and past their threshold
+  FOR quiet_user IN
+    SELECT hs.user_id, hs.quiet_threshold_days, hs.last_active_at, gp.display_name
+    FROM heartbeat_settings hs
+    JOIN grove_profiles gp ON gp.user_id = hs.user_id
+    WHERE hs.is_enabled = TRUE
+      AND hs.is_paused = FALSE
+      AND hs.last_active_at < now() - (hs.quiet_threshold_days || ' days')::interval
+      -- Only alert once per quiet period: skip if a quiet_threshold notification
+      -- was already sent after their last_active_at
+      AND NOT EXISTS (
+        SELECT 1 FROM heartbeat_notifications hn
+        WHERE hn.about_user_id = hs.user_id
+          AND hn.trigger_type = 'quiet_threshold'
+          AND hn.sent_at > hs.last_active_at
+      )
+  LOOP
+    display := quiet_user.display_name;
+
+    -- Insert a notification for each accepted inner circle member
+    FOR circle_member IN
+      SELECT circle_member_id FROM heartbeat_inner_circle
+      WHERE user_id = quiet_user.user_id AND status = 'accepted'
+    LOOP
+      INSERT INTO heartbeat_notifications (target_user_id, about_user_id, trigger_type, notification_text)
+      VALUES (
+        circle_member.circle_member_id,
+        quiet_user.user_id,
+        'quiet_threshold',
+        display || ' has been quiet for ' || quiet_user.quiet_threshold_days || ' days. Maybe check in?'
+      );
+    END LOOP;
+  END LOOP;
+END;
+$$;
+
+-- ============================================================
+-- Heartbeat RPC: check_heartbeat_pause_expiry
+-- Called by a cron job. Un-pauses users whose pause has expired.
+-- ============================================================
+CREATE OR REPLACE FUNCTION check_heartbeat_pause_expiry()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE heartbeat_settings
+  SET is_paused = FALSE,
+      pause_duration = NULL,
+      pause_started_at = NULL,
+      pause_expires_at = NULL,
+      updated_at = now()
+  WHERE is_paused = TRUE
+    AND pause_expires_at IS NOT NULL
+    AND pause_expires_at <= now();
+END;
+$$;
+
+-- Table: push_tokens
+-- Stores Expo push tokens for each user (one token per device).
+CREATE TABLE IF NOT EXISTS push_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  expo_push_token TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT unique_user_token UNIQUE (user_id, expo_push_token)
+);
+
+CREATE INDEX idx_push_tokens_user ON push_tokens(user_id);
+
+ALTER TABLE push_tokens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own push tokens" ON push_tokens FOR ALL
+  USING (auth.uid() = user_id);
+
+CREATE TRIGGER set_push_tokens_updated_at
+  BEFORE UPDATE ON push_tokens
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ============================================================
+-- RPC: find_quiet_users
+-- Used by the heartbeat-cron Edge Function to find users past their quiet threshold.
+-- Returns users who are enabled, not paused, past threshold, and not already alerted.
+-- ============================================================
+CREATE OR REPLACE FUNCTION find_quiet_users()
+RETURNS TABLE (
+  user_id UUID,
+  display_name TEXT,
+  quiet_threshold_days INTEGER
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  RETURN QUERY
+    SELECT hs.user_id, gp.display_name, hs.quiet_threshold_days
+    FROM heartbeat_settings hs
+    JOIN grove_profiles gp ON gp.user_id = hs.user_id
+    WHERE hs.is_enabled = TRUE
+      AND hs.is_paused = FALSE
+      AND hs.last_active_at < now() - (hs.quiet_threshold_days || ' days')::interval
+      AND NOT EXISTS (
+        SELECT 1 FROM heartbeat_notifications hn
+        WHERE hn.about_user_id = hs.user_id
+          AND hn.trigger_type = 'quiet_threshold'
+          AND hn.sent_at > hs.last_active_at
+      );
+END;
+$$;
+
+-- ============================================================
+-- Cron setup
+-- Requires: pg_cron (schema: pg_catalog), pg_net (schema: extensions), vault.
+-- The heartbeat-cron Edge Function handles both pause expiry and quiet checks.
+--
+-- Step 1: Store credentials in Vault (run once, replace with your actual values):
+--
+--   SELECT vault.create_secret('https://wpcyvjpntzgfpwbzprkp.supabase.co', 'project_url');
+--   SELECT vault.create_secret('sb_publishable_aMzfr3VTL7lOhfYKqOniEA_SyAHaDhY', 'publishable_key');
+--
+-- Step 2: Schedule the cron (runs every hour):
+-- ============================================================
+
+SELECT cron.schedule(
+  'heartbeat-cron',
+  '0 3 * * *',
+  $$
+  SELECT net.http_post(
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'project_url')
+           || '/functions/v1/heartbeat-cron',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'publishable_key')
+    ),
+    body := '{}'::jsonb
+  ) AS request_id;
+  $$
+);
+
+-- ============================================================
 
 -- Storage bucket: avatars
 -- Create via Supabase Dashboard → Storage → New Bucket

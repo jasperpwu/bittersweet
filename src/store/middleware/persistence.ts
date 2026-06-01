@@ -183,7 +183,7 @@ const optimizedStorage = new OptimizedStorage();
 export const persistenceConfig = {
   name: STORAGE_KEY,
   storage: createJSONStorage(() => optimizedStorage),
-  version: 7,
+  version: 8,
   migrate: (persistedState: any, version: number) => {
     if (version < 2) {
       console.log('🔄 Migrating store to v2 (adding auth slice)...');
@@ -377,6 +377,23 @@ export const persistenceConfig = {
       console.log('✅ Store migration to v7 complete');
     }
 
+    if (version < 8) {
+      console.log('🔄 Migrating store to v8 (grove Phase 4: heartbeat / inner circle)...');
+      const state = persistedState;
+      if (!state.grove) {
+        state.grove = {
+          profile: null,
+          privacySettings: null,
+          isActive: false,
+          lastGroveVisit: null,
+          heartbeatSettings: null,
+        };
+      } else {
+        state.grove.heartbeatSettings = state.grove.heartbeatSettings ?? null;
+      }
+      console.log('✅ Store migration to v8 complete');
+    }
+
     if (version === 0) {
       console.log('🔄 Migrating store from v0 → v1 (tag IDs)...');
       const state = persistedState;
@@ -490,6 +507,7 @@ export const persistenceConfig = {
       privacySettings: state.grove?.privacySettings ?? null,
       isActive: state.grove?.isActive ?? false,
       lastGroveVisit: state.grove?.lastGroveVisit ?? null,
+      heartbeatSettings: state.grove?.heartbeatSettings ?? null,
     },
   }),
 
@@ -583,6 +601,7 @@ export const persistenceConfig = {
           isLoading: false,
           error: null,
           lastGroveVisit: null,
+          heartbeatSettings: null,
         };
       }
 

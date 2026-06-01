@@ -32,3 +32,10 @@ export type {
   CreateChallengeInput,
   ChallengeProgressResult,
 } from './GroveChallengeService';
+
+export { GroveHeartbeatService } from './GroveHeartbeatService';
+export type {
+  HeartbeatSettings,
+  InnerCircleMember,
+  HeartbeatAlert,
+} from './GroveHeartbeatService';

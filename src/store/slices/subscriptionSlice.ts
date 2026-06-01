@@ -54,16 +54,42 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
       // Listen for purchase updates
       purchaseUpdateSub = purchaseUpdatedListener(async (purchase: Purchase) => {
         try {
-          // Verify with backend
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData.session) {
-            await supabase.functions.invoke('verify-subscription', {
-              body: {
-                purchaseToken: purchase.transactionId,
-                productId: purchase.productId,
-                platform: 'ios',
-              },
-            });
+          // Persist subscription to Supabase (direct DB write, no Edge Function needed)
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            // Upsert receipt record
+            const { error: receiptError } = await supabase
+              .from('subscription_receipts')
+              .upsert(
+                {
+                  user_id: user.id,
+                  product_id: purchase.productId,
+                  original_transaction_id: purchase.transactionId,
+                  raw_receipt: {
+                    purchaseToken: purchase.transactionId,
+                    productId: purchase.productId,
+                    platform: 'ios',
+                  },
+                },
+                { onConflict: 'user_id' }
+              );
+
+            if (receiptError) {
+              console.error('[IAP] Receipt upsert error:', receiptError);
+            }
+
+            // Update profile tier
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update({
+                subscription_tier: 'premium',
+                original_transaction_id: purchase.transactionId,
+              })
+              .eq('id', user.id);
+
+            if (profileError) {
+              console.error('[IAP] Profile update error:', profileError);
+            }
           }
 
           // Finish transaction
@@ -206,6 +232,44 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
         ]);
 
         const activeSub = (subs as any[])?.[0];
+
+        // Persist restored subscription to Supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && activeSub) {
+          const { error: receiptError } = await supabase
+            .from('subscription_receipts')
+            .upsert(
+              {
+                user_id: user.id,
+                product_id: activeSub.productId,
+                original_transaction_id: activeSub.transactionId ?? null,
+                raw_receipt: {
+                  purchaseToken: activeSub.transactionId,
+                  productId: activeSub.productId,
+                  platform: 'ios',
+                  restored: true,
+                },
+              },
+              { onConflict: 'user_id' }
+            );
+
+          if (receiptError) {
+            console.error('[IAP] Restore receipt upsert error:', receiptError);
+          }
+
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              subscription_tier: 'premium',
+              original_transaction_id: activeSub.transactionId ?? null,
+            })
+            .eq('id', user.id);
+
+          if (profileError) {
+            console.error('[IAP] Restore profile update error:', profileError);
+          }
+        }
+
         set((state: any) => ({
           subscription: {
             ...state.subscription,
@@ -243,10 +307,23 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
         SUBSCRIPTION_PRODUCTS.yearly,
       ]);
 
+      const currentTier = get().subscription.tier;
+
       if (isActive) {
         set((state: any) => ({
           subscription: { ...state.subscription, tier: 'premium' },
         }));
+
+        // Sync to DB if tier changed
+        if (currentTier !== 'premium') {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase
+              .from('profiles')
+              .update({ subscription_tier: 'premium' })
+              .eq('id', user.id);
+          }
+        }
       } else {
         set((state: any) => ({
           subscription: {
@@ -256,6 +333,17 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
             expiresAt: null,
           },
         }));
+
+        // Sync to DB if tier changed
+        if (currentTier !== 'free') {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase
+              .from('profiles')
+              .update({ subscription_tier: 'free', original_transaction_id: null })
+              .eq('id', user.id);
+          }
+        }
       }
     } catch (error: any) {
       console.error('Subscription status check error:', error);

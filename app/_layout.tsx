@@ -27,6 +27,7 @@ import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
 import { configureCrisp } from '../src/services/crisp';
 import { useDeepLinkHandler } from '../src/hooks/useDeepLinkHandler';
+import { PushNotificationService } from '../src/services/notifications/push';
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
@@ -166,6 +167,7 @@ export default function RootLayout() {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
+          PushNotificationService.unregisterPushToken();
           resetSyncSnapshot();
           useAppStore.getState().grove.resetGrove();
           useAppStore.setState((state) => ({
@@ -214,6 +216,9 @@ export default function RootLayout() {
             console.error('Post sign-in sync error:', error);
           }
 
+          // Register push token after sign-in
+          PushNotificationService.registerPushToken();
+
           // Fetch grove profile and social data after sign-in
           try {
             await useAppStore.getState().grove.fetchProfile();
@@ -223,6 +228,9 @@ export default function RootLayout() {
               groveState.fetchFeed();
               groveState.fetchFriendRequests();
               groveState.fetchChallenges();
+              groveState.fetchHeartbeatSettings();
+              groveState.fetchIncomingCircleInvites();
+              groveState.fetchHeartbeatAlerts();
             }
           } catch (error) {
             console.error('Post sign-in grove fetch error:', error);
@@ -361,6 +369,16 @@ export default function RootLayout() {
 
         // Flush any pending offline sync operations
         useAppStore.getState().sync.flushOfflineQueue();
+
+        // Record heartbeat activity if grove is active, heartbeat enabled, and not paused
+        const groveState = useAppStore.getState().grove;
+        if (
+          groveState.isActive &&
+          groveState.heartbeatSettings?.isEnabled &&
+          !groveState.heartbeatSettings?.isPaused
+        ) {
+          groveState.recordHeartbeatActivity();
+        }
       }
 
       appState.current = nextAppState;
@@ -474,6 +492,14 @@ export default function RootLayout() {
                 />
                 <Stack.Screen
                   name="(modals)/grove-edit"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="(modals)/inner-circle"
                   options={{
                     headerShown: false,
                     presentation: 'modal',

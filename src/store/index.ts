@@ -1470,6 +1470,12 @@ export const useAppStore = create<AppStore>()(
               console.log('📱 Store: Skipping monitoring to avoid crash (will implement later)');
 
               console.log('✅ Store: Blocked apps updated successfully');
+
+              // Notify inner circle about blocklist edit (fire-and-forget)
+              const groveState = get().grove;
+              if (groveState.isActive && groveState.heartbeatSettings?.isEnabled) {
+                groveState.notifyBlocklistEdit();
+              }
             } else {
               throw new Error('Failed to apply restrictions via native module');
             }
