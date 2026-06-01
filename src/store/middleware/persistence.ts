@@ -493,6 +493,7 @@ export const persistenceConfig = {
     auth: {
       user: state.auth?.user ?? null,
       isAuthenticated: state.auth?.isAuthenticated ?? false,
+      lastSignedInUserId: state.auth?.lastSignedInUserId ?? null,
     },
     subscription: {
       tier: state.subscription?.tier ?? 'free',

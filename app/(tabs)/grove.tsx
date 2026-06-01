@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, SafeAreaView, Image, ActivityIndicator, ScrollView, Pressable } from 'react-native';
+import { View, SafeAreaView, Image, ActivityIndicator, ScrollView, Pressable, useColorScheme } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
@@ -51,6 +51,7 @@ export default function GroveScreen() {
   const pauseHeartbeat = useAppStore((s) => s.grove.pauseHeartbeat);
   const resumeHeartbeat = useAppStore((s) => s.grove.resumeHeartbeat);
 
+  const colorScheme = useColorScheme();
   const [showPauseSheet, setShowPauseSheet] = useState(false);
 
   // Fetch data on tab focus
@@ -147,13 +148,20 @@ export default function GroveScreen() {
         <Typography variant="headline-24" color="primary">
           Grove
         </Typography>
-        {hasHeartbeat && (
-          <HeartbeatIndicator
-            isPaused={heartbeatSettings?.isPaused ?? false}
-            hasUnreadAlerts={unreadAlerts.length > 0}
-            onPress={handleHeartbeatPress}
-          />
-        )}
+        <View className="flex-row items-center gap-3">
+          {hasFriends && (
+            <Pressable onPress={handleAddFriend} className="active:opacity-60" hitSlop={8}>
+              <Ionicons name="person-add-outline" size={22} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+            </Pressable>
+          )}
+          {hasHeartbeat && (
+            <HeartbeatIndicator
+              isPaused={heartbeatSettings?.isPaused ?? false}
+              hasUnreadAlerts={unreadAlerts.length > 0}
+              onPress={handleHeartbeatPress}
+            />
+          )}
+        </View>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>

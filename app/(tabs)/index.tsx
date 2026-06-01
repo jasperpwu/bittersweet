@@ -37,6 +37,7 @@ type DraggableTagRowProps = {
   isDragging: boolean;
   dragOriginalIndex: number;
   dragTargetIndex: number;
+  isChallenge?: boolean;
   onSelect: (id: string) => void;
   onEdit: (tag: any, event: any) => void;
   onDelete: (tag: any, event: any) => void;
@@ -47,7 +48,7 @@ type DraggableTagRowProps = {
 
 function DraggableTagRow({
   tag, index, selectedTag, lastDuration, isDragging, dragOriginalIndex, dragTargetIndex,
-  onSelect, onEdit, onDelete, onDragStart, onDragMove, onDragEnd,
+  isChallenge, onSelect, onEdit, onDelete, onDragStart, onDragMove, onDragEnd,
 }: DraggableTagRowProps) {
   const colorScheme = useColorScheme();
   const isBeingDragged = isDragging && dragOriginalIndex === index;
@@ -85,6 +86,7 @@ function DraggableTagRow({
   }, [isDragging, isBeingDragged, dragOriginalIndex, dragTargetIndex, index]);
 
   const panGesture = Gesture.Pan()
+    .enabled(!isChallenge)
     .activateAfterLongPress(250)
     .onStart(() => {
       gestureActive.value = true;
@@ -139,7 +141,7 @@ function DraggableTagRow({
         ]}
       >
         <View
-          className={`mb-3 rounded-2xl p-4 pr-24 flex-row items-center relative ${isSelected ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-light-border/30 dark:bg-gray-700'}`}
+          className={`mb-3 rounded-2xl p-4 ${isChallenge ? '' : 'pr-24'} flex-row items-center relative ${isSelected ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-light-border/30 dark:bg-gray-700'}`}
           style={[
             {
               borderLeftWidth: 4,
@@ -163,13 +165,20 @@ function DraggableTagRow({
               <Text className="text-xl">{tag.icon || '\uD83C\uDFF7\uFE0F'}</Text>
             </View>
             <View className="flex-1">
-              <Typography
-                variant="subtitle-16"
-                color="primary"
-                className={isSelected ? 'font-semibold' : ''}
-              >
-                {tag.name}
-              </Typography>
+              <View className="flex-row items-center">
+                <Typography
+                  variant="subtitle-16"
+                  color="primary"
+                  className={isSelected ? 'font-semibold' : ''}
+                >
+                  {tag.name}
+                </Typography>
+                {isChallenge && (
+                  <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(233, 160, 101, 0.2)' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#E9A065' }}>Challenge</Text>
+                  </View>
+                )}
+              </View>
               <Typography variant="body-12" color={isSelected ? 'primary' : 'secondary'} className="mt-1">
                 {lastDuration === 0 ? '\u221E' : `${lastDuration} min`}
               </Typography>
@@ -177,6 +186,7 @@ function DraggableTagRow({
           </Pressable>
 
           {/* Edit & Delete buttons */}
+          {!isChallenge && (
           <View className="absolute right-0 top-0 bottom-0 flex-row">
             <Pressable
               onPress={(event) => onEdit(tag, event)}
@@ -193,6 +203,7 @@ function DraggableTagRow({
               <Ionicons name="trash-outline" size={16} color="#EF4444" />
             </Pressable>
           </View>
+          )}
         </View>
       </Reanimated.View>
     </GestureDetector>
@@ -223,7 +234,29 @@ export default function FocusScreen() {
   const { preferences } = useAppSettings();
   const timerPickerStyle = preferences.focus.timerPickerStyle ?? 'scroller';
   const { canCreateTag } = useSubscriptionGate();
+  const challenges = useAppStore((s) => s.grove.challenges);
   const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean).filter(t => !t.deletedAt);
+
+  // Build challenge-only tags from active challenges (both incoming and outgoing)
+  const challengeTags = React.useMemo(() => {
+    const userTagIds = new Set(availableTags.map(t => t.id));
+    const seen = new Set<string>();
+    return challenges
+      .filter(c => c.status === 'active' || c.status === 'pending')
+      .filter(c => {
+        if (userTagIds.has(c.tagId)) return false; // user already has this tag
+        if (seen.has(c.tagId)) return false; // dedup by tagId
+        seen.add(c.tagId);
+        return true;
+      })
+      .map(c => ({
+        id: c.tagId,
+        name: c.tagName,
+        icon: c.tagIcon,
+        color: '#E9A065',
+        isChallenge: true as const,
+      }));
+  }, [challenges, availableTags]);
   
   const [selectedTime, setSelectedTime] = useState(15); // minutes; 0 => ∞
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -314,7 +347,10 @@ export default function FocusScreen() {
     dragTargetIdxRef.current = -1;
   }, [reorderTags]);
 
-  const orderedTags = dragOrderIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt);
+  const orderedTags = [
+    ...dragOrderIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt),
+    ...challengeTags,
+  ];
 
   // Blocklist tip modal
   const [showBlocklistTip, setShowBlocklistTip] = useState(false);
@@ -457,7 +493,7 @@ export default function FocusScreen() {
     setSelectedTime(duration);
     // Update idle Live Activity if one is showing
     if (!isRunning && LiveActivityService.hasFocusActivity) {
-      const tag = tags.byId[tagId];
+      const tag = tags.byId[tagId] || challengeTags.find(ct => ct.id === tagId);
       const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
       LiveActivityService.showIdleFocusActivity(tagLabel, tagId, duration);
     }
@@ -638,7 +674,7 @@ export default function FocusScreen() {
     let liveActivityId: string | undefined;
 
     // Store tag info for later idle state (when session ends, LA transitions to idle)
-    const selectedTagObj = selectedTag ? tags.byId[selectedTag] : undefined;
+    const selectedTagObj = selectedTag ? (tags.byId[selectedTag] || challengeTags.find(ct => ct.id === selectedTag)) : undefined;
     const selectedTagLabel = selectedTagObj ? `${selectedTagObj.icon || '🎯'} ${selectedTagObj.name}` : 'Focus';
     LiveActivityService.setLastTag(selectedTag || undefined, selectedTagLabel, isDevTimer ? 1 : selectedTime);
 
@@ -1370,7 +1406,9 @@ export default function FocusScreen() {
   const timerDisplayTime = isUnlockActive ? formatTime(unlockRemainingSeconds) : displayTime;
   const timerTextColor = isBonusTime && !isUnlockActive ? '#4CAF7C' : (colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37');
 
-  const selectedTagObj = selectedTag ? tags.byId[selectedTag] : null;
+  const selectedTagObj = selectedTag
+    ? (tags.byId[selectedTag] || challengeTags.find(ct => ct.id === selectedTag) || null)
+    : null;
   const selectedTagName = selectedTagObj?.name || null;
 
   const saveSessionAndNavigate = (notes?: string, includeBonusTime: boolean = true) => {
@@ -1596,6 +1634,7 @@ export default function FocusScreen() {
                   isDragging={isDragging}
                   dragOriginalIndex={dragOriginalIdx}
                   dragTargetIndex={dragTargetIdx}
+                  isChallenge={'isChallenge' in tag && tag.isChallenge === true}
                   onSelect={handleTagSelect}
                   onEdit={handleEditTag}
                   onDelete={handleDeleteTag}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Pressable, Alert, ActivityIndicator, Linking, Image, useColorScheme } from 'react-native';
+import React, { useState } from 'react';
+import { View, Pressable, Alert, ActivityIndicator, Linking, Image, useColorScheme, TextInput } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -93,6 +93,9 @@ export const AccountSection: React.FC = () => {
     (state) => state.auth
   );
   const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
+  const signInWithEmail = useAppStore((state) => state.auth.signInWithEmail);
+  const [devEmail, setDevEmail] = useState('');
+  const [devPassword, setDevPassword] = useState('');
   const profile = useAppStore((s) => s.grove.profile);
   const isActive = useAppStore((s) => s.grove.isActive);
   const isGroveLoading = useAppStore((s) => s.grove.isLoading);
@@ -311,6 +314,42 @@ export const AccountSection: React.FC = () => {
             style={{ width: '100%', height: 48 }}
             onPress={signInWithApple}
           />
+        )}
+
+        {__DEV__ && (
+          <View className="mt-4 pt-4 border-t border-light-border dark:border-dark-border">
+            <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
+              Dev Login
+            </Typography>
+            <TextInput
+              placeholder="Email"
+              placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
+              value={devEmail}
+              onChangeText={setDevEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              className="bg-light-bg dark:bg-dark-bg rounded-xl px-3 py-2.5 mb-2 text-light-text-primary dark:text-dark-text-primary"
+            />
+            <TextInput
+              placeholder="Password"
+              placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
+              value={devPassword}
+              onChangeText={setDevPassword}
+              secureTextEntry
+              className="bg-light-bg dark:bg-dark-bg rounded-xl px-3 py-2.5 mb-3 text-light-text-primary dark:text-dark-text-primary"
+            />
+            <Pressable
+              onPress={() => signInWithEmail(devEmail, devPassword)}
+              disabled={isLoading || !devEmail || !devPassword}
+              className="bg-primary rounded-xl py-2.5 items-center active:opacity-70"
+              style={{ opacity: !devEmail || !devPassword ? 0.5 : 1 }}
+            >
+              <Typography variant="subtitle-14-medium" className="text-white">
+                Dev Sign In
+              </Typography>
+            </Pressable>
+          </View>
         )}
 
         {error && (

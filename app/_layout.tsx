@@ -178,7 +178,41 @@ export default function RootLayout() {
             },
           }));
         } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+          console.log('🔑 onAuthStateChange fired:', event, 'user:', session.user.id);
           const user = session.user;
+
+          // Detect user switch — clear local data if signing in as a different user
+          const previousUserId = useAppStore.getState().auth.lastSignedInUserId;
+          const isUserSwitch = previousUserId && previousUserId !== user.id;
+          if (isUserSwitch) {
+            console.log('🔄 User switch detected:', previousUserId, '→', user.id, '— clearing local data');
+            resetSyncSnapshot();
+            useAppStore.getState().grove.resetGrove();
+            useAppStore.setState((state) => ({
+              focus: {
+                ...state.focus,
+                sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+                tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+                goals: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+                badges: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+                lastSelectedTagId: null,
+                lastDurationByTagId: {},
+              },
+              rewards: {
+                ...state.rewards,
+                balance: 0,
+                totalEarned: 0,
+                totalSpent: 0,
+                updatedAt: null,
+                transactions: [],
+              },
+              sync: {
+                ...state.sync,
+                lastSyncTime: null,
+              },
+            }));
+          }
+
           useAppStore.setState((state) => ({
             auth: {
               ...state.auth,
@@ -189,6 +223,7 @@ export default function RootLayout() {
                 avatarUrl: user.user_metadata?.avatar_url ?? null,
               },
               isAuthenticated: true,
+              lastSignedInUserId: user.id,
             },
           }));
 
@@ -221,8 +256,10 @@ export default function RootLayout() {
 
           // Fetch grove profile and social data after sign-in
           try {
+            console.log('🌳 Fetching grove profile after sign-in...');
             await useAppStore.getState().grove.fetchProfile();
             const groveState = useAppStore.getState().grove;
+            console.log('🌳 Grove profile result:', groveState.profile ? 'found' : 'null', 'isActive:', groveState.isActive);
             if (groveState.profile && groveState.isActive) {
               groveState.fetchFriends();
               groveState.fetchFeed();
@@ -233,7 +270,7 @@ export default function RootLayout() {
               groveState.fetchHeartbeatAlerts();
             }
           } catch (error) {
-            console.error('Post sign-in grove fetch error:', error);
+            console.error('🌳 Post sign-in grove fetch error:', error);
           }
         }
       }

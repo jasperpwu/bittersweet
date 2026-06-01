@@ -192,7 +192,7 @@ export default function CreateChallengeModal() {
                   className={`flex-1 min-w-[70px] py-3 rounded-xl items-center ${
                     streakDays === days
                       ? 'bg-primary'
-                      : 'bg-light-border/30 dark:bg-[#242540]'
+                      : 'bg-light-border/60 dark:bg-gray-700'
                   }`}
                 >
                   <Typography

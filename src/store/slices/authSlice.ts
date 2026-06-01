@@ -13,8 +13,10 @@ export interface AuthSlice {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  lastSignedInUserId: string | null;
 
   signInWithApple: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   restoreSession: () => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -26,6 +28,7 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  lastSignedInUserId: null,
 
   signInWithApple: async () => {
     set((state: any) => ({
@@ -88,6 +91,45 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
       }
 
       console.error('Apple Sign-In error:', error);
+      set((state: any) => ({
+        auth: {
+          ...state.auth,
+          isLoading: false,
+          error: error.message || 'Sign-in failed',
+        },
+      }));
+    }
+  },
+
+  signInWithEmail: async (email: string, password: string) => {
+    set((state: any) => ({
+      auth: { ...state.auth, isLoading: true, error: null },
+    }));
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      const user = data.user;
+      set((state: any) => ({
+        auth: {
+          ...state.auth,
+          user: {
+            id: user.id,
+            email: user.email ?? null,
+            fullName: user.user_metadata?.full_name ?? null,
+            avatarUrl: user.user_metadata?.avatar_url ?? null,
+          },
+          isAuthenticated: true,
+          isLoading: false,
+        },
+      }));
+    } catch (error: any) {
+      console.error('Email Sign-In error:', error);
       set((state: any) => ({
         auth: {
           ...state.auth,
