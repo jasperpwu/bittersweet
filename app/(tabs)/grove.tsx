@@ -103,6 +103,10 @@ export default function GroveScreen() {
     router.push('/(modals)/create-challenge');
   }, []);
 
+  const handleFriendPress = useCallback((userId: string) => {
+    router.push(`/(modals)/friend-feed?userId=${userId}`);
+  }, []);
+
   const handleInnerCircle = useCallback(() => {
     router.push('/(modals)/inner-circle');
   }, []);
@@ -290,6 +294,7 @@ export default function GroveScreen() {
                 loading={rankingsLoading}
                 period={rankingsPeriod}
                 onPeriodChange={setRankingsPeriod}
+                onFriendPress={handleFriendPress}
               />
             </View>
           </>

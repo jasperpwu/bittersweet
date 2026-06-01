@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Linking, Alert } from 'react-native';
+import { router } from 'expo-router';
 import { useAppStore } from '../store';
 
 const INVITE_PREFIX = 'bittersweet-mobile://invite/';
@@ -34,20 +35,14 @@ async function handleInviteCode(code: string) {
   }
 
   try {
-    const result = await store.grove.resolveInviteCode(code);
-    Alert.alert(
-      'Friend Added',
-      `You and ${result.friend.display_name} are now friends!`,
-      [{ text: 'OK' }]
-    );
+    await store.grove.lookupInviteCode(code);
+    router.push('/(modals)/invite-preview');
   } catch (error: any) {
     const message = error.message;
     if (message === 'INVALID_CODE') {
       Alert.alert('Invalid Link', 'This invite link is no longer valid.');
     } else if (message === 'SELF_INVITE') {
       Alert.alert('Oops', "You can't add yourself as a friend!");
-    } else if (message === 'ALREADY_FRIENDS') {
-      Alert.alert('Already Friends', "You're already friends with this person.");
     } else {
       Alert.alert('Error', 'Failed to process invite link. Please try again.');
     }

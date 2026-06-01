@@ -17,6 +17,12 @@ import type { RankingItem } from '../../services/grove/GroveRankingService';
 import type { ChallengeItem, CreateChallengeInput, ChallengeProgressResult } from '../../services/grove/GroveChallengeService';
 import type { HeartbeatSettings, InnerCircleMember, HeartbeatAlert } from '../../services/grove/GroveHeartbeatService';
 
+export interface PendingInvite {
+  code: string;
+  profile: GroveProfile;
+  status: 'available' | 'already_friends';
+}
+
 export interface GroveSlice {
   // Phase 1
   profile: GroveProfile | null;
@@ -34,6 +40,11 @@ export interface GroveSlice {
   incomingRequests: FriendRequest[];
   pendingRequestCount: number;
   inviteLink: string | null;
+  pendingInvite: PendingInvite | null;
+
+  // Friend feed
+  friendFeed: FeedItem[];
+  friendFeedLoading: boolean;
 
   // Phase 3
   rankings: RankingItem[];
@@ -67,6 +78,12 @@ export interface GroveSlice {
   updateLastGroveVisit: () => void;
   generateInviteLink: () => Promise<string>;
   resolveInviteCode: (code: string) => Promise<{ status: string; friend: GroveProfile }>;
+  lookupInviteCode: (code: string) => Promise<void>;
+  clearPendingInvite: () => void;
+  acceptPendingInvite: () => Promise<void>;
+
+  // Friend feed actions
+  fetchFriendFeed: (friendUserId: string) => Promise<void>;
 
   // Phase 3 actions
   fetchRankings: (period?: 'week' | 'month') => Promise<void>;
@@ -119,6 +136,10 @@ const initialState = {
   incomingRequests: [],
   pendingRequestCount: 0,
   inviteLink: null,
+  pendingInvite: null,
+  // Friend feed
+  friendFeed: [],
+  friendFeedLoading: false,
   // Phase 3
   rankings: [],
   rankingsLoading: false,
@@ -471,15 +492,25 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
   },
 
   addReaction: async (sharedSessionId: string) => {
+    const applyReaction = (items: FeedItem[]) =>
+      items.map((item: FeedItem) =>
+        item.sharedSession.id === sharedSessionId
+          ? { ...item, hasReacted: true, reactionCount: item.reactionCount + 1 }
+          : item
+      );
+    const revertReaction = (items: FeedItem[]) =>
+      items.map((item: FeedItem) =>
+        item.sharedSession.id === sharedSessionId
+          ? { ...item, hasReacted: false, reactionCount: Math.max(0, item.reactionCount - 1) }
+          : item
+      );
+
     // Optimistic update
     set((state: any) => ({
       grove: {
         ...state.grove,
-        feed: state.grove.feed.map((item: FeedItem) =>
-          item.sharedSession.id === sharedSessionId
-            ? { ...item, hasReacted: true, reactionCount: item.reactionCount + 1 }
-            : item
-        ),
+        feed: applyReaction(state.grove.feed),
+        friendFeed: applyReaction(state.grove.friendFeed),
       },
     }));
 
@@ -490,11 +521,8 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       set((state: any) => ({
         grove: {
           ...state.grove,
-          feed: state.grove.feed.map((item: FeedItem) =>
-            item.sharedSession.id === sharedSessionId
-              ? { ...item, hasReacted: false, reactionCount: Math.max(0, item.reactionCount - 1) }
-              : item
-          ),
+          feed: revertReaction(state.grove.feed),
+          friendFeed: revertReaction(state.grove.friendFeed),
         },
       }));
       console.error('Failed to add reaction:', error);
@@ -502,15 +530,25 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
   },
 
   removeReaction: async (sharedSessionId: string) => {
+    const applyRemove = (items: FeedItem[]) =>
+      items.map((item: FeedItem) =>
+        item.sharedSession.id === sharedSessionId
+          ? { ...item, hasReacted: false, reactionCount: Math.max(0, item.reactionCount - 1) }
+          : item
+      );
+    const revertRemove = (items: FeedItem[]) =>
+      items.map((item: FeedItem) =>
+        item.sharedSession.id === sharedSessionId
+          ? { ...item, hasReacted: true, reactionCount: item.reactionCount + 1 }
+          : item
+      );
+
     // Optimistic update
     set((state: any) => ({
       grove: {
         ...state.grove,
-        feed: state.grove.feed.map((item: FeedItem) =>
-          item.sharedSession.id === sharedSessionId
-            ? { ...item, hasReacted: false, reactionCount: Math.max(0, item.reactionCount - 1) }
-            : item
-        ),
+        feed: applyRemove(state.grove.feed),
+        friendFeed: applyRemove(state.grove.friendFeed),
       },
     }));
 
@@ -521,11 +559,8 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       set((state: any) => ({
         grove: {
           ...state.grove,
-          feed: state.grove.feed.map((item: FeedItem) =>
-            item.sharedSession.id === sharedSessionId
-              ? { ...item, hasReacted: true, reactionCount: item.reactionCount + 1 }
-              : item
-          ),
+          feed: revertRemove(state.grove.feed),
+          friendFeed: revertRemove(state.grove.friendFeed),
         },
       }));
       console.error('Failed to remove reaction:', error);
@@ -561,6 +596,63 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     } catch (error: any) {
       console.error('Failed to resolve invite code:', error);
       throw error;
+    }
+  },
+
+  lookupInviteCode: async (code: string) => {
+    try {
+      const result = await GroveFriendService.lookupInviteCode(code);
+      set((state: any) => ({
+        grove: {
+          ...state.grove,
+          pendingInvite: { code, profile: result.profile, status: result.status },
+        },
+      }));
+    } catch (error: any) {
+      console.error('Failed to lookup invite code:', error);
+      throw error;
+    }
+  },
+
+  clearPendingInvite: () => {
+    set((state: any) => ({
+      grove: { ...state.grove, pendingInvite: null },
+    }));
+  },
+
+  acceptPendingInvite: async () => {
+    const pendingInvite = get().grove.pendingInvite;
+    if (!pendingInvite) return;
+
+    try {
+      await GroveFriendService.resolveInviteCode(pendingInvite.code);
+      set((state: any) => ({
+        grove: { ...state.grove, pendingInvite: null },
+      }));
+      await get().grove.fetchFriends();
+    } catch (error: any) {
+      console.error('Failed to accept pending invite:', error);
+      throw error;
+    }
+  },
+
+  // ========== Friend Feed Actions ==========
+
+  fetchFriendFeed: async (friendUserId: string) => {
+    set((state: any) => ({
+      grove: { ...state.grove, friendFeedLoading: true },
+    }));
+
+    try {
+      const friendFeed = await GroveFeedService.fetchFriendFeed(friendUserId);
+      set((state: any) => ({
+        grove: { ...state.grove, friendFeed, friendFeedLoading: false },
+      }));
+    } catch (error: any) {
+      console.error('Failed to fetch friend feed:', error);
+      set((state: any) => ({
+        grove: { ...state.grove, friendFeedLoading: false },
+      }));
     }
   },
 

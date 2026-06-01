@@ -149,6 +149,66 @@ export const GroveFeedService = {
   },
 
   /**
+   * Fetch shared sessions for a specific friend (last 50 sessions, no time cutoff).
+   */
+  async fetchFriendFeed(friendUserId: string): Promise<FeedItem[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Fetch the friend's shared sessions (RLS handles visibility)
+    const { data: sessions, error: sessionsError } = await supabase
+      .from('grove_shared_sessions')
+      .select('*')
+      .eq('user_id', friendUserId)
+      .order('shared_at', { ascending: false })
+      .limit(50);
+
+    if (sessionsError) throw sessionsError;
+    if (!sessions || sessions.length === 0) return [];
+
+    // Fetch profile, reactions in parallel
+    const [profileResult, reactionsResult, userReactionsResult] = await Promise.all([
+      supabase
+        .from('grove_profiles')
+        .select('*')
+        .eq('user_id', friendUserId)
+        .single(),
+      supabase
+        .from('grove_reactions')
+        .select('shared_session_id')
+        .in('shared_session_id', sessions.map((s) => s.id)),
+      supabase
+        .from('grove_reactions')
+        .select('shared_session_id')
+        .eq('user_id', user.id)
+        .in('shared_session_id', sessions.map((s) => s.id)),
+    ]);
+
+    if (profileResult.error) throw profileResult.error;
+    const profile = profileResult.data;
+    if (!profile) return [];
+
+    // Count reactions per session
+    const reactionCounts = new Map<string, number>();
+    for (const r of reactionsResult.data || []) {
+      reactionCounts.set(r.shared_session_id, (reactionCounts.get(r.shared_session_id) || 0) + 1);
+    }
+
+    // Track which sessions the current user has reacted to
+    const userReactedSessions = new Set<string>();
+    for (const r of userReactionsResult.data || []) {
+      userReactedSessions.add(r.shared_session_id);
+    }
+
+    return sessions.map((session) => ({
+      sharedSession: session,
+      profile,
+      reactionCount: reactionCounts.get(session.id) || 0,
+      hasReacted: userReactedSessions.has(session.id),
+    }));
+  },
+
+  /**
    * Add a reaction (clap) to a shared session.
    */
   async addReaction(sharedSessionId: string): Promise<void> {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Image } from 'react-native';
+import { View, Image, Pressable } from 'react-native';
 import { Typography } from '../ui/Typography';
 import { DefaultAvatar } from './DefaultAvatar';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
@@ -7,6 +7,7 @@ import type { RankingItem } from '../../services/grove/GroveRankingService';
 interface LeaderboardRowProps {
   item: RankingItem;
   maxMinutes: number;
+  onPress?: () => void;
 }
 
 function formatDuration(minutes: number): string {
@@ -17,14 +18,15 @@ function formatDuration(minutes: number): string {
   return `${m}m`;
 }
 
-export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({ item, maxMinutes }) => {
+export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({ item, maxMinutes, onPress }) => {
   const progressWidth = maxMinutes > 0 ? (item.totalMinutes / maxMinutes) * 100 : 0;
 
+  const Wrapper = onPress ? Pressable : View;
+  const wrapperProps = onPress ? { onPress, className: `flex-row items-center py-3 px-4 active:opacity-70 ${item.isCurrentUser ? 'bg-primary/10 rounded-xl' : ''}` } : { className: `flex-row items-center py-3 px-4 ${item.isCurrentUser ? 'bg-primary/10 rounded-xl' : ''}` };
+
   return (
-    <View
-      className={`flex-row items-center py-3 px-4 ${
-        item.isCurrentUser ? 'bg-primary/10 rounded-xl' : ''
-      }`}
+    <Wrapper
+      {...wrapperProps}
     >
       {/* Rank */}
       <View className="w-7 items-center mr-2">
@@ -75,6 +77,6 @@ export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({ item, maxMinutes
       <Typography variant="subtitle-14-medium" color="primary">
         {formatDuration(item.totalMinutes)}
       </Typography>
-    </View>
+    </Wrapper>
   );
 };

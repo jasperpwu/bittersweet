@@ -507,6 +507,22 @@ export default function RootLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="(modals)/friend-feed"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="(modals)/invite-preview"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
                   name="fruit-store"
                   options={{ headerShown: false }}
                 />

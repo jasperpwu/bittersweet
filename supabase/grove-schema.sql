@@ -21,6 +21,17 @@ ALTER TABLE grove_profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own profile" ON grove_profiles FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own profile" ON grove_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own profile" ON grove_profiles FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can read friend profiles" ON grove_profiles FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM grove_friendships
+      WHERE status = 'accepted'
+      AND (
+        (requester_id = auth.uid() AND addressee_id = grove_profiles.user_id)
+        OR (addressee_id = auth.uid() AND requester_id = grove_profiles.user_id)
+      )
+    )
+  );
 
 -- Table: grove_privacy_settings
 CREATE TABLE grove_privacy_settings (
@@ -37,6 +48,17 @@ CREATE TABLE grove_privacy_settings (
 
 ALTER TABLE grove_privacy_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own privacy" ON grove_privacy_settings FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Friends can read privacy settings" ON grove_privacy_settings FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM grove_friendships
+      WHERE status = 'accepted'
+      AND (
+        (requester_id = auth.uid() AND addressee_id = grove_privacy_settings.user_id)
+        OR (addressee_id = auth.uid() AND requester_id = grove_privacy_settings.user_id)
+      )
+    )
+  );
 
 -- RPC: check_handle_available
 CREATE OR REPLACE FUNCTION check_handle_available(target_handle TEXT)
@@ -210,6 +232,40 @@ BEGIN
 
   SELECT * INTO inviter_profile FROM grove_profiles WHERE user_id = invite_record.user_id;
   RETURN json_build_object('status', 'accepted', 'friend', row_to_json(inviter_profile));
+END;
+$$;
+
+-- RPC: lookup_invite_code
+-- Looks up an invite code and returns the inviter's profile WITHOUT creating a friendship.
+CREATE OR REPLACE FUNCTION lookup_invite_code(invite_code TEXT)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  invite_record grove_invite_links%ROWTYPE;
+  inviter_profile grove_profiles%ROWTYPE;
+  existing_friendship grove_friendships%ROWTYPE;
+BEGIN
+  SELECT * INTO invite_record FROM grove_invite_links
+  WHERE code = invite_code AND is_active = true;
+
+  IF invite_record IS NULL THEN
+    RETURN json_build_object('error', 'INVALID_CODE');
+  END IF;
+
+  IF invite_record.user_id = auth.uid() THEN
+    RETURN json_build_object('error', 'SELF_INVITE');
+  END IF;
+
+  SELECT * INTO existing_friendship FROM grove_friendships
+  WHERE (requester_id = auth.uid() AND addressee_id = invite_record.user_id)
+     OR (requester_id = invite_record.user_id AND addressee_id = auth.uid());
+
+  SELECT * INTO inviter_profile FROM grove_profiles WHERE user_id = invite_record.user_id;
+
+  IF existing_friendship IS NOT NULL AND existing_friendship.status = 'accepted' THEN
+    RETURN json_build_object('status', 'already_friends', 'profile', row_to_json(inviter_profile));
+  END IF;
+
+  RETURN json_build_object('status', 'available', 'profile', row_to_json(inviter_profile));
 END;
 $$;
 

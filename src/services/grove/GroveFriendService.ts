@@ -27,6 +27,11 @@ export interface ResolveInviteResult {
   friend: GroveProfile;
 }
 
+export interface LookupInviteResult {
+  status: 'available' | 'already_friends';
+  profile: GroveProfile;
+}
+
 // --- Service ---
 
 export const GroveFriendService = {
@@ -208,6 +213,28 @@ export const GroveFriendService = {
       code: data.code,
       isActive: data.is_active,
       createdAt: data.created_at,
+    };
+  },
+
+  /**
+   * Look up an invite code without creating a friendship.
+   * Returns the inviter's profile and relationship status.
+   */
+  async lookupInviteCode(code: string): Promise<LookupInviteResult> {
+    const { data, error } = await supabase.rpc('lookup_invite_code', {
+      invite_code: code,
+    });
+
+    if (error) throw error;
+
+    const result = data as any;
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    return {
+      status: result.status,
+      profile: result.profile,
     };
   },
 

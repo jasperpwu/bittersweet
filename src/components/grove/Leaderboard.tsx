@@ -10,6 +10,7 @@ interface LeaderboardProps {
   loading: boolean;
   period: 'week' | 'month';
   onPeriodChange: (period: 'week' | 'month') => void;
+  onFriendPress?: (userId: string) => void;
 }
 
 export const Leaderboard: React.FC<LeaderboardProps> = ({
@@ -17,6 +18,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   loading,
   period,
   onPeriodChange,
+  onFriendPress,
 }) => {
   const maxMinutes = rankings.length > 0 ? Math.max(...rankings.map(r => r.totalMinutes)) : 0;
   const currentUserRank = rankings.find(r => r.isCurrentUser);
@@ -51,7 +53,11 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
               {index > 0 && (
                 <View className="h-px bg-light-border/50 dark:bg-[#2A2B45] mx-4" />
               )}
-              <LeaderboardRow item={item} maxMinutes={maxMinutes} />
+              <LeaderboardRow
+                item={item}
+                maxMinutes={maxMinutes}
+                onPress={!item.isCurrentUser && onFriendPress ? () => onFriendPress(item.userId) : undefined}
+              />
             </View>
           ))}
         </View>
