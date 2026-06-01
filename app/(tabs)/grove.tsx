@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, SafeAreaView, Image, ActivityIndicator, ScrollView, Pressable, useColorScheme } from 'react-native';
+import { View, SafeAreaView, Image, ScrollView, Pressable, useColorScheme, RefreshControl } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
@@ -26,8 +26,8 @@ export default function GroveScreen() {
   const pendingRequestCount = useAppStore((s) => s.grove.pendingRequestCount);
   const pendingChallengeCount = useAppStore((s) => s.grove.pendingChallengeCount);
   const lastGroveVisit = useAppStore((s) => s.grove.lastGroveVisit);
-  const rankings = useAppStore((s) => s.grove.rankings);
-  const rankingsLoading = useAppStore((s) => s.grove.rankingsLoading);
+  const rankingsWeek = useAppStore((s) => s.grove.rankingsWeek);
+  const rankingsMonth = useAppStore((s) => s.grove.rankingsMonth);
   const rankingsPeriod = useAppStore((s) => s.grove.rankingsPeriod);
   const challenges = useAppStore((s) => s.grove.challenges);
   const currentUserId = useAppStore((s) => s.auth.user?.id ?? '');
@@ -53,6 +53,7 @@ export default function GroveScreen() {
 
   const colorScheme = useColorScheme();
   const [showPauseSheet, setShowPauseSheet] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Fetch data on tab focus
   useFocusEffect(
@@ -75,6 +76,24 @@ export default function GroveScreen() {
       };
     }, [profile?.user_id])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchFriends(),
+        fetchFeed(),
+        fetchFriendRequests(),
+        fetchRankings(),
+        fetchChallenges(),
+        fetchHeartbeatSettings(),
+        fetchHeartbeatAlerts(),
+        fetchIncomingCircleInvites(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchFriends, fetchFeed, fetchFriendRequests, fetchRankings, fetchChallenges, fetchHeartbeatSettings, fetchHeartbeatAlerts, fetchIncomingCircleInvites]);
 
   const handleReactionToggle = useCallback(
     (sharedSessionId: string) => {
@@ -138,8 +157,10 @@ export default function GroveScreen() {
 
   const hasFriends = friends.length > 0;
   const hasFeed = feed.length > 0;
-  const isLoading = feedLoading || friendsLoading;
   const activeChallenges = challenges.filter((c) => c.status === 'active');
+  // Show empty onboarding state only when we've confirmed from the server
+  // that there are truly no friends (not during initial load)
+  const showEmptyState = !hasFriends && !hasFeed && !friendsLoading && !feedLoading;
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
@@ -164,7 +185,17 @@ export default function GroveScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+          />
+        }
+      >
         {/* Profile Card */}
         <View className="px-5">
           <Pressable
@@ -221,11 +252,9 @@ export default function GroveScreen() {
         ))}
 
         {/* Content */}
-        {isLoading && !hasFeed && !hasFriends ? (
-          <View className="py-12 items-center">
-            <ActivityIndicator size="large" color="#6592E9" />
-          </View>
-        ) : hasFriends || hasFeed ? (
+        {showEmptyState ? (
+          <EmptyGroveState onAddFriend={handleAddFriend} />
+        ) : (
           <>
             {/* Recent Activity section */}
             <View className="mt-3">
@@ -299,16 +328,13 @@ export default function GroveScreen() {
             {/* Leaderboard section */}
             <View className="mt-6 mb-8">
               <Leaderboard
-                rankings={rankings}
-                loading={rankingsLoading}
+                rankings={rankingsPeriod === 'week' ? rankingsWeek : rankingsMonth}
                 period={rankingsPeriod}
                 onPeriodChange={setRankingsPeriod}
                 onFriendPress={handleFriendPress}
               />
             </View>
           </>
-        ) : (
-          <EmptyGroveState onAddFriend={handleAddFriend} />
         )}
       </ScrollView>
 

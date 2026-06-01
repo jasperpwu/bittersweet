@@ -393,6 +393,35 @@ export default function SettingsScreen() {
           />
         </SettingsSection>
 
+        {/* Storage */}
+        <SettingsSection title="Storage">
+          <SettingsItem
+            title="Clear Cache"
+            subtitle="Remove cached Grove data (friends, feed, rankings)"
+            icon="trash-outline"
+            hasChevron
+            onPress={() => {
+              triggerHaptic('light');
+              Alert.alert(
+                'Clear Cache',
+                'This will remove cached Grove data. It will be re-fetched from the server next time you open the Grove tab.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Clear',
+                    style: 'destructive',
+                    onPress: () => {
+                      useAppStore.getState().grove.clearGroveCache();
+                      triggerHaptic('success');
+                    },
+                  },
+                ]
+              );
+            }}
+            isLast
+          />
+        </SettingsSection>
+
         {/* About */}
         <SettingsSection title="About">
           <SettingsItem

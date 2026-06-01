@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { Typography } from '../ui/Typography';
 import { PeriodToggle } from './PeriodToggle';
 import { LeaderboardRow } from './LeaderboardRow';
@@ -7,7 +7,6 @@ import type { RankingItem } from '../../services/grove/GroveRankingService';
 
 interface LeaderboardProps {
   rankings: RankingItem[];
-  loading: boolean;
   period: 'week' | 'month';
   onPeriodChange: (period: 'week' | 'month') => void;
   onFriendPress?: (userId: string) => void;
@@ -15,7 +14,6 @@ interface LeaderboardProps {
 
 export const Leaderboard: React.FC<LeaderboardProps> = ({
   rankings,
-  loading,
   period,
   onPeriodChange,
   onFriendPress,
@@ -36,11 +34,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       </View>
 
       {/* Content */}
-      {loading ? (
-        <View className="py-8 items-center">
-          <ActivityIndicator size="small" color="#6592E9" />
-        </View>
-      ) : rankings.length === 0 ? (
+      {rankings.length === 0 ? (
         <View className="py-8 items-center px-5">
           <Typography variant="body-14" color="secondary" className="text-center">
             No focus sessions shared this {period}. Start a session to appear on the leaderboard!

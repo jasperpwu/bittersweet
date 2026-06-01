@@ -509,6 +509,11 @@ export const persistenceConfig = {
       isActive: state.grove?.isActive ?? false,
       lastGroveVisit: state.grove?.lastGroveVisit ?? null,
       heartbeatSettings: state.grove?.heartbeatSettings ?? null,
+      // Cached server data — shown immediately on launch, refreshed in background
+      friends: state.grove?.friends ?? [],
+      feed: state.grove?.feed ?? [],
+      rankingsWeek: state.grove?.rankingsWeek ?? [],
+      rankingsMonth: state.grove?.rankingsMonth ?? [],
     },
   }),
 

@@ -48,7 +48,8 @@ export interface GroveSlice {
   friendFeedLoading: boolean;
 
   // Phase 3
-  rankings: RankingItem[];
+  rankingsWeek: RankingItem[];
+  rankingsMonth: RankingItem[];
   rankingsLoading: boolean;
   rankingsPeriod: 'week' | 'month';
   challenges: ChallengeItem[];
@@ -64,6 +65,7 @@ export interface GroveSlice {
   removeAvatar: () => Promise<void>;
   toggleGroveActive: (active: boolean) => Promise<void>;
   clearGroveError: () => void;
+  clearGroveCache: () => void;
   resetGrove: () => void;
 
   // Phase 2 actions
@@ -87,7 +89,7 @@ export interface GroveSlice {
   fetchFriendFeed: (friendUserId: string) => Promise<void>;
 
   // Phase 3 actions
-  fetchRankings: (period?: 'week' | 'month') => Promise<void>;
+  fetchRankings: () => Promise<void>;
   setRankingsPeriod: (period: 'week' | 'month') => void;
   fetchChallenges: () => Promise<void>;
   createChallenge: (input: CreateChallengeInput) => Promise<void>;
@@ -145,7 +147,8 @@ const initialState = {
   friendFeed: [],
   friendFeedLoading: false,
   // Phase 3
-  rankings: [],
+  rankingsWeek: [],
+  rankingsMonth: [],
   rankingsLoading: false,
   rankingsPeriod: 'week' as const,
   challenges: [],
@@ -377,6 +380,18 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
   clearGroveError: () => {
     set((state: any) => ({
       grove: { ...state.grove, error: null },
+    }));
+  },
+
+  clearGroveCache: () => {
+    set((state: any) => ({
+      grove: {
+        ...state.grove,
+        friends: [],
+        feed: [],
+        rankingsWeek: [],
+        rankingsMonth: [],
+      },
     }));
   },
 
@@ -678,16 +693,18 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
 
   // ========== Phase 3 Actions ==========
 
-  fetchRankings: async (period?: 'week' | 'month') => {
-    const currentPeriod = period || get().grove.rankingsPeriod;
+  fetchRankings: async () => {
     set((state: any) => ({
       grove: { ...state.grove, rankingsLoading: true },
     }));
 
     try {
-      const rankings = await GroveRankingService.fetchRankings(currentPeriod);
+      const [weekRankings, monthRankings] = await Promise.all([
+        GroveRankingService.fetchRankings('week'),
+        GroveRankingService.fetchRankings('month'),
+      ]);
       set((state: any) => ({
-        grove: { ...state.grove, rankings, rankingsLoading: false },
+        grove: { ...state.grove, rankingsWeek: weekRankings, rankingsMonth: monthRankings, rankingsLoading: false },
       }));
     } catch (error: any) {
       console.error('Failed to fetch rankings:', error);
@@ -701,8 +718,6 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     set((state: any) => ({
       grove: { ...state.grove, rankingsPeriod: period },
     }));
-    // Fetch rankings for the new period
-    get().grove.fetchRankings(period);
   },
 
   fetchChallenges: async () => {
