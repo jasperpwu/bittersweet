@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Pressable, useWindowDimensions, TextInput, Image, useColorScheme, ActivityIndicator } from 'react-native';
+import { View, Pressable, useWindowDimensions, TextInput, Image, useColorScheme, ActivityIndicator, Alert, Linking, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -23,7 +23,7 @@ import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStor
 import { showToast } from '../../src/components/ui/Toast';
 import { isToday } from '../../src/utils/dateUtils';
 import { FocusSession } from '../../src/types/models';
-import { saveSessionPhoto } from '../../src/services/sessionPhotoService';
+import { saveSessionPhoto, deleteSessionPhoto } from '../../src/services/sessionPhotoService';
 
 
 export default function JournalScreen() {
@@ -269,19 +269,42 @@ export default function JournalScreen() {
     source: 'library' | 'camera',
     onPicked: (uri: string) => void
   ) => {
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ['images'],
-      allowsEditing: false,
-      quality: 0.8,
-    };
+    try {
+      // Request appropriate permission first
+      const permissionResult =
+        source === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    const result =
-      source === 'camera'
-        ? await ImagePicker.launchCameraAsync(options)
-        : await ImagePicker.launchImageLibraryAsync(options);
+      if (!permissionResult.granted) {
+        const target = source === 'camera' ? 'camera' : 'photo library';
+        Alert.alert(
+          'Permission Required',
+          `Please allow access to your ${target} in Settings to add photos.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
 
-    if (!result.canceled && result.assets[0]) {
-      onPicked(result.assets[0].uri);
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.8,
+      };
+
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(options)
+          : await ImagePicker.launchImageLibraryAsync(options);
+
+      if (!result.canceled && result.assets[0]) {
+        onPicked(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Failed to pick image:', error);
     }
   };
 
@@ -486,7 +509,7 @@ export default function JournalScreen() {
 
       <Modal isVisible={!!selectedSession} onClose={closeSessionModal} size="medium">
         {selectedSession && (
-          <View>
+          <Pressable onPress={Keyboard.dismiss} accessible={false}>
             <Typography variant="headline-20" color="primary" className="mb-1">
               {isManual ? 'Focus Session (Manual)' : 'Focus Session'}
             </Typography>
@@ -575,6 +598,24 @@ export default function JournalScreen() {
                   style={{ width: '100%', height: 160, borderRadius: 12 }}
                   resizeMode="cover"
                 />
+                <Pressable
+                  onPress={async () => {
+                    try {
+                      await deleteSessionPhoto(selectedSession.id);
+                      updateSession(selectedSession.id, { photoUrl: undefined });
+                      setSelectedSession({ ...selectedSession, photoUrl: undefined });
+                    } catch (error) {
+                      console.error('Failed to delete session photo:', error);
+                    }
+                  }}
+                  className="mt-2 flex-row items-center justify-center rounded-xl py-2.5 active:opacity-70"
+                  style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                  <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
+                    Remove Photo
+                  </Typography>
+                </Pressable>
               </View>
             ) : (
               <View className="mb-5">
@@ -582,7 +623,7 @@ export default function JournalScreen() {
                   Add a photo
                 </Typography>
                 {editPhotoUri ? (
-                  <View className="items-center">
+                  <View>
                     <Image
                       source={{ uri: editPhotoUri }}
                       style={{ width: '100%', height: 160, borderRadius: 12 }}
@@ -590,15 +631,12 @@ export default function JournalScreen() {
                     />
                     <Pressable
                       onPress={() => setEditPhotoUri(null)}
-                      className="mt-2 flex-row items-center active:opacity-70"
+                      className="mt-2 flex-row items-center justify-center rounded-xl py-2.5 active:opacity-70"
+                      style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}
                     >
-                      <Ionicons
-                        name="close-circle-outline"
-                        size={18}
-                        color={colorScheme === 'dark' ? '#999' : '#8B7355'}
-                      />
-                      <Typography variant="body-12" color="secondary" className="ml-1">
-                        Remove
+                      <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                      <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
+                        Remove Photo
                       </Typography>
                     </Pressable>
                   </View>
@@ -657,12 +695,13 @@ export default function JournalScreen() {
                 )}
               </Pressable>
             </View>
-          </View>
+          </Pressable>
         )}
       </Modal>
 
       {/* Manual Entry Modal */}
       <Modal isVisible={isManualEntryModalVisible} onClose={closeManualEntryModal} size="large">
+        <Pressable onPress={Keyboard.dismiss} accessible={false}>
         <Animated.View style={manualEntryShakeStyle}>
           <Typography variant="headline-20" color="primary" className="mb-4">
             Add Focus Session
@@ -740,7 +779,7 @@ export default function JournalScreen() {
               Photo (optional)
             </Typography>
             {manualPhotoUri ? (
-              <View className="items-center mb-4">
+              <View className="mb-4">
                 <Image
                   source={{ uri: manualPhotoUri }}
                   style={{ width: '100%', height: 160, borderRadius: 12 }}
@@ -748,15 +787,12 @@ export default function JournalScreen() {
                 />
                 <Pressable
                   onPress={() => setManualPhotoUri(null)}
-                  className="mt-2 flex-row items-center active:opacity-70"
+                  className="mt-2 flex-row items-center justify-center rounded-xl py-2.5 active:opacity-70"
+                  style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}
                 >
-                  <Ionicons
-                    name="close-circle-outline"
-                    size={18}
-                    color={colorScheme === 'dark' ? '#999' : '#8B7355'}
-                  />
-                  <Typography variant="body-12" color="secondary" className="ml-1">
-                    Remove
+                  <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                  <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
+                    Remove Photo
                   </Typography>
                 </Pressable>
               </View>
@@ -830,6 +866,7 @@ export default function JournalScreen() {
             </View>
           </View>
         </Animated.View>
+        </Pressable>
       </Modal>
     </View>
   );

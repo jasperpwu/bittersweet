@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollView, Platform, useColorScheme, Image, ActivityIndicator } from 'react-native';
+import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollView, Platform, useColorScheme, Image, ActivityIndicator, Alert, Linking } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -55,19 +55,42 @@ export default function SessionCompleteModal() {
   const hasExistingPhoto = !!session.photoUrl;
 
   const pickImage = async (source: 'library' | 'camera') => {
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ['images'],
-      allowsEditing: false,
-      quality: 0.8,
-    };
+    try {
+      // Request appropriate permission first
+      const permissionResult =
+        source === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    const result =
-      source === 'camera'
-        ? await ImagePicker.launchCameraAsync(options)
-        : await ImagePicker.launchImageLibraryAsync(options);
+      if (!permissionResult.granted) {
+        const target = source === 'camera' ? 'camera' : 'photo library';
+        Alert.alert(
+          'Permission Required',
+          `Please allow access to your ${target} in Settings to add photos.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
 
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.8,
+      };
+
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(options)
+          : await ImagePicker.launchImageLibraryAsync(options);
+
+      if (!result.canceled && result.assets[0]) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Failed to pick image:', error);
     }
   };
 
@@ -216,7 +239,7 @@ export default function SessionCompleteModal() {
                 Add a photo
               </Typography>
               {photoUri ? (
-                <View className="items-center">
+                <View>
                   <Image
                     source={{ uri: photoUri }}
                     style={{ width: '100%', height: 200, borderRadius: 12 }}
@@ -224,15 +247,12 @@ export default function SessionCompleteModal() {
                   />
                   <Pressable
                     onPress={() => setPhotoUri(null)}
-                    className="mt-2 flex-row items-center active:opacity-70"
+                    className="mt-2 flex-row items-center justify-center rounded-xl py-2.5 active:opacity-70"
+                    style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}
                   >
-                    <Ionicons
-                      name="close-circle-outline"
-                      size={18}
-                      color={colorScheme === 'dark' ? '#999' : '#8B7355'}
-                    />
-                    <Typography variant="body-12" color="secondary" className="ml-1">
-                      Remove
+                    <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                    <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
+                      Remove Photo
                     </Typography>
                   </Pressable>
                 </View>
