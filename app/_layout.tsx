@@ -500,7 +500,7 @@ export default function RootLayout() {
                   name="(modals)/add-friends"
                   options={{
                     headerShown: false,
-                    presentation: 'modal',
+                    presentation: 'card',
                     gestureEnabled: true,
                   }}
                 />

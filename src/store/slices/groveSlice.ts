@@ -73,6 +73,7 @@ export interface GroveSlice {
   removeFriend: (friendshipId: string) => Promise<void>;
   acceptFriendRequest: (friendshipId: string) => Promise<void>;
   rejectFriendRequest: (friendshipId: string) => Promise<void>;
+  sendFriendRequest: (addresseeId: string) => Promise<void>;
   fetchFriendRequests: () => Promise<void>;
   fetchFeed: () => Promise<void>;
   shareSession: (input: ShareSessionInput) => Promise<void>;
@@ -495,6 +496,15 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       });
     } catch (error: any) {
       console.error('Failed to reject friend request:', error);
+      throw error;
+    }
+  },
+
+  sendFriendRequest: async (addresseeId: string) => {
+    try {
+      await GroveFriendService.sendFriendRequest(addresseeId);
+    } catch (error: any) {
+      console.error('Failed to send friend request:', error);
       throw error;
     }
   },

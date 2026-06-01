@@ -239,6 +239,40 @@ export const GroveFriendService = {
   },
 
   /**
+   * Search for a profile by exact handle match using the search_profiles RPC.
+   * This is a SECURITY DEFINER function that bypasses RLS to search all profiles.
+   * Returns at most one profile.
+   */
+  async searchProfiles(query: string): Promise<GroveProfile | null> {
+    const { data, error } = await supabase.rpc('search_profiles', {
+      query,
+    });
+
+    if (error) throw error;
+    const results = data as GroveProfile[] | null;
+    return results && results.length > 0 ? results[0] : null;
+  },
+
+  /**
+   * Send a friend request to another user.
+   * Inserts a pending friendship row with the current user as requester.
+   */
+  async sendFriendRequest(addresseeId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('grove_friendships')
+      .insert({
+        requester_id: user.id,
+        addressee_id: addresseeId,
+        status: 'pending',
+      });
+
+    if (error) throw error;
+  },
+
+  /**
    * Resolve an invite code via the RPC function.
    * Auto-creates an accepted friendship.
    */
