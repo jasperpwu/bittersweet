@@ -170,6 +170,7 @@ export default function RootLayout() {
           PushNotificationService.unregisterPushToken();
           resetSyncSnapshot();
           useAppStore.getState().grove.resetGrove();
+          WidgetService.clearSupabaseCredentials();
           useAppStore.setState((state) => ({
             auth: {
               ...state.auth,
@@ -177,7 +178,12 @@ export default function RootLayout() {
               isAuthenticated: false,
             },
           }));
-        } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          // Sync refreshed JWT so native intents always have a valid token
+          WidgetService.syncSupabaseCredentials(session.user.id, session.access_token);
+        }
+
+        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
           console.log('🔑 onAuthStateChange fired:', event, 'user:', session.user.id);
           const user = session.user;
 
@@ -226,6 +232,9 @@ export default function RootLayout() {
               lastSignedInUserId: user.id,
             },
           }));
+
+          // Sync Supabase credentials to UserDefaults for native intent REST calls
+          WidgetService.syncSupabaseCredentials(user.id, session.access_token);
 
           // Check if cloud has data, then decide initial upload vs pull+merge
           try {

@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
+import { FocusingBadge } from '../../src/components/grove/FocusingBadge';
 import { ReactionButton } from '../../src/components/grove/ReactionButton';
 import { useAppStore } from '../../src/store';
 import type { FeedItem } from '../../src/services/grove/GroveFeedService';
@@ -83,24 +84,34 @@ export default function FriendFeedModal() {
         <View className="px-5 mb-4">
           <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4">
             <View className="flex-row items-center">
-              {friendProfile.avatar_url ? (
-                <Image
-                  source={{ uri: friendProfile.avatar_url }}
-                  style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
-                />
-              ) : (
-                <View className="mr-3">
+              <View style={{ position: 'relative', marginRight: 12 }}>
+                {friendProfile.avatar_url ? (
+                  <Image
+                    source={{ uri: friendProfile.avatar_url }}
+                    style={{ width: 48, height: 48, borderRadius: 24 }}
+                  />
+                ) : (
                   <DefaultAvatar
                     displayName={friendProfile.display_name}
                     color={friendProfile.avatar_color}
                     size={48}
                   />
-                </View>
-              )}
+                )}
+                {friendProfile.is_focusing && <FocusingBadge size={12} />}
+              </View>
               <View className="flex-1">
-                <Typography variant="headline-18" color="primary">
-                  {friendProfile.display_name}
-                </Typography>
+                <View className="flex-row items-center">
+                  <Typography variant="headline-18" color="primary">
+                    {friendProfile.display_name}
+                  </Typography>
+                  {friendProfile.is_focusing && (
+                    <View className="ml-2 bg-[#34D399]/20 rounded-full px-2 py-0.5">
+                      <Typography variant="body-12" style={{ color: '#34D399' }}>
+                        Focusing now
+                      </Typography>
+                    </View>
+                  )}
+                </View>
                 <Typography variant="body-12" color="secondary">
                   @{friendProfile.handle}
                 </Typography>

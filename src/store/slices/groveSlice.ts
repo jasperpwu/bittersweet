@@ -16,6 +16,7 @@ import type { FeedItem, ShareSessionInput } from '../../services/grove/GroveFeed
 import type { RankingItem } from '../../services/grove/GroveRankingService';
 import type { ChallengeItem, CreateChallengeInput, ChallengeProgressResult } from '../../services/grove/GroveChallengeService';
 import type { HeartbeatSettings, InnerCircleMember, HeartbeatAlert } from '../../services/grove/GroveHeartbeatService';
+import { WidgetService } from '../../services/WidgetService';
 
 export interface PendingInvite {
   code: string;
@@ -118,6 +119,9 @@ export interface GroveSlice {
   markHeartbeatAlertRead: (alertId: string) => Promise<void>;
   recordHeartbeatActivity: () => Promise<void>;
   notifyBlocklistEdit: () => Promise<void>;
+
+  // Focusing status
+  setFocusing: (isFocusing: boolean) => void;
 }
 
 const initialState = {
@@ -175,6 +179,15 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
             isActive: profile.is_active,
           },
         }));
+
+        // Sync privacy settings to UserDefaults for native intent REST calls
+        if (privacy) {
+          WidgetService.syncGrovePrivacy({
+            sharedTagIds: privacy.shared_tag_ids,
+            shareNotes: privacy.share_notes,
+            showLiveStatus: privacy.show_live_status,
+          });
+        }
       } else {
         set((state: any) => ({
           grove: {
@@ -259,6 +272,13 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       set((state: any) => ({
         grove: { ...state.grove, privacySettings, isLoading: false },
       }));
+
+      // Sync updated privacy to UserDefaults for native intent REST calls
+      WidgetService.syncGrovePrivacy({
+        sharedTagIds: privacySettings.shared_tag_ids,
+        shareNotes: privacySettings.share_notes,
+        showLiveStatus: privacySettings.show_live_status,
+      });
     } catch (error: any) {
       set((state: any) => ({
         grove: {
@@ -698,6 +718,12 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       set((state: any) => ({
         grove: { ...state.grove, challenges, challengesLoading: false, pendingChallengeCount },
       }));
+
+      // Sync active challenges to UserDefaults for native intent REST calls
+      const activeChallenges = challenges
+        .filter((c: ChallengeItem) => c.status === 'active')
+        .map((c: ChallengeItem) => ({ id: c.id, tagId: c.tagId }));
+      WidgetService.syncActiveChallenges(activeChallenges);
     } catch (error: any) {
       console.error('Failed to fetch challenges:', error);
       set((state: any) => ({
@@ -743,6 +769,12 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
           },
         };
       });
+
+      // Re-sync active challenges to UserDefaults
+      const activeChallenges = get().grove.challenges
+        .filter((c: ChallengeItem) => c.status === 'active')
+        .map((c: ChallengeItem) => ({ id: c.id, tagId: c.tagId }));
+      WidgetService.syncActiveChallenges(activeChallenges);
     } catch (error: any) {
       console.error('Failed to decline challenge:', error);
       throw error;
@@ -982,5 +1014,36 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       // Fire-and-forget: silent fail
       console.error('Failed to notify blocklist edit:', error);
     }
+  },
+
+  // ========== Focusing Status ==========
+
+  setFocusing: (isFocusing: boolean) => {
+    const { profile, privacySettings } = get().grove;
+    if (!profile) {
+      console.log('🌳 [setFocusing] skipped — no grove profile');
+      return;
+    }
+
+    // If setting to true, gate on show_live_status privacy setting
+    if (isFocusing && !privacySettings?.show_live_status) {
+      console.log('🌳 [setFocusing] skipped — show_live_status is off');
+      return;
+    }
+
+    // Optimistic local update
+    set((state: any) => ({
+      grove: {
+        ...state.grove,
+        profile: state.grove.profile
+          ? { ...state.grove.profile, is_focusing: isFocusing }
+          : null,
+      },
+    }));
+
+    // Fire-and-forget Supabase update
+    GroveService.setFocusing(isFocusing).catch((error: any) => {
+      console.error('Failed to set focusing status:', error);
+    });
   },
 });

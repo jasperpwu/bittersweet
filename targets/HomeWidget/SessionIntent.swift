@@ -112,6 +112,9 @@ struct StartSessionIntent: LiveActivityIntent {
     // set it here for immediate effect when starting from the widget.
     WidgetDataManager.shared.setShieldForFocusMode()
 
+    // Notify friends immediately via Supabase (fire-and-forget)
+    SupabaseClient.setFocusing(true)
+
     WidgetDataManager.shared.reloadTimelines()
 
     return .result()
@@ -164,6 +167,52 @@ struct StopSessionIntent: LiveActivityIntent {
     // JS won't run until the app foregrounds, so we update the shield config
     // directly from native to avoid the shield staying stuck in focus mode.
     WidgetDataManager.shared.restoreShieldForNonFocusMode()
+
+    // --- Supabase sync (fire-and-forget) ---
+    // Clear focusing status immediately so friends see the user is done
+    SupabaseClient.setFocusing(false)
+
+    // Record the completed session and share to feed if applicable
+    if let sessionInfo = WidgetDataManager.shared.getWidgetStartedSession() {
+      let startTime = sessionInfo["startTime"] as? Double ?? 0
+      let stopTimestamp = Date().timeIntervalSince1970 * 1000
+      let durationMinutes = Int((stopTimestamp - startTime) / 60000)
+
+      if durationMinutes > 0, let tagId = sessionInfo["tagId"] as? String {
+        let sessionId = UUID().uuidString
+        let tagName = sessionInfo["tagName"] as? String ?? ""
+        let tagIcon = sessionInfo["tagIcon"] as? String ?? ""
+
+        // Record to focus_sessions (upsert — JS foreground will be a harmless no-op)
+        SupabaseClient.recordSession(
+          sessionId: sessionId,
+          tagId: tagId,
+          duration: durationMinutes,
+          startTime: startTime,
+          endTime: stopTimestamp
+        )
+
+        // Share to grove feed if tag is in shared list (privacy check inside)
+        SupabaseClient.shareSession(
+          sessionId: sessionId,
+          tagId: tagId,
+          tagName: tagName,
+          tagIcon: tagIcon,
+          duration: durationMinutes,
+          startTime: startTime,
+          endTime: stopTimestamp,
+          notes: nil as String?
+        )
+
+        // Record challenge progress for any active challenge matching this tag
+        let activeChallenges = WidgetDataManager.shared.getGroveActiveChallenges()
+        for challenge in activeChallenges {
+          if challenge["tagId"] == tagId, let challengeId = challenge["id"] {
+            SupabaseClient.recordChallengeProgress(challengeId: challengeId)
+          }
+        }
+      }
+    }
 
     WidgetDataManager.shared.reloadTimelines()
 

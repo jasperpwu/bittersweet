@@ -444,18 +444,21 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       // Stop timer
       stopTimer();
       
+      // Clear focusing status (safety net for flows that bypass teardownSession)
+      try { get().grove?.setFocusing?.(false); } catch (_) {}
+
       // Emit session completed event for cross-store communication
       eventEmitter.emitFocusSessionCompleted(
         completedSession.id,
         fruitsEarned,
         completedSession.duration
       );
-      
+
       if (__DEV__) {
         console.log('✅ Focus session completed:', completedSession.id, `Fruits earned: ${fruitsEarned}`);
       }
     },
-    
+
     cancelSession: () => {
       const currentSession = get().focus.currentSession;
       
@@ -489,12 +492,15 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       
       // Stop timer
       stopTimer();
-      
+
+      // Clear focusing status (safety net for flows that bypass teardownSession)
+      try { get().grove?.setFocusing?.(false); } catch (_) {}
+
       // Emit session cancelled event
       eventEmitter.emit(STORE_EVENTS.FOCUS_SESSION_CANCELLED, {
         sessionId: currentSession.session.id,
       });
-      
+
       if (__DEV__) {
         console.log('❌ Focus session cancelled:', currentSession.session.id);
       }

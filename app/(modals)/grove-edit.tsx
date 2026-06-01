@@ -18,6 +18,7 @@ import { AvatarPicker } from '../../src/components/grove/AvatarPicker';
 import { GenderPicker } from '../../src/components/grove/GenderPicker';
 import { HandleInput } from '../../src/components/grove/HandleInput';
 import { PrivacyToggleList } from '../../src/components/grove/PrivacyToggleList';
+import { InterestPicker } from '../../src/components/grove/InterestPicker';
 import { useHandleValidation } from '../../src/hooks/useHandleValidation';
 import { useAppStore } from '../../src/store';
 
@@ -57,7 +58,7 @@ export default function GroveEditModal() {
   };
 
   const [gender, setGender] = useState<Gender | null>(profile?.gender ?? null);
-  const [jobTitle, setJobTitle] = useState(profile?.job_title ?? '');
+  const [interests, setInterests] = useState<string[]>(profile?.interests ?? []);
 
   // Avatar state: track new selection and removal separately
   const [newAvatarUri, setNewAvatarUri] = useState<string | null>(null);
@@ -109,7 +110,8 @@ export default function GroveEditModal() {
       displayName.trim() !== profile.display_name ||
       effectiveHandle !== profile.handle ||
       gender !== profile.gender ||
-      (jobTitle.trim() || null) !== profile.job_title;
+      JSON.stringify([...interests].sort()) !==
+        JSON.stringify([...(profile.interests ?? [])].sort());
 
     const avatarChanged = newAvatarUri !== null || avatarRemoved;
 
@@ -121,7 +123,7 @@ export default function GroveEditModal() {
 
     return profileChanged || avatarChanged || privacyChanged;
   }, [
-    displayName, effectiveHandle, gender, jobTitle,
+    displayName, effectiveHandle, gender, interests,
     newAvatarUri, avatarRemoved,
     sharedTagIds, shareNotes, showLiveStatus,
     profile, privacySettings,
@@ -148,14 +150,15 @@ export default function GroveEditModal() {
         displayName.trim() !== profile.display_name ||
         effectiveHandle !== profile.handle ||
         gender !== profile.gender ||
-        (jobTitle.trim() || null) !== profile.job_title;
+        JSON.stringify([...interests].sort()) !==
+          JSON.stringify([...(profile.interests ?? [])].sort());
 
       if (profileChanged) {
         await updateProfile({
           display_name: displayName.trim(),
           handle: effectiveHandle,
           gender,
-          job_title: jobTitle.trim() || null,
+          interests,
         });
       }
 
@@ -307,31 +310,14 @@ export default function GroveEditModal() {
             <GenderPicker value={gender} onChange={setGender} />
           </View>
 
-          {/* Job Title */}
+          {/* Interests */}
           <View className="mb-8">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Job Title
+              Interests
             </Typography>
-            <TextInput
-              value={jobTitle}
-              onChangeText={(text) => setJobTitle(text.slice(0, 30))}
-              placeholder="e.g. Designer, Student, Engineer"
-              placeholderTextColor={isDark ? '#575757' : '#B8A88A'}
-              maxLength={30}
-              style={{
-                backgroundColor: isDark ? '#242540' : '#F0E0CC',
-                borderRadius: 12,
-                paddingHorizontal: 16,
-                height: 48,
-                fontSize: 14,
-                color: isDark ? '#FFFFFF' : '#5D4E37',
-                fontFamily: 'Poppins-Regular',
-                borderWidth: 1,
-                borderColor: isDark ? '#575757' : '#D4C4A8',
-              }}
-            />
-            <Typography variant="body-12" color="secondary" className="mt-1 ml-1">
-              {jobTitle.trim().length}/30
+            <InterestPicker value={interests} onChange={setInterests} />
+            <Typography variant="body-12" color="secondary" className="mt-2 ml-1">
+              Used to match you with themed challenges
             </Typography>
           </View>
 

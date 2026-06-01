@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Image, Pressable } from 'react-native';
 import { Typography } from '../ui/Typography';
 import { DefaultAvatar } from './DefaultAvatar';
+import { FocusingBadge } from './FocusingBadge';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
 
 interface LeaderboardRowProps {
@@ -41,20 +42,21 @@ export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({ item, maxMinutes
       </Typography>
 
       {/* Avatar */}
-      {item.avatarUrl ? (
-        <Image
-          source={{ uri: item.avatarUrl }}
-          style={{ width: 32, height: 32, borderRadius: 16, marginRight: 10 }}
-        />
-      ) : (
-        <View className="mr-2.5">
+      <View style={{ position: 'relative', marginRight: 10 }}>
+        {item.avatarUrl ? (
+          <Image
+            source={{ uri: item.avatarUrl }}
+            style={{ width: 32, height: 32, borderRadius: 16 }}
+          />
+        ) : (
           <DefaultAvatar
             displayName={item.displayName}
             color={item.avatarColor}
             size={32}
           />
-        </View>
-      )}
+        )}
+        {item.isFocusing && <FocusingBadge size={9} />}
+      </View>
 
       {/* Name + progress bar */}
       <View className="flex-1 mr-3">

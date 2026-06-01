@@ -642,6 +642,9 @@ export default function FocusScreen() {
   };
 
   const startTimer = () => {
+    // Signal focusing status to friends
+    useAppStore.getState().grove.setFocusing(true);
+
     // End any active unlock sessions — re-block apps and refund remaining time
     const store = useAppStore.getState();
     const { activeSessions } = store.blocklist;
@@ -798,6 +801,9 @@ export default function FocusScreen() {
   };
 
   const stopCompletely = () => {
+    // Clear focusing status
+    useAppStore.getState().grove.setFocusing(false);
+
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = null;
     sessionStartTimeRef.current = null;
@@ -823,6 +829,9 @@ export default function FocusScreen() {
   // restores shield, clears widget state, cancels notification,
   // and returns the Live Activity ID so the caller can stop it.
   const teardownSession = () => {
+    // Clear focusing status
+    useAppStore.getState().grove.setFocusing(false);
+
     // Clear timer
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = null;
@@ -1178,6 +1187,9 @@ export default function FocusScreen() {
         recoveredTagLabel,
         persisted.targetDuration,
       );
+
+      // Session is being recovered/adopted — signal focusing status
+      useAppStore.getState().grove.setFocusing(true);
 
       if (persisted.isInfinite) {
         // Infinite session was running when app was killed — restore it

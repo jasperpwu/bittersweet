@@ -11,8 +11,9 @@ export interface GroveProfile {
   avatar_url: string | null;
   avatar_color: string;
   gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
-  job_title: string | null;
+  interests: string[];
   is_active: boolean;
+  is_focusing: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -33,7 +34,7 @@ export interface CreateProfileInput {
   handle: string;
   avatar_color: string;
   gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
-  job_title?: string | null;
+  interests?: string[];
 }
 
 export interface UpdateProfileInput {
@@ -41,8 +42,9 @@ export interface UpdateProfileInput {
   handle?: string;
   avatar_color?: string;
   gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
-  job_title?: string | null;
+  interests?: string[];
   is_active?: boolean;
+  is_focusing?: boolean;
 }
 
 export interface UpdatePrivacyInput {
@@ -88,7 +90,7 @@ export const GroveService = {
         handle: input.handle,
         avatar_color: input.avatar_color,
         gender: input.gender ?? null,
-        job_title: input.job_title ?? null,
+        interests: input.interests ?? [],
       })
       .select()
       .single();
@@ -205,6 +207,20 @@ export const GroveService = {
     await supabase
       .from('grove_profiles')
       .update({ avatar_url: null, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+  },
+
+  /**
+   * Lightweight update to set the is_focusing flag on the current user's profile.
+   * Fire-and-forget — does not refetch the full profile.
+   */
+  async setFocusing(isFocusing: boolean): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from('grove_profiles')
+      .update({ is_focusing: isFocusing, updated_at: new Date().toISOString() })
       .eq('user_id', user.id);
   },
 

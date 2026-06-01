@@ -10,8 +10,9 @@ CREATE TABLE grove_profiles (
   avatar_url TEXT,
   avatar_color TEXT NOT NULL DEFAULT '#6592E9',
   gender TEXT CHECK (gender IN ('male', 'female', 'non-binary', 'prefer-not-to-say')),
-  job_title TEXT CHECK (char_length(job_title) <= 30),
+  interests TEXT[] NOT NULL DEFAULT '{}',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  is_focusing BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT unique_user_id UNIQUE (user_id)
@@ -294,7 +295,8 @@ BEGIN
         'display_name', gp.display_name,
         'handle', gp.handle,
         'avatar_url', gp.avatar_url,
-        'avatar_color', gp.avatar_color
+        'avatar_color', gp.avatar_color,
+        'is_focusing', gp.is_focusing
       ) AS profile
     FROM grove_shared_sessions ss
     JOIN grove_profiles gp ON gp.user_id = ss.user_id
@@ -311,7 +313,7 @@ BEGIN
           )
         )
       )
-    GROUP BY ss.user_id, gp.user_id, gp.display_name, gp.handle, gp.avatar_url, gp.avatar_color
+    GROUP BY ss.user_id, gp.user_id, gp.display_name, gp.handle, gp.avatar_url, gp.avatar_color, gp.is_focusing
   ) AS row_data;
 
   RETURN COALESCE(result, '[]'::json);

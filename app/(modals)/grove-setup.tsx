@@ -18,6 +18,7 @@ import { HandleInput } from '../../src/components/grove/HandleInput';
 import { AvatarPicker } from '../../src/components/grove/AvatarPicker';
 import { GenderPicker } from '../../src/components/grove/GenderPicker';
 import { PrivacyToggleList } from '../../src/components/grove/PrivacyToggleList';
+import { InterestPicker } from '../../src/components/grove/InterestPicker';
 import { useHandleValidation } from '../../src/hooks/useHandleValidation';
 import { useAppStore } from '../../src/store';
 
@@ -55,7 +56,7 @@ export default function GroveSetupModal() {
 
   // Step 2: About
   const [gender, setGender] = useState<Gender | null>(null);
-  const [jobTitle, setJobTitle] = useState('');
+  const [interests, setInterests] = useState<string[]>([]);
 
   // Step 3: Privacy
   const [sharedTagIds, setSharedTagIds] = useState<string[]>([]);
@@ -92,7 +93,7 @@ export default function GroveSetupModal() {
           handle,
           avatar_color: avatarColor,
           gender,
-          job_title: jobTitle.trim() || null,
+          interests,
         },
         {
           shared_tag_ids: sharedTagIds,
@@ -220,31 +221,13 @@ export default function GroveSetupModal() {
             </Typography>
             <GenderPicker value={gender} onChange={setGender} />
 
-            {/* Job Title */}
+            {/* Interests */}
             <Typography variant="subtitle-14-medium" color="primary" className="mt-6 mb-2">
-              What do you do?
+              What are you interested in?
             </Typography>
-            <TextInput
-              value={jobTitle}
-              onChangeText={(text) => setJobTitle(text.slice(0, 30))}
-              placeholder="e.g. Student, Designer, Engineer"
-              placeholderTextColor={isDark ? '#575757' : '#B8A88A'}
-              autoCapitalize="words"
-              maxLength={30}
-              style={{
-                backgroundColor: isDark ? '#242540' : '#F0E0CC',
-                borderRadius: 12,
-                paddingHorizontal: 16,
-                height: 48,
-                fontSize: 14,
-                color: isDark ? '#FFFFFF' : '#5D4E37',
-                fontFamily: 'Poppins-Regular',
-                borderWidth: 1,
-                borderColor: isDark ? '#575757' : '#D4C4A8',
-              }}
-            />
-            <Typography variant="body-12" color="secondary" className="mt-1 ml-1">
-              {jobTitle.length}/30
+            <InterestPicker value={interests} onChange={setInterests} />
+            <Typography variant="body-12" color="secondary" className="mt-2 ml-1">
+              Used to match you with themed challenges
             </Typography>
           </View>
         );

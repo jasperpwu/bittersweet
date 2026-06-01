@@ -45,6 +45,7 @@ const withHomeWidget = (config) => {
         "SessionIntent.swift",
         "HomeScreenWidgetView.swift",
         "HomeScreenWidget.swift",
+        "SupabaseClient.swift",
       ];
 
       // Files also needed in main app target (for LiveActivityIntent to run in app process)
@@ -52,6 +53,7 @@ const withHomeWidget = (config) => {
         "WidgetDataManager.swift",
         "SessionIntent.swift",
         "SessionIntentActivityKit.swift",
+        "SupabaseClient.swift",
       ];
 
       // 1. Copy Swift files to widget extension directory

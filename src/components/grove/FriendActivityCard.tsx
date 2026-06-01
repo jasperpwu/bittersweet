@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Image } from 'react-native';
 import { Typography } from '../ui/Typography';
 import { DefaultAvatar } from './DefaultAvatar';
+import { FocusingBadge } from './FocusingBadge';
 import { ReactionButton } from './ReactionButton';
 import type { FeedItem } from '../../services/grove/GroveFeedService';
 
@@ -43,20 +44,21 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
     <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 w-[280px]">
       {/* Header: avatar + name + time */}
       <View className="flex-row items-center mb-3">
-        {profile.avatar_url ? (
-          <Image
-            source={{ uri: profile.avatar_url }}
-            style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }}
-          />
-        ) : (
-          <View className="mr-2.5">
+        <View style={{ position: 'relative', marginRight: 10 }}>
+          {profile.avatar_url ? (
+            <Image
+              source={{ uri: profile.avatar_url }}
+              style={{ width: 36, height: 36, borderRadius: 18 }}
+            />
+          ) : (
             <DefaultAvatar
               displayName={profile.display_name}
               color={profile.avatar_color}
               size={36}
             />
-          </View>
-        )}
+          )}
+          {profile.is_focusing && <FocusingBadge size={10} />}
+        </View>
         <View className="flex-1">
           <View className="flex-row items-center">
             <Typography variant="subtitle-14-medium" color="primary" numberOfLines={1}>

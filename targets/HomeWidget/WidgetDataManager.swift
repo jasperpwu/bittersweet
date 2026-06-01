@@ -22,6 +22,14 @@ enum WidgetKeys {
   static let currentSelectionId = "widgetCurrentSelectionId"
   static let unlockSessionData = "widgetUnlockSessionData"
   static let scheduledNotificationId = "widgetScheduledNotificationId"
+
+  // Supabase sync keys (written by JS for native intent REST calls)
+  static let supabaseUserId = "supabaseUserId"
+  static let supabaseAccessToken = "supabaseAccessToken"
+  static let groveSharedTagIds = "groveSharedTagIds"
+  static let groveShareNotes = "groveShareNotes"
+  static let groveShowLiveStatus = "groveShowLiveStatus"
+  static let groveActiveChallenges = "groveActiveChallenges"
 }
 
 // UserDefaults keys used by react-native-device-activity for shield configuration
@@ -353,6 +361,42 @@ struct WidgetDataManager {
     userDefaults?.set(shieldConfig, forKey: ShieldKeys.shieldConfiguration)
     userDefaults?.set(shieldActions, forKey: ShieldKeys.shieldActions)
     userDefaults?.synchronize()
+  }
+
+  // MARK: - Supabase Credentials + Privacy (for native intent REST calls)
+
+  func getSupabaseUserId() -> String? {
+    return userDefaults?.string(forKey: WidgetKeys.supabaseUserId)
+  }
+
+  func getSupabaseAccessToken() -> String? {
+    return userDefaults?.string(forKey: WidgetKeys.supabaseAccessToken)
+  }
+
+  func getGroveShowLiveStatus() -> Bool {
+    return userDefaults?.bool(forKey: WidgetKeys.groveShowLiveStatus) ?? false
+  }
+
+  func getGroveShareNotes() -> Bool {
+    return userDefaults?.bool(forKey: WidgetKeys.groveShareNotes) ?? false
+  }
+
+  func getGroveSharedTagIds() -> [String] {
+    guard let jsonString = userDefaults?.string(forKey: WidgetKeys.groveSharedTagIds),
+          let data = jsonString.data(using: .utf8),
+          let array = try? JSONSerialization.jsonObject(with: data) as? [String] else {
+      return []
+    }
+    return array
+  }
+
+  func getGroveActiveChallenges() -> [[String: String]] {
+    guard let jsonString = userDefaults?.string(forKey: WidgetKeys.groveActiveChallenges),
+          let data = jsonString.data(using: .utf8),
+          let array = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] else {
+      return []
+    }
+    return array
   }
 
   // MARK: - Widget Reload

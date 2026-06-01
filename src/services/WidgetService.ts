@@ -13,6 +13,12 @@ const WIDGET_UNLOCK_STOP_ACTION_KEY = 'widgetUnlockStopAction';
 const CURRENT_SELECTION_ID_KEY = 'widgetCurrentSelectionId';
 const UNLOCK_SESSION_DATA_KEY = 'widgetUnlockSessionData';
 const SCHEDULED_NOTIFICATION_ID_KEY = 'widgetScheduledNotificationId';
+const SUPABASE_USER_ID_KEY = 'supabaseUserId';
+const SUPABASE_ACCESS_TOKEN_KEY = 'supabaseAccessToken';
+const GROVE_SHARED_TAG_IDS_KEY = 'groveSharedTagIds';
+const GROVE_SHARE_NOTES_KEY = 'groveShareNotes';
+const GROVE_SHOW_LIVE_STATUS_KEY = 'groveShowLiveStatus';
+const GROVE_ACTIVE_CHALLENGES_KEY = 'groveActiveChallenges';
 
 export interface WidgetSessionData {
   isActive: boolean;
@@ -290,6 +296,74 @@ export class WidgetService {
     } catch (error) {
       console.error('📱 [Widget] Failed to check widget unlock stop action:', error);
       return null;
+    }
+  }
+
+  // ========== Supabase Credentials + Privacy Sync ==========
+
+  /**
+   * Sync Supabase credentials to shared UserDefaults so native intents
+   * can make direct REST calls without waiting for JS to foreground.
+   * Call on SIGNED_IN, INITIAL_SESSION, and TOKEN_REFRESHED.
+   */
+  static syncSupabaseCredentials(userId: string, accessToken: string): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsSet(SUPABASE_USER_ID_KEY, userId);
+      ReactNativeDeviceActivity.userDefaultsSet(SUPABASE_ACCESS_TOKEN_KEY, accessToken);
+      console.log('📱 [Widget] Synced Supabase credentials for user:', userId);
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync Supabase credentials:', error);
+    }
+  }
+
+  /**
+   * Clear Supabase credentials from shared UserDefaults on sign-out.
+   */
+  static clearSupabaseCredentials(): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsRemove(SUPABASE_USER_ID_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(SUPABASE_ACCESS_TOKEN_KEY);
+      console.log('📱 [Widget] Cleared Supabase credentials');
+    } catch (error) {
+      console.error('📱 [Widget] Failed to clear Supabase credentials:', error);
+    }
+  }
+
+  /**
+   * Sync Grove privacy settings to shared UserDefaults so native intents
+   * can respect privacy when sharing sessions and setting focus status.
+   */
+  static syncGrovePrivacy(settings: {
+    sharedTagIds: string[];
+    shareNotes: boolean;
+    showLiveStatus: boolean;
+  }): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsSet(
+        GROVE_SHARED_TAG_IDS_KEY,
+        JSON.stringify(settings.sharedTagIds)
+      );
+      ReactNativeDeviceActivity.userDefaultsSet(GROVE_SHARE_NOTES_KEY, settings.shareNotes);
+      ReactNativeDeviceActivity.userDefaultsSet(GROVE_SHOW_LIVE_STATUS_KEY, settings.showLiveStatus);
+      console.log('📱 [Widget] Synced grove privacy settings');
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync grove privacy:', error);
+    }
+  }
+
+  /**
+   * Sync active challenges to shared UserDefaults so native intents
+   * can record challenge progress on session stop.
+   */
+  static syncActiveChallenges(challenges: { id: string; tagId: string }[]): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsSet(
+        GROVE_ACTIVE_CHALLENGES_KEY,
+        JSON.stringify(challenges)
+      );
+      console.log('📱 [Widget] Synced active challenges:', challenges.length);
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync active challenges:', error);
     }
   }
 

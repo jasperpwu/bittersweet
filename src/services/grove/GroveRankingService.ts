@@ -12,6 +12,7 @@ export interface RankingItem {
   rank: number;
   treeIcon: string;
   isCurrentUser: boolean;
+  isFocusing: boolean;
 }
 
 // --- Helpers ---
@@ -96,6 +97,7 @@ export const GroveRankingService = {
       rank: index + 1,
       treeIcon: getTreeIcon(Number(row.total_minutes)),
       isCurrentUser: row.user_id === user.id,
+      isFocusing: row.profile.is_focusing ?? false,
     }));
   },
 };
