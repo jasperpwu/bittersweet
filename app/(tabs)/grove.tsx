@@ -20,8 +20,6 @@ export default function GroveScreen() {
   const profile = useAppStore((s) => s.grove.profile);
   const friends = useAppStore((s) => s.grove.friends);
   const feed = useAppStore((s) => s.grove.feed);
-  const feedLoading = useAppStore((s) => s.grove.feedLoading);
-  const friendsLoading = useAppStore((s) => s.grove.friendsLoading);
   const pendingRequestCount = useAppStore((s) => s.grove.pendingRequestCount);
   const pendingChallengeCount = useAppStore((s) => s.grove.pendingChallengeCount);
   const lastGroveVisit = useAppStore((s) => s.grove.lastGroveVisit);
@@ -152,9 +150,10 @@ export default function GroveScreen() {
   const hasFriends = friends.length > 0;
   const hasFeed = feed.length > 0;
   const activeChallenges = challenges.filter((c) => c.status === 'active');
-  // Show empty onboarding state only when we've confirmed from the server
-  // that there are truly no friends (not during initial load)
-  const showEmptyState = !hasFriends && !hasFeed && !friendsLoading && !feedLoading;
+  // Friends and feed are persisted, so if they're empty locally we can
+  // show the empty state right away instead of flashing the full view
+  // while waiting for the server to confirm.
+  const showEmptyState = !hasFriends && !hasFeed;
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">

@@ -9,7 +9,7 @@ interface EmptyGroveStateProps {
 
 export const EmptyGroveState: React.FC<EmptyGroveStateProps> = ({ onAddFriend }) => {
   return (
-    <View className="flex-1 items-center justify-center px-8">
+    <View className="flex-1 items-center justify-center px-8 mt-12">
       <View className="w-16 h-16 rounded-full bg-primary/10 items-center justify-center mb-4">
         <Ionicons name="people-outline" size={32} color="#6592E9" />
       </View>
