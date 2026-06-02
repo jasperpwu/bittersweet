@@ -798,7 +798,8 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
 
   recordChallengeProgress: async (challengeId: string) => {
     try {
-      const result = await GroveChallengeService.recordProgress(challengeId);
+      const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const result = await GroveChallengeService.recordProgress(challengeId, userTz);
       // Refresh challenges to get updated streaks
       await get().grove.fetchChallenges();
       return result;

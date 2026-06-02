@@ -6,11 +6,11 @@ import { Typography } from '../../src/components/ui/Typography';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { Slider } from '../../src/components/ui/Slider';
 import { DatePicker } from '../../src/components/ui/DatePicker/DatePicker';
-import { Toggle } from '../../src/components/ui/Toggle';
 import { useAppStore } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
 
 type Period = 'daily' | 'weekly';
+type CreationMode = 'streak' | 'until';
 
 const SLIDER_CONFIG: Record<Period, { min: number; max: number; step: number }> = {
   daily: { min: 0.5, max: 12, step: 0.5 },
@@ -23,20 +23,28 @@ function formatDuration(hours: number): string {
   return `${Math.floor(hours)}h ${(hours % 1) * 60}min`;
 }
 
-function getValidRepeatUntilDate(startDate: Date, selectedDate: Date, period: Period): Date {
-  if (period === 'daily') return selectedDate;
-
-  // Weekly: snap to day before start weekday
-  const startDow = startDate.getDay();
-  const targetDow = (startDow + 6) % 7;
-
-  const diff = (targetDow - selectedDate.getDay() + 7) % 7;
-  const snapped = new Date(selectedDate);
-  snapped.setDate(snapped.getDate() + (diff === 0 ? 0 : diff));
-  return snapped;
+/** Snap a date forward to the next Monday (or keep if already Monday). */
+function snapToMonday(date: Date): Date {
+  const d = new Date(date);
+  const dow = d.getDay(); // 0=Sun, 1=Mon, ...
+  if (dow === 1) return d;
+  const daysUntilMon = dow === 0 ? 1 : (8 - dow);
+  d.setDate(d.getDate() + daysUntilMon);
+  return d;
 }
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+/** Snap a date forward to the next Sunday (or keep if already Sunday). */
+function snapToSunday(date: Date): Date {
+  const d = new Date(date);
+  const dow = d.getDay();
+  if (dow === 0) return d;
+  d.setDate(d.getDate() + (7 - dow));
+  return d;
+}
+
+function toDateStr(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
 
 export default function CreateChallengeModal() {
   const friends = useAppStore((s) => s.grove.friends);
@@ -49,8 +57,9 @@ export default function CreateChallengeModal() {
   const [period, setPeriod] = useState<Period>('daily');
   const [targetHours, setTargetHours] = useState(1);
   const [startDate, setStartDate] = useState(() => new Date());
-  const [repeatUntilEnabled, setRepeatUntilEnabled] = useState(false);
-  const [repeatUntilDate, setRepeatUntilDate] = useState(() => {
+  const [creationMode, setCreationMode] = useState<CreationMode>('streak');
+  const [streakCount, setStreakCount] = useState(7);
+  const [untilDate, setUntilDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
     return d;
@@ -71,17 +80,29 @@ export default function CreateChallengeModal() {
     return d;
   }, []);
 
-  // For weekly period, compute the required end day name
-  const requiredEndDayName = useMemo(() => {
-    const targetDow = (startDate.getDay() + 6) % 7;
-    return DAY_NAMES[targetDow];
-  }, [startDate]);
+  // For weekly: effective start date snapped to Monday
+  const effectiveStartDate = useMemo(() => {
+    if (period === 'weekly') return snapToMonday(startDate);
+    return startDate;
+  }, [startDate, period]);
 
-  // Compute the snapped repeat-until date for weekly validation
-  const effectiveRepeatUntilDate = useMemo(() => {
-    if (!repeatUntilEnabled) return null;
-    return getValidRepeatUntilDate(startDate, repeatUntilDate, period);
-  }, [repeatUntilEnabled, startDate, repeatUntilDate, period]);
+  // Compute end date from mode
+  const endDate = useMemo(() => {
+    if (creationMode === 'streak') {
+      const d = new Date(effectiveStartDate);
+      if (period === 'daily') {
+        d.setDate(d.getDate() + streakCount - 1);
+      } else {
+        // weekly: streakCount weeks from start (Monday), end on Sunday
+        d.setDate(d.getDate() + (streakCount * 7) - 1);
+      }
+      return d;
+    } else {
+      // until-date mode
+      if (period === 'weekly') return snapToSunday(untilDate);
+      return untilDate;
+    }
+  }, [creationMode, effectiveStartDate, streakCount, untilDate, period]);
 
   const handleSelectFriend = useCallback((userId: string) => {
     setSelectedFriendId(userId);
@@ -101,24 +122,13 @@ export default function CreateChallengeModal() {
 
   const handlePeriodChange = useCallback((newPeriod: Period) => {
     setPeriod(newPeriod);
-    // Reset target hours to a sensible default for the new period
     setTargetHours(newPeriod === 'daily' ? 1 : 7);
-  }, []);
-
-  const handleRepeatUntilDateChange = useCallback((date: Date) => {
-    setRepeatUntilDate(date);
   }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!selectedFriendId || !selectedTag) return;
     setIsSubmitting(true);
     try {
-      const startDateStr = startDate.toISOString().split('T')[0];
-      let repeatUntilStr: string | null = null;
-      if (repeatUntilEnabled && effectiveRepeatUntilDate) {
-        repeatUntilStr = effectiveRepeatUntilDate.toISOString().split('T')[0];
-      }
-
       await createChallenge({
         challengeeId: selectedFriendId,
         tagId: selectedTag.id,
@@ -126,8 +136,8 @@ export default function CreateChallengeModal() {
         tagIcon: selectedTag.icon || '',
         period,
         targetMinutes: Math.round(targetHours * 60),
-        startDate: startDateStr,
-        repeatUntilDate: repeatUntilStr,
+        startDate: toDateStr(effectiveStartDate),
+        endDate: toDateStr(endDate),
       });
       showToast('Challenge sent!', 'success');
       router.back();
@@ -136,11 +146,13 @@ export default function CreateChallengeModal() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedFriendId, selectedTag, period, targetHours, startDate, repeatUntilEnabled, effectiveRepeatUntilDate, createChallenge]);
+  }, [selectedFriendId, selectedTag, period, targetHours, effectiveStartDate, endDate, createChallenge]);
 
   const stepTitle = step === 'friend' ? 'Pick a Friend' : step === 'tag' ? 'Pick a Tag' : 'Configure Challenge';
 
   const sliderConfig = SLIDER_CONFIG[period];
+
+  const periodLabel = period === 'daily' ? 'days' : 'weeks';
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
@@ -302,42 +314,75 @@ export default function CreateChallengeModal() {
               <DatePicker
                 value={startDate}
                 onChange={setStartDate}
-                label="Start Date"
+                label={period === 'weekly' ? 'Starting Week' : 'Start Date'}
                 minimumDate={today}
               />
+              {period === 'weekly' && startDate.getDay() !== 1 && (
+                <Typography variant="body-12" color="secondary" className="mt-1">
+                  Will start on Monday {effectiveStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </Typography>
+              )}
             </View>
 
-            {/* Repeat Until */}
-            <View className="flex-row items-center justify-between mb-3">
-              <Typography variant="subtitle-14-medium" color="primary">
-                Repeat until a date
-              </Typography>
-              <Toggle
-                value={repeatUntilEnabled}
-                onValueChange={setRepeatUntilEnabled}
-                size="small"
-              />
+            {/* Creation Mode Selector */}
+            <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
+              Challenge Length
+            </Typography>
+            <View className="flex-row gap-x-2 mb-4">
+              {(['streak', 'until'] as const).map((mode) => (
+                <Pressable
+                  key={mode}
+                  onPress={() => setCreationMode(mode)}
+                  className={`flex-1 py-2.5 rounded-xl ${
+                    creationMode === mode ? 'bg-[#E9A065]' : 'bg-light-border dark:bg-dark-border'
+                  }`}
+                >
+                  <Typography
+                    variant="body-14"
+                    className={`text-center ${creationMode === mode ? 'text-white' : 'text-light-text-primary dark:text-white'}`}
+                  >
+                    {mode === 'streak' ? 'Streak' : 'Until Date'}
+                  </Typography>
+                </Pressable>
+              ))}
             </View>
-            {repeatUntilEnabled && (
+
+            {/* Mode-specific picker */}
+            {creationMode === 'streak' ? (
+              <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl px-4 py-3 items-center mb-6">
+                <Typography variant="headline-20" color="primary" className="mb-1">
+                  {streakCount} {periodLabel}
+                </Typography>
+                <Slider
+                  value={streakCount}
+                  minimumValue={period === 'daily' ? 2 : 1}
+                  maximumValue={period === 'daily' ? 90 : 12}
+                  step={1}
+                  onValueChange={setStreakCount}
+                  unit={periodLabel}
+                />
+              </View>
+            ) : (
               <View className="mb-6">
                 <DatePicker
-                  value={effectiveRepeatUntilDate || repeatUntilDate}
-                  onChange={handleRepeatUntilDateChange}
-                  minimumDate={startDate}
+                  value={untilDate}
+                  onChange={setUntilDate}
+                  label={period === 'weekly' ? 'Ending Week' : 'End Date'}
+                  minimumDate={effectiveStartDate}
                 />
-                {period === 'weekly' && (
+                {period === 'weekly' && untilDate.getDay() !== 0 && (
                   <Typography variant="body-12" color="secondary" className="mt-1">
-                    Must end on a {requiredEndDayName}
+                    Will end on Sunday {snapToSunday(untilDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </Typography>
                 )}
               </View>
             )}
-            {!repeatUntilEnabled && <View className="mb-6" />}
 
-            {/* Info Box */}
+            {/* Computed End Date Info */}
             <View className="bg-[#E9A065]/10 rounded-xl px-4 py-3 mb-6">
               <Typography variant="body-12" color="secondary">
-                Both you and {selectedFriend?.profile.display_name} must focus with the &quot;{selectedTag?.name}&quot; tag for {formatDuration(targetHours)} per {period === 'daily' ? 'day' : 'week'}.{repeatUntilEnabled && effectiveRepeatUntilDate ? ` Challenge ends ${effectiveRepeatUntilDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.` : ' No end date — keep going!'}
+                Both you and {selectedFriend?.profile.display_name} must focus with the &quot;{selectedTag?.name}&quot; tag for {formatDuration(targetHours)} per {period === 'daily' ? 'day' : 'week'}.
+                {' '}Ends {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
               </Typography>
             </View>
 

@@ -294,15 +294,14 @@ CREATE TABLE grove_challenges (
   tag_id TEXT NOT NULL,
   tag_name TEXT NOT NULL,
   tag_icon TEXT NOT NULL,
-  streak_days INTEGER NOT NULL DEFAULT 7,
+  period TEXT NOT NULL DEFAULT 'daily' CHECK (period IN ('daily', 'weekly')),
+  target_minutes INTEGER NOT NULL DEFAULT 60 CHECK (target_minutes > 0),
   status TEXT NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'active', 'completed', 'failed', 'declined')),
   start_date DATE,
   end_date DATE,
   challenger_streak INTEGER NOT NULL DEFAULT 0,
   challengee_streak INTEGER NOT NULL DEFAULT 0,
-  challenger_last_date DATE,
-  challengee_last_date DATE,
   fruit_reward INTEGER NOT NULL DEFAULT 10,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -320,70 +319,159 @@ CREATE POLICY "Users can create challenges" ON grove_challenges FOR INSERT
 CREATE POLICY "Users can update own challenges" ON grove_challenges FOR UPDATE
   USING (auth.uid() = challenger_id OR auth.uid() = challengee_id);
 
+-- Helper: compute a user's consecutive streak from focus_sessions
+CREATE OR REPLACE FUNCTION _challenge_user_streak(
+  p_user_id UUID,
+  p_tag_id TEXT,
+  p_start_date DATE,
+  p_end_date DATE,
+  p_period TEXT,
+  p_target_minutes INTEGER,
+  p_as_of_date DATE,
+  p_user_tz TEXT DEFAULT 'UTC'
+)
+RETURNS INTEGER
+LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
+DECLARE
+  streak INTEGER := 0;
+  bucket RECORD;
+  expected_idx INTEGER := 0;
+BEGIN
+  IF p_period = 'daily' THEN
+    FOR bucket IN
+      SELECT
+        (fs.start_time AT TIME ZONE p_user_tz)::date AS bucket_date,
+        SUM(COALESCE(fs.adjusted_duration, fs.duration)) AS total_minutes
+      FROM focus_sessions fs
+      WHERE fs.user_id = p_user_id
+        AND fs.tag_id = p_tag_id
+        AND fs.deleted_at IS NULL
+        AND (fs.start_time AT TIME ZONE p_user_tz)::date >= p_start_date
+        AND (fs.start_time AT TIME ZONE p_user_tz)::date <= LEAST(p_end_date, p_as_of_date)
+      GROUP BY bucket_date
+      ORDER BY bucket_date
+    LOOP
+      IF bucket.bucket_date <> p_start_date + expected_idx THEN
+        EXIT;
+      END IF;
+      IF bucket.total_minutes >= p_target_minutes THEN
+        streak := streak + 1;
+        expected_idx := expected_idx + 1;
+      ELSE
+        EXIT;
+      END IF;
+    END LOOP;
+  ELSE
+    FOR bucket IN
+      SELECT
+        date_trunc('week', (fs.start_time AT TIME ZONE p_user_tz)::date)::date AS week_start,
+        SUM(COALESCE(fs.adjusted_duration, fs.duration)) AS total_minutes
+      FROM focus_sessions fs
+      WHERE fs.user_id = p_user_id
+        AND fs.tag_id = p_tag_id
+        AND fs.deleted_at IS NULL
+        AND (fs.start_time AT TIME ZONE p_user_tz)::date >= p_start_date
+        AND (fs.start_time AT TIME ZONE p_user_tz)::date <= LEAST(p_end_date, p_as_of_date)
+      GROUP BY week_start
+      ORDER BY week_start
+    LOOP
+      IF bucket.week_start <> date_trunc('week', p_start_date)::date + (expected_idx * 7) THEN
+        EXIT;
+      END IF;
+      IF bucket.total_minutes >= p_target_minutes THEN
+        streak := streak + 1;
+        expected_idx := expected_idx + 1;
+      ELSE
+        EXIT;
+      END IF;
+    END LOOP;
+  END IF;
+
+  RETURN streak;
+END;
+$$;
+
 -- RPC: record_challenge_progress
--- Called after a session completes under a challenge tag. Updates streak count.
-CREATE OR REPLACE FUNCTION record_challenge_progress(challenge_id UUID)
+-- Derives streaks from focus_sessions. Finalizes only when end_date is reached.
+CREATE OR REPLACE FUNCTION record_challenge_progress(
+  challenge_id UUID,
+  user_tz TEXT DEFAULT 'UTC'
+)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   challenge grove_challenges%ROWTYPE;
-  today DATE := CURRENT_DATE;
-  is_challenger BOOLEAN;
-  current_streak INTEGER;
-  last_date DATE;
-  other_streak INTEGER;
+  today DATE;
+  challenger_streak INTEGER;
+  challengee_streak INTEGER;
+  total_periods INTEGER;
 BEGIN
-  SELECT * INTO challenge FROM grove_challenges WHERE id = challenge_id AND status = 'active';
+  SELECT * INTO challenge FROM grove_challenges
+  WHERE id = challenge_id AND status = 'active';
+
   IF challenge IS NULL THEN
     RETURN json_build_object('error', 'CHALLENGE_NOT_FOUND');
   END IF;
 
-  IF today > challenge.end_date THEN
-    UPDATE grove_challenges SET status = 'failed', updated_at = now() WHERE id = challenge_id;
-    RETURN json_build_object('error', 'CHALLENGE_EXPIRED');
-  END IF;
+  today := (now() AT TIME ZONE user_tz)::date;
 
-  is_challenger := (auth.uid() = challenge.challenger_id);
+  challenger_streak := _challenge_user_streak(
+    challenge.challenger_id, challenge.tag_id,
+    challenge.start_date, challenge.end_date,
+    challenge.period, challenge.target_minutes,
+    today, user_tz
+  );
+  challengee_streak := _challenge_user_streak(
+    challenge.challengee_id, challenge.tag_id,
+    challenge.start_date, challenge.end_date,
+    challenge.period, challenge.target_minutes,
+    today, user_tz
+  );
 
-  IF is_challenger THEN
-    current_streak := challenge.challenger_streak;
-    last_date := challenge.challenger_last_date;
-    other_streak := challenge.challengee_streak;
+  IF challenge.period = 'daily' THEN
+    total_periods := (challenge.end_date - challenge.start_date) + 1;
   ELSE
-    current_streak := challenge.challengee_streak;
-    last_date := challenge.challengee_last_date;
-    other_streak := challenge.challenger_streak;
+    total_periods := ((challenge.end_date - challenge.start_date) + 1) / 7;
   END IF;
 
-  -- Already logged today
-  IF last_date = today THEN
-    RETURN json_build_object('status', 'already_logged', 'streak', current_streak);
+  IF today >= challenge.end_date THEN
+    IF challenger_streak >= total_periods AND challengee_streak >= total_periods THEN
+      UPDATE grove_challenges
+      SET status = 'completed',
+          challenger_streak = record_challenge_progress.challenger_streak,
+          challengee_streak = record_challenge_progress.challengee_streak,
+          updated_at = now()
+      WHERE id = challenge_id;
+
+      RETURN json_build_object(
+        'status', 'completed',
+        'challenger_streak', challenger_streak,
+        'challengee_streak', challengee_streak,
+        'total_periods', total_periods,
+        'reward', challenge.fruit_reward
+      );
+    ELSE
+      UPDATE grove_challenges
+      SET status = 'failed',
+          challenger_streak = record_challenge_progress.challenger_streak,
+          challengee_streak = record_challenge_progress.challengee_streak,
+          updated_at = now()
+      WHERE id = challenge_id;
+
+      RETURN json_build_object(
+        'status', 'failed',
+        'challenger_streak', challenger_streak,
+        'challengee_streak', challengee_streak,
+        'total_periods', total_periods
+      );
+    END IF;
   END IF;
 
-  -- Check continuity: must be consecutive day or first day
-  IF last_date IS NOT NULL AND today - last_date > 1 THEN
-    UPDATE grove_challenges SET status = 'failed', updated_at = now() WHERE id = challenge_id;
-    RETURN json_build_object('error', 'STREAK_BROKEN');
-  END IF;
-
-  current_streak := current_streak + 1;
-
-  IF is_challenger THEN
-    UPDATE grove_challenges
-    SET challenger_streak = current_streak, challenger_last_date = today, updated_at = now()
-    WHERE id = challenge_id;
-  ELSE
-    UPDATE grove_challenges
-    SET challengee_streak = current_streak, challengee_last_date = today, updated_at = now()
-    WHERE id = challenge_id;
-  END IF;
-
-  -- Check if both completed
-  IF current_streak >= challenge.streak_days AND other_streak >= challenge.streak_days THEN
-    UPDATE grove_challenges SET status = 'completed', updated_at = now() WHERE id = challenge_id;
-    RETURN json_build_object('status', 'completed', 'streak', current_streak, 'reward', challenge.fruit_reward);
-  END IF;
-
-  RETURN json_build_object('status', 'progress', 'streak', current_streak);
+  RETURN json_build_object(
+    'status', 'progress',
+    'challenger_streak', challenger_streak,
+    'challengee_streak', challengee_streak,
+    'total_periods', total_periods
+  );
 END;
 $$;
 

@@ -16,7 +16,7 @@ function daysRemaining(endDate: string | null): number {
   return Math.max(0, diff);
 }
 
-function formatTarget(targetMinutes: number, period: 'daily' | 'weekly'): string {
+export function formatTarget(targetMinutes: number, period: 'daily' | 'weekly'): string {
   const hours = targetMinutes / 60;
   if (hours < 1) return `${targetMinutes}min/${period === 'daily' ? 'day' : 'week'}`;
   if (hours === Math.floor(hours)) return `${hours}h/${period === 'daily' ? 'day' : 'week'}`;
@@ -32,11 +32,9 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
   const isCompleted = challenge.status === 'completed';
   const isFailed = challenge.status === 'failed';
 
-  // Use new period/target if available, fall back to legacy streakDays
-  const hasNewModel = challenge.targetMinutes > 0;
-  const targetLabel = hasNewModel
-    ? formatTarget(challenge.targetMinutes, challenge.period)
-    : `${challenge.streakDays} days`;
+  const targetLabel = formatTarget(challenge.targetMinutes, challenge.period);
+  const periodUnit = challenge.period === 'daily' ? 'days' : 'weeks';
+  const totalPeriods = challenge.totalPeriods;
 
   return (
     <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 w-[260px]">
@@ -80,13 +78,13 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
             You
           </Typography>
           <Typography variant="body-12" color="primary">
-            {myStreak} {myStreak === 1 ? 'day' : 'days'}
+            {myStreak}/{totalPeriods} {periodUnit}
           </Typography>
         </View>
         <View className="h-2 bg-light-border/50 dark:bg-[#2A2B45] rounded-full">
           <View
             className="h-2 bg-primary rounded-full"
-            style={{ width: `${challenge.streakDays > 0 ? Math.min((myStreak / challenge.streakDays) * 100, 100) : 50}%` }}
+            style={{ width: `${totalPeriods > 0 ? Math.min((myStreak / totalPeriods) * 100, 100) : 0}%` }}
           />
         </View>
       </View>
@@ -97,13 +95,13 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
             {theirProfile.display_name}
           </Typography>
           <Typography variant="body-12" color="primary">
-            {theirStreak} {theirStreak === 1 ? 'day' : 'days'}
+            {theirStreak}/{totalPeriods} {periodUnit}
           </Typography>
         </View>
         <View className="h-2 bg-light-border/50 dark:bg-[#2A2B45] rounded-full">
           <View
             className="h-2 bg-[#E9A065] rounded-full"
-            style={{ width: `${challenge.streakDays > 0 ? Math.min((theirStreak / challenge.streakDays) * 100, 100) : 50}%` }}
+            style={{ width: `${totalPeriods > 0 ? Math.min((theirStreak / totalPeriods) * 100, 100) : 0}%` }}
           />
         </View>
       </View>

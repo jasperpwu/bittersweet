@@ -18,9 +18,9 @@ export interface ChallengeItem {
   tagId: string;
   tagName: string;
   tagIcon: string;
-  streakDays: number;
   period: 'daily' | 'weekly';
   targetMinutes: number;
+  totalPeriods: number;
   status: 'pending' | 'active' | 'completed' | 'failed' | 'declined';
   startDate: string | null;
   endDate: string | null;
@@ -39,14 +39,29 @@ export interface CreateChallengeInput {
   period: 'daily' | 'weekly';
   targetMinutes: number;
   startDate: string;
-  repeatUntilDate: string | null;
+  endDate: string;
 }
 
 export interface ChallengeProgressResult {
   status: string;
-  streak?: number;
+  challenger_streak?: number;
+  challengee_streak?: number;
+  total_periods?: number;
   reward?: number;
   error?: string;
+}
+
+// --- Helpers ---
+
+/**
+ * Compute total periods between start and end dates for a given period type.
+ */
+export function computeTotalPeriods(startDate: string, endDate: string, period: 'daily' | 'weekly'): number {
+  const start = new Date(startDate + 'T00:00:00');
+  const end = new Date(endDate + 'T00:00:00');
+  const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  if (period === 'weekly') return Math.floor(diffDays / 7);
+  return diffDays;
 }
 
 // --- Service ---
@@ -70,7 +85,7 @@ export const GroveChallengeService = {
         period: input.period,
         target_minutes: input.targetMinutes,
         start_date: input.startDate,
-        repeat_until_date: input.repeatUntilDate,
+        end_date: input.endDate,
         status: 'pending',
       });
 
@@ -78,49 +93,16 @@ export const GroveChallengeService = {
   },
 
   /**
-   * Accept a pending challenge. Sets status to 'active', computes start/end dates.
+   * Accept a pending challenge. Sets status to 'active'.
+   * start_date and end_date are already set at creation time.
    */
   async acceptChallenge(challengeId: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    // Fetch challenge to get period, start_date, and repeat_until_date
-    const { data: challenge, error: fetchError } = await supabase
-      .from('grove_challenges')
-      .select('period, start_date, repeat_until_date, streak_days')
-      .eq('id', challengeId)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    // Use the creator-specified start_date; fall back to today if missing (legacy)
-    const startDate = challenge.start_date || new Date().toISOString().split('T')[0];
-
-    // Compute end_date from repeat_until_date, or fall back to legacy streak_days logic
-    let endDate: string;
-    if (challenge.repeat_until_date) {
-      endDate = challenge.repeat_until_date;
-    } else if (challenge.streak_days) {
-      const end = new Date(startDate);
-      end.setDate(end.getDate() + challenge.streak_days + 2);
-      endDate = end.toISOString().split('T')[0];
-    } else {
-      // No end date — open-ended challenge
-      endDate = '';
-    }
-
-    const updatePayload: Record<string, any> = {
-      status: 'active',
-      start_date: startDate,
-      updated_at: new Date().toISOString(),
-    };
-    if (endDate) {
-      updatePayload.end_date = endDate;
-    }
-
     const { error } = await supabase
       .from('grove_challenges')
-      .update(updatePayload)
+      .update({
+        status: 'active',
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', challengeId);
 
     if (error) throw error;
@@ -187,35 +169,44 @@ export const GroveChallengeService = {
       avatar_color: '#6592E9',
     };
 
-    return challenges.map(c => ({
-      id: c.id,
-      challengerId: c.challenger_id,
-      challengeeId: c.challengee_id,
-      challengerProfile: profileMap.get(c.challenger_id) || defaultProfile,
-      challengeeProfile: profileMap.get(c.challengee_id) || defaultProfile,
-      tagId: c.tag_id,
-      tagName: c.tag_name,
-      tagIcon: c.tag_icon,
-      streakDays: c.streak_days,
-      period: c.period || 'daily',
-      targetMinutes: c.target_minutes || 60,
-      status: c.status,
-      startDate: c.start_date,
-      endDate: c.end_date,
-      challengerStreak: c.challenger_streak,
-      challengeeStreak: c.challengee_streak,
-      fruitReward: c.fruit_reward,
-      isIncoming: c.challengee_id === user.id,
-      createdAt: c.created_at,
-    }));
+    return challenges.map(c => {
+      const period: 'daily' | 'weekly' = c.period || 'daily';
+      const totalPeriods = (c.start_date && c.end_date)
+        ? computeTotalPeriods(c.start_date, c.end_date, period)
+        : 0;
+
+      return {
+        id: c.id,
+        challengerId: c.challenger_id,
+        challengeeId: c.challengee_id,
+        challengerProfile: profileMap.get(c.challenger_id) || defaultProfile,
+        challengeeProfile: profileMap.get(c.challengee_id) || defaultProfile,
+        tagId: c.tag_id,
+        tagName: c.tag_name,
+        tagIcon: c.tag_icon,
+        period,
+        targetMinutes: c.target_minutes || 60,
+        totalPeriods,
+        status: c.status,
+        startDate: c.start_date,
+        endDate: c.end_date,
+        challengerStreak: c.challenger_streak,
+        challengeeStreak: c.challengee_streak,
+        fruitReward: c.fruit_reward,
+        isIncoming: c.challengee_id === user.id,
+        createdAt: c.created_at,
+      };
+    });
   },
 
   /**
    * Record progress for a challenge via the server-side RPC.
+   * Passes user's timezone for correct day-boundary computation.
    */
-  async recordProgress(challengeId: string): Promise<ChallengeProgressResult> {
+  async recordProgress(challengeId: string, userTz: string = 'UTC'): Promise<ChallengeProgressResult> {
     const { data, error } = await supabase.rpc('record_challenge_progress', {
       challenge_id: challengeId,
+      user_tz: userTz,
     });
 
     if (error) throw error;

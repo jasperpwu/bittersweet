@@ -3,7 +3,7 @@ import { View, SafeAreaView, Pressable, SectionList, Alert } from 'react-native'
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
-import { ChallengeCard } from '../../src/components/grove/ChallengeCard';
+import { ChallengeCard, formatTarget } from '../../src/components/grove/ChallengeCard';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
 import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
@@ -62,7 +62,7 @@ export default function ChallengesModal() {
           {challenge.challengerProfile.display_name}
         </Typography>
         <Typography variant="body-12" color="secondary">
-          {challenge.tagIcon} {challenge.tagName} · {challenge.streakDays} days
+          {challenge.tagIcon} {challenge.tagName} · {formatTarget(challenge.targetMinutes, challenge.period)}
         </Typography>
       </View>
       <View className="flex-row gap-2">
@@ -102,7 +102,7 @@ export default function ChallengesModal() {
               {item.challengeeProfile.display_name}
             </Typography>
             <Typography variant="body-12" color="secondary">
-              {item.tagIcon} {item.tagName} · {item.streakDays} days · Pending
+              {item.tagIcon} {item.tagName} · {formatTarget(item.targetMinutes, item.period)} · Pending
             </Typography>
           </View>
         </View>
