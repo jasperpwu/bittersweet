@@ -1505,8 +1505,8 @@ export default function FocusScreen() {
           </Pressable>
         </Animated.View>
         <Animated.View
-          style={{ opacity: isUnlockActive ? 0 : headerOpacity }}
-          pointerEvents={isSessionActive || isUnlockActive ? 'none' : 'auto'}
+          style={{ opacity: isUnlockActive ? 0 : 1 }}
+          pointerEvents={isUnlockActive ? 'none' : 'auto'}
         >
           <FruitCounter fruitCount={rewards.balance} size="small" onPress={() => router.push('/fruit-store')} />
         </Animated.View>
@@ -1970,7 +1970,7 @@ export default function FocusScreen() {
               </View>
 
               {/* Action Buttons */}
-              <View className="p-4 border-t border-light-border dark:border-gray-700 flex-row space-x-3">
+              <View className="p-4 border-t border-light-border dark:border-gray-700 flex-row" style={{ gap: 12 }}>
                 <Pressable
                   onPress={() => {
                     setShowNewTagModal(false);
