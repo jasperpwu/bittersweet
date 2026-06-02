@@ -189,7 +189,23 @@ export default function AddFriendsModal() {
       );
     }
 
-    const label = status === 'pending' ? 'Sent' : status === 'friends' ? 'Friends' : 'Pending';
+    if (status === 'incoming') {
+      const request = incomingRequests.find((r) => r.profile.user_id === userId);
+      if (request) {
+        return (
+          <Pressable
+            onPress={() => handleAccept(request.friendshipId)}
+            className="px-4 h-8 rounded-full bg-primary items-center justify-center active:opacity-80"
+          >
+            <Typography variant="body-12" style={{ color: '#FFFFFF' }}>
+              Accept
+            </Typography>
+          </Pressable>
+        );
+      }
+    }
+
+    const label = status === 'pending' ? 'Sent' : 'Friends';
     return (
       <View className="px-4 h-8 rounded-full bg-light-border dark:bg-dark-border items-center justify-center">
         <Typography variant="body-12" color="secondary">

@@ -261,6 +261,21 @@ export const GroveFriendService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Remove any existing friendship in either direction
+    // (handles rejected, previously removed, or reverse-direction rows)
+    await supabase
+      .from('grove_friendships')
+      .delete()
+      .eq('requester_id', user.id)
+      .eq('addressee_id', addresseeId);
+
+    await supabase
+      .from('grove_friendships')
+      .delete()
+      .eq('requester_id', addresseeId)
+      .eq('addressee_id', user.id);
+
+    // Insert fresh pending request
     const { error } = await supabase
       .from('grove_friendships')
       .insert({

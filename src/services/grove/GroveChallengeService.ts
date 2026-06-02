@@ -19,6 +19,8 @@ export interface ChallengeItem {
   tagName: string;
   tagIcon: string;
   streakDays: number;
+  period: 'daily' | 'weekly';
+  targetMinutes: number;
   status: 'pending' | 'active' | 'completed' | 'failed' | 'declined';
   startDate: string | null;
   endDate: string | null;
@@ -34,7 +36,10 @@ export interface CreateChallengeInput {
   tagId: string;
   tagName: string;
   tagIcon: string;
-  streakDays: number;
+  period: 'daily' | 'weekly';
+  targetMinutes: number;
+  startDate: string;
+  repeatUntilDate: string | null;
 }
 
 export interface ChallengeProgressResult {
@@ -62,7 +67,10 @@ export const GroveChallengeService = {
         tag_id: input.tagId,
         tag_name: input.tagName,
         tag_icon: input.tagIcon,
-        streak_days: input.streakDays,
+        period: input.period,
+        target_minutes: input.targetMinutes,
+        start_date: input.startDate,
+        repeat_until_date: input.repeatUntilDate,
         status: 'pending',
       });
 
@@ -76,28 +84,43 @@ export const GroveChallengeService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Fetch to get streak_days for end_date calculation
+    // Fetch challenge to get period, start_date, and repeat_until_date
     const { data: challenge, error: fetchError } = await supabase
       .from('grove_challenges')
-      .select('streak_days')
+      .select('period, start_date, repeat_until_date, streak_days')
       .eq('id', challengeId)
       .single();
 
     if (fetchError) throw fetchError;
 
-    const startDate = new Date();
-    const endDate = new Date(startDate);
-    // Allow streak_days + some buffer for both users to complete
-    endDate.setDate(endDate.getDate() + challenge.streak_days + 2);
+    // Use the creator-specified start_date; fall back to today if missing (legacy)
+    const startDate = challenge.start_date || new Date().toISOString().split('T')[0];
+
+    // Compute end_date from repeat_until_date, or fall back to legacy streak_days logic
+    let endDate: string;
+    if (challenge.repeat_until_date) {
+      endDate = challenge.repeat_until_date;
+    } else if (challenge.streak_days) {
+      const end = new Date(startDate);
+      end.setDate(end.getDate() + challenge.streak_days + 2);
+      endDate = end.toISOString().split('T')[0];
+    } else {
+      // No end date — open-ended challenge
+      endDate = '';
+    }
+
+    const updatePayload: Record<string, any> = {
+      status: 'active',
+      start_date: startDate,
+      updated_at: new Date().toISOString(),
+    };
+    if (endDate) {
+      updatePayload.end_date = endDate;
+    }
 
     const { error } = await supabase
       .from('grove_challenges')
-      .update({
-        status: 'active',
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', challengeId);
 
     if (error) throw error;
@@ -174,6 +197,8 @@ export const GroveChallengeService = {
       tagName: c.tag_name,
       tagIcon: c.tag_icon,
       streakDays: c.streak_days,
+      period: c.period || 'daily',
+      targetMinutes: c.target_minutes || 60,
       status: c.status,
       startDate: c.start_date,
       endDate: c.end_date,

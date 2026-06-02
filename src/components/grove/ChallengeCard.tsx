@@ -16,6 +16,13 @@ function daysRemaining(endDate: string | null): number {
   return Math.max(0, diff);
 }
 
+function formatTarget(targetMinutes: number, period: 'daily' | 'weekly'): string {
+  const hours = targetMinutes / 60;
+  if (hours < 1) return `${targetMinutes}min/${period === 'daily' ? 'day' : 'week'}`;
+  if (hours === Math.floor(hours)) return `${hours}h/${period === 'daily' ? 'day' : 'week'}`;
+  return `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}min/${period === 'daily' ? 'day' : 'week'}`;
+}
+
 export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, currentUserId }) => {
   const isChallenger = currentUserId === challenge.challengerId;
   const myStreak = isChallenger ? challenge.challengerStreak : challenge.challengeeStreak;
@@ -24,6 +31,12 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
   const remaining = daysRemaining(challenge.endDate);
   const isCompleted = challenge.status === 'completed';
   const isFailed = challenge.status === 'failed';
+
+  // Use new period/target if available, fall back to legacy streakDays
+  const hasNewModel = challenge.targetMinutes > 0;
+  const targetLabel = hasNewModel
+    ? formatTarget(challenge.targetMinutes, challenge.period)
+    : `${challenge.streakDays} days`;
 
   return (
     <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 w-[260px]">
@@ -51,6 +64,15 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
         )}
       </View>
 
+      {/* Target badge */}
+      <View className="mb-3">
+        <View className="bg-primary/10 rounded-lg px-2 py-1 self-start">
+          <Typography variant="body-12" style={{ color: '#6592E9' }}>
+            {targetLabel}
+          </Typography>
+        </View>
+      </View>
+
       {/* Streak progress */}
       <View className="mb-2">
         <View className="flex-row items-center justify-between mb-1">
@@ -58,13 +80,13 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
             You
           </Typography>
           <Typography variant="body-12" color="primary">
-            {myStreak}/{challenge.streakDays} days
+            {myStreak} {myStreak === 1 ? 'day' : 'days'}
           </Typography>
         </View>
         <View className="h-2 bg-light-border/50 dark:bg-[#2A2B45] rounded-full">
           <View
             className="h-2 bg-primary rounded-full"
-            style={{ width: `${Math.min((myStreak / challenge.streakDays) * 100, 100)}%` }}
+            style={{ width: `${challenge.streakDays > 0 ? Math.min((myStreak / challenge.streakDays) * 100, 100) : 50}%` }}
           />
         </View>
       </View>
@@ -75,22 +97,27 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
             {theirProfile.display_name}
           </Typography>
           <Typography variant="body-12" color="primary">
-            {theirStreak}/{challenge.streakDays} days
+            {theirStreak} {theirStreak === 1 ? 'day' : 'days'}
           </Typography>
         </View>
         <View className="h-2 bg-light-border/50 dark:bg-[#2A2B45] rounded-full">
           <View
             className="h-2 bg-[#E9A065] rounded-full"
-            style={{ width: `${Math.min((theirStreak / challenge.streakDays) * 100, 100)}%` }}
+            style={{ width: `${challenge.streakDays > 0 ? Math.min((theirStreak / challenge.streakDays) * 100, 100) : 50}%` }}
           />
         </View>
       </View>
 
       {/* Footer */}
       <View className="flex-row items-center justify-between">
-        {challenge.status === 'active' && (
+        {challenge.status === 'active' && remaining > 0 && (
           <Typography variant="body-12" color="secondary">
             {remaining} {remaining === 1 ? 'day' : 'days'} left
+          </Typography>
+        )}
+        {challenge.status === 'active' && !challenge.endDate && (
+          <Typography variant="body-12" color="secondary">
+            Ongoing
           </Typography>
         )}
         <Typography variant="body-12" color="secondary">
