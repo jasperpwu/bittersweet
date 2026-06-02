@@ -12,7 +12,7 @@ import {
   GroveHeartbeatService,
 } from '../../services/grove';
 import type { FriendItem, FriendRequest } from '../../services/grove/GroveFriendService';
-import type { FeedItem, ShareSessionInput } from '../../services/grove/GroveFeedService';
+import type { FeedItem } from '../../services/grove/GroveFeedService';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
 import type { ChallengeItem, CreateChallengeInput, ChallengeProgressResult } from '../../services/grove/GroveChallengeService';
 import type { HeartbeatSettings, InnerCircleMember, HeartbeatAlert } from '../../services/grove/GroveHeartbeatService';
@@ -76,9 +76,8 @@ export interface GroveSlice {
   sendFriendRequest: (addresseeId: string) => Promise<void>;
   fetchFriendRequests: () => Promise<void>;
   fetchFeed: () => Promise<void>;
-  shareSession: (input: ShareSessionInput) => Promise<void>;
-  addReaction: (sharedSessionId: string) => Promise<void>;
-  removeReaction: (sharedSessionId: string) => Promise<void>;
+  addReaction: (sessionId: string) => Promise<void>;
+  removeReaction: (sessionId: string) => Promise<void>;
   updateLastGroveVisit: () => void;
   generateInviteLink: () => Promise<string>;
   resolveInviteCode: (code: string) => Promise<{ status: string; friend: GroveProfile }>;
@@ -527,25 +526,16 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }
   },
 
-  shareSession: async (input: ShareSessionInput) => {
-    try {
-      await GroveFeedService.shareSession(input);
-    } catch (error: any) {
-      // Fire-and-forget: silent fail
-      console.error('Failed to share session:', error);
-    }
-  },
-
-  addReaction: async (sharedSessionId: string) => {
+  addReaction: async (sessionId: string) => {
     const applyReaction = (items: FeedItem[]) =>
       items.map((item: FeedItem) =>
-        item.sharedSession.id === sharedSessionId
+        item.session.id === sessionId
           ? { ...item, hasReacted: true, reactionCount: item.reactionCount + 1 }
           : item
       );
     const revertReaction = (items: FeedItem[]) =>
       items.map((item: FeedItem) =>
-        item.sharedSession.id === sharedSessionId
+        item.session.id === sessionId
           ? { ...item, hasReacted: false, reactionCount: Math.max(0, item.reactionCount - 1) }
           : item
       );
@@ -560,7 +550,7 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }));
 
     try {
-      await GroveFeedService.addReaction(sharedSessionId);
+      await GroveFeedService.addReaction(sessionId);
     } catch (error: any) {
       // Revert optimistic update
       set((state: any) => ({
@@ -574,16 +564,16 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }
   },
 
-  removeReaction: async (sharedSessionId: string) => {
+  removeReaction: async (sessionId: string) => {
     const applyRemove = (items: FeedItem[]) =>
       items.map((item: FeedItem) =>
-        item.sharedSession.id === sharedSessionId
+        item.session.id === sessionId
           ? { ...item, hasReacted: false, reactionCount: Math.max(0, item.reactionCount - 1) }
           : item
       );
     const revertRemove = (items: FeedItem[]) =>
       items.map((item: FeedItem) =>
-        item.sharedSession.id === sharedSessionId
+        item.session.id === sessionId
           ? { ...item, hasReacted: true, reactionCount: item.reactionCount + 1 }
           : item
       );
@@ -598,7 +588,7 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }));
 
     try {
-      await GroveFeedService.removeReaction(sharedSessionId);
+      await GroveFeedService.removeReaction(sessionId);
     } catch (error: any) {
       // Revert optimistic update
       set((state: any) => ({

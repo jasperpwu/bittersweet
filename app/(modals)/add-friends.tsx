@@ -359,36 +359,36 @@ export default function AddFriendsModal() {
       {renderSearchResultInline()}
       {(searchQuery.trim() && (searchResult || hasSearched)) && <Separator />}
 
-      {/* Main content: friend requests + friends list */}
+      {/* Friend Requests Section — always visible above the list */}
+      {incomingRequests.length > 0 && (
+        <View>
+          <View className="mt-4 mb-2 px-5 flex-row items-center">
+            <Typography variant="subtitle-14-medium" color="primary">
+              Friend Requests
+            </Typography>
+            <View className="ml-2 w-5 h-5 rounded-full bg-primary items-center justify-center">
+              <Typography variant="body-12" style={{ color: '#FFFFFF', fontSize: 11 }}>
+                {incomingRequests.length}
+              </Typography>
+            </View>
+          </View>
+          {incomingRequests.map((request, index) => (
+            <View key={request.friendshipId}>
+              {renderFriendRequest({ item: request })}
+              {index < incomingRequests.length - 1 && <Separator />}
+            </View>
+          ))}
+          <View className="h-px bg-light-border dark:bg-dark-border mt-2" />
+        </View>
+      )}
+
+      {/* Main content: friends list */}
       <FlatList
         data={friends}
         renderItem={renderFriend}
         keyExtractor={(item) => item.friendshipId}
         ListHeaderComponent={
           <View>
-            {/* Friend Requests Section */}
-            {incomingRequests.length > 0 && (
-              <View>
-                <View className="mt-4 mb-2 px-5 flex-row items-center">
-                  <Typography variant="subtitle-14-medium" color="primary">
-                    Friend Requests
-                  </Typography>
-                  <View className="ml-2 w-5 h-5 rounded-full bg-primary items-center justify-center">
-                    <Typography variant="body-12" style={{ color: '#FFFFFF', fontSize: 11 }}>
-                      {incomingRequests.length}
-                    </Typography>
-                  </View>
-                </View>
-                {incomingRequests.map((request, index) => (
-                  <View key={request.friendshipId}>
-                    {renderFriendRequest({ item: request })}
-                    {index < incomingRequests.length - 1 && <Separator />}
-                  </View>
-                ))}
-                <View className="h-px bg-light-border dark:bg-dark-border mt-2" />
-              </View>
-            )}
-
             {/* My Friends Section Header */}
             <View className="mt-4 mb-2 px-5 flex-row items-center justify-between">
               <Typography variant="subtitle-14-medium" color="primary">

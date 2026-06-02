@@ -7,7 +7,7 @@ import { Typography } from '../../src/components/ui';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
-import { saveSessionPhoto } from '../../src/services/sessionPhotoService';
+import { saveSessionPhoto, uploadSessionPhoto } from '../../src/services/sessionPhotoService';
 
 export default function SessionCompleteModal() {
   const colorScheme = useColorScheme();
@@ -104,8 +104,17 @@ export default function SessionCompleteModal() {
     if (photoUri) {
       setIsUploadingPhoto(true);
       try {
-        const photoUrl = await saveSessionPhoto(photoUri, session.id);
-        updateSession(session.id, { photoUrl });
+        // Save locally first (fast, works offline)
+        const localUrl = await saveSessionPhoto(photoUri, session.id);
+        updateSession(session.id, { photoUrl: localUrl });
+
+        // Upload to Supabase for feed visibility, update to cloud URL on success
+        try {
+          const cloudUrl = await uploadSessionPhoto(photoUri, session.id);
+          updateSession(session.id, { photoUrl: cloudUrl });
+        } catch (uploadError) {
+          console.warn('Failed to upload photo to cloud (local copy saved):', uploadError);
+        }
       } catch (error) {
         console.error('Failed to save session photo:', error);
         showToast('Failed to save photo', 'error');
@@ -115,26 +124,9 @@ export default function SessionCompleteModal() {
       setIsUploadingPhoto(false);
     }
 
-    // Auto-share to Grove if tag is in shared_tag_ids
+    // Check for active challenges matching this tag
     const grove = useAppStore.getState().grove;
-    if (grove.profile && grove.isActive && grove.privacySettings && session.tagId) {
-      const sharedTagIds = grove.privacySettings.shared_tag_ids || [];
-      if (sharedTagIds.includes(session.tagId)) {
-        const shareNotes = grove.privacySettings.share_notes ? (trimmedNotes || null) : null;
-        grove.shareSession({
-          sessionId: session.id,
-          tagId: session.tagId,
-          tagName: tag?.name || 'Focus',
-          tagIcon: tag?.icon || '🎯',
-          duration: session.duration,
-          startTime: new Date(session.startTime).toISOString(),
-          endTime: new Date(session.endTime).toISOString(),
-          notes: shareNotes,
-        });
-        showToast('Shared to Grove', 'success');
-      }
-
-      // Check for active challenges matching this tag
+    if (grove.profile && grove.isActive && session.tagId) {
       const activeChallenges = grove.challenges.filter(
         (c) => c.status === 'active' && c.tagId === session.tagId
       );

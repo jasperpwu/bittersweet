@@ -192,18 +192,6 @@ struct StopSessionIntent: LiveActivityIntent {
           endTime: stopTimestamp
         )
 
-        // Share to grove feed if tag is in shared list (privacy check inside)
-        SupabaseClient.shareSession(
-          sessionId: sessionId,
-          tagId: tagId,
-          tagName: tagName,
-          tagIcon: tagIcon,
-          duration: durationMinutes,
-          startTime: startTime,
-          endTime: stopTimestamp,
-          notes: nil as String?
-        )
-
         // Record challenge progress for any active challenge matching this tag
         let activeChallenges = WidgetDataManager.shared.getGroveActiveChallenges()
         for challenge in activeChallenges {

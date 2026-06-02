@@ -49,12 +49,12 @@ export default function FriendFeedModal() {
   }, [userId]);
 
   const handleReactionToggle = useCallback(
-    (sharedSessionId: string) => {
-      const item = friendFeed.find((f) => f.sharedSession.id === sharedSessionId);
+    (sessionId: string) => {
+      const item = friendFeed.find((f) => f.session.id === sessionId);
       if (item?.hasReacted) {
-        removeReaction(sharedSessionId);
+        removeReaction(sessionId);
       } else {
-        addReaction(sharedSessionId);
+        addReaction(sessionId);
       }
     },
     [friendFeed, addReaction, removeReaction]
@@ -137,13 +137,13 @@ export default function FriendFeedModal() {
             <View className="pb-8">
               {friendFeed.map((item: FeedItem) => (
                 <View
-                  key={item.sharedSession.id}
+                  key={item.session.id}
                   className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mb-3"
                 >
                   {/* Tag + duration */}
                   <View className="flex-row items-center mb-2">
                     <Typography variant="body-14" color="primary" className="mr-1.5">
-                      {item.sharedSession.tag_icon}
+                      {item.session.tag_icon}
                     </Typography>
                     <Typography
                       variant="subtitle-14-medium"
@@ -151,27 +151,38 @@ export default function FriendFeedModal() {
                       className="flex-1"
                       numberOfLines={1}
                     >
-                      {item.sharedSession.tag_name}
+                      {item.session.tag_name}
                     </Typography>
                     <Typography variant="subtitle-14-medium" color="primary">
-                      {formatDuration(item.sharedSession.duration)}
+                      {formatDuration(item.session.duration)}
                     </Typography>
                   </View>
 
                   {/* Date + time range */}
                   <View className="mb-1">
                     <Typography variant="body-12" color="secondary">
-                      {formatDate(item.sharedSession.start_time)} ·{' '}
-                      {formatTime(item.sharedSession.start_time)} –{' '}
-                      {formatTime(item.sharedSession.end_time)}
+                      {formatDate(item.session.start_time)} ·{' '}
+                      {formatTime(item.session.start_time)} –{' '}
+                      {formatTime(item.session.end_time)}
                     </Typography>
                   </View>
 
+                  {/* Photo */}
+                  {item.session.photo_url ? (
+                    <View className="mt-2">
+                      <Image
+                        source={{ uri: item.session.photo_url }}
+                        style={{ width: '100%', height: 200, borderRadius: 10 }}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  ) : null}
+
                   {/* Notes */}
-                  {item.sharedSession.notes ? (
+                  {item.session.notes ? (
                     <View className="mt-2">
                       <Typography variant="body-12" color="secondary" numberOfLines={3}>
-                        {item.sharedSession.notes}
+                        {item.session.notes}
                       </Typography>
                     </View>
                   ) : null}
@@ -181,7 +192,7 @@ export default function FriendFeedModal() {
                     <ReactionButton
                       hasReacted={item.hasReacted}
                       reactionCount={item.reactionCount}
-                      onToggle={() => handleReactionToggle(item.sharedSession.id)}
+                      onToggle={() => handleReactionToggle(item.session.id)}
                     />
                   </View>
                 </View>

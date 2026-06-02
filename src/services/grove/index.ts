@@ -17,9 +17,8 @@ export type {
 
 export { GroveFeedService } from './GroveFeedService';
 export type {
-  SharedSession,
+  FeedSession,
   FeedItem,
-  ShareSessionInput,
 } from './GroveFeedService';
 
 export { GroveRankingService } from './GroveRankingService';

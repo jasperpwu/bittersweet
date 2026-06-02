@@ -8,7 +8,7 @@ import type { FeedItem } from '../../services/grove/GroveFeedService';
 
 interface FriendActivityCardProps {
   item: FeedItem;
-  onReactionToggle: (sharedSessionId: string) => void;
+  onReactionToggle: (sessionId: string) => void;
   isNew?: boolean;
 }
 
@@ -38,7 +38,7 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
   onReactionToggle,
   isNew = false,
 }) => {
-  const { profile, sharedSession, reactionCount, hasReacted } = item;
+  const { profile, session, reactionCount, hasReacted } = item;
 
   return (
     <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 w-[280px]">
@@ -69,7 +69,7 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
             )}
           </View>
           <Typography variant="body-12" color="secondary">
-            {timeAgo(sharedSession.shared_at)}
+            {timeAgo(session.start_time)}
           </Typography>
         </View>
       </View>
@@ -77,21 +77,32 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
       {/* Session info: tag icon + name + duration */}
       <View className="flex-row items-center mb-2">
         <Typography variant="body-14" color="primary" className="mr-1.5">
-          {sharedSession.tag_icon}
+          {session.session_tags?.icon ?? '🎯'}
         </Typography>
         <Typography variant="subtitle-14-medium" color="primary" className="flex-1" numberOfLines={1}>
-          {sharedSession.tag_name}
+          {session.session_tags?.name ?? 'Focus'}
         </Typography>
         <Typography variant="subtitle-14-medium" color="primary">
-          {formatDuration(sharedSession.duration)}
+          {formatDuration(session.duration)}
         </Typography>
       </View>
 
+      {/* Photo (if any) */}
+      {session.photo_url && (
+        <View className="mb-2">
+          <Image
+            source={{ uri: session.photo_url }}
+            style={{ width: '100%', height: 150, borderRadius: 10 }}
+            resizeMode="cover"
+          />
+        </View>
+      )}
+
       {/* Notes (if any) */}
-      {sharedSession.notes && (
+      {session.notes && (
         <View className="mb-2">
           <Typography variant="body-12" color="secondary" numberOfLines={2}>
-            {sharedSession.notes}
+            {session.notes}
           </Typography>
         </View>
       )}
@@ -101,7 +112,7 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
         <ReactionButton
           hasReacted={hasReacted}
           reactionCount={reactionCount}
-          onToggle={() => onReactionToggle(sharedSession.id)}
+          onToggle={() => onReactionToggle(session.id)}
         />
       </View>
     </View>

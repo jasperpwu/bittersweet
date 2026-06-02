@@ -96,77 +96,34 @@ CREATE POLICY "Users can update own friendships" ON grove_friendships FOR UPDATE
 CREATE POLICY "Users can delete own friendships" ON grove_friendships FOR DELETE
   USING (auth.uid() = requester_id OR auth.uid() = addressee_id);
 
--- Table: grove_shared_sessions
-CREATE TABLE grove_shared_sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  session_id TEXT NOT NULL,
-  tag_id TEXT NOT NULL,
-  tag_name TEXT NOT NULL,
-  tag_icon TEXT NOT NULL,
-  duration INTEGER NOT NULL,
-  start_time TIMESTAMPTZ NOT NULL,
-  end_time TIMESTAMPTZ NOT NULL,
-  notes TEXT,
-  shared_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT unique_shared_session UNIQUE (user_id, session_id)
-);
-
-CREATE INDEX idx_shared_sessions_user ON grove_shared_sessions(user_id, shared_at DESC);
-CREATE INDEX idx_shared_sessions_time ON grove_shared_sessions(shared_at DESC);
-
-ALTER TABLE grove_shared_sessions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can share own sessions" ON grove_shared_sessions FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can unshare own sessions" ON grove_shared_sessions FOR DELETE
-  USING (auth.uid() = user_id);
-CREATE POLICY "Users can view friends shared sessions" ON grove_shared_sessions FOR SELECT
-  USING (
-    auth.uid() = user_id
-    OR (
-      EXISTS (
-        SELECT 1 FROM grove_friendships
-        WHERE status = 'accepted'
-        AND (
-          (requester_id = auth.uid() AND addressee_id = grove_shared_sessions.user_id)
-          OR (addressee_id = auth.uid() AND requester_id = grove_shared_sessions.user_id)
-        )
-      )
-      AND EXISTS (
-        SELECT 1 FROM grove_privacy_settings
-        WHERE user_id = grove_shared_sessions.user_id
-        AND grove_shared_sessions.tag_id = ANY(shared_tag_ids)
-      )
-    )
-  );
-
 -- Table: grove_reactions
+-- Reactions reference focus_sessions directly (no intermediate shared_sessions table).
+-- RLS on focus_sessions handles friend + privacy visibility.
 CREATE TABLE grove_reactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  shared_session_id UUID NOT NULL REFERENCES grove_shared_sessions(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL REFERENCES focus_sessions(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT unique_reaction UNIQUE (shared_session_id, user_id)
+  CONSTRAINT unique_reaction UNIQUE (session_id, user_id)
 );
 
-CREATE INDEX idx_reactions_session ON grove_reactions(shared_session_id);
+CREATE INDEX idx_reactions_session ON grove_reactions(session_id);
 
 ALTER TABLE grove_reactions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view reactions on visible sessions" ON grove_reactions FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM grove_shared_sessions ss
-      WHERE ss.id = grove_reactions.shared_session_id
+      SELECT 1 FROM focus_sessions fs
+      WHERE fs.id = grove_reactions.session_id
       AND (
-        ss.user_id = auth.uid()
+        fs.user_id = auth.uid()
         OR EXISTS (
           SELECT 1 FROM grove_friendships
           WHERE status = 'accepted'
           AND (
-            (requester_id = auth.uid() AND addressee_id = ss.user_id)
-            OR (addressee_id = auth.uid() AND requester_id = ss.user_id)
+            (requester_id = auth.uid() AND addressee_id = fs.user_id)
+            OR (addressee_id = auth.uid() AND requester_id = fs.user_id)
           )
         )
       )
@@ -275,7 +232,8 @@ $$;
 -- ============================================================
 
 -- RPC: get_grove_rankings
--- Server-side aggregation of shared sessions for friends + self within a date range.
+-- Server-side aggregation of focus sessions for friends + self within a date range.
+-- Only includes sessions with tags in the user's shared_tag_ids (or all for self).
 CREATE OR REPLACE FUNCTION get_grove_rankings(
   period_start TIMESTAMPTZ,
   period_end TIMESTAMPTZ
@@ -288,8 +246,8 @@ BEGIN
   INTO result
   FROM (
     SELECT
-      ss.user_id,
-      SUM(ss.duration) AS total_minutes,
+      fs.user_id,
+      SUM(fs.duration) AS total_minutes,
       json_build_object(
         'user_id', gp.user_id,
         'display_name', gp.display_name,
@@ -298,22 +256,30 @@ BEGIN
         'avatar_color', gp.avatar_color,
         'is_focusing', gp.is_focusing
       ) AS profile
-    FROM grove_shared_sessions ss
-    JOIN grove_profiles gp ON gp.user_id = ss.user_id
-    WHERE ss.shared_at >= period_start
-      AND ss.shared_at < period_end
+    FROM focus_sessions fs
+    JOIN grove_profiles gp ON gp.user_id = fs.user_id
+    WHERE fs.start_time >= period_start
+      AND fs.start_time < period_end
+      AND fs.deleted_at IS NULL
       AND (
-        ss.user_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM grove_friendships
-          WHERE status = 'accepted'
-          AND (
-            (requester_id = auth.uid() AND addressee_id = ss.user_id)
-            OR (addressee_id = auth.uid() AND requester_id = ss.user_id)
+        fs.user_id = auth.uid()
+        OR (
+          EXISTS (
+            SELECT 1 FROM grove_friendships
+            WHERE status = 'accepted'
+            AND (
+              (requester_id = auth.uid() AND addressee_id = fs.user_id)
+              OR (addressee_id = auth.uid() AND requester_id = fs.user_id)
+            )
+          )
+          AND EXISTS (
+            SELECT 1 FROM grove_privacy_settings
+            WHERE user_id = fs.user_id
+            AND fs.tag_id = ANY(shared_tag_ids)
           )
         )
       )
-    GROUP BY ss.user_id, gp.user_id, gp.display_name, gp.handle, gp.avatar_url, gp.avatar_color, gp.is_focusing
+    GROUP BY fs.user_id, gp.user_id, gp.display_name, gp.handle, gp.avatar_url, gp.avatar_color, gp.is_focusing
   ) AS row_data;
 
   RETURN COALESCE(result, '[]'::json);
@@ -688,3 +654,24 @@ SELECT cron.schedule(
 -- ON storage.objects FOR ALL
 -- USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
 -- WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Storage bucket: session-photos
+-- Create via Supabase Dashboard → Storage → New Bucket
+-- Name: session-photos
+-- Public: true
+-- File size limit: 5MB
+-- Allowed MIME types: image/jpeg, image/png, image/webp
+--
+-- Photos are stored at {user_id}/{session_id}.jpg.
+-- The bucket is public (readable by URL), but only owners can upload/delete.
+-- Photo URLs are only exposed in the feed when share_notes is true,
+-- so friends never receive the URL unless privacy allows it.
+--
+-- Storage policy:
+-- CREATE POLICY "Users can manage own session photos"
+-- ON storage.objects FOR ALL
+-- USING (bucket_id = 'session-photos' AND (storage.foldername(name))[1] = auth.uid()::text)
+-- WITH CHECK (bucket_id = 'session-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- focus_sessions.photo_url — added via migration 20260601_add_photo_url.sql
+-- Stores the public URL of the session photo uploaded to session-photos bucket.

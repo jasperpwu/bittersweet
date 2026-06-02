@@ -103,11 +103,24 @@ export default function TabLayout() {
         options={{
           title: 'Grove',
           href: isGroveActive ? '/(tabs)/grove' : null,
-          tabBarBadge: isGroveActive && groveBadgeCount > 0 ? groveBadgeCount : undefined,
-          tabBarBadgeStyle: { backgroundColor: '#6592E9', fontSize: 10, minWidth: 18, height: 18 },
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <Ionicons name="people-outline" size={24} color={color} />
+              <View>
+                <Ionicons name="people-outline" size={24} color={color} />
+                {groveBadgeCount > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: -2,
+                      right: -4,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: '#FF3B30',
+                    }}
+                  />
+                )}
+              </View>
               {focused && (
                 <View
                   style={{

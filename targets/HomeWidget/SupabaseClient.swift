@@ -130,59 +130,6 @@ enum SupabaseClient {
     fire(request, label: "recordSession(\(sessionId))")
   }
 
-  /// Share a completed session to `grove_shared_sessions`.
-  /// Checks privacy settings: skips if tagId is not in shared_tag_ids.
-  /// Uses upsert on (user_id, session_id) so double-writes from JS are harmless.
-  static func shareSession(
-    sessionId: String,
-    tagId: String,
-    tagName: String,
-    tagIcon: String,
-    duration: Int,
-    startTime: Double,
-    endTime: Double,
-    notes: String?
-  ) {
-    guard let creds = credentials() else { return }
-
-    // Check if this tag is in the shared list
-    let sharedTagIds = WidgetDataManager.shared.getGroveSharedTagIds()
-    guard sharedTagIds.contains(tagId) else {
-      print("⚡️ [SupabaseClient] shareSession skipped — tag not in shared list")
-      return
-    }
-
-    let startDate = Date(timeIntervalSince1970: startTime / 1000)
-    let endDate = Date(timeIntervalSince1970: endTime / 1000)
-    let formatter = ISO8601DateFormatter()
-
-    // Respect share_notes privacy
-    let shareNotes = WidgetDataManager.shared.getGroveShareNotes()
-    let finalNotes: Any = (shareNotes && notes != nil) ? notes! : NSNull()
-
-    let body: [String: Any] = [
-      "user_id": creds.userId,
-      "session_id": sessionId,
-      "tag_id": tagId,
-      "tag_name": tagName,
-      "tag_icon": tagIcon,
-      "duration": duration,
-      "start_time": formatter.string(from: startDate),
-      "end_time": formatter.string(from: endDate),
-      "notes": finalNotes,
-    ]
-
-    guard let request = makeRequest(
-      path: "/rest/v1/grove_shared_sessions",
-      method: "POST",
-      body: body,
-      accessToken: creds.accessToken,
-      extraHeaders: ["Prefer": "resolution=merge-duplicates"]
-    ) else { return }
-
-    fire(request, label: "shareSession(\(sessionId))")
-  }
-
   /// Record challenge progress via the server-side RPC.
   /// The RPC is idempotent (returns `already_logged` if day was already recorded).
   static func recordChallengeProgress(challengeId: String) {

@@ -1671,7 +1671,6 @@ export const useGroveActions = () => useAppStore((state) => ({
   rejectFriendRequest: state.grove.rejectFriendRequest,
   fetchFriendRequests: state.grove.fetchFriendRequests,
   fetchFeed: state.grove.fetchFeed,
-  shareSession: state.grove.shareSession,
   addReaction: state.grove.addReaction,
   removeReaction: state.grove.removeReaction,
   updateLastGroveVisit: state.grove.updateLastGroveVisit,

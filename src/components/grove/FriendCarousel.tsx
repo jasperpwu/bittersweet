@@ -8,7 +8,7 @@ import type { FeedItem } from '../../services/grove/GroveFeedService';
 interface FriendCarouselProps {
   feed: FeedItem[];
   lastGroveVisit: string | null;
-  onReactionToggle: (sharedSessionId: string) => void;
+  onReactionToggle: (sessionId: string) => void;
   onAddFriend: () => void;
   showAddFriend?: boolean;
 }
@@ -53,10 +53,10 @@ export const FriendCarousel: React.FC<FriendCarouselProps> = ({
         );
       }
 
-      if (!item) return null;
+      if (!item?.session) return null;
 
       const isNew = lastGroveVisit
-        ? new Date(item.sharedSession.shared_at) > new Date(lastGroveVisit)
+        ? new Date(item.session.start_time) > new Date(lastGroveVisit)
         : false;
 
       return (
@@ -84,7 +84,7 @@ export const FriendCarousel: React.FC<FriendCarouselProps> = ({
         data={data}
         renderItem={renderItem}
         keyExtractor={(item, index) =>
-          item ? item.sharedSession.id : 'add-friend'
+          item?.session?.id ?? `feed-${index}`
         }
         horizontal
         showsHorizontalScrollIndicator={false}

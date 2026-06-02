@@ -1,11 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, SafeAreaView, Image, ScrollView, Pressable, useColorScheme, RefreshControl } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { FriendCarousel } from '../../src/components/grove/FriendCarousel';
-import { FriendRequestBanner } from '../../src/components/grove/FriendRequestBanner';
 import { ChallengeBanner } from '../../src/components/grove/ChallengeBanner';
 import { ChallengeCard } from '../../src/components/grove/ChallengeCard';
 import { EmptyChallengesState } from '../../src/components/grove/EmptyChallengesState';
@@ -54,31 +53,11 @@ export default function GroveScreen() {
   const colorScheme = useColorScheme();
   const [showPauseSheet, setShowPauseSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const isFirstFocus = useRef(true);
 
-  // Fetch data on tab focus
-  useFocusEffect(
-    useCallback(() => {
-      if (profile) {
-        fetchFriends();
-        fetchFeed();
-        fetchFriendRequests();
-        fetchRankings();
-        fetchChallenges();
-        fetchHeartbeatSettings();
-        fetchHeartbeatAlerts();
-        fetchIncomingCircleInvites();
-        recordHeartbeatActivity();
-      }
-
-      // Update last visit when leaving the tab
-      return () => {
-        updateLastGroveVisit();
-      };
-    }, [profile?.user_id])
-  );
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
+  // Fetch all grove data, optionally showing the refresh spinner
+  const fetchAllData = useCallback(async (showSpinner: boolean) => {
+    if (showSpinner) setRefreshing(true);
     try {
       await Promise.all([
         fetchFriends(),
@@ -91,17 +70,36 @@ export default function GroveScreen() {
         fetchIncomingCircleInvites(),
       ]);
     } finally {
-      setRefreshing(false);
+      if (showSpinner) setRefreshing(false);
     }
   }, [fetchFriends, fetchFeed, fetchFriendRequests, fetchRankings, fetchChallenges, fetchHeartbeatSettings, fetchHeartbeatAlerts, fetchIncomingCircleInvites]);
 
+  // Fetch data on tab focus
+  useFocusEffect(
+    useCallback(() => {
+      if (profile) {
+        const showSpinner = isFirstFocus.current;
+        isFirstFocus.current = false;
+        fetchAllData(showSpinner);
+        recordHeartbeatActivity();
+      }
+
+      // Update last visit when leaving the tab
+      return () => {
+        updateLastGroveVisit();
+      };
+    }, [profile?.user_id])
+  );
+
+  const onRefresh = useCallback(() => fetchAllData(true), [fetchAllData]);
+
   const handleReactionToggle = useCallback(
-    (sharedSessionId: string) => {
-      const item = feed.find((f) => f.sharedSession.id === sharedSessionId);
+    (sessionId: string) => {
+      const item = feed.find((f) => f.session.id === sessionId);
       if (item?.hasReacted) {
-        removeReaction(sharedSessionId);
+        removeReaction(sessionId);
       } else {
-        addReaction(sharedSessionId);
+        addReaction(sessionId);
       }
     },
     [feed, addReaction, removeReaction]
@@ -109,10 +107,6 @@ export default function GroveScreen() {
 
   const handleAddFriend = useCallback(() => {
     router.push('/(modals)/add-friends');
-  }, []);
-
-  const handleFriendRequests = useCallback(() => {
-    router.push('/(modals)/friend-requests');
   }, []);
 
   const handleChallenges = useCallback(() => {
@@ -172,7 +166,22 @@ export default function GroveScreen() {
         <View className="flex-row items-center gap-3">
           {hasFriends && (
             <Pressable onPress={handleAddFriend} className="active:opacity-60" hitSlop={8}>
-              <Ionicons name="person-add-outline" size={22} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+              <View>
+                <Ionicons name="person-add-outline" size={22} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+                {pendingRequestCount > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: -2,
+                      right: -4,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: '#FF3B30',
+                    }}
+                  />
+                )}
+              </View>
             </Pressable>
           )}
           {hasHeartbeat && (
@@ -231,9 +240,6 @@ export default function GroveScreen() {
             </View>
           </Pressable>
         </View>
-
-        {/* Friend Request Banner */}
-        <FriendRequestBanner count={pendingRequestCount} onPress={handleFriendRequests} />
 
         {/* Inner Circle Invite Banner */}
         <InnerCircleInviteBanner count={pendingCircleInviteCount} onPress={handleInnerCircle} />
