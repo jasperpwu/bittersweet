@@ -152,7 +152,7 @@ const createDefaultPreferences = (): AppPreferences => ({
     timerPickerStyle: 'scroller',
   },
   restDays: [0, 6],
-  weekStartDay: 0,
+  weekStartDay: 1,
 });
 
 const createDefaultStats = (): AppStats => ({

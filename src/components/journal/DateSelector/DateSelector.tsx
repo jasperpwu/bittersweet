@@ -15,7 +15,7 @@ interface DateSelectorProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 // Number of weeks to generate in each direction from today
 const WEEKS_RANGE = 260; // ~5 years each direction
@@ -23,12 +23,12 @@ const TOTAL_WEEKS = WEEKS_RANGE * 2 + 1;
 const CENTER_INDEX = WEEKS_RANGE;
 
 /**
- * Get the Sunday of the week containing the given date
+ * Get the Monday of the week containing the given date
  */
-const getSunday = (date: Date): Date => {
+const getMonday = (date: Date): Date => {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - d.getDay());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   return d;
 };
 
@@ -36,21 +36,21 @@ const getSunday = (date: Date): Date => {
  * Get the week index offset from today's week
  */
 const getWeekOffset = (date: Date): number => {
-  const todaySunday = getSunday(new Date());
-  const targetSunday = getSunday(date);
-  const diffMs = targetSunday.getTime() - todaySunday.getTime();
+  const todayMonday = getMonday(new Date());
+  const targetMonday = getMonday(date);
+  const diffMs = targetMonday.getTime() - todayMonday.getTime();
   return Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
 };
 
 /**
- * Get the Sunday for a given week index
+ * Get the Monday for a given week index
  */
-const getSundayForIndex = (weekIndex: number): Date => {
-  const todaySunday = getSunday(new Date());
-  const sunday = new Date(todaySunday);
+const getMondayForIndex = (weekIndex: number): Date => {
+  const todayMonday = getMonday(new Date());
+  const monday = new Date(todayMonday);
   const offset = weekIndex - CENTER_INDEX;
-  sunday.setDate(sunday.getDate() + offset * 7);
-  return sunday;
+  monday.setDate(monday.getDate() + offset * 7);
+  return monday;
 };
 
 const DateItem: FC<{
@@ -98,7 +98,7 @@ const DateItem: FC<{
         variant="body-12"
         color={isSelected ? 'white' : 'secondary'}
       >
-        {DAY_LETTERS[date.getDay()]}
+        {DAY_LETTERS[(date.getDay() + 6) % 7]}
       </Typography>
       <View style={{ height: 4 }} />
       <Typography
@@ -121,17 +121,17 @@ const WeekPage: FC<{
   const today = new Date();
   const itemWidth = (pageWidth - 24) / 7; // 12px padding each side
 
-  const sunday = useMemo(() => getSundayForIndex(weekIndex), [weekIndex]);
+  const monday = useMemo(() => getMondayForIndex(weekIndex), [weekIndex]);
 
   const days = useMemo(() => {
     const result: Date[] = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(sunday);
-      d.setDate(sunday.getDate() + i);
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
       result.push(d);
     }
     return result;
-  }, [sunday]);
+  }, [monday]);
 
   return (
     <View style={{ width: pageWidth, flexDirection: 'row', paddingHorizontal: 12 }}>
@@ -183,10 +183,10 @@ export const DateSelector: FC<DateSelectorProps> = ({
     if (newIndex !== lastScrolledIndex.current) {
       lastScrolledIndex.current = newIndex;
       // When swiping weeks, select the same weekday in the new week
-      const dayOfWeek = selectedDate.getDay();
-      const newSunday = getSundayForIndex(newIndex);
-      const newDate = new Date(newSunday);
-      newDate.setDate(newSunday.getDate() + dayOfWeek);
+      const dayOffset = (selectedDate.getDay() + 6) % 7; // Mon=0 ... Sun=6
+      const newMonday = getMondayForIndex(newIndex);
+      const newDate = new Date(newMonday);
+      newDate.setDate(newMonday.getDate() + dayOffset);
       onDateSelect(newDate);
     }
   }, [screenWidth, selectedDate, onDateSelect]);

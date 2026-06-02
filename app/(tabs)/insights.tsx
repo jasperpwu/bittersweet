@@ -25,7 +25,7 @@ export default function InsightsScreen() {
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
   const { canActivateGoal } = useSubscriptionGate();
   const { preferences } = useAppSettings();
-  const weekStartDay = preferences.weekStartDay ?? 0;
+  const weekStartDay = 1; // Always Monday
 
   // Get data from focus store
   const { sessions, tags, goals } = useFocus();

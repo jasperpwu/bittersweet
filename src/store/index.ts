@@ -796,7 +796,7 @@ export const useAppStore = create<AppStore>()(
             .map((sid: string) => state.focus.sessions.byId[sid])
             .filter(Boolean);
 
-          const weekStartDay = (state as any).preferences?.weekStartDay ?? 0;
+          const weekStartDay = 1; // Always Monday
           const restDays = (goal as any).restDays || [0, 6];
 
           const badgeData = computeBadgeStats(

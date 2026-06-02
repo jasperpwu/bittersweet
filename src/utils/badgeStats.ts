@@ -8,7 +8,7 @@ export function computeBadgeStats(
   goal: FocusGoal,
   sessions: any[],
   tag: { icon: string; name: string; color?: string },
-  weekStartDay: number = 0,
+  weekStartDay: number = 1,
   restDays: number[] = [0, 6],
 ): Omit<Badge, 'id' | 'createdAt' | 'updatedAt'> {
   // Filter sessions for this goal's tag

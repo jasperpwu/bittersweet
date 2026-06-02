@@ -806,7 +806,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         .filter(Boolean);
 
       // Get user preferences for week start and rest days
-      const weekStartDay = (state as any).preferences?.weekStartDay ?? 0;
+      const weekStartDay = 1; // Always Monday
       const restDays = goal.restDays || [0, 6];
 
       const badgeData = computeBadgeStats(
@@ -955,7 +955,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
             break;
           case 'weekly':
             const weekStart = new Date(date);
-            weekStart.setDate(date.getDate() - date.getDay());
+            weekStart.setDate(date.getDate() - ((date.getDay() + 6) % 7));
             key = weekStart.toISOString().split('T')[0];
             break;
           case 'monthly':

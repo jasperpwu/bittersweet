@@ -24,7 +24,7 @@ export const calculateUrgency = (
   goal: FocusGoal,
   currentProgress: number,
   effectiveTarget?: number,
-  weekStartDay: number = 0,
+  weekStartDay: number = 1,
 ): UrgencyResult => {
   const target = effectiveTarget ?? getGoalCurrentTarget(goal);
 

@@ -52,7 +52,7 @@ export const calculateGoalProgress = (
   goals: FocusGoal[],
   sessions: FocusSession[],
   _tagMap?: Record<string, { id: string; name: string }>,
-  weekStartDay: number = 0,
+  weekStartDay: number = 1,
 ): Record<string, number> => {
   const now = new Date();
   const progress: Record<string, number> = {};
@@ -93,7 +93,7 @@ export const calculateGoalProgress = (
 export const getGoalPeriodRange = (
   period: 'daily' | 'weekly' | 'monthly',
   referenceDate: Date = new Date(),
-  weekStartDay: number = 0,
+  weekStartDay: number = 1,
 ): { periodStart: Date; periodEnd: Date } => {
   const now = new Date(referenceDate);
 
@@ -142,7 +142,7 @@ export const getHistoricalPeriodRanges = (
   period: 'daily' | 'weekly' | 'monthly',
   count: number,
   referenceDate: Date = new Date(),
-  weekStartDay: number = 0,
+  weekStartDay: number = 1,
 ): { periodStart: Date; periodEnd: Date; label: string }[] => {
   const ranges: { periodStart: Date; periodEnd: Date; label: string }[] = [];
 
@@ -197,7 +197,7 @@ export const getActiveGoals = (goals: FocusGoal[]): FocusGoal[] => {
 export const shouldResetGoalProgress = (
   goal: FocusGoal,
   currentDate: Date = new Date(),
-  weekStartDay: number = 0,
+  weekStartDay: number = 1,
 ): boolean => {
   const period = (goal as any).activePeriod || (goal as any).period || 'daily';
   const normalizedPeriod = period === 'yearly' ? 'monthly' : period;

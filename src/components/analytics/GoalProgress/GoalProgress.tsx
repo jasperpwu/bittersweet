@@ -327,7 +327,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   const { tags, sessions } = useFocus();
   const { preferences } = useAppSettings();
   const restDays = preferences.restDays ?? [0, 6];
-  const weekStartDay = preferences.weekStartDay ?? 0;
+  const weekStartDay = 1; // Always Monday
 
   // Extract sessions array from normalized state
   const safeSessions = (sessions && sessions.allIds && sessions.byId)
