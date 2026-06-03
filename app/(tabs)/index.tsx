@@ -453,13 +453,14 @@ export default function FocusScreen() {
       blocklistTipAcknowledgedRef.current = acknowledged === 'true';
     }
 
-    if (!blocklistTipAcknowledgedRef.current) {
+    // Skip tip if user already has a blocklist (e.g. restored from cloud after sign-in)
+    const store = useAppStore.getState();
+    if (!blocklistTipAcknowledgedRef.current && store.blocklist.currentSelectionId === null) {
       setShowBlocklistTip(true);
       return;
     }
 
     // If blocklist already set up, show edit cost modal before proceeding
-    const store = useAppStore.getState();
     if (store.blocklist.currentSelectionId !== null) {
       setShowEditCostModal(true);
       return;

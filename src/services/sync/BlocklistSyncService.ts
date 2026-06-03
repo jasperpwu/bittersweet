@@ -7,10 +7,13 @@ import {
   setFamilyActivitySelectionId,
   blockSelection,
   unblockSelection,
+  activitySelectionMetadata,
 } from 'react-native-device-activity';
 
 const LAST_SYNCED_BLOB_KEY = 'blocklist-last-synced-blob';
-const MERGED_SELECTION_ID = 'merged-blocklist';
+// Single canonical selection ID — used by the picker, blocking, and sync.
+// All paths write to this ID so there is only one source of truth in UserDefaults.
+const CANONICAL_SELECTION_ID = 'bittersweet-blocklist';
 
 // Temporary named IDs for set operations (stored in UserDefaults)
 const TEMP_SERVER_ID = '_sync-temp-server';
@@ -71,8 +74,8 @@ export class BlocklistSyncService {
    * Full bidirectional sync using diff-based merge.
    *
    * @param userId - Supabase user ID
-   * @param currentSelectionId - Named selection ID from Zustand (e.g. "bittersweet-selection-xxx")
-   * @returns The new named selection ID if local state changed (MERGED_SELECTION_ID),
+   * @param currentSelectionId - Named selection ID from Zustand (e.g. "bittersweet-blocklist")
+   * @returns The canonical selection ID if local state changed,
    *          or null if no local change was needed.
    */
   static async sync(
@@ -105,10 +108,10 @@ export class BlocklistSyncService {
     if (!currentLocalBlob || currentLocalBlob === '') {
       // No local data — accept server blob entirely
       console.log('[BlocklistSync] No local data, accepting server blob');
-      BlocklistSyncService.storeTempBlob(MERGED_SELECTION_ID, serverBlob);
+      BlocklistSyncService.storeTempBlob(CANONICAL_SELECTION_ID, serverBlob);
       BlocklistSyncService.applyLocally(currentSelectionId);
       await AsyncStorage.setItem(LAST_SYNCED_BLOB_KEY, serverBlob);
-      return MERGED_SELECTION_ID;
+      return CANONICAL_SELECTION_ID;
     }
 
     // Store the server blob as a temp named selection for set operations
@@ -122,7 +125,7 @@ export class BlocklistSyncService {
       const result = union(
         { activitySelectionId: currentSelectionId! },
         { activitySelectionId: TEMP_SERVER_ID },
-        { persistAsActivitySelectionId: MERGED_SELECTION_ID }
+        { persistAsActivitySelectionId: CANONICAL_SELECTION_ID }
       );
       mergedBlob = result?.familyActivitySelection || currentLocalBlob;
     } else {
@@ -154,7 +157,7 @@ export class BlocklistSyncService {
       if (!hasAdded && !hasRemoved) {
         // No local changes from baseline — just accept server blob
         console.log('[BlocklistSync] No local changes, accepting server');
-        BlocklistSyncService.storeTempBlob(MERGED_SELECTION_ID, serverBlob);
+        BlocklistSyncService.storeTempBlob(CANONICAL_SELECTION_ID, serverBlob);
         mergedBlob = serverBlob;
       } else {
         // merged = difference(union(serverBlob, localAdded), localRemoved)
@@ -173,20 +176,20 @@ export class BlocklistSyncService {
           const finalResult = difference(
             { activitySelectionId: TEMP_SERVER_PLUS_ADDED_ID },
             { activitySelectionId: TEMP_REMOVED_ID },
-            { persistAsActivitySelectionId: MERGED_SELECTION_ID }
+            { persistAsActivitySelectionId: CANONICAL_SELECTION_ID }
           );
           mergedBlob = finalResult?.familyActivitySelection || serverBlob;
         } else {
           // No removals — merged = serverPlusAdded
           const spBlob = getFamilyActivitySelectionId(TEMP_SERVER_PLUS_ADDED_ID);
-          BlocklistSyncService.storeTempBlob(MERGED_SELECTION_ID, spBlob || serverBlob);
+          BlocklistSyncService.storeTempBlob(CANONICAL_SELECTION_ID, spBlob || serverBlob);
           mergedBlob = spBlob || serverBlob;
         }
       }
     }
 
     // Read back the merged blob that was persisted
-    const finalMergedBlob = getFamilyActivitySelectionId(MERGED_SELECTION_ID) || mergedBlob;
+    const finalMergedBlob = getFamilyActivitySelectionId(CANONICAL_SELECTION_ID) || mergedBlob;
 
     const localChanged = finalMergedBlob !== currentLocalBlob;
     const serverChanged = finalMergedBlob !== serverBlob;
@@ -204,7 +207,7 @@ export class BlocklistSyncService {
     if (localChanged) {
       console.log('[BlocklistSync] Local blocklist changed — applying merged blob');
       BlocklistSyncService.applyLocally(currentSelectionId);
-      return MERGED_SELECTION_ID;
+      return CANONICAL_SELECTION_ID;
     }
 
     console.log('[BlocklistSync] Sync complete — no local changes needed');
@@ -217,6 +220,41 @@ export class BlocklistSyncService {
   static async clearBaseline(): Promise<void> {
     await AsyncStorage.removeItem(LAST_SYNCED_BLOB_KEY);
     console.log('[BlocklistSync] Baseline cleared');
+  }
+
+  /**
+   * Get counts (apps, categories, domains) for a named selection ID.
+   */
+  static getCounts(selectionId: string): {
+    applicationCount: number;
+    categoryCount: number;
+    webDomainCount: number;
+  } {
+    const metadata = activitySelectionMetadata({
+      activitySelectionId: selectionId,
+    });
+    return {
+      applicationCount: metadata?.applicationCount ?? 0,
+      categoryCount: metadata?.categoryCount ?? 0,
+      webDomainCount: metadata?.webDomainCount ?? 0,
+    };
+  }
+
+  /**
+   * Import a blob from cloud and apply it locally (source-of-truth flow).
+   * Used by pullAndApply when cloud data should overwrite local.
+   *
+   * @returns The canonical selection ID
+   */
+  static async importAndApply(
+    blob: string,
+    oldSelectionId: string | null
+  ): Promise<string> {
+    console.log('[BlocklistSync] importAndApply — applying cloud blob');
+    BlocklistSyncService.storeTempBlob(CANONICAL_SELECTION_ID, blob);
+    BlocklistSyncService.applyLocally(oldSelectionId);
+    await AsyncStorage.setItem(LAST_SYNCED_BLOB_KEY, blob);
+    return CANONICAL_SELECTION_ID;
   }
 
   // --- Private helpers ---
@@ -249,12 +287,12 @@ export class BlocklistSyncService {
   }
 
   /**
-   * Swap blocking from old selection to the merged selection.
+   * Swap blocking from old selection to the canonical selection.
    */
   private static applyLocally(oldSelectionId: string | null): void {
-    if (oldSelectionId) {
+    if (oldSelectionId && oldSelectionId !== CANONICAL_SELECTION_ID) {
       unblockSelection({ activitySelectionId: oldSelectionId });
     }
-    blockSelection({ activitySelectionId: MERGED_SELECTION_ID });
+    blockSelection({ activitySelectionId: CANONICAL_SELECTION_ID });
   }
 }

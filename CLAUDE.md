@@ -54,3 +54,11 @@ When fixing bugs, follow this structured approach:
 - **On cold start** (`INITIAL_SESSION`): Merge — flush offline queue, pull from cloud, last-write-wins per entity
 - **Grove drag-to-refresh**: Pull all grove social data from cloud
 - All syncable data types: focus sessions, session tags, focus goals, badges, rewards, blocklist, settings
+- **Sync logic belongs in slice methods** (`triggerSync`, `pullAndApply`), not in `_layout.tsx`. The layout should only call the slice method; all store updates, UserDefaults writes, and side effects (shield, widget sync) happen inside the slice. Do not duplicate sync logic across files.
+
+## Blocklist Architecture
+- **Single canonical UserDefaults key:** The blocklist uses `"bittersweet-blocklist"` as the single canonical selection ID in UserDefaults. The picker (`DeviceActivitySelectionViewPersisted`), blocking (`blockSelection`), sync merge operations, and the Zustand store all use this same key. Never introduce a separate "merged" or "temp" ID that persists beyond a single sync operation — having two IDs for the same data leads to them getting out of sync.
+- **When updating blocklist state after sync**, always update all three: (1) `currentSelectionId` in the Zustand store, (2) `blockedApps` with legacy token format (for badge counts), (3) `WidgetService.syncCurrentSelectionId()` (for native re-blocking). Missing any one of these causes subtle bugs (badge not updating, native intent can't re-block, etc.).
+
+## Sync Mapper Symmetry
+- **`rowToX()` must restore every field that `xToRow()` saves.** When adding a field to `xToRow()` (writing to DB), always add the inverse mapping in `rowToX()` (reading from DB). Missing fields in `rowToX()` cause silent data loss during sync — e.g., `updatedAt` not restored breaks last-write-wins merge, `deletedAt` not restored causes deleted items to reappear, `sortOrder` not restored loses user ordering.

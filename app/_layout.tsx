@@ -25,7 +25,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '../src/store';
 import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
-import { BlocklistSyncService } from '../src/services/sync/BlocklistSyncService';
+
 import { configureCrisp } from '../src/services/crisp';
 import { useDeepLinkHandler } from '../src/hooks/useDeepLinkHandler';
 import { PushNotificationService } from '../src/services/notifications/push';
@@ -298,27 +298,7 @@ export default function RootLayout() {
             console.error('Post sign-in sync error:', error);
           }
 
-          // Blocklist cross-device sync (bidirectional merge)
-          try {
-            const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
-            const mergedSelectionId = await BlocklistSyncService.sync(
-              user.id,
-              currentSelectionId
-            );
-            if (mergedSelectionId) {
-              console.log('🔄 Blocklist sync: applying merged selection:', mergedSelectionId);
-              useAppStore.setState((state) => ({
-                blocklist: {
-                  ...state.blocklist,
-                  currentSelectionId: mergedSelectionId,
-                },
-              }));
-              // Sync to UserDefaults so native intent can re-block if needed
-              WidgetService.syncCurrentSelectionId(mergedSelectionId);
-            }
-          } catch (error) {
-            console.error('Post sign-in blocklist sync error:', error);
-          }
+          // Blocklist sync is handled inside triggerSync() and pullAndApply()
 
           // Register push token after sign-in
           PushNotificationService.registerPushToken();

@@ -120,6 +120,9 @@ export function rowToTag(row: Record<string, any>): any {
     icon: row.icon,
     color: row.color,
     isDefault: row.is_default ?? false,
+    sortOrder: row.sort_order ?? 0,
+    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+    updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
     ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
   };
 }
@@ -239,6 +242,7 @@ export function rowToBadge(row: Record<string, any>): any {
     endDate: row.end_date ?? '',
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+    ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
   };
 }
 

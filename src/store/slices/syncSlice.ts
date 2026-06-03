@@ -1,5 +1,25 @@
 import { SyncService } from '../../services/sync/SyncService';
 import { syncQueue } from '../../services/sync/SyncQueue';
+import { BlocklistSyncService } from '../../services/sync/BlocklistSyncService';
+import { FamilyControlsModule } from '../../modules/BitterSweetFamilyControls';
+import { WidgetService } from '../../services/WidgetService';
+
+function buildLegacySelection(
+  selectionId: string,
+  counts: { applicationCount: number; categoryCount: number; webDomainCount: number }
+) {
+  return {
+    applicationTokens: counts.applicationCount
+      ? [{ id: selectionId, bundleIdentifier: 'selected.apps', displayName: `${counts.applicationCount} Selected Apps` }]
+      : [],
+    categoryTokens: counts.categoryCount
+      ? [{ id: selectionId, bundleIdentifier: 'selected.categories', displayName: `${counts.categoryCount} Selected Categories` }]
+      : [],
+    webDomainTokens: counts.webDomainCount
+      ? [{ id: selectionId, bundleIdentifier: 'selected.domains', displayName: `${counts.webDomainCount} Selected Domains` }]
+      : [],
+  };
+}
 
 export type SyncStatus = 'idle' | 'syncing' | 'error' | 'offline';
 
@@ -118,6 +138,33 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
         useUnifiedStore.getState().updatePreferences(prefsToApply);
         console.log('☁️ Applied remote settings to unified store');
       }
+
+      // Sync blocklist (3-way merge)
+      try {
+        const currentSelectionId = get().blocklist.currentSelectionId;
+        const newSelectionId = await BlocklistSyncService.sync(userId, currentSelectionId);
+        if (newSelectionId) {
+          const counts = BlocklistSyncService.getCounts(newSelectionId);
+          set((s: any) => ({
+            blocklist: {
+              ...s.blocklist,
+              currentSelectionId: newSelectionId,
+              settings: {
+                ...s.blocklist.settings,
+                blockedApps: buildLegacySelection(newSelectionId, counts),
+              },
+            },
+          }));
+          // Sync to UserDefaults so native intent can re-block if needed
+          WidgetService.syncCurrentSelectionId(newSelectionId);
+          // Update shield UI with current balance
+          const currentBalance = get().rewards.balance;
+          await FamilyControlsModule.updateShieldBalance(currentBalance);
+          console.log('☁️ Blocklist synced and applied');
+        }
+      } catch (error) {
+        console.error('[Sync] Blocklist sync error:', error);
+      }
     } catch (error: any) {
       console.error('Sync error:', error);
       set((s: any) => ({
@@ -198,6 +245,36 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
         const { updatedAt, lastDurationByTagId: _, ...prefsToApply } = remoteData.settings;
         useUnifiedStore.getState().updatePreferences(prefsToApply);
         console.log('☁️ Applied cloud settings to unified store');
+      }
+
+      // Apply blocklist from cloud (source of truth)
+      try {
+        if (remoteData.blocklistBlob) {
+          const oldSelectionId = get().blocklist.currentSelectionId;
+          const newSelectionId = await BlocklistSyncService.importAndApply(
+            remoteData.blocklistBlob,
+            oldSelectionId
+          );
+          const counts = BlocklistSyncService.getCounts(newSelectionId);
+          set((s: any) => ({
+            blocklist: {
+              ...s.blocklist,
+              currentSelectionId: newSelectionId,
+              settings: {
+                ...s.blocklist.settings,
+                blockedApps: buildLegacySelection(newSelectionId, counts),
+              },
+            },
+          }));
+          // Sync to UserDefaults so native intent can re-block if needed
+          WidgetService.syncCurrentSelectionId(newSelectionId);
+          // Update shield UI with current balance
+          const currentBalance = get().rewards.balance;
+          await FamilyControlsModule.updateShieldBalance(currentBalance);
+          console.log('☁️ Blocklist pulled and applied from cloud');
+        }
+      } catch (error) {
+        console.error('[Sync] Blocklist pull-and-apply error:', error);
       }
 
       console.log('☁️ Pull and apply complete');
