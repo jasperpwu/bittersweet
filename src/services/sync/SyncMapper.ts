@@ -191,6 +191,113 @@ export function rowToRewards(row: Record<string, any>): any {
   };
 }
 
+// --- Badge mapper ---
+
+export function badgeToRow(badge: any, userId: string): Record<string, any> {
+  const row: Record<string, any> = {
+    id: badge.id,
+    user_id: userId,
+    goal_id: badge.goalId ?? null,
+    tag_icon: badge.tagIcon ?? '',
+    tag_name: badge.tagName ?? '',
+    tag_color: badge.tagColor ?? '',
+    goal_name: badge.goalName ?? '',
+    total_minutes: badge.totalMinutes ?? 0,
+    total_sessions: badge.totalSessions ?? 0,
+    daily_stats: badge.dailyStats ?? null,
+    weekly_stats: badge.weeklyStats ?? null,
+    monthly_stats: badge.monthlyStats ?? null,
+    duration_distribution: badge.durationDistribution ?? {},
+    notes_count: badge.notesCount ?? 0,
+    recent_notes: badge.recentNotes ?? [],
+    start_date: badge.startDate ?? '',
+    end_date: badge.endDate ?? '',
+  };
+  if (badge.createdAt instanceof Date) row.created_at = badge.createdAt.toISOString();
+  if (badge.updatedAt instanceof Date) row.updated_at = badge.updatedAt.toISOString();
+  if (badge.deletedAt instanceof Date) row.deleted_at = badge.deletedAt.toISOString();
+  return row;
+}
+
+export function rowToBadge(row: Record<string, any>): any {
+  return {
+    id: row.id,
+    goalId: row.goal_id ?? undefined,
+    tagIcon: row.tag_icon ?? '',
+    tagName: row.tag_name ?? '',
+    tagColor: row.tag_color ?? '',
+    goalName: row.goal_name ?? '',
+    totalMinutes: row.total_minutes ?? 0,
+    totalSessions: row.total_sessions ?? 0,
+    dailyStats: row.daily_stats ?? undefined,
+    weeklyStats: row.weekly_stats ?? undefined,
+    monthlyStats: row.monthly_stats ?? undefined,
+    durationDistribution: row.duration_distribution ?? {},
+    notesCount: row.notes_count ?? 0,
+    recentNotes: row.recent_notes ?? [],
+    startDate: row.start_date ?? '',
+    endDate: row.end_date ?? '',
+    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+    updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+  };
+}
+
+// --- Settings mapper ---
+
+/**
+ * Flatten AppPreferences (nested notifications/focus objects) into a flat DB row.
+ * lastDurationByTagId comes from the main store (focus.lastDurationByTagId), not unified store.
+ */
+export function settingsToRow(
+  preferences: any,
+  userId: string,
+  lastDurationByTagId?: Record<string, number>
+): Record<string, any> {
+  return {
+    user_id: userId,
+    theme: preferences.theme ?? 'system',
+    language: preferences.language ?? 'en',
+    notifications_enabled: preferences.notifications?.enabled ?? true,
+    notifications_sound: preferences.notifications?.sound ?? true,
+    notifications_vibration: preferences.notifications?.vibration ?? true,
+    goal_reminder_enabled: preferences.notifications?.goalReminderEnabled ?? true,
+    goal_reminder_time: preferences.notifications?.goalReminderTime ?? '20:00',
+    default_duration: preferences.focus?.defaultDuration ?? 25,
+    timer_picker_style: preferences.focus?.timerPickerStyle ?? 'scroller',
+    rest_days: preferences.restDays ?? [0, 6],
+    week_start_day: preferences.weekStartDay ?? 1,
+    last_duration_by_tag: lastDurationByTagId ?? {},
+    has_seen_onboarding: preferences.hasSeenOnboarding ?? false,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Expand a flat DB row back into nested AppPreferences shape.
+ */
+export function rowToSettings(row: Record<string, any>): any {
+  return {
+    hasSeenOnboarding: row.has_seen_onboarding ?? false,
+    theme: row.theme ?? 'system',
+    language: row.language ?? 'en',
+    notifications: {
+      enabled: row.notifications_enabled ?? true,
+      sound: row.notifications_sound ?? true,
+      vibration: row.notifications_vibration ?? true,
+      goalReminderEnabled: row.goal_reminder_enabled ?? true,
+      goalReminderTime: row.goal_reminder_time ?? '20:00',
+    },
+    focus: {
+      defaultDuration: row.default_duration ?? 25,
+      timerPickerStyle: row.timer_picker_style ?? 'scroller',
+    },
+    restDays: row.rest_days ?? [0, 6],
+    weekStartDay: row.week_start_day ?? 1,
+    lastDurationByTagId: row.last_duration_by_tag ?? {},
+    updatedAt: row.updated_at ?? null,
+  };
+}
+
 // --- Normalized state helpers ---
 
 /**

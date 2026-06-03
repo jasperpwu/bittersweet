@@ -5,6 +5,8 @@ import {
   tagToRow,
   goalToRow,
   rewardsToRow,
+  badgeToRow,
+  settingsToRow,
 } from '../../services/sync/SyncMapper';
 
 /**
@@ -18,17 +20,60 @@ let debounceTimer: NodeJS.Timeout | null = null;
 const DEBOUNCE_MS = 2000;
 
 // Accumulated change flags across debounce resets
-let pendingChanges = { sessions: false, tags: false, goals: false, rewards: false, blocklist: false };
+let pendingChanges = { sessions: false, tags: false, goals: false, badges: false, rewards: false, blocklist: false, settings: false };
 
 // Snapshot of last-synced state for diffing
 let lastSyncedSnapshot: {
   sessions: Record<string, any>;
   tags: Record<string, any>;
   goals: Record<string, any>;
+  badges: Record<string, any>;
   rewards: { balance: number; totalEarned: number; totalSpent: number };
 } | null = null;
 
+// Track last-synced settings to detect changes (from unified store)
+let lastSyncedSettings: any = null;
+
+let settingsDebounceTimer: NodeJS.Timeout | null = null;
+
 export function initSyncMiddleware(store: any): () => void {
+  // Subscribe to unified store for settings changes
+  const { useUnifiedStore } = require('../unified-store');
+  const unsubSettings = useUnifiedStore.subscribe((state: any, prevState: any) => {
+    // Only sync if main store user is authenticated
+    const mainState = store.getState();
+    if (!mainState.auth?.isAuthenticated || !mainState.auth?.user?.id) return;
+
+    // Compare preferences reference
+    if (state.preferences === prevState.preferences) return;
+
+    // Initialize baseline on first change
+    if (!lastSyncedSettings) {
+      lastSyncedSettings = state.preferences;
+      return;
+    }
+
+    // Debounce settings sync (same 2s window)
+    if (settingsDebounceTimer) clearTimeout(settingsDebounceTimer);
+    settingsDebounceTimer = setTimeout(async () => {
+      try {
+        const mainState = store.getState();
+        const userId = mainState.auth.user.id;
+        const currentPrefs = useUnifiedStore.getState().preferences;
+        const row = settingsToRow(currentPrefs, userId, mainState.focus?.lastDurationByTagId);
+        await SyncService.enqueue('user_settings', 'upsert', row);
+        lastSyncedSettings = currentPrefs;
+        console.log('[SyncMW] Settings change enqueued');
+
+        const result = await SyncService.flush();
+        console.log(`[SyncMW] Settings flush — flushed:${result.flushed} failed:${result.failed}`);
+        store.getState().sync?.updateQueueSize?.();
+      } catch (error) {
+        console.error('[SyncMW] Settings sync error:', error);
+      }
+    }, DEBOUNCE_MS);
+  });
+
   const unsubscribe = store.subscribe((state: any, prevState: any) => {
     if (!state.auth?.isAuthenticated || !state.auth?.user?.id) return;
 
@@ -37,7 +82,7 @@ export function initSyncMiddleware(store: any): () => void {
     // Initialize snapshot on first run
     if (!lastSyncedSnapshot) {
       lastSyncedSnapshot = takeSnapshot(state);
-      console.log(`[SyncMW] Initial snapshot — sessions:${Object.keys(lastSyncedSnapshot.sessions).length} tags:${Object.keys(lastSyncedSnapshot.tags).length} goals:${Object.keys(lastSyncedSnapshot.goals).length}`);
+      console.log(`[SyncMW] Initial snapshot — sessions:${Object.keys(lastSyncedSnapshot.sessions).length} tags:${Object.keys(lastSyncedSnapshot.tags).length} goals:${Object.keys(lastSyncedSnapshot.goals).length} badges:${Object.keys(lastSyncedSnapshot.badges).length}`);
       return;
     }
 
@@ -45,14 +90,17 @@ export function initSyncMiddleware(store: any): () => void {
     const sessionsChanged = state.focus.sessions !== prevState.focus?.sessions;
     const tagsChanged = state.focus.tags !== prevState.focus?.tags;
     const goalsChanged = state.focus.goals !== prevState.focus?.goals;
+    const badgesChanged = state.focus.badges !== prevState.focus?.badges;
     const rewardsChanged =
       state.rewards.balance !== prevState.rewards?.balance ||
       state.rewards.totalEarned !== prevState.rewards?.totalEarned ||
       state.rewards.totalSpent !== prevState.rewards?.totalSpent;
     const blocklistChanged =
       state.blocklist.currentSelectionId !== prevState.blocklist?.currentSelectionId;
+    const durationByTagChanged =
+      state.focus.lastDurationByTagId !== prevState.focus?.lastDurationByTagId;
 
-    if (!sessionsChanged && !tagsChanged && !goalsChanged && !rewardsChanged && !blocklistChanged) {
+    if (!sessionsChanged && !tagsChanged && !goalsChanged && !badgesChanged && !rewardsChanged && !blocklistChanged && !durationByTagChanged) {
       return;
     }
 
@@ -60,10 +108,12 @@ export function initSyncMiddleware(store: any): () => void {
     if (sessionsChanged) pendingChanges.sessions = true;
     if (tagsChanged) pendingChanges.tags = true;
     if (goalsChanged) pendingChanges.goals = true;
+    if (badgesChanged) pendingChanges.badges = true;
     if (rewardsChanged) pendingChanges.rewards = true;
     if (blocklistChanged) pendingChanges.blocklist = true;
+    if (durationByTagChanged) pendingChanges.settings = true;
 
-    console.log(`[SyncMW] Change detected — sessions:${sessionsChanged} tags:${tagsChanged} goals:${goalsChanged} rewards:${rewardsChanged} blocklist:${blocklistChanged} (pending: sessions:${pendingChanges.sessions} tags:${pendingChanges.tags} goals:${pendingChanges.goals} rewards:${pendingChanges.rewards} blocklist:${pendingChanges.blocklist})`);
+    console.log(`[SyncMW] Change detected — sessions:${sessionsChanged} tags:${tagsChanged} goals:${goalsChanged} badges:${badgesChanged} rewards:${rewardsChanged} blocklist:${blocklistChanged} durationByTag:${durationByTagChanged} (pending: sessions:${pendingChanges.sessions} tags:${pendingChanges.tags} goals:${pendingChanges.goals} badges:${pendingChanges.badges} rewards:${pendingChanges.rewards} blocklist:${pendingChanges.blocklist} settings:${pendingChanges.settings})`);
 
     // Debounce sync operations
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -71,9 +121,9 @@ export function initSyncMiddleware(store: any): () => void {
     debounceTimer = setTimeout(async () => {
       // Capture and reset pending changes
       const changes = { ...pendingChanges };
-      pendingChanges = { sessions: false, tags: false, goals: false, rewards: false, blocklist: false };
+      pendingChanges = { sessions: false, tags: false, goals: false, badges: false, rewards: false, blocklist: false, settings: false };
 
-      console.log(`[SyncMW] Debounce fired — processing: sessions:${changes.sessions} tags:${changes.tags} goals:${changes.goals} rewards:${changes.rewards}`);
+      console.log(`[SyncMW] Debounce fired — processing: sessions:${changes.sessions} tags:${changes.tags} goals:${changes.goals} badges:${changes.badges} rewards:${changes.rewards}`);
       try {
         // Diff sessions
         if (changes.sessions) {
@@ -108,10 +158,28 @@ export function initSyncMiddleware(store: any): () => void {
           );
         }
 
+        // Diff badges
+        if (changes.badges) {
+          await diffAndEnqueue(
+            'badges',
+            lastSyncedSnapshot!.badges,
+            state.focus.badges?.byId ?? {},
+            (item: any) => badgeToRow(item, userId)
+          );
+        }
+
         // Rewards — just upsert the whole row
         if (changes.rewards) {
           const rewardsRow = rewardsToRow(state.rewards, userId);
           await SyncService.enqueue('rewards', 'upsert', rewardsRow);
+        }
+
+        // Settings — upsert when lastDurationByTagId changes in main store
+        if (changes.settings) {
+          const currentPrefs = useUnifiedStore.getState().preferences;
+          const row = settingsToRow(currentPrefs, userId, state.focus?.lastDurationByTagId);
+          await SyncService.enqueue('user_settings', 'upsert', row);
+          console.log('[SyncMW] Settings (lastDurationByTagId) change enqueued');
         }
 
         // Blocklist — push current blob to cloud (push-only, not full merge)
@@ -141,12 +209,18 @@ export function initSyncMiddleware(store: any): () => void {
 
   return () => {
     unsubscribe();
+    unsubSettings();
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
     }
-    pendingChanges = { sessions: false, tags: false, goals: false, rewards: false, blocklist: false };
+    if (settingsDebounceTimer) {
+      clearTimeout(settingsDebounceTimer);
+      settingsDebounceTimer = null;
+    }
+    pendingChanges = { sessions: false, tags: false, goals: false, badges: false, rewards: false, blocklist: false, settings: false };
     lastSyncedSnapshot = null;
+    lastSyncedSettings = null;
   };
 }
 
@@ -155,6 +229,7 @@ function takeSnapshot(state: any) {
     sessions: { ...state.focus.sessions.byId },
     tags: { ...state.focus.tags.byId },
     goals: { ...state.focus.goals.byId },
+    badges: { ...(state.focus.badges?.byId ?? {}) },
     rewards: {
       balance: state.rewards.balance,
       totalEarned: state.rewards.totalEarned,
@@ -203,7 +278,8 @@ async function diffAndEnqueue(
  */
 export function resetSyncSnapshot(): void {
   lastSyncedSnapshot = null;
-  pendingChanges = { sessions: false, tags: false, goals: false, rewards: false, blocklist: false };
+  lastSyncedSettings = null;
+  pendingChanges = { sessions: false, tags: false, goals: false, badges: false, rewards: false, blocklist: false, settings: false };
   // Clear blocklist sync baseline on sign-out
   BlocklistSyncService.clearBaseline();
 }

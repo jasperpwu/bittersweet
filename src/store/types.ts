@@ -43,7 +43,6 @@ export interface UserPreferences {
   soundEnabled: boolean;
   hapticFeedback: boolean;
   defaultFocusDuration: number;
-  autoStartBreaks: boolean;
 }
 
 export interface UserStats {
@@ -143,13 +142,7 @@ export interface Badge extends BaseEntity {
 
 export interface FocusSettings {
   defaultDuration: number;
-  breakDuration: number;
-  longBreakDuration: number;
-  sessionsUntilLongBreak: number;
-  soundEnabled: boolean;
-  vibrationEnabled: boolean;
-  autoStartBreaks: boolean;
-  autoStartSessions: boolean;
+  timerPickerStyle?: 'scroller' | 'wheel';
 }
 
 
@@ -170,9 +163,6 @@ export interface AppSettings {
   language: string;
   notifications: {
     enabled: boolean;
-    sessionReminders: boolean;
-    breakReminders: boolean;
-    dailyGoals: boolean;
   };
   privacy: {
     shareStats: boolean;

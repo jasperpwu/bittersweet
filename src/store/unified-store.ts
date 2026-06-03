@@ -34,22 +34,12 @@ interface NotificationSettings {
   enabled: boolean;
   sound: boolean;
   vibration: boolean;
-  sessionReminders: boolean;
-  breakReminders: boolean;
-  dailyGoals: boolean;
   goalReminderEnabled: boolean;
   goalReminderTime: string; // "HH:MM" format
 }
 
 interface FocusSettings {
   defaultDuration: number;
-  breakDuration: number;
-  longBreakDuration: number;
-  sessionsUntilLongBreak: number;
-  soundEnabled: boolean;
-  vibrationEnabled: boolean;
-  autoStartBreaks: boolean;
-  autoStartSessions: boolean;
   timerPickerStyle: 'scroller' | 'wheel';
 }
 
@@ -134,21 +124,11 @@ const createDefaultPreferences = (): AppPreferences => ({
     enabled: true,
     sound: true,
     vibration: true,
-    sessionReminders: true,
-    breakReminders: true,
-    dailyGoals: true,
     goalReminderEnabled: true,
     goalReminderTime: '20:00',
   },
   focus: {
     defaultDuration: 25,
-    breakDuration: 5,
-    longBreakDuration: 15,
-    sessionsUntilLongBreak: 4,
-    soundEnabled: true,
-    vibrationEnabled: true,
-    autoStartBreaks: false,
-    autoStartSessions: false,
     timerPickerStyle: 'scroller',
   },
   restDays: [0, 6],

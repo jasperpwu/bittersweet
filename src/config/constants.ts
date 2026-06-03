@@ -20,9 +20,6 @@ export const FOCUS_CONSTANTS = {
   defaultDuration: 25, // minutes
   minDuration: 5, // minutes
   maxDuration: 120, // minutes
-  breakDuration: 5, // minutes
-  longBreakDuration: 15, // minutes
-  sessionsUntilLongBreak: 4,
   seedsPerMinute: 0.2, // 1 seed per 5 minutes
 } as const;
 

@@ -23,7 +23,6 @@ try {
         soundEnabled: true,
         hapticFeedback: true,
         defaultFocusDuration: 25,
-        autoStartBreaks: false,
       },
       stats: {
         totalFocusTime: 1125,

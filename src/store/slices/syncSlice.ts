@@ -11,6 +11,7 @@ export interface SyncSlice {
   syncStatus: SyncStatus;
 
   triggerSync: () => Promise<void>;
+  pullAndApply: () => Promise<void>;
   initialUpload: () => Promise<void>;
   pullFromCloud: () => Promise<any>;
   flushOfflineQueue: () => Promise<void>;
@@ -42,17 +43,29 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
       if (!userId) throw new Error('No user ID');
 
       const remoteData = await SyncService.pullAll(userId);
+
+      // Build local settings from unified store
+      const { useUnifiedStore } = require('../unified-store');
+      const localPrefs = useUnifiedStore.getState().preferences;
+
       const localData = {
         focus: {
           sessions: state.focus.sessions,
           tags: state.focus.tags,
           goals: state.focus.goals,
+          badges: state.focus.badges ?? { byId: {}, allIds: [] },
         },
         rewards: {
           balance: state.rewards.balance,
           totalEarned: state.rewards.totalEarned,
           totalSpent: state.rewards.totalSpent,
+          updatedAt: state.rewards.updatedAt,
         },
+        settings: localPrefs ? {
+          ...localPrefs,
+          lastDurationByTagId: state.focus.lastDurationByTagId ?? {},
+          updatedAt: localPrefs.updatedAt ?? null,
+        } : null,
       };
 
       const merged = SyncService.merge(localData, remoteData);
@@ -76,6 +89,13 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
             byId: merged.focus.goals.byId,
             allIds: merged.focus.goals.allIds,
           },
+          badges: {
+            ...s.focus.badges,
+            byId: merged.focus.badges.byId,
+            allIds: merged.focus.badges.allIds,
+          },
+          // Apply lastDurationByTagId from merged settings if remote won
+          ...(merged.settings?.lastDurationByTagId ? { lastDurationByTagId: merged.settings.lastDurationByTagId } : {}),
         },
         rewards: {
           ...s.rewards,
@@ -91,6 +111,13 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           offlineQueueSize: 0,
         },
       }));
+
+      // Apply merged settings to unified store if remote won
+      if (merged.settings && merged.settings !== localPrefs) {
+        const { updatedAt, lastDurationByTagId: _, ...prefsToApply } = merged.settings;
+        useUnifiedStore.getState().updatePreferences(prefsToApply);
+        console.log('☁️ Applied remote settings to unified store');
+      }
     } catch (error: any) {
       console.error('Sync error:', error);
       set((s: any) => ({
@@ -99,6 +126,89 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           isSyncing: false,
           syncStatus: 'error',
           syncError: error.message || 'Sync failed',
+        },
+      }));
+    }
+  },
+
+  /**
+   * Pull from cloud and apply directly — no merge.
+   * Used on reinstall/sign-in (SIGNED_IN) where cloud is source of truth.
+   */
+  pullAndApply: async () => {
+    const state = get();
+    if (!state.auth.isAuthenticated) return;
+
+    const userId = state.auth.user?.id;
+    if (!userId) return;
+
+    set((s: any) => ({
+      sync: { ...s.sync, isSyncing: true, syncStatus: 'syncing', syncError: null },
+    }));
+
+    try {
+      const remoteData = await SyncService.pullAll(userId);
+
+      // Clear local data and apply cloud data directly
+      set((s: any) => ({
+        focus: {
+          ...s.focus,
+          sessions: {
+            ...s.focus.sessions,
+            byId: remoteData.focus.sessions.byId,
+            allIds: remoteData.focus.sessions.allIds,
+          },
+          tags: {
+            ...s.focus.tags,
+            byId: remoteData.focus.tags.byId,
+            allIds: remoteData.focus.tags.allIds,
+          },
+          goals: {
+            ...s.focus.goals,
+            byId: remoteData.focus.goals.byId,
+            allIds: remoteData.focus.goals.allIds,
+          },
+          badges: {
+            ...s.focus.badges,
+            byId: remoteData.focus.badges?.byId ?? {},
+            allIds: remoteData.focus.badges?.allIds ?? [],
+          },
+          // Restore per-tag durations from cloud settings
+          lastDurationByTagId: remoteData.settings?.lastDurationByTagId ?? {},
+        },
+        rewards: {
+          ...s.rewards,
+          balance: remoteData.rewards.balance,
+          totalEarned: remoteData.rewards.totalEarned,
+          totalSpent: remoteData.rewards.totalSpent,
+          updatedAt: remoteData.rewards.updatedAt,
+        },
+        sync: {
+          ...s.sync,
+          isSyncing: false,
+          syncStatus: 'idle',
+          lastSyncTime: new Date().toISOString(),
+          offlineQueueSize: 0,
+        },
+      }));
+
+      // Apply settings to unified store
+      if (remoteData.settings) {
+        const { useUnifiedStore } = require('../unified-store');
+        const { updatedAt, lastDurationByTagId: _, ...prefsToApply } = remoteData.settings;
+        useUnifiedStore.getState().updatePreferences(prefsToApply);
+        console.log('☁️ Applied cloud settings to unified store');
+      }
+
+      console.log('☁️ Pull and apply complete');
+    } catch (error: any) {
+      console.error('Pull and apply error:', error);
+      set((s: any) => ({
+        sync: {
+          ...s.sync,
+          isSyncing: false,
+          syncStatus: 'error',
+          syncError: error.message || 'Pull and apply failed',
         },
       }));
     }
@@ -114,7 +224,11 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
     }));
 
     try {
-      await SyncService.initialUpload(state, userId);
+      // Include unified store settings in the upload payload
+      const { useUnifiedStore } = require('../unified-store');
+      const preferences = useUnifiedStore.getState().preferences;
+      const stateWithSettings = { ...state, settings: preferences };
+      await SyncService.initialUpload(stateWithSettings, userId);
       set((s: any) => ({
         sync: {
           ...s.sync,

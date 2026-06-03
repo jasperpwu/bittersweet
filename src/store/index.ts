@@ -63,13 +63,6 @@ interface AppStore {
     // Settings
     settings: {
       defaultDuration: number;
-      breakDuration: number;
-      longBreakDuration: number;
-      sessionsUntilLongBreak: number;
-      soundEnabled: boolean;
-      vibrationEnabled: boolean;
-      autoStartBreaks: boolean;
-      autoStartSessions: boolean;
     };
     
     // Actions
@@ -279,13 +272,6 @@ export const useAppStore = create<AppStore>()(
         currentWeekStart: getWeekStart(),
         settings: {
           defaultDuration: 25,
-          breakDuration: 5,
-          longBreakDuration: 15,
-          sessionsUntilLongBreak: 4,
-          soundEnabled: true,
-          vibrationEnabled: true,
-          autoStartBreaks: false,
-          autoStartSessions: false,
         },
         
         // Session actions

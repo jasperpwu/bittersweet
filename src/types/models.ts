@@ -7,18 +7,11 @@ export interface AppPreferences {
 
 export interface NotificationSettings {
   enabled: boolean;
-  sessionReminders: boolean;
-  breakReminders: boolean;
-  dailyGoals: boolean;
 }
 
 export interface FocusSettings {
   defaultDuration: number;
-  breakDuration: number;
-  longBreakDuration: number;
-  sessionsUntilLongBreak: number;
-  autoStartBreaks: boolean;
-  strictMode: boolean;
+  timerPickerStyle?: 'scroller' | 'wheel';
 }
 
 // Focus Session Types (merged with Task functionality)

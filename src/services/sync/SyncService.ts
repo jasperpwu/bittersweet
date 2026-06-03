@@ -10,6 +10,10 @@ import {
   rowToGoal,
   rewardsToRow,
   rowToRewards,
+  badgeToRow,
+  rowToBadge,
+  settingsToRow,
+  rowToSettings,
   normalizedToRows,
   rowsToNormalized,
 } from './SyncMapper';
@@ -52,6 +56,23 @@ export class SyncService {
       console.error('Failed to upload rewards:', rewardsError);
     }
 
+    // Upload badges
+    if (localState.focus.badges?.allIds?.length > 0) {
+      const badgeRows = normalizedToRows(localState.focus.badges, badgeToRow, userId);
+      await SyncService.batchUpsert('badges', badgeRows);
+    }
+
+    // Upload settings (from unified store preferences + main store lastDurationByTagId)
+    if (localState.settings) {
+      const settingsRow = settingsToRow(localState.settings, userId, localState.focus?.lastDurationByTagId);
+      const { error: settingsError } = await supabase
+        .from('user_settings')
+        .upsert(settingsRow, { onConflict: 'user_id' });
+      if (settingsError) {
+        console.error('Failed to upload settings:', settingsError);
+      }
+    }
+
     // Upload blocklist selection
     const blocklistSelectionId = localState.blocklist?.currentSelectionId;
     if (blocklistSelectionId) {
@@ -71,7 +92,7 @@ export class SyncService {
   static async pullAll(userId: string): Promise<any> {
     console.log('☁️ Pulling all data from cloud...');
 
-    const [sessionsRes, tagsRes, goalsRes, rewardsRes] =
+    const [sessionsRes, tagsRes, goalsRes, rewardsRes, badgesRes, settingsRes] =
       await Promise.all([
         supabase
           .from('focus_sessions')
@@ -89,6 +110,12 @@ export class SyncService {
           .eq('user_id', userId)
           .is('deleted_at', null),
         supabase.from('rewards').select('*').eq('user_id', userId).single(),
+        supabase
+          .from('badges')
+          .select('*')
+          .eq('user_id', userId)
+          .is('deleted_at', null),
+        supabase.from('user_settings').select('*').eq('user_id', userId).single(),
       ]);
 
     const sessions = rowsToNormalized(
@@ -97,9 +124,13 @@ export class SyncService {
     );
     const tags = rowsToNormalized(tagsRes.data ?? [], rowToTag);
     const goals = rowsToNormalized(goalsRes.data ?? [], rowToGoal);
+    const badges = rowsToNormalized(badgesRes.data ?? [], rowToBadge);
     const rewards = rewardsRes.data
       ? rowToRewards(rewardsRes.data)
       : { balance: 0, totalEarned: 0, totalSpent: 0 };
+    const settings = settingsRes.data
+      ? rowToSettings(settingsRes.data)
+      : null;
 
     // Pull blocklist blob
     let blocklistBlob: string | null = null;
@@ -110,12 +141,13 @@ export class SyncService {
     }
 
     console.log(
-      `☁️ Pulled: ${sessions.allIds.length} sessions, ${tags.allIds.length} tags, ${goals.allIds.length} goals, blocklist: ${blocklistBlob ? 'yes' : 'no'}`
+      `☁️ Pulled: ${sessions.allIds.length} sessions, ${tags.allIds.length} tags, ${goals.allIds.length} goals, ${badges.allIds.length} badges, settings: ${settings ? 'yes' : 'no'}, blocklist: ${blocklistBlob ? 'yes' : 'no'}`
     );
 
     return {
-      focus: { sessions, tags, goals },
+      focus: { sessions, tags, goals, badges },
       rewards,
+      settings,
       blocklistBlob,
     };
   }
@@ -125,6 +157,14 @@ export class SyncService {
    * Returns a merged snapshot to apply to the store.
    */
   static merge(local: any, remote: any): any {
+    // Settings: object/value pattern — compare updatedAt, latest wins
+    let mergedSettings = null;
+    if (local.settings || remote.settings) {
+      const localTime = new Date(local.settings?.updatedAt ?? 0).getTime();
+      const remoteTime = new Date(remote.settings?.updatedAt ?? 0).getTime();
+      mergedSettings = remoteTime > localTime ? remote.settings : local.settings;
+    }
+
     return {
       focus: {
         sessions: SyncService.mergeNormalized(
@@ -142,6 +182,11 @@ export class SyncService {
           remote.focus.goals,
           'updatedAt'
         ),
+        badges: SyncService.mergeNormalized(
+          local.focus.badges ?? { byId: {}, allIds: [] },
+          remote.focus.badges ?? { byId: {}, allIds: [] },
+          'updatedAt'
+        ),
       },
       rewards: {
         // Last-write-wins: whichever side has the later updatedAt wins aggregate fields
@@ -152,6 +197,7 @@ export class SyncService {
             : { balance: remote.rewards.balance, totalEarned: remote.rewards.totalEarned, totalSpent: remote.rewards.totalSpent, updatedAt: remote.rewards.updatedAt }
         ),
       },
+      settings: mergedSettings,
     };
   }
 
@@ -183,8 +229,8 @@ export class SyncService {
       try {
         console.log(`[SyncFlush] Processing ${entry.id}: ${entry.operation} → ${entry.table} (record: ${entry.data?.id || entry.data?.user_id || '?'})`);
         if (entry.operation === 'upsert') {
-          // rewards table uses user_id as primary key, not id
-          const conflictCol = entry.table === 'rewards' ? 'user_id' : 'id';
+          // rewards and user_settings tables use user_id as primary key, not id
+          const conflictCol = (entry.table === 'rewards' || entry.table === 'user_settings') ? 'user_id' : 'id';
           const { error } = await supabase
             .from(entry.table)
             .upsert(entry.data, { onConflict: conflictCol });
@@ -219,7 +265,7 @@ export class SyncService {
     table: string,
     rows: Record<string, any>[]
   ): Promise<void> {
-    const conflictCol = table === 'rewards' ? 'user_id' : 'id';
+    const conflictCol = (table === 'rewards' || table === 'user_settings') ? 'user_id' : 'id';
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
       const { error } = await supabase

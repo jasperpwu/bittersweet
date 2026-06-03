@@ -53,20 +53,11 @@ export interface UnlockableApp {
 // Simple Settings Types
 export interface FocusSettings {
     defaultDuration: number;
-    breakDuration: number;
-    longBreakDuration: number;
-    sessionsUntilLongBreak: number;
-    soundEnabled: boolean;
-    vibrationEnabled: boolean;
-    autoStartBreaks: boolean;
-    autoStartSessions: boolean;
+    timerPickerStyle?: 'scroller' | 'wheel';
 }
 
 export interface NotificationSettings {
     enabled: boolean;
-    sessionReminders: boolean;
-    breakReminders: boolean;
-    dailyGoals: boolean;
     weeklyReports: boolean;
 }
 

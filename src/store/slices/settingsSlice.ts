@@ -12,9 +12,6 @@ const defaultSettings: AppSettings = {
   language: 'en',
   notifications: {
     enabled: true,
-    sessionReminders: true,
-    breakReminders: true,
-    dailyGoals: true
   },
   privacy: {
     shareStats: true,
@@ -23,13 +20,6 @@ const defaultSettings: AppSettings = {
   },
   focus: {
     defaultDuration: 25,
-    breakDuration: 5,
-    longBreakDuration: 15,
-    sessionsUntilLongBreak: 4,
-    soundEnabled: true,
-    vibrationEnabled: true,
-    autoStartBreaks: false,
-    autoStartSessions: false,
   },
 };
 

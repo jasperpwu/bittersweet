@@ -46,3 +46,11 @@ When fixing bugs, follow this structured approach:
 - Do not blindly execute what the user asks. Validate and research first; let the user know if the ask is unreasonable.
 - Do not execute alternative solutions without asking the user.
 - Must let user know when it no longer safe to run `npx expo prebuild --clean`.
+
+## Data Sync Philosophy (Single-Device)
+- **Lists** (sessions, tags, goals, badges): pull latest cloud data, compute diff, write finalized to cloud
+- **Objects/values** (rewards, settings): pull latest, compare `updated_at`, latest wins, write to remote
+- **On reinstall/sign-in** (`SIGNED_IN`): Clear all local data, pull from cloud as source of truth
+- **On cold start** (`INITIAL_SESSION`): Merge — flush offline queue, pull from cloud, last-write-wins per entity
+- **Grove drag-to-refresh**: Pull all grove social data from cloud
+- All syncable data types: focus sessions, session tags, focus goals, badges, rewards, blocklist, settings

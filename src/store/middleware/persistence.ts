@@ -548,13 +548,6 @@ export const persistenceConfig = {
           })(),
           settings: {
             defaultDuration: 25,
-            breakDuration: 5,
-            longBreakDuration: 15,
-            sessionsUntilLongBreak: 4,
-            soundEnabled: true,
-            vibrationEnabled: true,
-            autoStartBreaks: false,
-            autoStartSessions: false,
           },
         };
       }

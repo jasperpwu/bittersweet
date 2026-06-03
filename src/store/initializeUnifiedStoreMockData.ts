@@ -38,9 +38,6 @@ const createMockUnifiedUser = () => ({
       enabled: true,
       sound: true,
       vibration: true,
-      sessionReminders: true,
-      breakReminders: true,
-      dailyGoals: true
     },
     privacy: {
       shareStats: true,
@@ -49,13 +46,6 @@ const createMockUnifiedUser = () => ({
     },
     focus: {
       defaultDuration: 25,
-      breakDuration: 5,
-      longBreakDuration: 15,
-      sessionsUntilLongBreak: 4,
-      autoStartBreaks: false,
-      autoStartSessions: false,
-      soundEnabled: true,
-      vibrationEnabled: true,
     },
   },
   stats: {

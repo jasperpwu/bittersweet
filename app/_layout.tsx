@@ -237,26 +237,63 @@ export default function RootLayout() {
           // Sync Supabase credentials to UserDefaults for native intent REST calls
           WidgetService.syncSupabaseCredentials(user.id, session.access_token);
 
-          // Check if cloud has data, then decide initial upload vs pull+merge
+          // Sync strategy depends on auth event type
           try {
-            const remoteData = await useAppStore.getState().sync.pullFromCloud();
-            const localState = useAppStore.getState();
-            const hasLocalData =
-              localState.focus.sessions.allIds.length > 0 ||
-              localState.focus.tags.allIds.length > 0;
-            const hasRemoteData =
-              remoteData &&
-              (remoteData.focus.sessions.allIds.length > 0 ||
-                remoteData.focus.tags.allIds.length > 0);
+            if (event === 'SIGNED_IN') {
+              // Reinstall / fresh sign-in: cloud is source of truth
+              console.log('🔄 SIGNED_IN — clearing local data, pulling from cloud');
 
-            if (hasRemoteData) {
-              // Cloud has data — merge (pulls remote into local)
-              await useAppStore.getState().sync.triggerSync();
-            } else if (hasLocalData) {
-              // Cloud empty but local has data — initial upload
-              await useAppStore.getState().sync.initialUpload();
+              // Clear all local data
+              resetSyncSnapshot();
+              useAppStore.setState((state) => ({
+                focus: {
+                  ...state.focus,
+                  sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+                  tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+                  goals: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+                  badges: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+                  lastSelectedTagId: null,
+                  lastDurationByTagId: {},
+                },
+                rewards: {
+                  ...state.rewards,
+                  balance: 0,
+                  totalEarned: 0,
+                  totalSpent: 0,
+                  updatedAt: null,
+                  transactions: [],
+                },
+                sync: {
+                  ...state.sync,
+                  lastSyncTime: null,
+                },
+              }));
+
+              // Pull from cloud and apply directly (no merge)
+              await useAppStore.getState().sync.pullAndApply();
+            } else {
+              // INITIAL_SESSION (cold start): merge local + cloud
+              console.log('🔄 INITIAL_SESSION — merging local with cloud');
+
+              const remoteData = await useAppStore.getState().sync.pullFromCloud();
+              const localState = useAppStore.getState();
+              const hasLocalData =
+                localState.focus.sessions.allIds.length > 0 ||
+                localState.focus.tags.allIds.length > 0;
+              const hasRemoteData =
+                remoteData &&
+                (remoteData.focus.sessions.allIds.length > 0 ||
+                  remoteData.focus.tags.allIds.length > 0);
+
+              if (hasRemoteData) {
+                // Cloud has data — merge (pulls remote into local)
+                await useAppStore.getState().sync.triggerSync();
+              } else if (hasLocalData) {
+                // Cloud empty but local has data — initial upload
+                await useAppStore.getState().sync.initialUpload();
+              }
+              // Both empty — nothing to do
             }
-            // Both empty — nothing to do
           } catch (error) {
             console.error('Post sign-in sync error:', error);
           }
