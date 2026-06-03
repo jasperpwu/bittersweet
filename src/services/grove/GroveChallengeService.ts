@@ -51,6 +51,19 @@ export interface ChallengeProgressResult {
   error?: string;
 }
 
+export interface ChallengePeriodDetail {
+  date: string;
+  challenger_minutes: number;
+  challengee_minutes: number;
+}
+
+export interface ChallengePeriodDetailsResult {
+  periods: ChallengePeriodDetail[];
+  challenger_total: number;
+  challengee_total: number;
+  total_periods: number;
+}
+
 // --- Helpers ---
 
 /**
@@ -211,5 +224,18 @@ export const GroveChallengeService = {
 
     if (error) throw error;
     return data as ChallengeProgressResult;
+  },
+
+  /**
+   * Fetch per-period breakdown for a challenge (both users' minutes per day/week).
+   */
+  async fetchPeriodDetails(challengeId: string, userTz: string = 'UTC'): Promise<ChallengePeriodDetailsResult> {
+    const { data, error } = await supabase.rpc('get_challenge_period_details', {
+      p_challenge_id: challengeId,
+      p_user_tz: userTz,
+    });
+
+    if (error) throw error;
+    return data as ChallengePeriodDetailsResult;
   },
 };

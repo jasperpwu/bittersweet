@@ -161,6 +161,13 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           const currentBalance = get().rewards.balance;
           await FamilyControlsModule.updateShieldBalance(currentBalance);
           console.log('☁️ Blocklist synced and applied');
+        } else if (currentSelectionId) {
+          // No data change, but re-apply native blocking in case it was
+          // cleared on cold start / app restart
+          BlocklistSyncService.reapplyBlocking(currentSelectionId);
+          const currentBalance = get().rewards.balance;
+          await FamilyControlsModule.updateShieldBalance(currentBalance);
+          console.log('☁️ Blocklist unchanged — re-applied native blocking');
         }
       } catch (error) {
         console.error('[Sync] Blocklist sync error:', error);

@@ -1,12 +1,13 @@
-import React, { useEffect, useCallback } from 'react';
-import { View, SafeAreaView, Pressable, SectionList, Alert } from 'react-native';
+import React, { useEffect, useCallback, useState } from 'react';
+import { View, SafeAreaView, Pressable, SectionList, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { ChallengeCard, formatTarget } from '../../src/components/grove/ChallengeCard';
+import { ChallengeDetailGrid } from '../../src/components/grove/ChallengeDetailGrid';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
-import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
+import type { ChallengeItem, ChallengePeriodDetailsResult } from '../../src/services/grove/GroveChallengeService';
 
 export default function ChallengesModal() {
   const challenges = useAppStore((s) => s.grove.challenges);
@@ -14,6 +15,11 @@ export default function ChallengesModal() {
   const fetchChallenges = useAppStore((s) => s.grove.fetchChallenges);
   const acceptChallenge = useAppStore((s) => s.grove.acceptChallenge);
   const declineChallenge = useAppStore((s) => s.grove.declineChallenge);
+  const fetchChallengePeriodDetails = useAppStore((s) => s.grove.fetchChallengePeriodDetails);
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [periodDetails, setPeriodDetails] = useState<Record<string, ChallengePeriodDetailsResult>>({});
+  const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
 
   useEffect(() => {
     fetchChallenges();
@@ -34,6 +40,27 @@ export default function ChallengesModal() {
       Alert.alert('Error', 'Failed to decline challenge. Please try again.');
     }
   }, [declineChallenge]);
+
+  const handleToggleExpand = useCallback(async (challengeId: string) => {
+    if (expandedId === challengeId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(challengeId);
+
+    // Fetch details if not already cached
+    if (!periodDetails[challengeId]) {
+      setLoadingDetails(challengeId);
+      try {
+        const details = await fetchChallengePeriodDetails(challengeId);
+        setPeriodDetails(prev => ({ ...prev, [challengeId]: details }));
+      } catch {
+        // Silently fail — grid just won't show
+      } finally {
+        setLoadingDetails(null);
+      }
+    }
+  }, [expandedId, periodDetails, fetchChallengePeriodDetails]);
 
   // Group into sections
   const pendingIncoming = challenges.filter(c => c.status === 'pending' && c.isIncoming);
@@ -109,10 +136,38 @@ export default function ChallengesModal() {
       );
     }
 
-    // Active or completed: show as ChallengeCard
+    // Active or completed: show as ChallengeCard (tappable)
+    const isExpanded = expandedId === item.id;
+    const isChallenger = currentUserId === item.challengerId;
+    const theirProfile = isChallenger ? item.challengeeProfile : item.challengerProfile;
+    const details = periodDetails[item.id];
+    const isLoadingThis = loadingDetails === item.id;
+
     return (
       <View className="px-5 py-2">
-        <ChallengeCard challenge={item} currentUserId={currentUserId} />
+        <Pressable onPress={() => handleToggleExpand(item.id)} className="active:opacity-80">
+          <ChallengeCard challenge={item} currentUserId={currentUserId} />
+        </Pressable>
+        {isExpanded && (
+          <View>
+            {isLoadingThis && (
+              <View className="py-4 items-center">
+                <ActivityIndicator size="small" />
+              </View>
+            )}
+            {details && item.startDate && (
+              <ChallengeDetailGrid
+                periods={details.periods}
+                periodType={item.period}
+                targetMinutes={item.targetMinutes}
+                startDate={item.startDate}
+                myLabel="You"
+                theirLabel={theirProfile.display_name}
+                isChallenger={isChallenger}
+              />
+            )}
+          </View>
+        )}
       </View>
     );
   };

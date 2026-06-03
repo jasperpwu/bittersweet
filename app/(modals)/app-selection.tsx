@@ -132,12 +132,9 @@ export default function AppSelectionScreen() {
   };
 
   const handleSave = () => {
-    if (!isInitialSetup && !hasUserEdited) {
-      showToast('No updates made to block list', 'neutral');
-      router.back();
-      return;
-    }
     // Charge fruit only if: not initial setup AND user actually changed the selection
+    // When no edits were made, still re-apply blocking (free) — handles the case
+    // where apps were synced but native blocking wasn't active yet.
     executeSave(!isInitialSetup && hasUserEdited);
   };
 

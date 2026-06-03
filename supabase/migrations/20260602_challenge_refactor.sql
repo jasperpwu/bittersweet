@@ -10,13 +10,22 @@ ALTER TABLE grove_challenges
     CHECK (target_minutes > 0);
 
 -- Step 2: Backfill end_date for active challenges that only have streak_days
-UPDATE grove_challenges
-SET end_date = start_date + (streak_days - 1)
-WHERE status = 'active'
-  AND end_date IS NULL
-  AND start_date IS NOT NULL
-  AND streak_days IS NOT NULL
-  AND streak_days > 0;
+-- Guarded: only runs if streak_days column still exists (idempotent re-run safe)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grove_challenges' AND column_name = 'streak_days'
+  ) THEN
+    UPDATE grove_challenges
+    SET end_date = start_date + (streak_days - 1)
+    WHERE status = 'active'
+      AND end_date IS NULL
+      AND start_date IS NOT NULL
+      AND streak_days IS NOT NULL
+      AND streak_days > 0;
+  END IF;
+END $$;
 
 -- Step 3: Drop legacy columns
 ALTER TABLE grove_challenges
@@ -41,10 +50,9 @@ LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
 DECLARE
   streak INTEGER := 0;
   bucket RECORD;
-  expected_idx INTEGER := 0;
 BEGIN
   IF p_period = 'daily' THEN
-    -- Daily buckets: each calendar day in user's timezone
+    -- Daily buckets: count all days where target is met (non-consecutive)
     FOR bucket IN
       SELECT
         (fs.start_time AT TIME ZONE p_user_tz)::date AS bucket_date,
@@ -58,19 +66,12 @@ BEGIN
       GROUP BY bucket_date
       ORDER BY bucket_date
     LOOP
-      -- Check this bucket is the expected consecutive day
-      IF bucket.bucket_date <> p_start_date + expected_idx THEN
-        EXIT; -- gap found, stop counting
-      END IF;
       IF bucket.total_minutes >= p_target_minutes THEN
         streak := streak + 1;
-        expected_idx := expected_idx + 1;
-      ELSE
-        EXIT; -- target not met, stop counting
       END IF;
     END LOOP;
   ELSE
-    -- Weekly buckets: ISO weeks (Mon-Sun)
+    -- Weekly buckets: count all weeks where target is met (non-consecutive)
     FOR bucket IN
       SELECT
         date_trunc('week', (fs.start_time AT TIME ZONE p_user_tz)::date)::date AS week_start,
@@ -84,15 +85,8 @@ BEGIN
       GROUP BY week_start
       ORDER BY week_start
     LOOP
-      -- Expected week_start = challenge start_date's week + expected_idx weeks
-      IF bucket.week_start <> date_trunc('week', p_start_date)::date + (expected_idx * 7) THEN
-        EXIT;
-      END IF;
       IF bucket.total_minutes >= p_target_minutes THEN
         streak := streak + 1;
-        expected_idx := expected_idx + 1;
-      ELSE
-        EXIT;
       END IF;
     END LOOP;
   END IF;

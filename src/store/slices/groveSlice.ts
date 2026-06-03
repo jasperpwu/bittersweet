@@ -14,7 +14,7 @@ import {
 import type { FriendItem, FriendRequest } from '../../services/grove/GroveFriendService';
 import type { FeedItem } from '../../services/grove/GroveFeedService';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
-import type { ChallengeItem, CreateChallengeInput, ChallengeProgressResult } from '../../services/grove/GroveChallengeService';
+import type { ChallengeItem, CreateChallengeInput, ChallengeProgressResult, ChallengePeriodDetailsResult } from '../../services/grove/GroveChallengeService';
 import type { HeartbeatSettings, InnerCircleMember, HeartbeatAlert } from '../../services/grove/GroveHeartbeatService';
 import { WidgetService } from '../../services/WidgetService';
 
@@ -96,6 +96,7 @@ export interface GroveSlice {
   acceptChallenge: (challengeId: string) => Promise<void>;
   declineChallenge: (challengeId: string) => Promise<void>;
   recordChallengeProgress: (challengeId: string) => Promise<ChallengeProgressResult>;
+  fetchChallengePeriodDetails: (challengeId: string) => Promise<ChallengePeriodDetailsResult>;
 
   // Phase 4 — Heartbeat / Inner Circle
   heartbeatSettings: HeartbeatSettings | null;
@@ -807,6 +808,11 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       console.error('Failed to record challenge progress:', error);
       throw error;
     }
+  },
+
+  fetchChallengePeriodDetails: async (challengeId: string) => {
+    const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return await GroveChallengeService.fetchPeriodDetails(challengeId, userTz);
   },
 
   // ========== Phase 4 Actions — Heartbeat / Inner Circle ==========

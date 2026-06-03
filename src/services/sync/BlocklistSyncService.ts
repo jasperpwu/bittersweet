@@ -257,6 +257,15 @@ export class BlocklistSyncService {
     return CANONICAL_SELECTION_ID;
   }
 
+  /**
+   * Re-apply native blocking for an existing selection ID.
+   * Used on cold start when data hasn't changed but native state may have been cleared.
+   */
+  static reapplyBlocking(selectionId: string): void {
+    console.log('[BlocklistSync] Re-applying native blocking for:', selectionId);
+    blockSelection({ activitySelectionId: selectionId });
+  }
+
   // --- Private helpers ---
 
   /**
