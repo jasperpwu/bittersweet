@@ -25,6 +25,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '../src/store';
 import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
+import { BlocklistSyncService } from '../src/services/sync/BlocklistSyncService';
 import { configureCrisp } from '../src/services/crisp';
 import { useDeepLinkHandler } from '../src/hooks/useDeepLinkHandler';
 import { PushNotificationService } from '../src/services/notifications/push';
@@ -260,6 +261,28 @@ export default function RootLayout() {
             console.error('Post sign-in sync error:', error);
           }
 
+          // Blocklist cross-device sync (bidirectional merge)
+          try {
+            const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
+            const mergedSelectionId = await BlocklistSyncService.sync(
+              user.id,
+              currentSelectionId
+            );
+            if (mergedSelectionId) {
+              console.log('🔄 Blocklist sync: applying merged selection:', mergedSelectionId);
+              useAppStore.setState((state) => ({
+                blocklist: {
+                  ...state.blocklist,
+                  currentSelectionId: mergedSelectionId,
+                },
+              }));
+              // Sync to UserDefaults so native intent can re-block if needed
+              WidgetService.syncCurrentSelectionId(mergedSelectionId);
+            }
+          } catch (error) {
+            console.error('Post sign-in blocklist sync error:', error);
+          }
+
           // Register push token after sign-in
           PushNotificationService.registerPushToken();
 
@@ -305,14 +328,26 @@ export default function RootLayout() {
   const syncWidgetTagList = () => {
     try {
       const store = useAppStore.getState();
-      const { tags, lastDurationByTagId } = store.focus;
+      const { tags, sessions, lastDurationByTagId } = store.focus;
+
+      // Compute most recent session time per tag
+      const lastUsedByTag: Record<string, number> = {};
+      for (const id of sessions.allIds) {
+        const s = sessions.byId[id];
+        if (!s) continue;
+        const t = s.startTime instanceof Date ? s.startTime.getTime() : new Date(s.startTime).getTime();
+        if (!lastUsedByTag[s.tagId] || t > lastUsedByTag[s.tagId]) {
+          lastUsedByTag[s.tagId] = t;
+        }
+      }
+
       const tagList = tags.allIds.map(id => tags.byId[id]).filter(tag => tag && !tag.deletedAt).map(tag => ({
           id: tag.id,
           name: tag.name,
           icon: tag.icon || '🎯',
           color: tag.color || '#8B4513',
           lastDuration: lastDurationByTagId[tag.id] ?? 15,
-          usageCount: tag.usageCount ?? 0,
+          lastUsedAt: lastUsedByTag[tag.id] ?? 0,
       }));
       WidgetService.syncTagList(tagList);
 

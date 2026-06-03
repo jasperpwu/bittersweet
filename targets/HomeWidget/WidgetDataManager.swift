@@ -70,7 +70,7 @@ struct WidgetTagInfo {
   let icon: String
   let color: String
   let lastDuration: Int? // minutes; nil = unknown, 0 = infinite
-  let usageCount: Int
+  let lastUsedAt: Double // Unix timestamp ms; 0 = never used
 
   init?(dict: [String: Any]) {
     guard let id = dict["id"] as? String,
@@ -80,7 +80,7 @@ struct WidgetTagInfo {
     self.icon = dict["icon"] as? String ?? ""
     self.color = dict["color"] as? String ?? ""
     self.lastDuration = dict["lastDuration"] as? Int
-    self.usageCount = dict["usageCount"] as? Int ?? 0
+    self.lastUsedAt = dict["lastUsedAt"] as? Double ?? 0
   }
 }
 

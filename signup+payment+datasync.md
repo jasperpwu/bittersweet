@@ -108,9 +108,6 @@ Signup + Payment + Data Sync — Implementation Plan
  │ rewards               │ user_id (uuid)     │ balance, total_earned,        │
  │                       │                    │ total_spent                   │
  ├───────────────────────┼────────────────────┼───────────────────────────────┤
- │ reward_transactions   │ id (text)          │ user_id, amount, type,        │
- │                       │                    │ source, metadata(jsonb)       │
- ├───────────────────────┼────────────────────┼───────────────────────────────┤
  │                       │                    │ user_id, product_id,          │
  │ subscription_receipts │ id (uuid, auto)    │ original_transaction_id,      │
  │                       │                    │ expires_date,                 │

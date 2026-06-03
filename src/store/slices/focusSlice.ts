@@ -82,79 +82,12 @@ interface FocusSlice {
   getProductivityInsights: () => any;
 }
 
-// Default tags (matching the Focus tab initial tags)
-const defaultTags: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>[] = [
-  { name: 'Work', icon: '💼', userId: '' },
-  { name: 'Study', icon: '📚', userId: '' },
-  { name: 'Personal', icon: '👤', userId: '' },
-  { name: 'Exercise', icon: '💪', userId: '' },
-  { name: 'Reading', icon: '📖', userId: '' },
-  { name: 'Creative', icon: '🎨', userId: '' },
-];
-
 // Timer management
 let timerInterval: NodeJS.Timeout | null = null;
 
 export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
   const eventEmitter = createEventEmitter('focus');
   const eventListener = createEventListener();
-  
-  // Initialize default tags with emojis (only if no tags exist)
-  const initializeDefaultTags = (userId: string) => {
-    if (__DEV__) {
-      console.log('🏷️ Initializing default tags with emojis');
-    }
-    
-    // Create default tags for new users
-    const tagsWithIds = defaultTags.map(tag => ({
-      ...tag,
-      id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
-    
-    set((state: any) => {
-      // Clear existing tags and add new emoji tags
-      const emptyState = createNormalizedState();
-      const manager = new EntityManager(emptyState);
-      tagsWithIds.forEach(tag => manager.add(tag));
-      state.focus.tags = {
-        ...manager.getState(),
-        loading: false,
-        error: null,
-        lastUpdated: new Date(),
-      };
-    });
-    
-    if (__DEV__) {
-      console.log('✅ Default tags initialized for user:', userId);
-    }
-  };
-
-  // Initialize default categories immediately if we have a user or in development
-  // Use setTimeout to ensure store is fully initialized
-  setTimeout(() => {
-    try {
-      const state = get();
-      const tags = state?.focus?.tags;
-      
-      const userId = (__DEV__ ? 'dev-user' : null);
-      if (userId) {
-        // Only initialize tags if they don't exist yet (preserve user's deletions)
-        if (!tags?.allIds || tags.allIds.length === 0) {
-          console.log('🏷️ No tags found, initializing default tags');
-          initializeDefaultTags(userId);
-        } else {
-          console.log('🏷️ Tags already exist, skipping initialization');
-        }
-      }
-    } catch (error) {
-      if (__DEV__) {
-        console.warn('Could not initialize default data:', error);
-      }
-    }
-  }, 500); // Give more time for store initialization
   
   // Calculate fruits earned based on session duration and completion
   const calculateFruitsEarned = (session: FocusSession): number => {
@@ -454,9 +387,11 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         completedSession.duration
       );
 
-      if (__DEV__) {
-        console.log('✅ Focus session completed:', completedSession.id, `Fruits earned: ${fruitsEarned}`);
-      }
+      console.log(`[FocusSlice] Session completed: ${completedSession.id} duration=${completedSession.duration} tagId=${completedSession.tagId} endTime=${completedSession.endTime}`);
+      // Verify session is in the normalized store after set()
+      const sessionsAfter = get().focus.sessions;
+      const inStore = !!sessionsAfter.byId[completedSession.id];
+      console.log(`[FocusSlice] Session ${completedSession.id} in store after complete: ${inStore}, total sessions: ${sessionsAfter.allIds.length}`);
     },
 
     cancelSession: () => {
@@ -546,9 +481,11 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         completedSession.duration
       );
 
-      if (__DEV__) {
-        console.log('✅ Completed focus session created:', completedSession.id, `Duration: ${completedSession.duration}min, Fruits earned: ${fruitsEarned}`);
-      }
+      console.log(`[FocusSlice] createCompletedSession: ${completedSession.id} duration=${completedSession.duration} tagId=${completedSession.tagId} startTime=${completedSession.startTime} endTime=${completedSession.endTime}`);
+      // Verify session is in the normalized store after set()
+      const sessionsAfter = get().focus.sessions;
+      const inStore = !!sessionsAfter.byId[completedSession.id];
+      console.log(`[FocusSlice] Session ${completedSession.id} in store: ${inStore}, total sessions: ${sessionsAfter.allIds.length}`);
 
       return completedSession;
     },

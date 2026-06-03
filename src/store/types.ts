@@ -153,16 +153,6 @@ export interface FocusSettings {
 }
 
 
-// Rewards Types
-export interface RewardTransaction extends BaseEntity {
-  userId: string;
-  amount: number;
-  type: 'earned' | 'spent';
-  source: string;
-  description: string;
-  metadata?: Record<string, any>;
-}
-
 export interface UnlockableApp extends BaseEntity {
   name: string;
   bundleId: string;
@@ -294,17 +284,15 @@ export interface RewardsSlice {
   balance: number;
   totalEarned: number;
   totalSpent: number;
-  transactions: NormalizedState<RewardTransaction>;
   unlockableApps: NormalizedState<UnlockableApp>;
-  
+
   // Actions
   earnFruits: (amount: number, source: string, metadata?: any) => void;
   spendFruits: (amount: number, purpose: string, metadata?: any) => void;
   unlockApp: (appId: string) => Promise<boolean>;
-  
+
   // Selectors
   getBalance: () => number;
-  getTransactionHistory: () => RewardTransaction[];
   getUnlockableApps: () => UnlockableApp[];
   canAfford: (amount: number) => boolean;
 }

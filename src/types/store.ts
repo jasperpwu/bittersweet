@@ -35,17 +35,6 @@ export interface Tag {
     deletedAt?: Date;
 }
 
-// Simple Rewards Types
-export interface RewardTransaction {
-    id: string;
-    type: 'earned' | 'spent';
-    amount: number;
-    source: 'focus_session' | 'task_completion' | 'streak_bonus' | 'app_unlock' | 'manual';
-    description: string;
-    metadata?: Record<string, any>;
-    createdAt: Date;
-}
-
 export interface UnlockableApp {
     id: string;
     name: string;
@@ -121,7 +110,6 @@ export interface RewardsSlice {
     balance: number;
     totalEarned: number;
     totalSpent: number;
-    transactions: RewardTransaction[];
     unlockableApps: UnlockableApp[];
 
     // Actions

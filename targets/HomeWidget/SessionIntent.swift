@@ -250,13 +250,13 @@ struct StopUnlockIntent: LiveActivityIntent {
 @available(iOS 17.0, *)
 enum TagSortOrder: String, AppEnum {
   case currentOrder
-  case mostUsed
+  case recent
 
   static var typeDisplayRepresentation: TypeDisplayRepresentation = "Sort Order"
 
   static var caseDisplayRepresentations: [TagSortOrder: DisplayRepresentation] = [
     .currentOrder: "Current Order",
-    .mostUsed: "Most Used",
+    .recent: "Recent",
   ]
 }
 

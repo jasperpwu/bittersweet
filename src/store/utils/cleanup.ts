@@ -106,14 +106,6 @@ export class EntityCleanup {
     
     // Focus sessions are the primary entity for time tracking
     
-    // Clean reward transactions
-    if (store.rewards) {
-      cleanedStore.rewards = {
-        ...store.rewards,
-        transactions: this.cleanupNormalizedState(store.rewards.transactions)
-      };
-    }
-    
     // Clean UI errors
     if (store.ui) {
       const cutoffDate = new Date(Date.now() - this.config.maxAge);
@@ -334,10 +326,6 @@ export const initializeCleanupSystems = (): void => {
   });
   
   // Focus sessions cleanup rule removed - sessions are now the primary entity
-  
-  StateCleanup.registerCleanupRule('rewards', (rewardsState) => {
-    return EntityCleanup.cleanupNormalizedState(rewardsState.transactions);
-  });
   
   // Start auto cleanup
   EntityCleanup.startAutoCleanup();

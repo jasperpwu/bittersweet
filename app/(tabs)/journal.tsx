@@ -386,6 +386,14 @@ export default function JournalScreen() {
   const selectedInitialDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
   const selectedTargetDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
   const isManual = selectedSession?.isManualEntry;
+  // Sync banner state (hooks must be called unconditionally)
+  const syncBannerUserId = useAppStore((s) => s.auth.user?.id);
+  const syncStatus = useAppStore((s) => s.sync.syncStatus);
+  const syncError = useAppStore((s) => s.sync.syncError);
+  const offlineQueueSize = useAppStore((s) => s.sync.offlineQueueSize);
+  const syncIsSyncing = useAppStore((s) => s.sync.isSyncing);
+  const flushOfflineQueue = useAppStore((s) => s.sync.flushOfflineQueue);
+
   const journalAccelerateMultiplier = useAppStore((s) => s.rewards.isAccelerateActive()) ? 2 : 1;
   const currentFruits = isManual ? 0 : calculateFruitsEarnedForDuration(
     selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0,
@@ -506,6 +514,49 @@ export default function JournalScreen() {
           </Animated.View>
         )}
       </View>
+
+      {/* Sync Status Banner (dev-only) */}
+      {(syncBannerUserId === '9c931ba0-39e9-4597-b691-4b941b0c7118' || syncBannerUserId === 'b022d7ab-fd25-4bbc-9ebc-1df65e87248a') && (() => {
+        let bannerBg = 'bg-green-800/80';
+        let bannerText = 'All sessions synced';
+        let bannerTextColor = '#4ADE80';
+        let showRetry = false;
+        let showSpinner = false;
+
+        if (syncIsSyncing || syncStatus === 'syncing') {
+          bannerBg = 'bg-gray-700/80';
+          bannerText = 'Syncing...';
+          bannerTextColor = '#D1D5DB';
+          showSpinner = true;
+        } else if (syncStatus === 'error') {
+          bannerBg = 'bg-red-900/80';
+          bannerText = syncError || 'Sync error';
+          bannerTextColor = '#FCA5A5';
+          showRetry = true;
+        } else if (offlineQueueSize > 0) {
+          bannerBg = 'bg-amber-800/80';
+          bannerText = `${offlineQueueSize} session${offlineQueueSize === 1 ? '' : 's'} pending sync`;
+          bannerTextColor = '#FCD34D';
+        }
+
+        return (
+          <View className={`${bannerBg} px-4 py-2 flex-row items-center justify-between`} style={{ paddingBottom: insets.bottom + 8 }}>
+            <View className="flex-row items-center flex-1">
+              {showSpinner && <ActivityIndicator size="small" color={bannerTextColor} style={{ marginRight: 8 }} />}
+              <Typography variant="body-12" style={{ color: bannerTextColor }} className="flex-1">
+                {bannerText}
+              </Typography>
+            </View>
+            {showRetry && (
+              <Pressable onPress={flushOfflineQueue} className="ml-3 px-3 py-1 rounded-md bg-white/20 active:opacity-70">
+                <Typography variant="body-12" style={{ color: '#FCA5A5', fontWeight: '600' }}>
+                  Retry
+                </Typography>
+              </Pressable>
+            )}
+          </View>
+        );
+      })()}
 
       <Modal isVisible={!!selectedSession} onClose={closeSessionModal} size="medium">
         {selectedSession && (

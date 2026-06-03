@@ -20,6 +20,12 @@ export class SyncQueue {
       const raw = await AsyncStorage.getItem(QUEUE_STORAGE_KEY);
       this.queue = raw ? JSON.parse(raw) : [];
       this.loaded = true;
+      if (this.queue.length > 0) {
+        console.log(`[SyncQueue] Loaded ${this.queue.length} pending entries from storage:`);
+        for (const e of this.queue) {
+          console.log(`[SyncQueue]   ${e.id}: ${e.table} ${e.operation} record=${e.data?.id || e.data?.user_id || '?'} data=${JSON.stringify(e.data)}`);
+        }
+      }
     } catch (error) {
       console.error('Failed to load sync queue:', error);
       this.queue = [];
@@ -39,12 +45,18 @@ export class SyncQueue {
     // Deduplicate: remove older entries for the same table + same record ID
     const recordId = entry.data?.id;
     if (recordId) {
+      const before = this.queue.length;
       this.queue = this.queue.filter(
         (e) => !(e.table === entry.table && e.data?.id === recordId)
       );
+      const deduped = before - this.queue.length;
+      if (deduped > 0) {
+        console.log(`[SyncQueue] Deduped ${deduped} older entries for ${entry.table}:${recordId}`);
+      }
     }
 
     this.queue.push(fullEntry);
+    console.log(`[SyncQueue] Enqueued ${fullEntry.id} (${entry.table} ${entry.operation} ${recordId || '?'}) — queue size: ${this.queue.length}`);
     await this.persist();
   }
 

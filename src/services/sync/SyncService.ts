@@ -1,5 +1,6 @@
 import { supabase } from '../../config/supabase';
 import { syncQueue, type SyncQueueEntry } from './SyncQueue';
+import { BlocklistSyncService } from './BlocklistSyncService';
 import {
   sessionToRow,
   rowToSession,
@@ -9,8 +10,6 @@ import {
   rowToGoal,
   rewardsToRow,
   rowToRewards,
-  rewardTransactionToRow,
-  rowToRewardTransaction,
   normalizedToRows,
   rowsToNormalized,
 } from './SyncMapper';
@@ -53,12 +52,14 @@ export class SyncService {
       console.error('Failed to upload rewards:', rewardsError);
     }
 
-    // Upload reward transactions
-    if (localState.rewards.transactions?.length > 0) {
-      const txRows = localState.rewards.transactions.map((tx: any) =>
-        rewardTransactionToRow(tx, userId)
-      );
-      await SyncService.batchUpsert('reward_transactions', txRows);
+    // Upload blocklist selection
+    const blocklistSelectionId = localState.blocklist?.currentSelectionId;
+    if (blocklistSelectionId) {
+      try {
+        await BlocklistSyncService.push(userId, blocklistSelectionId);
+      } catch (error) {
+        console.error('Failed to upload blocklist:', error);
+      }
     }
 
     console.log('☁️ Initial upload complete');
@@ -70,7 +71,7 @@ export class SyncService {
   static async pullAll(userId: string): Promise<any> {
     console.log('☁️ Pulling all data from cloud...');
 
-    const [sessionsRes, tagsRes, goalsRes, rewardsRes, txRes] =
+    const [sessionsRes, tagsRes, goalsRes, rewardsRes] =
       await Promise.all([
         supabase
           .from('focus_sessions')
@@ -88,11 +89,6 @@ export class SyncService {
           .eq('user_id', userId)
           .is('deleted_at', null),
         supabase.from('rewards').select('*').eq('user_id', userId).single(),
-        supabase
-          .from('reward_transactions')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: true }),
       ]);
 
     const sessions = rowsToNormalized(
@@ -104,15 +100,23 @@ export class SyncService {
     const rewards = rewardsRes.data
       ? rowToRewards(rewardsRes.data)
       : { balance: 0, totalEarned: 0, totalSpent: 0 };
-    const transactions = (txRes.data ?? []).map(rowToRewardTransaction);
+
+    // Pull blocklist blob
+    let blocklistBlob: string | null = null;
+    try {
+      blocklistBlob = await BlocklistSyncService.pull(userId);
+    } catch (error) {
+      console.error('Failed to pull blocklist:', error);
+    }
 
     console.log(
-      `☁️ Pulled: ${sessions.allIds.length} sessions, ${tags.allIds.length} tags, ${goals.allIds.length} goals`
+      `☁️ Pulled: ${sessions.allIds.length} sessions, ${tags.allIds.length} tags, ${goals.allIds.length} goals, blocklist: ${blocklistBlob ? 'yes' : 'no'}`
     );
 
     return {
       focus: { sessions, tags, goals },
-      rewards: { ...rewards, transactions },
+      rewards,
+      blocklistBlob,
     };
   }
 
@@ -147,10 +151,6 @@ export class SyncService {
             ? { balance: local.rewards.balance, totalEarned: local.rewards.totalEarned, totalSpent: local.rewards.totalSpent, updatedAt: local.rewards.updatedAt }
             : { balance: remote.rewards.balance, totalEarned: remote.rewards.totalEarned, totalSpent: remote.rewards.totalSpent, updatedAt: remote.rewards.updatedAt }
         ),
-        transactions: SyncService.mergeTransactions(
-          local.rewards?.transactions ?? [],
-          remote.rewards?.transactions ?? []
-        ),
       },
     };
   }
@@ -181,6 +181,7 @@ export class SyncService {
 
     for (const entry of entries) {
       try {
+        console.log(`[SyncFlush] Processing ${entry.id}: ${entry.operation} → ${entry.table} (record: ${entry.data?.id || entry.data?.user_id || '?'})`);
         if (entry.operation === 'upsert') {
           // rewards table uses user_id as primary key, not id
           const conflictCol = entry.table === 'rewards' ? 'user_id' : 'id';
@@ -188,16 +189,18 @@ export class SyncService {
             .from(entry.table)
             .upsert(entry.data, { onConflict: conflictCol });
           if (error) throw error;
+          console.log(`[SyncFlush] ✓ ${entry.table} upsert succeeded for ${entry.data?.id || entry.data?.user_id}`);
         } else if (entry.operation === 'soft_delete') {
           const { error } = await supabase
             .from(entry.table)
             .update({ deleted_at: new Date().toISOString() })
             .eq('id', entry.data.id);
           if (error) throw error;
+          console.log(`[SyncFlush] ✓ ${entry.table} soft_delete succeeded for ${entry.data.id}`);
         }
         succeeded.push(entry.id);
-      } catch (error) {
-        console.error(`Failed to flush entry ${entry.id}:`, error);
+      } catch (error: any) {
+        console.error(`[SyncFlush] ✗ FAILED entry ${entry.id} (${entry.table} ${entry.operation}):`, error?.message || error, JSON.stringify(error));
         failed++;
       }
     }
@@ -267,28 +270,4 @@ export class SyncService {
     };
   }
 
-  private static mergeTransactions(
-    local: any[],
-    remote: any[]
-  ): any[] {
-    const seen = new Set<string>();
-    const merged: any[] = [];
-
-    // Union by ID
-    for (const tx of [...remote, ...local]) {
-      if (!seen.has(tx.id)) {
-        seen.add(tx.id);
-        merged.push(tx);
-      }
-    }
-
-    // Sort by timestamp
-    merged.sort((a, b) => {
-      const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-      const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-      return aTime - bTime;
-    });
-
-    return merged;
-  }
 }

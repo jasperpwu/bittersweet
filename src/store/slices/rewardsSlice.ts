@@ -3,16 +3,9 @@
  * Addresses Requirements: 2.2, 5.1, 5.2, 5.3, 6.2, 7.4, 8.2, 9.1
  */
 
-import { RewardsSlice, RewardTransaction, UnlockableApp } from '../types';
+import { RewardsSlice, UnlockableApp } from '../types';
 import { createNormalizedState, updateNormalizedState } from '../utils/entityManager';
 import { createEventEmitter, createEventListener, STORE_EVENTS } from '../utils/eventBus';
-
-// Simple ID generator to avoid import issues
-const generateId = () => {
-  const timestamp = Date.now().toString(36);
-  const randomStr = Math.random().toString(36).substring(2, 8);
-  return `${timestamp}-${randomStr}`;
-};
 
 // Mock data for unlockable apps
 const mockUnlockableApps: UnlockableApp[] = [
@@ -99,34 +92,13 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
     balance: 0,
     totalEarned: 0,
     totalSpent: 0,
-    transactions: createNormalizedState<RewardTransaction>(),
     unlockableApps: createNormalizedState<UnlockableApp>(mockUnlockableApps),
     
     // Actions
     earnFruits: (amount: number, source: string, metadata?: any) => {
       set((state: any) => {
-        // Create transaction record
-        const transaction: RewardTransaction = {
-          id: generateId(),
-          userId: 'anonymous',
-          amount,
-          type: 'earned',
-          source,
-          description: `Earned ${amount} fruits from ${source}`,
-          metadata,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        // Update balance and totals
         state.rewards.balance += amount;
         state.rewards.totalEarned += amount;
-
-        // Add transaction to history
-        state.rewards.transactions = updateNormalizedState(
-          state.rewards.transactions,
-          (manager) => manager.add(transaction)
-        );
       });
 
       // Emit event for other stores
@@ -141,28 +113,8 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
       }
 
       set((state: any) => {
-        // Create transaction record
-        const transaction: RewardTransaction = {
-          id: generateId(),
-          userId: 'anonymous',
-          amount,
-          type: 'spent',
-          source: purpose,
-          description: `Spent ${amount} fruits on ${purpose}`,
-          metadata,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        // Update balance and totals
         state.rewards.balance -= amount;
         state.rewards.totalSpent += amount;
-
-        // Add transaction to history
-        state.rewards.transactions = updateNormalizedState(
-          state.rewards.transactions,
-          (manager) => manager.add(transaction)
-        );
       });
 
       // Emit event
@@ -221,14 +173,6 @@ export function createRewardsSlice(set: any, get: any, api: any): RewardsSlice {
     
     // Selectors
     getBalance: () => get().rewards.balance,
-    
-    getTransactionHistory: () => {
-      const transactions = get().rewards.transactions;
-      return transactions.allIds
-        .map((id: string) => transactions.byId[id])
-        .filter(Boolean)
-        .sort((a: RewardTransaction, b: RewardTransaction) => b.createdAt.getTime() - a.createdAt.getTime());
-    },
     
     getUnlockableApps: () => {
       const apps = get().rewards.unlockableApps;

@@ -125,18 +125,6 @@ class BitterSweetFamilyControlsModule {
       // accurate shield config when stopping a session without JS running
       WidgetService.syncFruitBalance(fruitBalance);
 
-      // Debug: Log the stored configuration
-      console.log('✅ Shield configuration updated:', {
-        fruitBalance,
-        shieldConfig,
-        shieldActions,
-      });
-
-      // Debug: Verify configuration was stored
-      const storedConfig = ReactNativeDeviceActivity.userDefaultsGet(SHIELD_CONFIGURATION_KEY);
-      const storedActions = ReactNativeDeviceActivity.userDefaultsGet(SHIELD_ACTIONS_KEY);
-      console.log('🔍 Stored shield configuration:', storedConfig);
-      console.log('🔍 Stored shield actions:', storedActions);
       return true;
     } catch (error) {
       console.error('Failed to configure shield:', error);

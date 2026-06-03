@@ -257,8 +257,8 @@ struct MediumWidgetProvider: AppIntentTimelineProvider {
     let count = gridSize == .two ? 2 : 4
 
     var sorted = tags
-    if sortOrder == .mostUsed {
-      sorted = tags.sorted { $0.usageCount > $1.usageCount }
+    if sortOrder == .recent {
+      sorted = tags.sorted { $0.lastUsedAt > $1.lastUsedAt }
     }
 
     return buildGridItems(from: sorted, count: count)

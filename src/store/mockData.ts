@@ -52,24 +52,5 @@ export function getMockData() {
     ],
     
     tasks: [],
-    
-    rewardTransactions: [
-      {
-        id: 'reward-1',
-        userId: 'demo-user-123',
-        amount: 25,
-        type: 'earn',
-        description: 'Completed focus session',
-        createdAt: daysAgo(1),
-      },
-      {
-        id: 'reward-2',
-        userId: 'demo-user-123',
-        amount: 50,
-        type: 'earn',
-        description: 'Completed study session',
-        createdAt: daysAgo(0),
-      },
-    ],
   };
 }

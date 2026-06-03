@@ -46,7 +46,6 @@ const DATE_FIELDS: Record<string, string[]> = {
   focus_sessions: ['start_time', 'end_time', 'created_at', 'updated_at', 'paused_at', 'resumed_at', 'deleted_at'],
   session_tags: ['created_at', 'updated_at', 'deleted_at'],
   focus_goals: ['created_at', 'updated_at', 'last_reset_date', 'deleted_at'],
-  reward_transactions: ['created_at', 'updated_at'],
 };
 
 // --- Session mapper ---
@@ -67,6 +66,7 @@ export function sessionToRow(session: any, userId: string): Record<string, any> 
     is_paused: session.isPaused ?? false,
     total_pause_time: session.totalPauseTime ?? 0,
     is_manual_entry: session.isManualEntry ?? false,
+    accelerate_multiplier: session.accelerateMultiplier ?? 1,
   };
   if (session.createdAt instanceof Date) row.created_at = session.createdAt.toISOString();
   if (session.updatedAt instanceof Date) row.updated_at = session.updatedAt.toISOString();
@@ -88,6 +88,7 @@ export function rowToSession(row: Record<string, any>): any {
     isPaused: row.is_paused ?? false,
     totalPauseTime: row.total_pause_time ?? 0,
     isManualEntry: row.is_manual_entry ?? false,
+    accelerateMultiplier: row.accelerate_multiplier ?? 1,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -102,7 +103,6 @@ export function tagToRow(tag: any, userId: string): Record<string, any> {
     name: tag.name,
     icon: tag.icon,
     color: tag.color,
-    usage_count: tag.usageCount ?? 0,
     is_default: tag.isDefault ?? false,
     sort_order: tag.sortOrder ?? 0,
   };
@@ -119,7 +119,6 @@ export function rowToTag(row: Record<string, any>): any {
     name: row.name,
     icon: row.icon,
     color: row.color,
-    usageCount: row.usage_count ?? 0,
     isDefault: row.is_default ?? false,
     ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
   };
@@ -189,32 +188,6 @@ export function rowToRewards(row: Record<string, any>): any {
     totalEarned: row.total_earned ?? 0,
     totalSpent: row.total_spent ?? 0,
     updatedAt: row.updated_at ?? null,
-  };
-}
-
-// --- Reward transaction mapper ---
-
-export function rewardTransactionToRow(tx: any, userId: string): Record<string, any> {
-  const row: Record<string, any> = {
-    id: tx.id,
-    user_id: userId,
-    amount: tx.amount,
-    type: tx.type,
-    source: tx.source ?? tx.purpose ?? '',
-    metadata: tx.metadata ?? null,
-  };
-  if (tx.timestamp instanceof Date) row.created_at = tx.timestamp.toISOString();
-  return row;
-}
-
-export function rowToRewardTransaction(row: Record<string, any>): any {
-  return {
-    id: row.id,
-    amount: row.amount,
-    type: row.type,
-    source: row.source,
-    metadata: row.metadata,
-    timestamp: new Date(row.created_at),
   };
 }
 

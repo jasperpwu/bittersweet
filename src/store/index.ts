@@ -152,7 +152,6 @@ interface AppStore {
     balance: number;
     totalEarned: number;
     totalSpent: number;
-    transactions: any[];
     unlockableApps: any[];
     accelerateCard: { activatedAt: string; expiresAt: string } | null;
     earnFruits: (amount: number, source: string, metadata?: any) => void;
@@ -299,6 +298,8 @@ export const useAppStore = create<AppStore>()(
             (sessionData.endTime.getTime() - sessionData.startTime.getTime()) / (1000 * 60)
           );
           
+          const accelerateMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
+
           const session: FocusSession = {
             id: sessionId,
             startTime: sessionData.startTime,
@@ -311,6 +312,7 @@ export const useAppStore = create<AppStore>()(
             totalPauseTime: 0,
             tagId: sessionData.tagId,
             notes: sessionData.notes,
+            accelerateMultiplier,
             createdAt: new Date(),
             updatedAt: new Date(),
           };
@@ -326,28 +328,7 @@ export const useAppStore = create<AppStore>()(
             }
           }));
 
-          // Update tag usage count
-          const tagId = sessionData.tagId;
-          if (tagId) {
-            const tag = get().focus.tags.byId[tagId];
-            if (tag) {
-              set((state) => ({
-                focus: {
-                  ...state.focus,
-                  tags: {
-                    ...state.focus.tags,
-                    byId: {
-                      ...state.focus.tags.byId,
-                      [tagId]: { ...tag, usageCount: tag.usageCount + 1 }
-                    }
-                  }
-                }
-              }));
-            }
-          }
-          
           // Calculate and award fruits (+1 bonus for completing set duration)
-          const accelerateMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
           const fruitsEarned = calculateFruitsEarnedForDuration(duration, duration, accelerateMultiplier);
           if (fruitsEarned > 0) {
             get().rewards.earnFruits(fruitsEarned, 'focus_session', {
@@ -423,22 +404,6 @@ export const useAppStore = create<AppStore>()(
               balance: state.rewards.balance + fruitDelta,
               totalEarned: state.rewards.totalEarned + fruitDelta,
               updatedAt: new Date().toISOString(),
-              transactions: [
-                ...state.rewards.transactions,
-                {
-                  id: generateId(),
-                  amount: fruitDelta,
-                  source: 'focus_session_adjustment',
-                  metadata: {
-                    sessionId,
-                    previousAdjustedDuration,
-                    adjustedDuration: nextAdjustedDuration,
-                    actualDuration,
-                  },
-                  type: 'earn',
-                  timestamp: new Date(),
-                }
-              ]
             }
           }));
 
@@ -459,26 +424,16 @@ export const useAppStore = create<AppStore>()(
           set((state) => {
             // Remove the session
             const { [sessionId]: removed, ...remainingSessions } = state.focus.sessions.byId;
-            
-            // Remove corresponding reward transactions
-            const filteredTransactions = state.rewards.transactions.filter((transaction: any) => {
-              // Remove transactions that are related to this session
-              return !(transaction.metadata?.sessionId === sessionId || 
-                      (transaction.type === 'earn' && transaction.source === 'focus_session' && 
-                       transaction.metadata?.sessionId === sessionId));
-            });
-            
-            // Calculate fruits to deduct if session had earned rewards
-            let fruitsToDeduct = 0;
-            const removedTransactions = state.rewards.transactions.filter((transaction: any) => 
-              transaction.metadata?.sessionId === sessionId && 
-              transaction.type === 'earn'
-            );
-            
-            removedTransactions.forEach((transaction: any) => {
-              fruitsToDeduct += transaction.amount;
-            });
-            
+
+            // Calculate fruits to deduct based on session duration and multiplier
+            const fruitsToDeduct = sessionToDelete
+              ? calculateFruitsEarnedForDuration(
+                  sessionToDelete.adjustedDuration ?? sessionToDelete.duration ?? 0,
+                  sessionToDelete.initialSetDuration ?? sessionToDelete.duration ?? 0,
+                  sessionToDelete.accelerateMultiplier ?? 1
+                )
+              : 0;
+
             return {
               focus: {
                 ...state.focus,
@@ -490,7 +445,6 @@ export const useAppStore = create<AppStore>()(
               },
               rewards: {
                 ...state.rewards,
-                transactions: filteredTransactions,
                 balance: state.rewards.balance - fruitsToDeduct,
                 totalEarned: state.rewards.totalEarned - fruitsToDeduct,
                 updatedAt: new Date().toISOString(),
@@ -584,6 +538,10 @@ export const useAppStore = create<AppStore>()(
               // Calculate and award fruits (+1 bonus for completing set duration)
               const completeMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
               const fruitsEarned = calculateFruitsEarnedForDuration(actualDuration, session.initialSetDuration ?? actualDuration, completeMultiplier);
+
+              // Store the accelerate multiplier on the session
+              get().focus.updateSession(id, { accelerateMultiplier: completeMultiplier });
+
               if (fruitsEarned > 0) {
                 get().rewards.earnFruits(fruitsEarned, 'focus_session', {
                   sessionId: id,
@@ -591,7 +549,7 @@ export const useAppStore = create<AppStore>()(
                 });
                 console.log('🍎 Fruits earned:', fruitsEarned, 'for session:', id);
               }
-              
+
               // Clear current session if it's the one being completed
               if (get().focus.currentSession.session?.id === id) {
                 set((state) => ({
@@ -614,6 +572,8 @@ export const useAppStore = create<AppStore>()(
           console.log('📝 Creating completed session:', params);
           const sessionId = generateId();
 
+          const createCompletedMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
+
           const completedSession: FocusSession = {
             id: sessionId,
             startTime: params.startTime,
@@ -626,6 +586,7 @@ export const useAppStore = create<AppStore>()(
             totalPauseTime: 0,
             tagId: params.tagId,
             notes: params.notes,
+            accelerateMultiplier: createCompletedMultiplier,
             createdAt: new Date(),
             updatedAt: new Date(),
             isManualEntry: params.isManualEntry,
@@ -642,28 +603,7 @@ export const useAppStore = create<AppStore>()(
             }
           }));
 
-          // Update tag usage count
-          const tagId = params.tagId;
-          if (tagId) {
-            const tag = get().focus.tags.byId[tagId];
-            if (tag) {
-              set((state) => ({
-                focus: {
-                  ...state.focus,
-                  tags: {
-                    ...state.focus.tags,
-                    byId: {
-                      ...state.focus.tags.byId,
-                      [tagId]: { ...tag, usageCount: tag.usageCount + 1 }
-                    }
-                  }
-                }
-              }));
-            }
-          }
-
           // Calculate and award fruits (+1 bonus for completing set duration)
-          const createCompletedMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
           const fruitsEarned = params.isManualEntry ? 0 : calculateFruitsEarnedForDuration(params.duration, params.targetDuration, createCompletedMultiplier);
           if (fruitsEarned > 0) {
             get().rewards.earnFruits(fruitsEarned, 'focus_session', {
@@ -1139,7 +1079,6 @@ export const useAppStore = create<AppStore>()(
         totalEarned: 0,
         totalSpent: 0,
         updatedAt: null as string | null,
-        transactions: [],
         unlockableApps: [],
         accelerateCard: null,
         earnFruits: (amount, source, metadata) => {
@@ -1149,7 +1088,6 @@ export const useAppStore = create<AppStore>()(
               balance: state.rewards.balance + amount,
               totalEarned: state.rewards.totalEarned + amount,
               updatedAt: new Date().toISOString(),
-              transactions: [...state.rewards.transactions, { id: generateId(), amount, source, metadata, type: 'earn', timestamp: new Date() }]
             }
           }));
 
@@ -1166,7 +1104,6 @@ export const useAppStore = create<AppStore>()(
               balance: state.rewards.balance - amount,
               totalSpent: state.rewards.totalSpent + amount,
               updatedAt: new Date().toISOString(),
-              transactions: [...state.rewards.transactions, { id: generateId(), amount, purpose, metadata, type: 'spend', timestamp: new Date() }]
             }
           }));
 
@@ -1185,7 +1122,6 @@ export const useAppStore = create<AppStore>()(
                 balance: state.rewards.balance - app.price,
                 totalSpent: state.rewards.totalSpent + app.price,
                 updatedAt: new Date().toISOString(),
-                transactions: [...state.rewards.transactions, { id: generateId(), amount: app.price, purpose: 'unlock', metadata: { appId }, type: 'spend', timestamp: new Date() }],
                 unlockableApps: state.rewards.unlockableApps.filter(a => a.id !== appId)
               }
             }));
@@ -1799,32 +1735,11 @@ export const getStoreState = () => useAppStore.getState();
 export const subscribeToStore = useAppStore.subscribe;
 
 /**
- * Populate default tags and backfill missing colors.
- * Must only be called AFTER the persist middleware has finished rehydrating
- * so we don't overwrite real user data with defaults.
+ * Backfill missing colors and goals for existing tags.
+ * Must only be called AFTER the persist middleware has finished rehydrating.
  */
 function populateDefaults() {
   try {
-    const state = getStoreState();
-
-    // Initialize default tags if none exist
-    console.log('🔧 Checking tags state:', state.focus.tags);
-    if (!state.focus.tags.allIds || state.focus.tags.allIds.length === 0) {
-      console.log('🏷️ Initializing default tags...');
-      const defaultTags = [
-        { name: 'Work', icon: '💼', color: '#6592E9' },
-        { name: 'Study', icon: '📚', color: '#FFC107' },
-        { name: 'Reading', icon: '📖', color: '#FF9800' },
-        { name: 'Exercise', icon: '🏃', color: '#51BC6F' },
-        { name: 'Creative', icon: '🎨', color: '#9C27B0' },
-        { name: 'Personal', icon: '👤', color: '#2196F3' },
-      ];
-
-      defaultTags.forEach(tag => {
-        state.focus.createTag({ ...tag, isDefault: true });
-      });
-    }
-
     // Backfill color for existing tags that don't have one
     const defaultColorMap: Record<string, string> = {
       'Work': '#6592E9',

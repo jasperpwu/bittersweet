@@ -361,18 +361,6 @@ export class StateCleanup {
       },
       rewards: {
         ...state.rewards,
-        transactions: {
-          ...state.rewards.transactions,
-          byId: Object.fromEntries(
-            Object.entries(state.rewards.transactions.byId).filter(
-              ([, transaction]) => new Date(transaction.createdAt) > cutoffDate
-            )
-          ),
-          allIds: state.rewards.transactions.allIds.filter(
-            id => state.rewards.transactions.byId[id] && 
-                  new Date(state.rewards.transactions.byId[id].createdAt) > cutoffDate
-          )
-        }
       },
       ui: {
         ...state.ui,

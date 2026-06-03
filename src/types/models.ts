@@ -44,6 +44,7 @@ export interface FocusSession {
 
   liveActivityId?: string; // iOS Live Activity ID for timer display
   isManualEntry?: boolean; // Whether the session was added manually without timer
+  accelerateMultiplier?: number; // Multiplier applied when fruits were earned (1 = normal, 2 = accelerate active)
 
   // Metadata
   createdAt: Date;

@@ -233,7 +233,7 @@ $$;
 
 -- RPC: get_grove_rankings
 -- Server-side aggregation of focus sessions for friends + self within a date range.
--- Only includes sessions with tags in the user's shared_tag_ids (or all for self).
+-- Counts ALL friend focus hours (shared_tag_ids only controls feed visibility, not leaderboard).
 CREATE OR REPLACE FUNCTION get_grove_rankings(
   period_start TIMESTAMPTZ,
   period_end TIMESTAMPTZ
@@ -263,19 +263,12 @@ BEGIN
       AND fs.deleted_at IS NULL
       AND (
         fs.user_id = auth.uid()
-        OR (
-          EXISTS (
-            SELECT 1 FROM grove_friendships
-            WHERE status = 'accepted'
-            AND (
-              (requester_id = auth.uid() AND addressee_id = fs.user_id)
-              OR (addressee_id = auth.uid() AND requester_id = fs.user_id)
-            )
-          )
-          AND EXISTS (
-            SELECT 1 FROM grove_privacy_settings
-            WHERE user_id = fs.user_id
-            AND fs.tag_id = ANY(shared_tag_ids)
+        OR EXISTS (
+          SELECT 1 FROM grove_friendships
+          WHERE status = 'accepted'
+          AND (
+            (requester_id = auth.uid() AND addressee_id = fs.user_id)
+            OR (addressee_id = auth.uid() AND requester_id = fs.user_id)
           )
         )
       )

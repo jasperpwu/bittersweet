@@ -52,7 +52,6 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           balance: state.rewards.balance,
           totalEarned: state.rewards.totalEarned,
           totalSpent: state.rewards.totalSpent,
-          transactions: state.rewards.transactions,
         },
       };
 
@@ -83,7 +82,6 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           balance: merged.rewards.balance,
           totalEarned: merged.rewards.totalEarned,
           totalSpent: merged.rewards.totalSpent,
-          transactions: merged.rewards.transactions,
         },
         sync: {
           ...s.sync,

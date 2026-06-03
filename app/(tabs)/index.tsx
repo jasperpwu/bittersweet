@@ -223,7 +223,7 @@ type PersistedSession = {
 export default function FocusScreen() {
   const colorScheme = useColorScheme();
   // Get tags from store
-  const { tags, lastSelectedTagId, lastDurationByTagId, goals } = useFocus();
+  const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals } = useFocus();
   const { createTag, updateTag, deleteTag, reorderTags, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag } = useFocusActions();
   const rewards = useRewards();
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
@@ -1386,13 +1386,23 @@ export default function FocusScreen() {
       setLastDurationForTag(selectedTag, time);
       // Sync updated duration to widget immediately
       const updatedDurations = { ...lastDurationByTagId, [selectedTag]: time };
+      // Compute most recent session time per tag
+      const lastUsedByTag: Record<string, number> = {};
+      for (const sid of sessions.allIds) {
+        const s = sessions.byId[sid];
+        if (!s) continue;
+        const t = s.startTime instanceof Date ? s.startTime.getTime() : new Date(s.startTime).getTime();
+        if (!lastUsedByTag[s.tagId] || t > lastUsedByTag[s.tagId]) {
+          lastUsedByTag[s.tagId] = t;
+        }
+      }
       const tagList = tags.allIds.map(id => tags.byId[id]).filter(tag => tag && !tag.deletedAt).map(tag => ({
           id: tag.id,
           name: tag.name,
           icon: tag.icon || '🎯',
           color: tag.color || '#8B4513',
           lastDuration: updatedDurations[tag.id] ?? 15,
-          usageCount: tag.usageCount ?? 0,
+          lastUsedAt: lastUsedByTag[tag.id] ?? 0,
       }));
       WidgetService.syncTagList(tagList);
       // Update idle Live Activity if one is showing
@@ -1636,6 +1646,14 @@ export default function FocusScreen() {
 
             {/* Tags List */}
             <ScrollView className="p-4" style={{ maxHeight: 400 }} scrollEnabled={!isDragging}>
+              {orderedTags.length === 0 && (
+                <View className="py-6 px-2 items-center">
+                  <Typography variant="body-14" color="secondary" className="text-center leading-5">
+                    Create tags to categorize your focus sessions.{'\n'}
+                    e.g. Work, Reading, Exercise, Project X, Mindfulness Rest
+                  </Typography>
+                </View>
+              )}
               {orderedTags.map((tag, index) => (
                 <DraggableTagRow
                   key={tag.id}

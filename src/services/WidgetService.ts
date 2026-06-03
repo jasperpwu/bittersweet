@@ -37,7 +37,7 @@ export interface WidgetTagInfo {
   icon: string;
   color: string;
   lastDuration?: number; // minutes; undefined = unknown, 0 = infinite
-  usageCount?: number;
+  lastUsedAt?: number;   // Unix timestamp ms of most recent session; 0 = never used
 }
 
 export interface WidgetStartedSession {

@@ -66,7 +66,7 @@ export const GroveFeedService = {
         .in('user_id', userIds),
       supabase
         .from('grove_privacy_settings')
-        .select('user_id, share_notes')
+        .select('user_id, share_notes, shared_tag_ids')
         .in('user_id', userIds),
       supabase
         .from('grove_reactions')
@@ -86,10 +86,12 @@ export const GroveFeedService = {
       profileByUserId.set(profile.user_id, profile);
     }
 
-    // Track which users allow sharing notes
+    // Track which users allow sharing notes and which tags they share
     const shareNotesByUserId = new Map<string, boolean>();
+    const sharedTagIdsByUserId = new Map<string, string[]>();
     for (const p of privacyResult.data || []) {
       shareNotesByUserId.set(p.user_id, p.share_notes);
+      sharedTagIdsByUserId.set(p.user_id, p.shared_tag_ids ?? []);
     }
 
     // Count reactions per session
@@ -108,6 +110,10 @@ export const GroveFeedService = {
       .map((session) => {
         const profile = profileByUserId.get(session.user_id);
         if (!profile) return null;
+
+        // Only show sessions whose tag is in the friend's shared_tag_ids
+        const sharedTags = sharedTagIdsByUserId.get(session.user_id) ?? [];
+        if (!sharedTags.includes(session.tag_id)) return null;
 
         // Respect share_notes privacy: null out notes and photo_url if the user has it disabled
         const canShareNotes = shareNotesByUserId.get(session.user_id) ?? false;
@@ -156,7 +162,7 @@ export const GroveFeedService = {
         .single(),
       supabase
         .from('grove_privacy_settings')
-        .select('share_notes')
+        .select('share_notes, shared_tag_ids')
         .eq('user_id', friendUserId)
         .single(),
       supabase
@@ -175,6 +181,7 @@ export const GroveFeedService = {
     if (!profile) return [];
 
     const canShareNotes = privacyResult.data?.share_notes ?? false;
+    const sharedTagIds: string[] = privacyResult.data?.shared_tag_ids ?? [];
 
     // Count reactions per session
     const reactionCounts = new Map<string, number>();
@@ -188,16 +195,18 @@ export const GroveFeedService = {
       userReactedSessions.add(r.session_id);
     }
 
-    return sessions.map((session) => ({
-      session: {
-        ...(session as FeedSession),
-        notes: canShareNotes ? session.notes : null,
-        photo_url: canShareNotes ? (session as any).photo_url : null,
-      },
-      profile,
-      reactionCount: reactionCounts.get(session.id) || 0,
-      hasReacted: userReactedSessions.has(session.id),
-    }));
+    return sessions
+      .filter((session) => sharedTagIds.includes(session.tag_id))
+      .map((session) => ({
+        session: {
+          ...(session as FeedSession),
+          notes: canShareNotes ? session.notes : null,
+          photo_url: canShareNotes ? (session as any).photo_url : null,
+        },
+        profile,
+        reactionCount: reactionCounts.get(session.id) || 0,
+        hasReacted: userReactedSessions.has(session.id),
+      }));
   },
 
   /**

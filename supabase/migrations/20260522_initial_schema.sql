@@ -75,6 +75,7 @@ create table if not exists public.focus_sessions (
   is_paused boolean not null default false,
   total_pause_time integer not null default 0,
   is_manual_entry boolean not null default false,
+  accelerate_multiplier integer not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
@@ -162,30 +163,7 @@ create policy "Users can update own rewards"
   on public.rewards for update
   using (auth.uid() = user_id);
 
--- 6. REWARD TRANSACTIONS
-create table if not exists public.reward_transactions (
-  id text primary key,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  amount integer not null,
-  type text not null check (type in ('earn', 'spend')),
-  source text not null default '',
-  metadata jsonb,
-  created_at timestamptz not null default now()
-);
-
-create index idx_reward_transactions_user on public.reward_transactions(user_id);
-
-alter table public.reward_transactions enable row level security;
-
-create policy "Users can read own transactions"
-  on public.reward_transactions for select
-  using (auth.uid() = user_id);
-
-create policy "Users can insert own transactions"
-  on public.reward_transactions for insert
-  with check (auth.uid() = user_id);
-
--- 7. SUBSCRIPTION RECEIPTS
+-- 6. SUBSCRIPTION RECEIPTS
 create table if not exists public.subscription_receipts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,

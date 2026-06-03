@@ -29,40 +29,40 @@ function getTreeIcon(totalMinutes: number): string {
 }
 
 /**
- * Get the start of the current ISO week (Monday 00:00 UTC).
+ * Get the start of the current ISO week (Monday 00:00 local time).
  */
 export function getWeekStart(): Date {
   const now = new Date();
-  const day = now.getUTCDay();
+  const day = now.getDay();
   const diff = day === 0 ? 6 : day - 1; // Monday = 0 offset
-  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diff));
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
   return monday;
 }
 
 /**
- * Get the end of the current ISO week (next Monday 00:00 UTC).
+ * Get the end of the current ISO week (next Monday 00:00 local time).
  */
 export function getWeekEnd(): Date {
   const start = getWeekStart();
   const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 7);
+  end.setDate(end.getDate() + 7);
   return end;
 }
 
 /**
- * Get the start of the current month (1st, 00:00 UTC).
+ * Get the start of the current month (1st, 00:00 local time).
  */
 export function getMonthStart(): Date {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
 /**
- * Get the end of the current month (1st of next month, 00:00 UTC).
+ * Get the end of the current month (1st of next month, 00:00 local time).
  */
 export function getMonthEnd(): Date {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
 }
 
 // --- Service ---
@@ -84,6 +84,9 @@ export const GroveRankingService = {
     });
 
     if (error) throw error;
+
+    console.log(`[GroveRankings] period=${period}, start=${periodStart.toISOString()}, end=${periodEnd.toISOString()}`);
+    console.log('[GroveRankings] raw RPC response:', JSON.stringify(data, null, 2));
 
     const rows: any[] = data || [];
 
