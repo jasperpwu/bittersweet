@@ -24,7 +24,6 @@ export interface GrovePrivacySettings {
   shared_tag_ids: string[];
   share_notes: boolean;
   show_live_status: boolean;
-  visible_stats: 'total_only' | 'full' | 'nothing';
   created_at: string;
   updated_at: string;
 }
@@ -51,7 +50,6 @@ export interface UpdatePrivacyInput {
   shared_tag_ids?: string[];
   share_notes?: boolean;
   show_live_status?: boolean;
-  visible_stats?: 'total_only' | 'full' | 'nothing';
 }
 
 // --- Service ---
@@ -256,7 +254,6 @@ export const GroveService = {
         shared_tag_ids: input.shared_tag_ids ?? [],
         share_notes: input.share_notes ?? false,
         show_live_status: input.show_live_status ?? false,
-        visible_stats: input.visible_stats ?? 'total_only',
       })
       .select()
       .single();

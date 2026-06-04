@@ -114,8 +114,6 @@ enum SupabaseClient {
       "actual_duration": duration,
       "start_time": formatter.string(from: startDate),
       "end_time": formatter.string(from: endDate),
-      "is_paused": false,
-      "total_pause_time": 0,
       "is_manual_entry": false,
     ]
 

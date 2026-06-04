@@ -16,7 +16,6 @@ interface Tag {
   name: string;
   icon: string;
   usageCount: number;
-  isDefault?: boolean;
 }
 
 interface HorizontalTagSelectorProps {

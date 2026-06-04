@@ -123,6 +123,7 @@ export class SyncService {
       rowToSession
     );
     const tags = rowsToNormalized(tagsRes.data ?? [], rowToTag);
+    tags.allIds.sort((a, b) => (tags.byId[a]?.sortOrder ?? 0) - (tags.byId[b]?.sortOrder ?? 0));
     const goals = rowsToNormalized(goalsRes.data ?? [], rowToGoal);
     const badges = rowsToNormalized(badgesRes.data ?? [], rowToBadge);
     const rewards = rewardsRes.data
@@ -175,7 +176,8 @@ export class SyncService {
         tags: SyncService.mergeNormalized(
           local.focus.tags,
           remote.focus.tags,
-          'updatedAt'
+          'updatedAt',
+          'sortOrder'
         ),
         goals: SyncService.mergeNormalized(
           local.focus.goals,
@@ -280,7 +282,8 @@ export class SyncService {
   private static mergeNormalized(
     local: { byId: Record<string, any>; allIds: string[] },
     remote: { byId: Record<string, any>; allIds: string[] },
-    dateField: string
+    dateField: string,
+    sortField?: string
   ): { byId: Record<string, any>; allIds: string[] } {
     const merged: Record<string, any> = {};
 
@@ -310,9 +313,14 @@ export class SyncService {
       }
     }
 
+    let allIds = Object.keys(merged);
+    if (sortField) {
+      allIds.sort((a, b) => (merged[a][sortField] ?? 0) - (merged[b][sortField] ?? 0));
+    }
+
     return {
       byId: merged,
-      allIds: Object.keys(merged),
+      allIds,
     };
   }
 

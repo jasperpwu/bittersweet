@@ -88,7 +88,7 @@ interface AppStore {
     setLastSelectedTagId: (tagId: string | null) => void;
     lastDurationByTagId: Record<string, number>;
     setLastDurationForTag: (tagId: string, duration: number) => void;
-    createTag: (tag: Omit<SessionTag, 'id' | 'usageCount'>) => SessionTag;
+    createTag: (tag: Omit<SessionTag, 'id' | 'usageCount' | 'sortOrder' | 'createdAt' | 'updatedAt'>) => SessionTag;
     updateTag: (id: string, updates: Partial<SessionTag>) => void;
     deleteTag: (id: string) => void;
     reorderTags: (orderedIds: string[]) => void;
@@ -295,7 +295,6 @@ export const useAppStore = create<AppStore>()(
             actualDuration: duration,
             adjustedDuration: duration,
             isPaused: false,
-            totalPauseTime: 0,
             tagId: sessionData.tagId,
             notes: sessionData.notes,
             accelerateMultiplier,
@@ -569,7 +568,6 @@ export const useAppStore = create<AppStore>()(
             actualDuration: params.duration,
             adjustedDuration: params.duration,
             isPaused: false,
-            totalPauseTime: 0,
             tagId: params.tagId,
             notes: params.notes,
             accelerateMultiplier: createCompletedMultiplier,
@@ -827,10 +825,14 @@ export const useAppStore = create<AppStore>()(
         createTag: (tagData) => {
           console.log('🏷️ Creating tag:', tagData);
           const tagId = generateId();
+          const now = new Date();
           const tag: SessionTag = {
             ...tagData,
             id: tagId,
             usageCount: 0,
+            sortOrder: get().focus.tags.allIds.length,
+            createdAt: now,
+            updatedAt: now,
           };
 
           const goalId = generateId();
@@ -944,15 +946,29 @@ export const useAppStore = create<AppStore>()(
         },
 
         reorderTags: (orderedIds) => {
-          set((state) => ({
-            focus: {
-              ...state.focus,
-              tags: {
-                ...state.focus.tags,
-                allIds: orderedIds,
+          const now = new Date();
+          set((state) => {
+            const updatedById = { ...state.focus.tags.byId };
+            orderedIds.forEach((id, index) => {
+              if (updatedById[id]) {
+                updatedById[id] = {
+                  ...updatedById[id],
+                  sortOrder: index,
+                  updatedAt: now,
+                };
               }
-            }
-          }));
+            });
+            return {
+              focus: {
+                ...state.focus,
+                tags: {
+                  ...state.focus.tags,
+                  byId: updatedById,
+                  allIds: orderedIds,
+                },
+              },
+            };
+          });
         },
       },
 

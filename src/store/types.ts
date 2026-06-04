@@ -87,6 +87,7 @@ export interface Tag extends BaseEntity {
   name: string;
   icon: string;
   userId: string;
+  sortOrder: number;
   deletedAt?: Date;
 }
 

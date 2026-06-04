@@ -31,7 +31,6 @@ export interface FocusSession {
   isPaused: boolean;
   pausedAt?: Date;
   resumedAt?: Date;
-  totalPauseTime: number; // in seconds
 
   tagId: string; // Required single tag ID for each session
 
@@ -50,7 +49,9 @@ export interface SessionTag {
   icon: string;
   color: string; // Hex color string like '#6592E9'
   usageCount: number;
-  isDefault?: boolean; // For built-in tags like 'work', 'study', etc.
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
   deletedAt?: Date;
 }
 

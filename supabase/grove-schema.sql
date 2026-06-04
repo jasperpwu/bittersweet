@@ -41,7 +41,6 @@ CREATE TABLE grove_privacy_settings (
   shared_tag_ids TEXT[] NOT NULL DEFAULT '{}',
   share_notes BOOLEAN NOT NULL DEFAULT FALSE,
   show_live_status BOOLEAN NOT NULL DEFAULT FALSE,
-  visible_stats TEXT NOT NULL DEFAULT 'total_only' CHECK (visible_stats IN ('total_only', 'full', 'nothing')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT unique_privacy_user_id UNIQUE (user_id)

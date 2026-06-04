@@ -63,8 +63,6 @@ export function sessionToRow(session: any, userId: string): Record<string, any> 
     tag_id: session.tagId,
     notes: session.notes ?? null,
     photo_url: session.photoUrl ?? null,
-    is_paused: session.isPaused ?? false,
-    total_pause_time: session.totalPauseTime ?? 0,
     is_manual_entry: session.isManualEntry ?? false,
     accelerate_multiplier: session.accelerateMultiplier ?? 1,
   };
@@ -85,8 +83,7 @@ export function rowToSession(row: Record<string, any>): any {
     tagId: row.tag_id,
     notes: row.notes,
     photoUrl: row.photo_url ?? undefined,
-    isPaused: row.is_paused ?? false,
-    totalPauseTime: row.total_pause_time ?? 0,
+    isPaused: false,
     isManualEntry: row.is_manual_entry ?? false,
     accelerateMultiplier: row.accelerate_multiplier ?? 1,
     createdAt: new Date(row.created_at),
@@ -103,7 +100,6 @@ export function tagToRow(tag: any, userId: string): Record<string, any> {
     name: tag.name,
     icon: tag.icon,
     color: tag.color,
-    is_default: tag.isDefault ?? false,
     sort_order: tag.sortOrder ?? 0,
   };
   // Only include timestamps if they exist — otherwise let DB defaults apply
@@ -119,7 +115,6 @@ export function rowToTag(row: Record<string, any>): any {
     name: row.name,
     icon: row.icon,
     color: row.color,
-    isDefault: row.is_default ?? false,
     sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
@@ -144,7 +139,6 @@ export function goalToRow(goal: any, userId: string): Record<string, any> {
     is_active: goal.isActive ?? true,
     is_repeating: goal.isRepeating ?? true,
     show_total_hours: goal.showTotalHours ?? false,
-    current_progress: goal.currentProgress ?? 0,
   };
   if (goal.lastResetDate instanceof Date) row.last_reset_date = goal.lastResetDate.toISOString();
   if (goal.createdAt instanceof Date) row.created_at = goal.createdAt.toISOString();
@@ -166,7 +160,6 @@ export function rowToGoal(row: Record<string, any>): any {
     isActive: row.is_active ?? true,
     isRepeating: row.is_repeating ?? true,
     showTotalHours: row.show_total_hours ?? false,
-    currentProgress: row.current_progress ?? 0,
     lastResetDate: row.last_reset_date ? new Date(row.last_reset_date) : new Date(),
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
