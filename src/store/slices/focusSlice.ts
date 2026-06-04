@@ -91,11 +91,11 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
   
   // Calculate fruits earned based on session duration and completion
   const calculateFruitsEarned = (session: FocusSession): number => {
-    const sessionWithStatus = session as FocusSession & { status?: string; targetDuration?: number };
-    if (sessionWithStatus.status !== 'completed') return 0;
-    
+    const sessionWithTarget = session as FocusSession & { targetDuration?: number };
+    if (!session.endTime || session.duration <= 0) return 0;
+
     // Bonus time earns twice as fast once the target duration is exceeded.
-    return calculateFruitsForDuration(session.duration, sessionWithStatus.targetDuration ?? session.duration);
+    return calculateFruitsForDuration(session.duration, sessionWithTarget.targetDuration ?? session.duration);
   };
   
   // Start timer for current session
@@ -186,7 +186,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         endTime: new Date(Date.now() + params.targetDuration * 60 * 1000),
         targetDuration: params.targetDuration,
         duration: 0,
-        status: 'active',
         isPaused: false,
         totalPauseTime: 0,
         tagId: params.tagId,
@@ -243,7 +242,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       
       set((state: any) => {
         if (state.focus.currentSession.session) {
-          state.focus.currentSession.session.status = 'paused';
           state.focus.currentSession.session.pauseHistory.push(pauseRecord);
           state.focus.currentSession.session.updatedAt = new Date();
         }
@@ -253,7 +251,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         const manager = new EntityManager(state.focus.sessions);
         if (state.focus.currentSession.session) {
           manager.update(state.focus.currentSession.session.id, {
-            status: 'paused' as const,
             pauseHistory: state.focus.currentSession.session.pauseHistory,
           });
           state.focus.sessions = {
@@ -287,8 +284,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       
       set((state: any) => {
         if (state.focus.currentSession.session) {
-          state.focus.currentSession.session.status = 'active';
-          
           // Update last pause record end time
           const pauseHistory = state.focus.currentSession.session.pauseHistory;
           if (pauseHistory.length > 0) {
@@ -304,7 +299,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         const manager = new EntityManager(state.focus.sessions);
         if (state.focus.currentSession.session) {
           manager.update(state.focus.currentSession.session.id, {
-            status: 'active' as const,
             pauseHistory: state.focus.currentSession.session.pauseHistory,
           });
           state.focus.sessions = {
@@ -338,7 +332,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       
       const completedSession = {
         ...currentSession.session,
-        status: 'completed' as const,
         endTime: new Date(),
         updatedAt: new Date(),
       };
@@ -398,8 +391,8 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         // Update in normalized state
         const manager = new EntityManager(state.focus.sessions);
         manager.update(currentSession.session!.id, {
-          status: 'cancelled' as const,
           endTime: new Date(),
+          duration: 0,
           updatedAt: new Date(),
         });
         state.focus.sessions = {
@@ -441,7 +434,6 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         endTime: params.endTime,
         targetDuration: params.targetDuration,
         duration: params.duration,
-        status: 'completed',
         isPaused: false,
         totalPauseTime: 0,
         tagId: params.tagId,
@@ -870,8 +862,8 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       const completedSessions = sessions.allIds
         .map(id => sessions.byId[id])
         .filter(Boolean)
-        .filter(session => session.status === 'completed');
-      
+        .filter(session => session.duration > 0);
+
       // Group sessions by date based on period
       const groupedData: Record<string, number> = {};
       
@@ -911,8 +903,8 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       const completedSessions = sessions.allIds
         .map(id => sessions.byId[id])
         .filter(Boolean)
-        .filter(session => session.status === 'completed');
-      
+        .filter(session => session.duration > 0);
+
       if (completedSessions.length === 0) {
         return {
           bestTimeOfDay: 'No data',

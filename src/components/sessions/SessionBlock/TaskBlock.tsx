@@ -29,17 +29,9 @@ const tagColors = {
   Reading: '#51BC6F',
 } as const;
 
-const getStatusColor = (status: FocusSession['status']) => {
-  switch (status) {
-    case 'completed':
-      return '#51BC6F';
-    case 'active':
-      return '#6592E9';
-    case 'cancelled':
-      return '#EF786C';
-    default:
-      return '#CACACA';
-  }
+const getStatusColor = (session: FocusSession) => {
+  if (session.duration > 0) return '#51BC6F'; // completed
+  return '#CACACA';
 };
 
 const formatTime = (date: Date) => {
@@ -85,7 +77,7 @@ export const TaskBlock: FC<TaskBlockProps> = ({
   const tagColor = tag?.name ? tagColors[tag.name as keyof typeof tagColors] || '#6592E9' : '#6592E9';
   
   // Get status color for the indicator
-  const statusColor = getStatusColor(session.status);
+  const statusColor = getStatusColor(session);
 
   return (
     <AnimatedPressable

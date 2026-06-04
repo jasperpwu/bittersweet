@@ -14,7 +14,8 @@ import {
 import type { FriendItem, FriendRequest } from '../../services/grove/GroveFriendService';
 import type { FeedItem } from '../../services/grove/GroveFeedService';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
-import type { ChallengeItem, CreateChallengeInput, ChallengeProgressResult, ChallengePeriodDetailsResult } from '../../services/grove/GroveChallengeService';
+import type { ChallengeItem, CreateChallengeInput, ChallengePeriodDetailsResult } from '../../services/grove/GroveChallengeService';
+import { computeTotalPeriods } from '../../services/grove/GroveChallengeService';
 import type { HeartbeatSettings, InnerCircleMember, HeartbeatAlert } from '../../services/grove/GroveHeartbeatService';
 import { WidgetService } from '../../services/WidgetService';
 
@@ -95,7 +96,7 @@ export interface GroveSlice {
   createChallenge: (input: CreateChallengeInput) => Promise<void>;
   acceptChallenge: (challengeId: string) => Promise<void>;
   declineChallenge: (challengeId: string) => Promise<void>;
-  recordChallengeProgress: (challengeId: string) => Promise<ChallengeProgressResult>;
+  updateMyHitsLocally: (challenge: ChallengeItem) => Promise<{ myHits: number; totalPeriods: number }>;
   fetchChallengePeriodDetails: (challengeId: string) => Promise<ChallengePeriodDetailsResult>;
 
   // Phase 4 — Heartbeat / Inner Circle
@@ -797,15 +798,69 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }
   },
 
-  recordChallengeProgress: async (challengeId: string) => {
+  updateMyHitsLocally: async (challenge: ChallengeItem) => {
     try {
-      const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const result = await GroveChallengeService.recordProgress(challengeId, userTz);
-      // Refresh challenges to get updated streaks
+      if (!challenge.startDate || !challenge.endDate) {
+        throw new Error('Challenge missing start/end date');
+      }
+
+      const currentUserId = get().auth.user?.id;
+      if (!currentUserId) throw new Error('Not authenticated');
+
+      const isChallenger = currentUserId === challenge.challengerId;
+
+      // Get local sessions in the challenge date range
+      const startDate = new Date(challenge.startDate + 'T00:00:00');
+      const endDate = new Date(challenge.endDate + 'T23:59:59.999');
+      const allSessions = get().focus.sessions;
+      const sessions = allSessions.allIds
+        .map(id => allSessions.byId[id])
+        .filter(Boolean)
+        .filter(s => {
+          const t = new Date(s.startTime).getTime();
+          return t >= startDate.getTime()
+            && t <= endDate.getTime()
+            && s.tagId === challenge.tagId;
+        });
+
+      // Group by period bucket and count hits
+      let myHits = 0;
+      if (challenge.period === 'daily') {
+        // Group by local date
+        const buckets = new Map<string, number>();
+        for (const s of sessions) {
+          const dateKey = new Date(s.startTime).toLocaleDateString('en-CA'); // YYYY-MM-DD
+          buckets.set(dateKey, (buckets.get(dateKey) || 0) + s.duration);
+        }
+        for (const total of buckets.values()) {
+          if (total >= challenge.targetMinutes) myHits++;
+        }
+      } else {
+        // Weekly: group by week offset from startDate
+        const challengeStart = new Date(challenge.startDate + 'T00:00:00').getTime();
+        const buckets = new Map<number, number>();
+        for (const s of sessions) {
+          const sessionTime = new Date(s.startTime).getTime();
+          const dayOffset = Math.floor((sessionTime - challengeStart) / (1000 * 60 * 60 * 24));
+          const weekIndex = Math.floor(dayOffset / 7);
+          buckets.set(weekIndex, (buckets.get(weekIndex) || 0) + s.duration);
+        }
+        for (const total of buckets.values()) {
+          if (total >= challenge.targetMinutes) myHits++;
+        }
+      }
+
+      const totalPeriods = computeTotalPeriods(challenge.startDate, challenge.endDate, challenge.period);
+
+      // Write to DB
+      await GroveChallengeService.updateMyHits(challenge.id, isChallenger, myHits);
+
+      // Refresh challenges list
       await get().grove.fetchChallenges();
-      return result;
+
+      return { myHits, totalPeriods };
     } catch (error: any) {
-      console.error('Failed to record challenge progress:', error);
+      console.error('Failed to update challenge hits locally:', error);
       throw error;
     }
   },

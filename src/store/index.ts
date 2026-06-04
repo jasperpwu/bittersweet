@@ -1605,7 +1605,7 @@ export const useGroveActions = () => useAppStore((state) => ({
   createChallenge: state.grove.createChallenge,
   acceptChallenge: state.grove.acceptChallenge,
   declineChallenge: state.grove.declineChallenge,
-  recordChallengeProgress: state.grove.recordChallengeProgress,
+  updateMyHitsLocally: state.grove.updateMyHitsLocally,
 }));
 
 /**

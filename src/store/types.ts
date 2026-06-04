@@ -78,7 +78,6 @@ export interface FocusSession extends BaseEntity {
   targetDuration: number;
   tagId: string;
   notes?: string;
-  status: 'active' | 'paused' | 'completed' | 'cancelled';
   fruitsEarned: number;
   pauseHistory: PauseRecord[];
 }

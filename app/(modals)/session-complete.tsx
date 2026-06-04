@@ -130,21 +130,13 @@ export default function SessionCompleteModal() {
       const activeChallenges = grove.challenges.filter(
         (c) => c.status === 'active' && c.tagId === session.tagId
       );
-      const currentUserId = useAppStore.getState().auth.user?.id;
       for (const challenge of activeChallenges) {
         try {
-          const result = await grove.recordChallengeProgress(challenge.id);
-          if (result.status === 'completed' && result.reward) {
-            useAppStore.getState().rewards.earnFruits(result.reward, 'Challenge completed');
-            showToast(`Challenge complete! +${result.reward} fruits`, 'success');
-          } else if (result.status === 'progress' && result.challenger_streak != null && result.total_periods) {
-            const isChallenger = currentUserId === challenge.challengerId;
-            const myStreak = isChallenger ? result.challenger_streak : (result.challengee_streak ?? 0);
-            const periodLabel = challenge.period === 'daily' ? 'Day' : 'Week';
-            showToast(`${periodLabel} ${myStreak}/${result.total_periods}`, 'success');
-          }
+          const { myHits, totalPeriods } = await grove.updateMyHitsLocally(challenge);
+          const periodLabel = challenge.period === 'daily' ? 'Day' : 'Week';
+          showToast(`${periodLabel} ${myHits}/${totalPeriods}`, 'success');
         } catch (error) {
-          console.error('Failed to record challenge progress:', error);
+          console.error('Failed to update challenge hits:', error);
         }
       }
     }

@@ -25,8 +25,8 @@ export function formatTarget(targetMinutes: number, period: 'daily' | 'weekly'):
 
 export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, currentUserId }) => {
   const isChallenger = currentUserId === challenge.challengerId;
-  const myStreak = isChallenger ? challenge.challengerStreak : challenge.challengeeStreak;
-  const theirStreak = isChallenger ? challenge.challengeeStreak : challenge.challengerStreak;
+  const myHits = isChallenger ? challenge.challengerHits : challenge.challengeeHits;
+  const theirHits = isChallenger ? challenge.challengeeHits : challenge.challengerHits;
   const theirProfile = isChallenger ? challenge.challengeeProfile : challenge.challengerProfile;
   const remaining = daysRemaining(challenge.endDate);
   const isCompleted = challenge.status === 'completed';
@@ -78,13 +78,13 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
             You
           </Typography>
           <Typography variant="body-12" color="primary">
-            {myStreak}/{totalPeriods} {periodUnit}
+            {myHits}/{totalPeriods} {periodUnit}
           </Typography>
         </View>
         <View className="h-2 bg-light-border/50 dark:bg-[#2A2B45] rounded-full">
           <View
             className="h-2 bg-primary rounded-full"
-            style={{ width: `${totalPeriods > 0 ? Math.min((myStreak / totalPeriods) * 100, 100) : 0}%` }}
+            style={{ width: `${totalPeriods > 0 ? Math.min((myHits / totalPeriods) * 100, 100) : 0}%` }}
           />
         </View>
       </View>
@@ -95,13 +95,13 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
             {theirProfile.display_name}
           </Typography>
           <Typography variant="body-12" color="primary">
-            {theirStreak}/{totalPeriods} {periodUnit}
+            {theirHits}/{totalPeriods} {periodUnit}
           </Typography>
         </View>
         <View className="h-2 bg-light-border/50 dark:bg-[#2A2B45] rounded-full">
           <View
             className="h-2 bg-[#E9A065] rounded-full"
-            style={{ width: `${totalPeriods > 0 ? Math.min((theirStreak / totalPeriods) * 100, 100) : 0}%` }}
+            style={{ width: `${totalPeriods > 0 ? Math.min((theirHits / totalPeriods) * 100, 100) : 0}%` }}
           />
         </View>
       </View>

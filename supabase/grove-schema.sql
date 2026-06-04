@@ -293,8 +293,8 @@ CREATE TABLE grove_challenges (
     CHECK (status IN ('pending', 'active', 'completed', 'failed', 'declined')),
   start_date DATE,
   end_date DATE,
-  challenger_streak INTEGER NOT NULL DEFAULT 0,
-  challengee_streak INTEGER NOT NULL DEFAULT 0,
+  challenger_hits INTEGER NOT NULL DEFAULT 0,
+  challengee_hits INTEGER NOT NULL DEFAULT 0,
   fruit_reward INTEGER NOT NULL DEFAULT 10,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -312,8 +312,8 @@ CREATE POLICY "Users can create challenges" ON grove_challenges FOR INSERT
 CREATE POLICY "Users can update own challenges" ON grove_challenges FOR UPDATE
   USING (auth.uid() = challenger_id OR auth.uid() = challengee_id);
 
--- Helper: compute a user's consecutive streak from focus_sessions
-CREATE OR REPLACE FUNCTION _challenge_user_streak(
+-- Helper: count a user's successful periods from focus_sessions
+CREATE OR REPLACE FUNCTION _challenge_user_hits(
   p_user_id UUID,
   p_tag_id TEXT,
   p_start_date DATE,
@@ -326,9 +326,8 @@ CREATE OR REPLACE FUNCTION _challenge_user_streak(
 RETURNS INTEGER
 LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
 DECLARE
-  streak INTEGER := 0;
+  hits INTEGER := 0;
   bucket RECORD;
-  expected_idx INTEGER := 0;
 BEGIN
   IF p_period = 'daily' THEN
     FOR bucket IN
@@ -344,14 +343,8 @@ BEGIN
       GROUP BY bucket_date
       ORDER BY bucket_date
     LOOP
-      IF bucket.bucket_date <> p_start_date + expected_idx THEN
-        EXIT;
-      END IF;
       IF bucket.total_minutes >= p_target_minutes THEN
-        streak := streak + 1;
-        expected_idx := expected_idx + 1;
-      ELSE
-        EXIT;
+        hits := hits + 1;
       END IF;
     END LOOP;
   ELSE
@@ -368,103 +361,70 @@ BEGIN
       GROUP BY week_start
       ORDER BY week_start
     LOOP
-      IF bucket.week_start <> date_trunc('week', p_start_date)::date + (expected_idx * 7) THEN
-        EXIT;
-      END IF;
       IF bucket.total_minutes >= p_target_minutes THEN
-        streak := streak + 1;
-        expected_idx := expected_idx + 1;
-      ELSE
-        EXIT;
+        hits := hits + 1;
       END IF;
     END LOOP;
   END IF;
 
-  RETURN streak;
+  RETURN hits;
 END;
 $$;
 
--- RPC: record_challenge_progress
--- Derives streaks from focus_sessions. Finalizes only when end_date is reached.
-CREATE OR REPLACE FUNCTION record_challenge_progress(
-  challenge_id UUID,
-  user_tz TEXT DEFAULT 'UTC'
-)
+-- RPC: finalize_expired_challenges
+-- Called by daily cron. Scans active challenges past end_date,
+-- computes both users' hits, and sets status to completed or failed.
+CREATE OR REPLACE FUNCTION finalize_expired_challenges()
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-  challenge grove_challenges%ROWTYPE;
-  today DATE;
-  challenger_streak INTEGER;
-  challengee_streak INTEGER;
-  total_periods INTEGER;
+  challenge RECORD;
+  v_challenger_hits INTEGER;
+  v_challengee_hits INTEGER;
+  v_total_periods INTEGER;
+  v_new_status TEXT;
+  v_finalized INTEGER := 0;
 BEGIN
-  SELECT * INTO challenge FROM grove_challenges
-  WHERE id = challenge_id AND status = 'active';
+  FOR challenge IN
+    SELECT * FROM grove_challenges
+    WHERE status = 'active'
+      AND end_date < CURRENT_DATE
+  LOOP
+    v_challenger_hits := _challenge_user_hits(
+      challenge.challenger_id, challenge.tag_id,
+      challenge.start_date, challenge.end_date,
+      challenge.period, challenge.target_minutes,
+      challenge.end_date, 'UTC'
+    );
+    v_challengee_hits := _challenge_user_hits(
+      challenge.challengee_id, challenge.tag_id,
+      challenge.start_date, challenge.end_date,
+      challenge.period, challenge.target_minutes,
+      challenge.end_date, 'UTC'
+    );
 
-  IF challenge IS NULL THEN
-    RETURN json_build_object('error', 'CHALLENGE_NOT_FOUND');
-  END IF;
-
-  today := (now() AT TIME ZONE user_tz)::date;
-
-  challenger_streak := _challenge_user_streak(
-    challenge.challenger_id, challenge.tag_id,
-    challenge.start_date, challenge.end_date,
-    challenge.period, challenge.target_minutes,
-    today, user_tz
-  );
-  challengee_streak := _challenge_user_streak(
-    challenge.challengee_id, challenge.tag_id,
-    challenge.start_date, challenge.end_date,
-    challenge.period, challenge.target_minutes,
-    today, user_tz
-  );
-
-  IF challenge.period = 'daily' THEN
-    total_periods := (challenge.end_date - challenge.start_date) + 1;
-  ELSE
-    total_periods := ((challenge.end_date - challenge.start_date) + 1) / 7;
-  END IF;
-
-  IF today >= challenge.end_date THEN
-    IF challenger_streak >= total_periods AND challengee_streak >= total_periods THEN
-      UPDATE grove_challenges
-      SET status = 'completed',
-          challenger_streak = record_challenge_progress.challenger_streak,
-          challengee_streak = record_challenge_progress.challengee_streak,
-          updated_at = now()
-      WHERE id = challenge_id;
-
-      RETURN json_build_object(
-        'status', 'completed',
-        'challenger_streak', challenger_streak,
-        'challengee_streak', challengee_streak,
-        'total_periods', total_periods,
-        'reward', challenge.fruit_reward
-      );
+    IF challenge.period = 'daily' THEN
+      v_total_periods := (challenge.end_date - challenge.start_date) + 1;
     ELSE
-      UPDATE grove_challenges
-      SET status = 'failed',
-          challenger_streak = record_challenge_progress.challenger_streak,
-          challengee_streak = record_challenge_progress.challengee_streak,
-          updated_at = now()
-      WHERE id = challenge_id;
-
-      RETURN json_build_object(
-        'status', 'failed',
-        'challenger_streak', challenger_streak,
-        'challengee_streak', challengee_streak,
-        'total_periods', total_periods
-      );
+      v_total_periods := ((challenge.end_date - challenge.start_date) + 1) / 7;
     END IF;
-  END IF;
 
-  RETURN json_build_object(
-    'status', 'progress',
-    'challenger_streak', challenger_streak,
-    'challengee_streak', challengee_streak,
-    'total_periods', total_periods
-  );
+    IF v_challenger_hits >= v_total_periods AND v_challengee_hits >= v_total_periods THEN
+      v_new_status := 'completed';
+    ELSE
+      v_new_status := 'failed';
+    END IF;
+
+    UPDATE grove_challenges
+    SET status = v_new_status,
+        challenger_hits = v_challenger_hits,
+        challengee_hits = v_challengee_hits,
+        updated_at = now()
+    WHERE id = challenge.id;
+
+    v_finalized := v_finalized + 1;
+  END LOOP;
+
+  RETURN json_build_object('finalized', v_finalized);
 END;
 $$;
 
@@ -704,6 +664,22 @@ $$;
 --
 -- Step 2: Schedule the cron (runs every hour):
 -- ============================================================
+
+SELECT cron.schedule(
+  'challenge-cron',
+  '0 4 * * *',
+  $$
+  SELECT net.http_post(
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'project_url')
+           || '/functions/v1/challenge-cron',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'publishable_key')
+    ),
+    body := '{}'::jsonb
+  ) AS request_id;
+  $$
+);
 
 SELECT cron.schedule(
   'heartbeat-cron',

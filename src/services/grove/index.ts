@@ -29,7 +29,6 @@ export type {
   ChallengeItem,
   ChallengeProfile,
   CreateChallengeInput,
-  ChallengeProgressResult,
 } from './GroveChallengeService';
 
 export { GroveHeartbeatService } from './GroveHeartbeatService';

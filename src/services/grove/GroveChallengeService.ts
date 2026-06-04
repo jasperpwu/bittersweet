@@ -24,8 +24,8 @@ export interface ChallengeItem {
   status: 'pending' | 'active' | 'completed' | 'failed' | 'declined';
   startDate: string | null;
   endDate: string | null;
-  challengerStreak: number;
-  challengeeStreak: number;
+  challengerHits: number;
+  challengeeHits: number;
   fruitReward: number;
   isIncoming: boolean;
   createdAt: string;
@@ -40,15 +40,6 @@ export interface CreateChallengeInput {
   targetMinutes: number;
   startDate: string;
   endDate: string;
-}
-
-export interface ChallengeProgressResult {
-  status: string;
-  challenger_streak?: number;
-  challengee_streak?: number;
-  total_periods?: number;
-  reward?: number;
-  error?: string;
 }
 
 export interface ChallengePeriodDetail {
@@ -203,8 +194,8 @@ export const GroveChallengeService = {
         status: c.status,
         startDate: c.start_date,
         endDate: c.end_date,
-        challengerStreak: c.challenger_streak,
-        challengeeStreak: c.challengee_streak,
+        challengerHits: c.challenger_hits,
+        challengeeHits: c.challengee_hits,
         fruitReward: c.fruit_reward,
         isIncoming: c.challengee_id === user.id,
         createdAt: c.created_at,
@@ -213,17 +204,17 @@ export const GroveChallengeService = {
   },
 
   /**
-   * Record progress for a challenge via the server-side RPC.
-   * Passes user's timezone for correct day-boundary computation.
+   * Update the current user's hit count for a challenge.
+   * Writes to challenger_hits or challengee_hits depending on isChallenger.
    */
-  async recordProgress(challengeId: string, userTz: string = 'UTC'): Promise<ChallengeProgressResult> {
-    const { data, error } = await supabase.rpc('record_challenge_progress', {
-      challenge_id: challengeId,
-      user_tz: userTz,
-    });
+  async updateMyHits(challengeId: string, isChallenger: boolean, hits: number): Promise<void> {
+    const column = isChallenger ? 'challenger_hits' : 'challengee_hits';
+    const { error } = await supabase
+      .from('grove_challenges')
+      .update({ [column]: hits, updated_at: new Date().toISOString() })
+      .eq('id', challengeId);
 
     if (error) throw error;
-    return data as ChallengeProgressResult;
   },
 
   /**

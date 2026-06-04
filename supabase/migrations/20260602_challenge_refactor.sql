@@ -1,6 +1,7 @@
 -- Challenge Refactor Migration
 -- Removes redundant streak tracking columns, adds period/target_minutes,
--- and replaces record_challenge_progress with a derived-streak approach.
+-- renames streak columns to hits, and replaces record_challenge_progress
+-- with a derived-hits approach (counts all successful periods, not consecutive).
 
 -- Step 1: Add new columns with defaults (safe for existing rows)
 ALTER TABLE grove_challenges
@@ -34,8 +35,20 @@ ALTER TABLE grove_challenges
   DROP COLUMN IF EXISTS challenger_last_date,
   DROP COLUMN IF EXISTS challengee_last_date;
 
--- Step 4: Helper function — compute a user's streak from focus_sessions
-CREATE OR REPLACE FUNCTION _challenge_user_streak(
+-- Step 3b: Rename streak columns to hits (idempotent)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'grove_challenges' AND column_name = 'challenger_streak'
+  ) THEN
+    ALTER TABLE grove_challenges RENAME COLUMN challenger_streak TO challenger_hits;
+    ALTER TABLE grove_challenges RENAME COLUMN challengee_streak TO challengee_hits;
+  END IF;
+END $$;
+
+-- Step 4: Helper function — count successful periods for a user
+CREATE OR REPLACE FUNCTION _challenge_user_hits(
   p_user_id UUID,
   p_tag_id TEXT,
   p_start_date DATE,
@@ -48,7 +61,7 @@ CREATE OR REPLACE FUNCTION _challenge_user_streak(
 RETURNS INTEGER
 LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
 DECLARE
-  streak INTEGER := 0;
+  hits INTEGER := 0;
   bucket RECORD;
 BEGIN
   IF p_period = 'daily' THEN
@@ -67,7 +80,7 @@ BEGIN
       ORDER BY bucket_date
     LOOP
       IF bucket.total_minutes >= p_target_minutes THEN
-        streak := streak + 1;
+        hits := hits + 1;
       END IF;
     END LOOP;
   ELSE
@@ -86,98 +99,75 @@ BEGIN
       ORDER BY week_start
     LOOP
       IF bucket.total_minutes >= p_target_minutes THEN
-        streak := streak + 1;
+        hits := hits + 1;
       END IF;
     END LOOP;
   END IF;
 
-  RETURN streak;
+  RETURN hits;
 END;
 $$;
 
--- Step 5: Replace record_challenge_progress RPC
-CREATE OR REPLACE FUNCTION record_challenge_progress(
-  challenge_id UUID,
-  user_tz TEXT DEFAULT 'UTC'
-)
+-- Drop old function name if it exists
+DROP FUNCTION IF EXISTS _challenge_user_streak(UUID, TEXT, DATE, DATE, TEXT, INTEGER, DATE, TEXT);
+
+-- Step 5: Drop old record_challenge_progress RPC
+DROP FUNCTION IF EXISTS record_challenge_progress(UUID, TEXT);
+
+-- Step 6: Finalize expired challenges (called by daily cron)
+CREATE OR REPLACE FUNCTION finalize_expired_challenges()
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-  challenge grove_challenges%ROWTYPE;
-  today DATE;
-  challenger_streak INTEGER;
-  challengee_streak INTEGER;
-  total_periods INTEGER;
+  challenge RECORD;
+  v_challenger_hits INTEGER;
+  v_challengee_hits INTEGER;
+  v_total_periods INTEGER;
+  v_new_status TEXT;
+  v_finalized INTEGER := 0;
 BEGIN
-  SELECT * INTO challenge FROM grove_challenges
-  WHERE id = challenge_id AND status = 'active';
+  FOR challenge IN
+    SELECT * FROM grove_challenges
+    WHERE status = 'active'
+      AND end_date < CURRENT_DATE
+  LOOP
+    -- Compute both users' hits using existing helper
+    v_challenger_hits := _challenge_user_hits(
+      challenge.challenger_id, challenge.tag_id,
+      challenge.start_date, challenge.end_date,
+      challenge.period, challenge.target_minutes,
+      challenge.end_date, 'UTC'
+    );
+    v_challengee_hits := _challenge_user_hits(
+      challenge.challengee_id, challenge.tag_id,
+      challenge.start_date, challenge.end_date,
+      challenge.period, challenge.target_minutes,
+      challenge.end_date, 'UTC'
+    );
 
-  IF challenge IS NULL THEN
-    RETURN json_build_object('error', 'CHALLENGE_NOT_FOUND');
-  END IF;
-
-  today := (now() AT TIME ZONE user_tz)::date;
-
-  -- Compute streaks from focus_sessions
-  challenger_streak := _challenge_user_streak(
-    challenge.challenger_id, challenge.tag_id,
-    challenge.start_date, challenge.end_date,
-    challenge.period, challenge.target_minutes,
-    today, user_tz
-  );
-  challengee_streak := _challenge_user_streak(
-    challenge.challengee_id, challenge.tag_id,
-    challenge.start_date, challenge.end_date,
-    challenge.period, challenge.target_minutes,
-    today, user_tz
-  );
-
-  -- Compute total periods
-  IF challenge.period = 'daily' THEN
-    total_periods := (challenge.end_date - challenge.start_date) + 1;
-  ELSE
-    total_periods := ((challenge.end_date - challenge.start_date) + 1) / 7;
-  END IF;
-
-  -- If past end_date: finalize
-  IF today >= challenge.end_date THEN
-    IF challenger_streak >= total_periods AND challengee_streak >= total_periods THEN
-      UPDATE grove_challenges
-      SET status = 'completed',
-          challenger_streak = record_challenge_progress.challenger_streak,
-          challengee_streak = record_challenge_progress.challengee_streak,
-          updated_at = now()
-      WHERE id = challenge_id;
-
-      RETURN json_build_object(
-        'status', 'completed',
-        'challenger_streak', challenger_streak,
-        'challengee_streak', challengee_streak,
-        'total_periods', total_periods,
-        'reward', challenge.fruit_reward
-      );
+    -- Compute total periods
+    IF challenge.period = 'daily' THEN
+      v_total_periods := (challenge.end_date - challenge.start_date) + 1;
     ELSE
-      UPDATE grove_challenges
-      SET status = 'failed',
-          challenger_streak = record_challenge_progress.challenger_streak,
-          challengee_streak = record_challenge_progress.challengee_streak,
-          updated_at = now()
-      WHERE id = challenge_id;
-
-      RETURN json_build_object(
-        'status', 'failed',
-        'challenger_streak', challenger_streak,
-        'challengee_streak', challengee_streak,
-        'total_periods', total_periods
-      );
+      v_total_periods := ((challenge.end_date - challenge.start_date) + 1) / 7;
     END IF;
-  END IF;
 
-  -- Still in progress — return computed streaks without writing
-  RETURN json_build_object(
-    'status', 'progress',
-    'challenger_streak', challenger_streak,
-    'challengee_streak', challengee_streak,
-    'total_periods', total_periods
-  );
+    -- Both hit all periods → completed, otherwise → failed
+    IF v_challenger_hits >= v_total_periods AND v_challengee_hits >= v_total_periods THEN
+      v_new_status := 'completed';
+    ELSE
+      v_new_status := 'failed';
+    END IF;
+
+    UPDATE grove_challenges
+    SET status = v_new_status,
+        challenger_hits = v_challenger_hits,
+        challengee_hits = v_challengee_hits,
+        updated_at = now()
+    WHERE id = challenge.id;
+
+    v_finalized := v_finalized + 1;
+  END LOOP;
+
+  RETURN json_build_object('finalized', v_finalized);
 END;
 $$;

@@ -60,7 +60,7 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
       playButtonScale.value = withSpring(1);
     });
     
-    if (session?.status === 'active') {
+    if (!session?.isPaused) {
       onPausePress();
     } else {
       onPlayPress();
@@ -125,13 +125,13 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
           <View className="flex-row items-center">
             <View 
               className="w-2 h-2 rounded-full mr-2"
-              style={{ backgroundColor: session.status === 'active' ? '#51BC6F' : '#CACACA' }}
+              style={{ backgroundColor: !session.isPaused ? '#51BC6F' : '#CACACA' }}
             />
-            <Typography 
-              variant="body-12" 
+            <Typography
+              variant="body-12"
               className="text-light-text-secondary dark:text-dark-text-secondary"
             >
-              {session.status === 'active' ? 'Active' : session.status === 'paused' ? 'Paused' : 'Scheduled'}
+              {session.isPaused ? 'Paused' : 'Active'}
             </Typography>
           </View>
         </View>
@@ -174,33 +174,22 @@ export const CurrentTask: FC<CurrentTaskProps> = ({
             style={[
               playButtonAnimatedStyle,
               {
-                backgroundColor: session.status === 'active' ? '#EF786C' : '#6592E9',
+                backgroundColor: !session.isPaused ? '#EF786C' : '#6592E9',
               }
             ]}
             onPress={handlePlayPress}
             className="w-12 h-12 rounded-full items-center justify-center"
             accessibilityRole="button"
-            accessibilityLabel={session.status === 'active' ? 'Pause session' : 'Start session'}
+            accessibilityLabel={!session.isPaused ? 'Pause session' : 'Resume session'}
           >
             <Ionicons 
-              name={session.status === 'active' ? 'pause' : 'play'} 
+              name={!session.isPaused ? 'pause' : 'play'}
               size={20} 
               color="#FFFFFF" 
             />
           </AnimatedPressable>
         </View>
 
-        {/* Session status */}
-        {session.status && (
-          <View className="mt-4">
-            <Typography 
-              variant="body-12" 
-              className="text-light-text-secondary dark:text-dark-text-secondary text-center"
-            >
-              Status: {session.status}
-            </Typography>
-          </View>
-        )}
       </View>
     </Card>
   );
