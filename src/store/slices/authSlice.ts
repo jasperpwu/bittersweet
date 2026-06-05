@@ -1,5 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../config/supabase';
+import { PENDING_REFERRAL_KEY } from '../../hooks/useDeepLinkHandler';
 
 export interface AuthUser {
   id: string;
@@ -81,6 +83,17 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
           isLoading: false,
         },
       }));
+
+      // Check for pending referral code (from deep link before sign-in)
+      try {
+        const pendingCode = await AsyncStorage.getItem(PENDING_REFERRAL_KEY);
+        if (pendingCode) {
+          await AsyncStorage.removeItem(PENDING_REFERRAL_KEY);
+          await get().referral.applyReferralCode(pendingCode);
+        }
+      } catch (refError: any) {
+        console.error('Failed to apply pending referral code:', refError);
+      }
     } catch (error: any) {
       // User cancelled is not an error
       if (error.code === 'ERR_REQUEST_CANCELED') {
@@ -128,6 +141,17 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
           isLoading: false,
         },
       }));
+
+      // Check for pending referral code (from deep link before sign-in)
+      try {
+        const pendingCode = await AsyncStorage.getItem(PENDING_REFERRAL_KEY);
+        if (pendingCode) {
+          await AsyncStorage.removeItem(PENDING_REFERRAL_KEY);
+          await get().referral.applyReferralCode(pendingCode);
+        }
+      } catch (refError: any) {
+        console.error('Failed to apply pending referral code:', refError);
+      }
     } catch (error: any) {
       console.error('Email Sign-In error:', error);
       set((state: any) => ({

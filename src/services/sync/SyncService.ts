@@ -14,6 +14,8 @@ import {
   rowToBadge,
   settingsToRow,
   rowToSettings,
+  referralToRow,
+  rowToReferral,
   normalizedToRows,
   rowsToNormalized,
 } from './SyncMapper';
@@ -73,6 +75,17 @@ export class SyncService {
       }
     }
 
+    // Upload referral tracking
+    if (localState.referral?.referralCode || localState.referral?.referralCount > 0) {
+      const referralRow = referralToRow(localState.referral, userId);
+      const { error: referralError } = await supabase
+        .from('referral_tracking')
+        .upsert(referralRow, { onConflict: 'user_id' });
+      if (referralError) {
+        console.error('Failed to upload referral tracking:', referralError);
+      }
+    }
+
     // Upload blocklist selection
     const blocklistSelectionId = localState.blocklist?.currentSelectionId;
     if (blocklistSelectionId) {
@@ -92,7 +105,7 @@ export class SyncService {
   static async pullAll(userId: string): Promise<any> {
     console.log('☁️ Pulling all data from cloud...');
 
-    const [sessionsRes, tagsRes, goalsRes, rewardsRes, badgesRes, settingsRes] =
+    const [sessionsRes, tagsRes, goalsRes, rewardsRes, badgesRes, settingsRes, referralRes] =
       await Promise.all([
         supabase
           .from('focus_sessions')
@@ -116,6 +129,7 @@ export class SyncService {
           .eq('user_id', userId)
           .is('deleted_at', null),
         supabase.from('user_settings').select('*').eq('user_id', userId).single(),
+        supabase.from('referral_tracking').select('*').eq('user_id', userId).maybeSingle(),
       ]);
 
     const sessions = rowsToNormalized(
@@ -132,6 +146,9 @@ export class SyncService {
     const settings = settingsRes.data
       ? rowToSettings(settingsRes.data)
       : null;
+    const referral = referralRes.data
+      ? rowToReferral(referralRes.data)
+      : { referralCode: null, referralCount: 0, claimedTier: 0 };
 
     // Pull blocklist blob
     let blocklistBlob: string | null = null;
@@ -149,6 +166,7 @@ export class SyncService {
       focus: { sessions, tags, goals, badges },
       rewards,
       settings,
+      referral,
       blocklistBlob,
     };
   }

@@ -1,12 +1,25 @@
 import { useEffect } from 'react';
 import { Linking, Alert } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '../store';
 
 const INVITE_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/invite\/(.+)/;
+const REFER_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/refer\/(.+)/;
+
+const PENDING_REFERRAL_KEY = 'bittersweet-pending-referral-code';
 
 function extractInviteCode(url: string): string | null {
   const match = url.match(INVITE_PATTERN);
+  if (match) {
+    const code = match[1].split('?')[0].split('#')[0];
+    return code || null;
+  }
+  return null;
+}
+
+function extractReferralCode(url: string): string | null {
+  const match = url.match(REFER_PATTERN);
   if (match) {
     const code = match[1].split('?')[0].split('#')[0];
     return code || null;
@@ -50,24 +63,47 @@ async function handleInviteCode(code: string) {
   }
 }
 
+async function handleReferralCode(code: string) {
+  const store = useAppStore.getState();
+
+  if (!store.auth.isAuthenticated) {
+    // Store for later — will be applied after sign-up
+    await AsyncStorage.setItem(PENDING_REFERRAL_KEY, code);
+    return;
+  }
+
+  // Apply immediately
+  await store.referral.applyReferralCode(code);
+}
+
+function handleDeepLink(url: string) {
+  const inviteCode = extractInviteCode(url);
+  if (inviteCode) {
+    handleInviteCode(inviteCode);
+    return;
+  }
+
+  const referralCode = extractReferralCode(url);
+  if (referralCode) {
+    handleReferralCode(referralCode);
+    return;
+  }
+}
+
+export { PENDING_REFERRAL_KEY };
+
 export function useDeepLinkHandler() {
   useEffect(() => {
     // Handle deep link when app is already open
     const subscription = Linking.addEventListener('url', ({ url }) => {
-      const code = extractInviteCode(url);
-      if (code) {
-        handleInviteCode(code);
-      }
+      handleDeepLink(url);
     });
 
     // Handle deep link that opened the app (cold start)
     Linking.getInitialURL().then((url) => {
       if (url) {
-        const code = extractInviteCode(url);
-        if (code) {
-          // Small delay to let app initialize
-          setTimeout(() => handleInviteCode(code), 1000);
-        }
+        // Small delay to let app initialize
+        setTimeout(() => handleDeepLink(url), 1000);
       }
     });
 

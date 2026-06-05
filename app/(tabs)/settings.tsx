@@ -10,6 +10,7 @@ import { TimePicker } from '../../src/components/ui/TimePicker';
 import { router } from 'expo-router';
 import { AccountSection, AccountActions } from '../../src/components/auth/AccountSection';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
+import { ReferralCard } from '../../src/components/referral/ReferralCard';
 import { useAppStore } from '../../src/store';
 import { openChat } from '../../src/services/crisp';
 
@@ -210,6 +211,9 @@ export default function SettingsScreen() {
 
         {/* Account */}
         <AccountSection />
+
+        {/* Referral */}
+        <ReferralCard />
 
         {/* Subscription */}
         <SettingsSection title="Subscription">

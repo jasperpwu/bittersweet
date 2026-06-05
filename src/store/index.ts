@@ -16,6 +16,7 @@ import { AuthSlice, createAuthSlice } from './slices/authSlice';
 import { SubscriptionSlice, createSubscriptionSlice } from './slices/subscriptionSlice';
 import { SyncSlice, createSyncSlice } from './slices/syncSlice';
 import { GroveSlice, createGroveSlice } from './slices/groveSlice';
+import { ReferralSlice, createReferralSlice } from './slices/referralSlice';
 import { SharedTagService } from '../services/sharedTag/SharedTagService';
 
 interface AppStore {
@@ -181,6 +182,9 @@ interface AppStore {
 
   // Grove (social profile)
   grove: GroveSlice;
+
+  // Referral
+  referral: ReferralSlice;
 
   // Blocklist
   blocklist: {
@@ -1215,6 +1219,9 @@ export const useAppStore = create<AppStore>()(
 
       // Grove (social profile) state
       grove: createGroveSlice(set, get),
+
+      // Referral state
+      referral: createReferralSlice(set, get),
 
       // UI state
       ui: {

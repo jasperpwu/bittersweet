@@ -622,7 +622,19 @@ export default function RootLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="(modals)/referral-details"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
                   name="invite/[code]"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="refer/[code]"
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen

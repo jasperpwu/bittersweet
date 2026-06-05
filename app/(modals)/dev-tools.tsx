@@ -3,12 +3,19 @@ import { View, SafeAreaView, Pressable, TextInput, Alert, useColorScheme } from 
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui';
 import { useRewards, useAppStore, useFocus } from '../../src/store';
+import { showToast } from '../../src/components/ui/Toast';
 
 export default function DevToolsModal() {
   const colorScheme = useColorScheme();
   const rewards = useRewards();
   const { sessions } = useFocus();
   const [fruitInput, setFruitInput] = useState(String(rewards.balance));
+  const [referralCodeInput, setReferralCodeInput] = useState('');
+  const referralCount = useAppStore((s) => s.referral.referralCount);
+  const claimedTier = useAppStore((s) => s.referral.claimedTier);
+  const referralCode = useAppStore((s) => s.referral.referralCode);
+  const applyReferralCode = useAppStore((s) => s.referral.applyReferralCode);
+  const fetchReferralStatus = useAppStore((s) => s.referral.fetchReferralStatus);
 
   const setFruitBalance = (value: number) => {
     useAppStore.setState((state) => ({
@@ -125,6 +132,104 @@ export default function DevToolsModal() {
           </Pressable>
         </View>
 
+        {/* Referral Testing */}
+        <View>
+          <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
+            Referral Testing
+          </Typography>
+          <View className="bg-gray-700 rounded-xl p-4 mb-3" style={{ gap: 4 }}>
+            <Typography variant="body-12" color="secondary">
+              My Code: {referralCode ?? 'none'}
+            </Typography>
+            <Typography variant="body-12" color="secondary">
+              Referral Count: {referralCount}
+            </Typography>
+            <Typography variant="body-12" color="secondary">
+              Claimed Tier: {claimedTier}
+            </Typography>
+          </View>
+          <View className="flex-row items-center" style={{ gap: 12 }}>
+            <TextInput
+              value={referralCodeInput}
+              onChangeText={setReferralCodeInput}
+              placeholder="Enter referral code"
+              placeholderTextColor="#666"
+              style={{
+                flex: 1,
+                backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                borderRadius: 12,
+                padding: 14,
+                fontSize: 16,
+                color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                borderWidth: 1,
+                borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Pressable
+              onPress={async () => {
+                if (!referralCodeInput.trim()) return;
+                try {
+                  await applyReferralCode(referralCodeInput.trim());
+                  showToast('Referral code applied', 'success');
+                  setReferralCodeInput('');
+                  fetchReferralStatus();
+                } catch (e: any) {
+                  Alert.alert('Error', e.message || 'Failed to apply code');
+                }
+              }}
+              className="bg-primary rounded-xl px-5 py-3 active:opacity-80"
+            >
+              <Typography variant="subtitle-14-semibold" color="white">
+                Apply
+              </Typography>
+            </Pressable>
+          </View>
+          {/* Quick actions */}
+          <View className="flex-row mt-3" style={{ gap: 8 }}>
+            <Pressable
+              onPress={() => fetchReferralStatus()}
+              className="bg-gray-700 rounded-lg px-3 py-2 active:opacity-80"
+            >
+              <Typography variant="body-12" color="white">
+                Refresh Status
+              </Typography>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                useAppStore.setState((state: any) => ({
+                  referral: {
+                    ...state.referral,
+                    referralCount: referralCount + 1,
+                  },
+                }));
+              }}
+              className="bg-gray-700 rounded-lg px-3 py-2 active:opacity-80"
+            >
+              <Typography variant="body-12" color="white">
+                +1 Referral (local)
+              </Typography>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                useAppStore.setState((state: any) => ({
+                  referral: {
+                    ...state.referral,
+                    referralCount: 0,
+                    claimedTier: 0,
+                  },
+                }));
+              }}
+              className="bg-gray-700 rounded-lg px-3 py-2 active:opacity-80"
+            >
+              <Typography variant="body-12" color="white">
+                Reset
+              </Typography>
+            </Pressable>
+          </View>
+        </View>
+
         {/* Store snapshot */}
         <View>
           <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
@@ -136,9 +241,6 @@ export default function DevToolsModal() {
             </Typography>
             <Typography variant="body-12" color="secondary">
               Sessions: {sessionCount}
-            </Typography>
-            <Typography variant="body-12" color="secondary">
-              Transactions: {rewards.transactions.length}
             </Typography>
           </View>
         </View>

@@ -183,7 +183,7 @@ const optimizedStorage = new OptimizedStorage();
 export const persistenceConfig = {
   name: STORAGE_KEY,
   storage: createJSONStorage(() => optimizedStorage),
-  version: 8,
+  version: 9,
   migrate: (persistedState: any, version: number) => {
     if (version < 2) {
       console.log('🔄 Migrating store to v2 (adding auth slice)...');
@@ -394,6 +394,20 @@ export const persistenceConfig = {
       console.log('✅ Store migration to v8 complete');
     }
 
+    if (version < 9) {
+      console.log('🔄 Migrating store to v9 (referral system)...');
+      const state = persistedState;
+      if (!state.referral) {
+        state.referral = {
+          referralCode: null,
+          referralCount: 0,
+          claimedTier: 0,
+          isLoading: false,
+        };
+      }
+      console.log('✅ Store migration to v9 complete');
+    }
+
     if (version === 0) {
       console.log('🔄 Migrating store from v0 → v1 (tag IDs)...');
       const state = persistedState;
@@ -514,6 +528,11 @@ export const persistenceConfig = {
       rankingsWeek: state.grove?.rankingsWeek ?? [],
       rankingsMonth: state.grove?.rankingsMonth ?? [],
       challenges: state.grove?.challenges ?? [],
+    },
+    referral: {
+      referralCode: state.referral?.referralCode ?? null,
+      referralCount: state.referral?.referralCount ?? 0,
+      claimedTier: state.referral?.claimedTier ?? 0,
     },
   }),
 

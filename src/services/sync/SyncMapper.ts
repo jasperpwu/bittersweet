@@ -303,6 +303,27 @@ export function rowToSettings(row: Record<string, any>): any {
   };
 }
 
+// --- Referral mapper ---
+
+export function referralToRow(referral: any, userId: string): Record<string, any> {
+  return {
+    user_id: userId,
+    referral_count: referral.referralCount ?? 0,
+    claimed_tier: referral.claimedTier ?? 0,
+    referral_code: referral.referralCode ?? null,
+    updated_at: referral.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+export function rowToReferral(row: Record<string, any>): any {
+  return {
+    referralCode: row.referral_code ?? null,
+    referralCount: row.referral_count ?? 0,
+    claimedTier: row.claimed_tier ?? 0,
+    updatedAt: row.updated_at ?? null,
+  };
+}
+
 // --- Normalized state helpers ---
 
 /**

@@ -13,10 +13,10 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
-import { InviteLinkCard } from '../../src/components/grove/InviteLinkCard';
-import { Modal } from '../../src/components/ui/Modal/Modal';
+
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
+import { useReferralLink } from '../../src/hooks/useReferralLink';
 import { GroveFriendService } from '../../src/services/grove/GroveFriendService';
 import { showToast } from '../../src/components/ui/Toast';
 import { getFontFamily } from '../../src/utils/typography';
@@ -32,8 +32,8 @@ export default function AddFriendsModal() {
   const acceptFriendRequest = useAppStore((s) => s.grove.acceptFriendRequest);
   const rejectFriendRequest = useAppStore((s) => s.grove.rejectFriendRequest);
   const sendFriendRequest = useAppStore((s) => s.grove.sendFriendRequest);
+  const { shareLink } = useReferralLink();
 
-  const [showInvite, setShowInvite] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResult, setSearchResult] = useState<GroveProfile | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -330,7 +330,7 @@ export default function AddFriendsModal() {
           Add Friends
         </Typography>
         <Pressable
-          onPress={() => setShowInvite(true)}
+          onPress={() => shareLink()}
           className="w-10 h-10 items-center justify-center -mr-2 active:opacity-60"
           hitSlop={8}
         >
@@ -428,13 +428,6 @@ export default function AddFriendsModal() {
         keyboardShouldPersistTaps="handled"
       />
 
-      {/* Invite link modal */}
-      <Modal isVisible={showInvite} onClose={() => setShowInvite(false)}>
-        <InviteLinkCard />
-        <Typography variant="body-12" color="secondary" className="text-center mt-4 px-2">
-          Friends added via invite link are automatically accepted — no pending request needed.
-        </Typography>
-      </Modal>
     </SafeAreaView>
   );
 }

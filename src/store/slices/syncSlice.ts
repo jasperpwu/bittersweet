@@ -123,6 +123,13 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           totalEarned: merged.rewards.totalEarned,
           totalSpent: merged.rewards.totalSpent,
         },
+        // Referral: LWW — remote always has authoritative count from DB
+        referral: {
+          ...s.referral,
+          referralCode: remoteData.referral?.referralCode ?? s.referral.referralCode,
+          referralCount: remoteData.referral?.referralCount ?? s.referral.referralCount,
+          claimedTier: remoteData.referral?.claimedTier ?? s.referral.claimedTier,
+        },
         sync: {
           ...s.sync,
           isSyncing: false,
@@ -249,6 +256,12 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           totalEarned: remoteData.rewards.totalEarned,
           totalSpent: remoteData.rewards.totalSpent,
           updatedAt: remoteData.rewards.updatedAt,
+        },
+        referral: {
+          ...s.referral,
+          referralCode: remoteData.referral?.referralCode ?? null,
+          referralCount: remoteData.referral?.referralCount ?? 0,
+          claimedTier: remoteData.referral?.claimedTier ?? 0,
         },
         sync: {
           ...s.sync,

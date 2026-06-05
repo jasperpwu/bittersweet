@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, Pressable, Alert, ActivityIndicator, Linking, Image, useColorScheme, TextInput } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../ui/Typography';
 import { DefaultAvatar } from '../grove/DefaultAvatar';
 import { useAppStore } from '../../store';
+import { PENDING_REFERRAL_KEY } from '../../hooks/useDeepLinkHandler';
 
 export const AccountActions: React.FC = () => {
   const colorScheme = useColorScheme();
@@ -96,6 +98,8 @@ export const AccountSection: React.FC = () => {
   const signInWithEmail = useAppStore((state) => state.auth.signInWithEmail);
   const [devEmail, setDevEmail] = useState('');
   const [devPassword, setDevPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [referralSaved, setReferralSaved] = useState(false);
   const profile = useAppStore((s) => s.grove.profile);
   const isActive = useAppStore((s) => s.grove.isActive);
   const isGroveLoading = useAppStore((s) => s.grove.isLoading);
@@ -351,6 +355,46 @@ export const AccountSection: React.FC = () => {
             </Pressable>
           </View>
         )}
+
+        {/* Referral code input */}
+        <View className="mt-4 pt-4 border-t border-light-border dark:border-dark-border">
+          <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
+            Have a referral code?
+          </Typography>
+          <View className="flex-row items-center" style={{ gap: 8 }}>
+            <TextInput
+              placeholder="Enter code"
+              placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
+              value={referralCode}
+              onChangeText={(text) => {
+                setReferralCode(text);
+                setReferralSaved(false);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              className="flex-1 bg-light-bg dark:bg-dark-bg rounded-xl px-3 py-2.5 text-light-text-primary dark:text-dark-text-primary"
+            />
+            <Pressable
+              onPress={async () => {
+                if (!referralCode.trim()) return;
+                await AsyncStorage.setItem(PENDING_REFERRAL_KEY, referralCode.trim());
+                setReferralSaved(true);
+              }}
+              disabled={!referralCode.trim() || referralSaved}
+              className="bg-primary rounded-xl px-4 py-2.5 active:opacity-70"
+              style={{ opacity: !referralCode.trim() || referralSaved ? 0.5 : 1 }}
+            >
+              <Typography variant="subtitle-14-medium" className="text-white">
+                {referralSaved ? 'Saved' : 'Apply'}
+              </Typography>
+            </Pressable>
+          </View>
+          <Typography variant="body-12" color="secondary" className="mt-1.5">
+            {referralSaved
+              ? 'Code saved — it will be applied after you sign in.'
+              : 'Enter a friend\'s referral code before signing in.'}
+          </Typography>
+        </View>
 
         {error && (
           <Typography variant="body-12" className="text-[#FF6B6B] mt-2">
