@@ -568,7 +568,7 @@ export default function RootLayout() {
                   name="(modals)/challenges"
                   options={{
                     headerShown: false,
-                    presentation: 'modal',
+                    presentation: 'card',
                     gestureEnabled: true,
                   }}
                 />
@@ -576,7 +576,7 @@ export default function RootLayout() {
                   name="(modals)/create-challenge"
                   options={{
                     headerShown: false,
-                    presentation: 'modal',
+                    presentation: 'card',
                     gestureEnabled: true,
                   }}
                 />

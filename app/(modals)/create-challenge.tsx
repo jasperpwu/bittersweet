@@ -52,7 +52,7 @@ export default function CreateChallengeModal() {
   const createChallenge = useAppStore((s) => s.grove.createChallenge);
 
   const [step, setStep] = useState<'friend' | 'tag' | 'config'>('friend');
-  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>('daily');
   const [targetHours, setTargetHours] = useState(1);
@@ -66,7 +66,7 @@ export default function CreateChallengeModal() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectedFriend = friends.find((f) => f.profile.user_id === selectedFriendId);
+  const selectedFriends = friends.filter((f) => selectedFriendIds.includes(f.profile.user_id));
 
   const activeTags = allTags.allIds
     .map((id) => allTags.byId[id])
@@ -104,10 +104,19 @@ export default function CreateChallengeModal() {
     }
   }, [creationMode, effectiveStartDate, streakCount, untilDate, period]);
 
-  const handleSelectFriend = useCallback((userId: string) => {
-    setSelectedFriendId(userId);
-    setStep('tag');
+  const handleToggleFriend = useCallback((userId: string) => {
+    setSelectedFriendIds(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
   }, []);
+
+  const handleFriendsNext = useCallback(() => {
+    if (selectedFriendIds.length > 0) {
+      setStep('tag');
+    }
+  }, [selectedFriendIds]);
 
   const handleSelectTag = useCallback((tagId: string) => {
     setSelectedTagId(tagId);
@@ -126,11 +135,11 @@ export default function CreateChallengeModal() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!selectedFriendId || !selectedTag) return;
+    if (selectedFriendIds.length === 0 || !selectedTag) return;
     setIsSubmitting(true);
     try {
       await createChallenge({
-        challengeeId: selectedFriendId,
+        inviteeIds: selectedFriendIds,
         tagId: selectedTag.id,
         tagName: selectedTag.name,
         tagIcon: selectedTag.icon || '',
@@ -146,13 +155,21 @@ export default function CreateChallengeModal() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedFriendId, selectedTag, period, targetHours, effectiveStartDate, endDate, createChallenge]);
+  }, [selectedFriendIds, selectedTag, period, targetHours, effectiveStartDate, endDate, createChallenge]);
 
-  const stepTitle = step === 'friend' ? 'Pick a Friend' : step === 'tag' ? 'Pick a Tag' : 'Configure Challenge';
+  const stepTitle = step === 'friend' ? 'Pick Friends' : step === 'tag' ? 'Pick a Tag' : 'Configure Challenge';
 
   const sliderConfig = SLIDER_CONFIG[period];
 
   const periodLabel = period === 'daily' ? 'days' : 'weeks';
+
+  /** Format selected friend names for summary display */
+  const friendNamesSummary = useMemo(() => {
+    if (selectedFriends.length === 0) return '';
+    const names = selectedFriends.map(f => f.profile.display_name);
+    if (names.length <= 3) return names.join(', ');
+    return `${names.slice(0, 2).join(', ')}, and ${names.length - 2} other${names.length - 2 > 1 ? 's' : ''}`;
+  }, [selectedFriends]);
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
@@ -165,13 +182,18 @@ export default function CreateChallengeModal() {
         >
           <Ionicons name="arrow-back" size={24} color="#6592E9" />
         </Pressable>
-        <Typography variant="headline-18" color="primary" className="ml-2">
+        <Typography variant="headline-18" color="primary" className="ml-2 flex-1">
           {stepTitle}
         </Typography>
+        {step === 'friend' && selectedFriendIds.length > 0 && (
+          <Typography variant="body-12" color="secondary">
+            {selectedFriendIds.length} selected
+          </Typography>
+        )}
       </View>
 
       <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Step 1: Friend picker */}
+        {/* Step 1: Friend picker (multi-select) */}
         {step === 'friend' && (
           <View>
             {friends.length === 0 ? (
@@ -181,37 +203,63 @@ export default function CreateChallengeModal() {
                 </Typography>
               </View>
             ) : (
-              friends.map((friend) => (
+              <>
+                {friends.map((friend) => {
+                  const isSelected = selectedFriendIds.includes(friend.profile.user_id);
+                  return (
+                    <Pressable
+                      key={friend.profile.user_id}
+                      onPress={() => handleToggleFriend(friend.profile.user_id)}
+                      className="flex-row items-center py-3 active:opacity-70"
+                    >
+                      {friend.profile.avatar_url ? (
+                        <Image
+                          source={{ uri: friend.profile.avatar_url }}
+                          style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }}
+                        />
+                      ) : (
+                        <View className="mr-3">
+                          <DefaultAvatar
+                            displayName={friend.profile.display_name}
+                            color={friend.profile.avatar_color}
+                            size={40}
+                          />
+                        </View>
+                      )}
+                      <View className="flex-1">
+                        <Typography variant="subtitle-14-medium" color="primary">
+                          {friend.profile.display_name}
+                        </Typography>
+                        <Typography variant="body-12" color="secondary">
+                          @{friend.profile.handle}
+                        </Typography>
+                      </View>
+                      <View
+                        className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
+                          isSelected
+                            ? 'bg-[#E9A065] border-[#E9A065]'
+                            : 'border-light-border dark:border-dark-border'
+                        }`}
+                      >
+                        {isSelected && (
+                          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                        )}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+                {/* Next button */}
                 <Pressable
-                  key={friend.profile.user_id}
-                  onPress={() => handleSelectFriend(friend.profile.user_id)}
-                  className="flex-row items-center py-3 active:opacity-70"
+                  onPress={handleFriendsNext}
+                  disabled={selectedFriendIds.length === 0}
+                  className="bg-[#E9A065] rounded-2xl py-4 items-center mt-4 active:opacity-80"
+                  style={{ opacity: selectedFriendIds.length === 0 ? 0.4 : 1 }}
                 >
-                  {friend.profile.avatar_url ? (
-                    <Image
-                      source={{ uri: friend.profile.avatar_url }}
-                      style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }}
-                    />
-                  ) : (
-                    <View className="mr-3">
-                      <DefaultAvatar
-                        displayName={friend.profile.display_name}
-                        color={friend.profile.avatar_color}
-                        size={40}
-                      />
-                    </View>
-                  )}
-                  <View className="flex-1">
-                    <Typography variant="subtitle-14-medium" color="primary">
-                      {friend.profile.display_name}
-                    </Typography>
-                    <Typography variant="body-12" color="secondary">
-                      @{friend.profile.handle}
-                    </Typography>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#8A8A8A" />
+                  <Typography variant="subtitle-16" style={{ color: '#FFFFFF' }}>
+                    Next
+                  </Typography>
                 </Pressable>
-              ))
+              </>
             )}
           </View>
         )}
@@ -221,7 +269,7 @@ export default function CreateChallengeModal() {
           <View>
             <View className="mb-4">
               <Typography variant="body-12" color="secondary">
-                Pick the tag you both need to focus on.
+                Pick the tag everyone needs to focus on.
               </Typography>
             </View>
             {activeTags.map((tag) => (
@@ -251,8 +299,8 @@ export default function CreateChallengeModal() {
                 <Typography variant="body-12" color="secondary" className="mr-1">
                   Challenging
                 </Typography>
-                <Typography variant="subtitle-14-medium" color="primary">
-                  {selectedFriend?.profile.display_name}
+                <Typography variant="subtitle-14-medium" color="primary" className="flex-1" numberOfLines={2}>
+                  {friendNamesSummary}
                 </Typography>
               </View>
               <View className="flex-row items-center">
@@ -381,7 +429,7 @@ export default function CreateChallengeModal() {
             {/* Computed End Date Info */}
             <View className="bg-[#E9A065]/10 rounded-xl px-4 py-3 mb-6">
               <Typography variant="body-12" color="secondary">
-                Both you and {selectedFriend?.profile.display_name} must focus with the &quot;{selectedTag?.name}&quot; tag for {formatDuration(targetHours)} per {period === 'daily' ? 'day' : 'week'}.
+                All participants must focus with the &quot;{selectedTag?.name}&quot; tag for {formatDuration(targetHours)} per {period === 'daily' ? 'day' : 'week'}.
                 {' '}Ends {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
               </Typography>
             </View>

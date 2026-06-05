@@ -511,27 +511,13 @@ struct LiveActivityWidget: Widget {
           }
         }
       } compactLeading: {
-        HStack(spacing: 4) {
-          resizableImage(imageName: {
-            let imageName = context.state.dynamicIslandImageName ?? "default-coffee-bean"
-            if context.state.dynamicIslandImageName == nil {
-              NSLog("[LiveActivity] Using default coffee bean image for Dynamic Island compact")
-            } else {
-              NSLog("[LiveActivity] Using custom image for Dynamic Island compact: \(context.state.dynamicIslandImageName!)")
-            }
-            return imageName
-          }())
-            .frame(maxWidth: 23, maxHeight: 23)
-
-          if let dynamicIslandText = context.state.dynamicIslandText {
-            Text(dynamicIslandText)
-              .font(.system(size: 15))
-              .minimumScaleFactor(0.8)
-              .fontWeight(.semibold)
-              .lineLimit(1)
-          }
+        if let dynamicIslandText = context.state.dynamicIslandText {
+          Text(dynamicIslandText)
+            .font(.system(size: 15))
+            .minimumScaleFactor(0.8)
+            .fontWeight(.semibold)
+            .lineLimit(1)
         }
-        .applyWidgetURL(from: context.attributes.deepLinkUrl)
       } compactTrailing: {
         if context.state.isIdle == true {
           Image(systemName: "play.fill")

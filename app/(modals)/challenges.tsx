@@ -1,13 +1,13 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { View, SafeAreaView, Pressable, SectionList, Alert, ActivityIndicator } from 'react-native';
+import { View, SafeAreaView, Pressable, SectionList, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { ChallengeCard, formatTarget } from '../../src/components/grove/ChallengeCard';
-import { ChallengeDetailGrid } from '../../src/components/grove/ChallengeDetailGrid';
+import { ChallengeDetailSheet } from '../../src/components/grove/ChallengeDetailSheet';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
-import type { ChallengeItem, ChallengePeriodDetailsResult } from '../../src/services/grove/GroveChallengeService';
+import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
 
 export default function ChallengesModal() {
   const challenges = useAppStore((s) => s.grove.challenges);
@@ -15,11 +15,9 @@ export default function ChallengesModal() {
   const fetchChallenges = useAppStore((s) => s.grove.fetchChallenges);
   const acceptChallenge = useAppStore((s) => s.grove.acceptChallenge);
   const declineChallenge = useAppStore((s) => s.grove.declineChallenge);
-  const fetchChallengePeriodDetails = useAppStore((s) => s.grove.fetchChallengePeriodDetails);
+  const deleteChallengeAction = useAppStore((s) => s.grove.deleteChallenge);
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [periodDetails, setPeriodDetails] = useState<Record<string, ChallengePeriodDetailsResult>>({});
-  const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
+  const [selectedChallenge, setSelectedChallenge] = useState<ChallengeItem | null>(null);
 
   useEffect(() => {
     fetchChallenges();
@@ -41,73 +39,152 @@ export default function ChallengesModal() {
     }
   }, [declineChallenge]);
 
-  const handleToggleExpand = useCallback(async (challengeId: string) => {
-    if (expandedId === challengeId) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(challengeId);
+  const handleDelete = useCallback(async (challengeId: string) => {
+    const challenge = challenges.find(c => c.id === challengeId);
+    const isActive = challenge?.status === 'active';
+    const message = isActive
+      ? 'This challenge is currently active. Deleting it will remove it for all participants. Are you sure?'
+      : 'Are you sure you want to delete this challenge?';
 
-    // Fetch details if not already cached
-    if (!periodDetails[challengeId]) {
-      setLoadingDetails(challengeId);
-      try {
-        const details = await fetchChallengePeriodDetails(challengeId);
-        setPeriodDetails(prev => ({ ...prev, [challengeId]: details }));
-      } catch {
-        // Silently fail — grid just won't show
-      } finally {
-        setLoadingDetails(null);
-      }
-    }
-  }, [expandedId, periodDetails, fetchChallengePeriodDetails]);
+    Alert.alert(
+      'Delete Challenge',
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteChallengeAction(challengeId);
+              setSelectedChallenge(null);
+            } catch {
+              Alert.alert('Error', 'Failed to delete challenge.');
+            }
+          },
+        },
+      ],
+    );
+  }, [deleteChallengeAction, challenges]);
 
   // Group into sections
   const pendingIncoming = challenges.filter(c => c.status === 'pending' && c.isIncoming);
   const pendingOutgoing = challenges.filter(c => c.status === 'pending' && !c.isIncoming);
   const active = challenges.filter(c => c.status === 'active');
   const completed = challenges.filter(c => c.status === 'completed' || c.status === 'failed');
+  const cancelled = challenges.filter(c => c.status === 'cancelled');
 
   const sections = [
     ...(pendingIncoming.length > 0 ? [{ title: 'Incoming Challenges', data: pendingIncoming }] : []),
     ...(pendingOutgoing.length > 0 ? [{ title: 'Sent Challenges', data: pendingOutgoing }] : []),
     ...(active.length > 0 ? [{ title: 'Active', data: active }] : []),
     ...(completed.length > 0 ? [{ title: 'Completed', data: completed }] : []),
+    ...(cancelled.length > 0 ? [{ title: 'Cancelled', data: cancelled }] : []),
   ];
 
-  const renderPendingIncoming = (challenge: ChallengeItem) => (
-    <View className="flex-row items-center py-3 px-5">
-      <View className="mr-3">
-        <DefaultAvatar
-          displayName={challenge.challengerProfile.display_name}
-          color={challenge.challengerProfile.avatar_color}
-          size={40}
-        />
+  const renderPendingIncoming = (challenge: ChallengeItem) => {
+    const creatorParticipant = challenge.participants.find(p => p.role === 'creator');
+    const creatorProfile = creatorParticipant?.profile || { display_name: 'Unknown', avatar_color: '#6592E9', avatar_url: null, handle: 'unknown' };
+    const otherInvitees = challenge.participants.filter(p => p.role === 'invitee' && p.userId !== currentUserId);
+
+    return (
+      <View className="flex-row items-center py-3 px-5">
+        <View className="mr-3">
+          <DefaultAvatar
+            displayName={creatorProfile.display_name}
+            color={creatorProfile.avatar_color}
+            size={40}
+          />
+        </View>
+        <View className="flex-1">
+          <Typography variant="subtitle-14-medium" color="primary">
+            {creatorProfile.display_name}
+          </Typography>
+          <Typography variant="body-12" color="secondary">
+            {challenge.tagIcon} {challenge.tagName} · {formatTarget(challenge.targetMinutes, challenge.period)}
+            {otherInvitees.length > 0 && ` · +${otherInvitees.length} other${otherInvitees.length > 1 ? 's' : ''}`}
+          </Typography>
+        </View>
+        <View className="flex-row gap-2">
+          <Pressable
+            onPress={() => handleDecline(challenge.id)}
+            className="w-9 h-9 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
+          >
+            <Ionicons name="close" size={18} color="#8A8A8A" />
+          </Pressable>
+          <Pressable
+            onPress={() => handleAccept(challenge.id)}
+            className="w-9 h-9 rounded-full bg-[#E9A065] items-center justify-center active:opacity-80"
+          >
+            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+          </Pressable>
+        </View>
       </View>
-      <View className="flex-1">
-        <Typography variant="subtitle-14-medium" color="primary">
-          {challenge.challengerProfile.display_name}
-        </Typography>
-        <Typography variant="body-12" color="secondary">
-          {challenge.tagIcon} {challenge.tagName} · {formatTarget(challenge.targetMinutes, challenge.period)}
-        </Typography>
-      </View>
-      <View className="flex-row gap-2">
+    );
+  };
+
+  const renderPendingOutgoing = (item: ChallengeItem) => {
+    const invitees = item.participants.filter(p => p.role === 'invitee');
+    const inviteeNames = invitees.map(p => p.profile.display_name);
+    const displayName = inviteeNames.length <= 2
+      ? inviteeNames.join(', ')
+      : `${inviteeNames[0]}, ${inviteeNames[1]}, +${inviteeNames.length - 2}`;
+    const firstInvitee = invitees[0];
+
+    return (
+      <View className="flex-row items-center py-3 px-5">
+        <View className="mr-3">
+          {firstInvitee && (
+            <DefaultAvatar
+              displayName={firstInvitee.profile.display_name}
+              color={firstInvitee.profile.avatar_color}
+              size={40}
+            />
+          )}
+        </View>
+        <View className="flex-1">
+          <Typography variant="subtitle-14-medium" color="primary" numberOfLines={1}>
+            {displayName}
+          </Typography>
+          <Typography variant="body-12" color="secondary">
+            {item.tagIcon} {item.tagName} · {formatTarget(item.targetMinutes, item.period)} · Pending
+          </Typography>
+        </View>
         <Pressable
-          onPress={() => handleDecline(challenge.id)}
-          className="w-9 h-9 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
+          onPress={() => handleDelete(item.id)}
+          className="w-9 h-9 rounded-full bg-red-500/20 items-center justify-center active:opacity-70"
         >
-          <Ionicons name="close" size={18} color="#8A8A8A" />
-        </Pressable>
-        <Pressable
-          onPress={() => handleAccept(challenge.id)}
-          className="w-9 h-9 rounded-full bg-[#E9A065] items-center justify-center active:opacity-80"
-        >
-          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+          <Ionicons name="trash-outline" size={16} color="#EF4444" />
         </Pressable>
       </View>
-    </View>
-  );
+    );
+  };
+
+  const renderCancelled = (item: ChallengeItem) => {
+    const isCreator = item.creatorId === currentUserId;
+    return (
+      <View className="flex-row items-center py-3 px-5">
+        <View className="flex-1">
+          <Typography variant="subtitle-14-medium" color="primary" numberOfLines={1}>
+            {item.tagIcon} {item.tagName}
+          </Typography>
+          <Typography variant="body-12" color="secondary">
+            {formatTarget(item.targetMinutes, item.period)} · No one accepted
+          </Typography>
+        </View>
+        {isCreator && (
+          <View className="flex-row gap-2">
+            <Pressable
+              onPress={() => handleDelete(item.id)}
+              className="w-9 h-9 rounded-full bg-red-500/20 items-center justify-center active:opacity-70"
+            >
+              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+            </Pressable>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const renderItem = ({ item, section }: { item: ChallengeItem; section: { title: string } }) => {
     if (section.title === 'Incoming Challenges') {
@@ -115,59 +192,21 @@ export default function ChallengesModal() {
     }
 
     if (section.title === 'Sent Challenges') {
-      return (
-        <View className="flex-row items-center py-3 px-5">
-          <View className="mr-3">
-            <DefaultAvatar
-              displayName={item.challengeeProfile.display_name}
-              color={item.challengeeProfile.avatar_color}
-              size={40}
-            />
-          </View>
-          <View className="flex-1">
-            <Typography variant="subtitle-14-medium" color="primary">
-              {item.challengeeProfile.display_name}
-            </Typography>
-            <Typography variant="body-12" color="secondary">
-              {item.tagIcon} {item.tagName} · {formatTarget(item.targetMinutes, item.period)} · Pending
-            </Typography>
-          </View>
-        </View>
-      );
+      return renderPendingOutgoing(item);
+    }
+
+    if (section.title === 'Cancelled') {
+      return renderCancelled(item);
     }
 
     // Active or completed: show as ChallengeCard (tappable)
-    const isExpanded = expandedId === item.id;
-    const isChallenger = currentUserId === item.challengerId;
-    const theirProfile = isChallenger ? item.challengeeProfile : item.challengerProfile;
-    const details = periodDetails[item.id];
-    const isLoadingThis = loadingDetails === item.id;
-
     return (
       <View className="px-5 py-2">
-        <Pressable onPress={() => handleToggleExpand(item.id)} className="active:opacity-80">
-          <ChallengeCard challenge={item} currentUserId={currentUserId} />
-        </Pressable>
-        {isExpanded && (
-          <View>
-            {isLoadingThis && (
-              <View className="py-4 items-center">
-                <ActivityIndicator size="small" />
-              </View>
-            )}
-            {details && item.startDate && (
-              <ChallengeDetailGrid
-                periods={details.periods}
-                periodType={item.period}
-                targetMinutes={item.targetMinutes}
-                startDate={item.startDate}
-                myLabel="You"
-                theirLabel={theirProfile.display_name}
-                isChallenger={isChallenger}
-              />
-            )}
-          </View>
-        )}
+        <ChallengeCard
+          challenge={item}
+          currentUserId={currentUserId}
+          onPress={() => setSelectedChallenge(item)}
+        />
       </View>
     );
   };
@@ -232,6 +271,13 @@ export default function ChallengesModal() {
           stickySectionHeadersEnabled={false}
         />
       )}
+
+      <ChallengeDetailSheet
+        challenge={selectedChallenge}
+        isVisible={selectedChallenge !== null}
+        onClose={() => setSelectedChallenge(null)}
+        onDelete={handleDelete}
+      />
     </SafeAreaView>
   );
 }

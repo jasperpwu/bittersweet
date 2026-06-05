@@ -98,6 +98,7 @@ export interface GroveSlice {
   declineChallenge: (challengeId: string) => Promise<void>;
   updateMyHitsLocally: (challenge: ChallengeItem) => Promise<{ myHits: number; totalPeriods: number }>;
   fetchChallengePeriodDetails: (challengeId: string) => Promise<ChallengePeriodDetailsResult>;
+  deleteChallenge: (challengeId: string) => Promise<void>;
 
   // Phase 4 — Heartbeat / Inner Circle
   heartbeatSettings: HeartbeatSettings | null;
@@ -807,8 +808,6 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       const currentUserId = get().auth.user?.id;
       if (!currentUserId) throw new Error('Not authenticated');
 
-      const isChallenger = currentUserId === challenge.challengerId;
-
       // Get local sessions in the challenge date range
       const startDate = new Date(challenge.startDate + 'T00:00:00');
       const endDate = new Date(challenge.endDate + 'T23:59:59.999');
@@ -826,7 +825,6 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       // Group by period bucket and count hits
       let myHits = 0;
       if (challenge.period === 'daily') {
-        // Group by local date
         const buckets = new Map<string, number>();
         for (const s of sessions) {
           const dateKey = new Date(s.startTime).toLocaleDateString('en-CA'); // YYYY-MM-DD
@@ -836,7 +834,6 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
           if (total >= challenge.targetMinutes) myHits++;
         }
       } else {
-        // Weekly: group by week offset from startDate
         const challengeStart = new Date(challenge.startDate + 'T00:00:00').getTime();
         const buckets = new Map<number, number>();
         for (const s of sessions) {
@@ -852,8 +849,8 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
 
       const totalPeriods = computeTotalPeriods(challenge.startDate, challenge.endDate, challenge.period);
 
-      // Write to DB
-      await GroveChallengeService.updateMyHits(challenge.id, isChallenger, myHits);
+      // Write to participant row directly (no isChallenger needed)
+      await GroveChallengeService.updateMyHits(challenge.id, myHits);
 
       // Refresh challenges list
       await get().grove.fetchChallenges();
@@ -868,6 +865,25 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
   fetchChallengePeriodDetails: async (challengeId: string) => {
     const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return await GroveChallengeService.fetchPeriodDetails(challengeId, userTz);
+  },
+
+  deleteChallenge: async (challengeId: string) => {
+    try {
+      await GroveChallengeService.deleteChallenge(challengeId);
+      // Remove from local state
+      set((state: any) => {
+        const updated = state.grove.challenges.filter((c: ChallengeItem) => c.id !== challengeId);
+        return {
+          grove: {
+            ...state.grove,
+            challenges: updated,
+          },
+        };
+      });
+    } catch (error: any) {
+      console.error('Failed to delete challenge:', error);
+      throw error;
+    }
   },
 
   // ========== Phase 4 Actions — Heartbeat / Inner Circle ==========

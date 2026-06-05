@@ -513,6 +513,7 @@ export const persistenceConfig = {
       feed: state.grove?.feed ?? [],
       rankingsWeek: state.grove?.rankingsWeek ?? [],
       rankingsMonth: state.grove?.rankingsMonth ?? [],
+      challenges: state.grove?.challenges ?? [],
     },
   }),
 

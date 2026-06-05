@@ -9,30 +9,39 @@ export interface ChallengeProfile {
   avatar_color: string;
 }
 
+export interface ChallengeParticipant {
+  id: string;
+  userId: string;
+  role: 'creator' | 'invitee';
+  status: 'pending' | 'accepted' | 'declined';
+  hits: number;
+  outcome: 'completed' | 'failed' | null;
+  profile: ChallengeProfile;
+}
+
 export interface ChallengeItem {
   id: string;
-  challengerId: string;
-  challengeeId: string;
-  challengerProfile: ChallengeProfile;
-  challengeeProfile: ChallengeProfile;
+  creatorId: string;
+  participants: ChallengeParticipant[];
+  /** The current user's participant record, or null if not found */
+  myParticipant: ChallengeParticipant | null;
   tagId: string;
   tagName: string;
   tagIcon: string;
   period: 'daily' | 'weekly';
   targetMinutes: number;
   totalPeriods: number;
-  status: 'pending' | 'active' | 'completed' | 'failed' | 'declined';
+  status: 'pending' | 'active' | 'completed' | 'failed' | 'declined' | 'cancelled';
   startDate: string | null;
   endDate: string | null;
-  challengerHits: number;
-  challengeeHits: number;
   fruitReward: number;
+  /** True if the current user is an invitee with a pending status */
   isIncoming: boolean;
   createdAt: string;
 }
 
 export interface CreateChallengeInput {
-  challengeeId: string;
+  inviteeIds: string[];
   tagId: string;
   tagName: string;
   tagIcon: string;
@@ -42,16 +51,16 @@ export interface CreateChallengeInput {
   endDate: string;
 }
 
-export interface ChallengePeriodDetail {
-  date: string;
-  challenger_minutes: number;
-  challengee_minutes: number;
+export interface ParticipantPeriodData {
+  user_id: string;
+  display_name: string;
+  minutes: number[];
+  hits: number;
 }
 
 export interface ChallengePeriodDetailsResult {
-  periods: ChallengePeriodDetail[];
-  challenger_total: number;
-  challengee_total: number;
+  periods: string[];
+  participants: ParticipantPeriodData[];
   total_periods: number;
 }
 
@@ -72,17 +81,22 @@ export function computeTotalPeriods(startDate: string, endDate: string, period: 
 
 export const GroveChallengeService = {
   /**
-   * Create a new challenge (sends to another user).
+   * Create a new challenge with multiple invitees.
+   * Inserts the challenge row, then bulk-inserts participant rows
+   * (creator auto-accepted, invitees pending).
    */
   async createChallenge(input: CreateChallengeInput): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { error } = await supabase
+    // Insert challenge row
+    const { data: challenge, error } = await supabase
       .from('grove_challenges')
       .insert({
+        creator_id: user.id,
+        // Legacy columns for backward compat
         challenger_id: user.id,
-        challengee_id: input.challengeeId,
+        challengee_id: input.inviteeIds[0],
         tag_id: input.tagId,
         tag_name: input.tagName,
         tag_icon: input.tagIcon,
@@ -91,62 +105,116 @@ export const GroveChallengeService = {
         start_date: input.startDate,
         end_date: input.endDate,
         status: 'pending',
-      });
+      })
+      .select('id')
+      .single();
 
     if (error) throw error;
+
+    // Bulk-insert participant rows
+    const participantRows = [
+      {
+        challenge_id: challenge.id,
+        user_id: user.id,
+        role: 'creator',
+        status: 'accepted',
+      },
+      ...input.inviteeIds.map(inviteeId => ({
+        challenge_id: challenge.id,
+        user_id: inviteeId,
+        role: 'invitee',
+        status: 'pending',
+      })),
+    ];
+
+    const { error: participantError } = await supabase
+      .from('grove_challenge_participants')
+      .insert(participantRows);
+
+    if (participantError) throw participantError;
   },
 
   /**
-   * Accept a pending challenge. Sets status to 'active'.
-   * start_date and end_date are already set at creation time.
+   * Accept a pending challenge invitation.
+   * Updates the participant row status to 'accepted'.
    */
   async acceptChallenge(challengeId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
-      .from('grove_challenges')
+      .from('grove_challenge_participants')
       .update({
-        status: 'active',
+        status: 'accepted',
         updated_at: new Date().toISOString(),
       })
-      .eq('id', challengeId);
+      .eq('challenge_id', challengeId)
+      .eq('user_id', user.id);
 
     if (error) throw error;
   },
 
   /**
-   * Decline a pending challenge.
+   * Decline a pending challenge invitation.
+   * Updates the participant row status to 'declined'.
    */
   async declineChallenge(challengeId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
-      .from('grove_challenges')
+      .from('grove_challenge_participants')
       .update({
         status: 'declined',
         updated_at: new Date().toISOString(),
       })
-      .eq('id', challengeId);
+      .eq('challenge_id', challengeId)
+      .eq('user_id', user.id);
 
     if (error) throw error;
   },
 
   /**
-   * Fetch all challenges for the current user, with profile data.
+   * Fetch all challenges for the current user, with participant and profile data.
    */
   async fetchChallenges(): Promise<ChallengeItem[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data: challenges, error } = await supabase
+    // Find all challenge IDs the user participates in
+    const { data: myParticipations, error: partError } = await supabase
+      .from('grove_challenge_participants')
+      .select('challenge_id')
+      .eq('user_id', user.id);
+
+    if (partError) throw partError;
+    if (!myParticipations || myParticipations.length === 0) return [];
+
+    const challengeIds = myParticipations.map(p => p.challenge_id);
+
+    // Fetch challenges
+    const { data: challenges, error: challengeError } = await supabase
       .from('grove_challenges')
       .select('*')
-      .or(`challenger_id.eq.${user.id},challengee_id.eq.${user.id}`)
-      .in('status', ['pending', 'active', 'completed', 'failed'])
+      .in('id', challengeIds)
+      .in('status', ['pending', 'active', 'completed', 'failed', 'cancelled'])
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (challengeError) throw challengeError;
     if (!challenges || challenges.length === 0) return [];
+
+    // Fetch all participants for these challenges via SECURITY DEFINER RPC
+    // (direct table query only returns the caller's own rows due to RLS)
+    const { data: allParticipants, error: allPartError } = await supabase
+      .rpc('get_challenge_participants', {
+        p_challenge_ids: challenges.map(c => c.id),
+      });
+
+    if (allPartError) throw allPartError;
 
     // Gather unique user IDs for profiles
     const userIds = [...new Set(
-      challenges.flatMap(c => [c.challenger_id, c.challengee_id])
+      (allParticipants || []).map(p => p.user_id)
     )];
 
     const { data: profiles, error: profileError } = await supabase
@@ -173,18 +241,39 @@ export const GroveChallengeService = {
       avatar_color: '#6592E9',
     };
 
+    // Group participants by challenge
+    const participantsByChallenge = new Map<string, typeof allParticipants>();
+    for (const p of allParticipants || []) {
+      const list = participantsByChallenge.get(p.challenge_id) || [];
+      list.push(p);
+      participantsByChallenge.set(p.challenge_id, list);
+    }
+
     return challenges.map(c => {
       const period: 'daily' | 'weekly' = c.period || 'daily';
       const totalPeriods = (c.start_date && c.end_date)
         ? computeTotalPeriods(c.start_date, c.end_date, period)
         : 0;
 
+      const rawParticipants = participantsByChallenge.get(c.id) || [];
+      const participants: ChallengeParticipant[] = rawParticipants.map(p => ({
+        id: p.id,
+        userId: p.user_id,
+        role: p.role,
+        status: p.status,
+        hits: p.hits,
+        outcome: p.outcome,
+        profile: profileMap.get(p.user_id) || defaultProfile,
+      }));
+
+      const myParticipant = participants.find(p => p.userId === user.id) || null;
+      const isIncoming = myParticipant?.role === 'invitee' && myParticipant?.status === 'pending';
+
       return {
         id: c.id,
-        challengerId: c.challenger_id,
-        challengeeId: c.challengee_id,
-        challengerProfile: profileMap.get(c.challenger_id) || defaultProfile,
-        challengeeProfile: profileMap.get(c.challengee_id) || defaultProfile,
+        creatorId: c.creator_id,
+        participants,
+        myParticipant,
         tagId: c.tag_id,
         tagName: c.tag_name,
         tagIcon: c.tag_icon,
@@ -194,10 +283,8 @@ export const GroveChallengeService = {
         status: c.status,
         startDate: c.start_date,
         endDate: c.end_date,
-        challengerHits: c.challenger_hits,
-        challengeeHits: c.challengee_hits,
         fruitReward: c.fruit_reward,
-        isIncoming: c.challengee_id === user.id,
+        isIncoming,
         createdAt: c.created_at,
       };
     });
@@ -205,20 +292,23 @@ export const GroveChallengeService = {
 
   /**
    * Update the current user's hit count for a challenge.
-   * Writes to challenger_hits or challengee_hits depending on isChallenger.
+   * Writes to the participant row directly.
    */
-  async updateMyHits(challengeId: string, isChallenger: boolean, hits: number): Promise<void> {
-    const column = isChallenger ? 'challenger_hits' : 'challengee_hits';
+  async updateMyHits(challengeId: string, hits: number): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
-      .from('grove_challenges')
-      .update({ [column]: hits, updated_at: new Date().toISOString() })
-      .eq('id', challengeId);
+      .from('grove_challenge_participants')
+      .update({ hits, updated_at: new Date().toISOString() })
+      .eq('challenge_id', challengeId)
+      .eq('user_id', user.id);
 
     if (error) throw error;
   },
 
   /**
-   * Fetch per-period breakdown for a challenge (both users' minutes per day/week).
+   * Fetch per-period breakdown for a challenge (all participants' minutes per day/week).
    */
   async fetchPeriodDetails(challengeId: string, userTz: string = 'UTC'): Promise<ChallengePeriodDetailsResult> {
     const { data, error } = await supabase.rpc('get_challenge_period_details', {
@@ -228,5 +318,17 @@ export const GroveChallengeService = {
 
     if (error) throw error;
     return data as ChallengePeriodDetailsResult;
+  },
+
+  /**
+   * Delete a challenge (only for cancelled challenges, by creator).
+   */
+  async deleteChallenge(challengeId: string): Promise<void> {
+    const { error } = await supabase
+      .from('grove_challenges')
+      .delete()
+      .eq('id', challengeId);
+
+    if (error) throw error;
   },
 };

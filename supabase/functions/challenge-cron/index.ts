@@ -40,10 +40,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const finalized = data?.finalized ?? 0;
-    console.log(`Challenge cron: finalized ${finalized} challenges`);
+    const cancelled = data?.cancelled ?? 0;
+    console.log(`Challenge cron: finalized ${finalized}, cancelled ${cancelled} challenges`);
 
     return new Response(
-      JSON.stringify({ success: true, finalized }),
+      JSON.stringify({ success: true, finalized, cancelled }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

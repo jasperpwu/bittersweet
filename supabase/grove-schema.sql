@@ -281,35 +281,115 @@ $$;
 -- Table: grove_challenges
 CREATE TABLE grove_challenges (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  challenger_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  challengee_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  -- Legacy columns kept for backward compatibility during transition
+  challenger_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  challengee_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   tag_id TEXT NOT NULL,
   tag_name TEXT NOT NULL,
   tag_icon TEXT NOT NULL,
   period TEXT NOT NULL DEFAULT 'daily' CHECK (period IN ('daily', 'weekly')),
   target_minutes INTEGER NOT NULL DEFAULT 60 CHECK (target_minutes > 0),
   status TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'active', 'completed', 'failed', 'declined')),
+    CHECK (status IN ('pending', 'active', 'completed', 'failed', 'declined', 'cancelled')),
   start_date DATE,
   end_date DATE,
+  -- Legacy hit columns kept for backward compatibility during transition
   challenger_hits INTEGER NOT NULL DEFAULT 0,
   challengee_hits INTEGER NOT NULL DEFAULT 0,
   fruit_reward INTEGER NOT NULL DEFAULT 10,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT no_self_challenge CHECK (challenger_id <> challengee_id)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_challenges_challenger ON grove_challenges(challenger_id, status);
-CREATE INDEX idx_challenges_challengee ON grove_challenges(challengee_id, status);
+CREATE INDEX idx_challenges_creator ON grove_challenges(creator_id, status);
 
 ALTER TABLE grove_challenges ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own challenges" ON grove_challenges FOR SELECT
-  USING (auth.uid() = challenger_id OR auth.uid() = challengee_id);
+  USING (
+    auth.uid() = creator_id
+    OR EXISTS (
+      SELECT 1 FROM grove_challenge_participants cp
+      WHERE cp.challenge_id = grove_challenges.id
+        AND cp.user_id = auth.uid()
+    )
+  );
 CREATE POLICY "Users can create challenges" ON grove_challenges FOR INSERT
-  WITH CHECK (auth.uid() = challenger_id AND status = 'pending');
-CREATE POLICY "Users can update own challenges" ON grove_challenges FOR UPDATE
-  USING (auth.uid() = challenger_id OR auth.uid() = challengee_id);
+  WITH CHECK (auth.uid() = creator_id);
+CREATE POLICY "Creator can update challenges" ON grove_challenges FOR UPDATE
+  USING (auth.uid() = creator_id);
+CREATE POLICY "Creator can delete challenges" ON grove_challenges FOR DELETE
+  USING (auth.uid() = creator_id);
+
+-- Table: grove_challenge_participants
+CREATE TABLE grove_challenge_participants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  challenge_id UUID NOT NULL REFERENCES grove_challenges(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('creator', 'invitee')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  hits INTEGER NOT NULL DEFAULT 0,
+  outcome TEXT CHECK (outcome IN ('completed', 'failed')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT unique_challenge_participant UNIQUE (challenge_id, user_id)
+);
+
+CREATE INDEX idx_challenge_participants_challenge ON grove_challenge_participants(challenge_id);
+CREATE INDEX idx_challenge_participants_user ON grove_challenge_participants(user_id, status);
+
+ALTER TABLE grove_challenge_participants ENABLE ROW LEVEL SECURITY;
+-- Users can view their own participant rows directly.
+-- Co-participant data is fetched via get_challenge_participants() SECURITY DEFINER RPC.
+CREATE POLICY "Users can view own participant rows" ON grove_challenge_participants FOR SELECT
+  USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own participant row" ON grove_challenge_participants FOR UPDATE
+  USING (auth.uid() = user_id);
+CREATE POLICY "Creator can insert participants" ON grove_challenge_participants FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM grove_challenges c
+      WHERE c.id = grove_challenge_participants.challenge_id
+        AND c.creator_id = auth.uid()
+    )
+  );
+CREATE POLICY "Creator can delete participants" ON grove_challenge_participants FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM grove_challenges c
+      WHERE c.id = grove_challenge_participants.challenge_id
+        AND c.creator_id = auth.uid()
+    )
+  );
+
+-- RPC: get_challenge_participants
+-- Fetches all participants for given challenge IDs, bypassing per-row RLS.
+-- Only returns participants for challenges the caller belongs to.
+CREATE OR REPLACE FUNCTION get_challenge_participants(p_challenge_ids UUID[])
+RETURNS TABLE (
+  id UUID,
+  challenge_id UUID,
+  user_id UUID,
+  role TEXT,
+  status TEXT,
+  hits INTEGER,
+  outcome TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
+BEGIN
+  RETURN QUERY
+    SELECT cp.id, cp.challenge_id, cp.user_id, cp.role, cp.status,
+           cp.hits, cp.outcome, cp.created_at, cp.updated_at
+    FROM grove_challenge_participants cp
+    WHERE cp.challenge_id = ANY(p_challenge_ids)
+      AND EXISTS (
+        SELECT 1 FROM grove_challenge_participants cp2
+        WHERE cp2.challenge_id = cp.challenge_id
+          AND cp2.user_id = auth.uid()
+      );
+END;
+$$;
 
 -- Helper: count a user's successful periods from focus_sessions
 CREATE OR REPLACE FUNCTION _challenge_user_hits(
@@ -371,59 +451,182 @@ END;
 $$;
 
 -- RPC: finalize_expired_challenges
--- Called by daily cron. Scans active challenges past end_date,
--- computes both users' hits, and sets status to completed or failed.
+-- Called by daily cron. Auto-cancels pending challenges past start_date with no accepted invitees.
+-- Finalizes expired active challenges: computes per-participant hits/outcome, sets challenge status.
 CREATE OR REPLACE FUNCTION finalize_expired_challenges()
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   challenge RECORD;
-  v_challenger_hits INTEGER;
-  v_challengee_hits INTEGER;
+  participant RECORD;
+  v_hits INTEGER;
   v_total_periods INTEGER;
+  v_all_completed BOOLEAN;
   v_new_status TEXT;
   v_finalized INTEGER := 0;
+  v_cancelled INTEGER := 0;
+  v_accepted_count INTEGER;
 BEGIN
+  -- Phase 1: Auto-cancel pending challenges past start_date with zero accepted invitees
+  FOR challenge IN
+    SELECT * FROM grove_challenges
+    WHERE status = 'pending'
+      AND start_date IS NOT NULL
+      AND start_date <= CURRENT_DATE
+  LOOP
+    SELECT COUNT(*) INTO v_accepted_count
+    FROM grove_challenge_participants
+    WHERE challenge_id = challenge.id
+      AND role = 'invitee'
+      AND status = 'accepted';
+
+    IF v_accepted_count = 0 THEN
+      UPDATE grove_challenges
+      SET status = 'cancelled', updated_at = now()
+      WHERE id = challenge.id;
+      v_cancelled := v_cancelled + 1;
+    ELSE
+      UPDATE grove_challenges
+      SET status = 'active', updated_at = now()
+      WHERE id = challenge.id;
+    END IF;
+  END LOOP;
+
+  -- Phase 2: Finalize expired active challenges (past end_date)
   FOR challenge IN
     SELECT * FROM grove_challenges
     WHERE status = 'active'
       AND end_date < CURRENT_DATE
   LOOP
-    v_challenger_hits := _challenge_user_hits(
-      challenge.challenger_id, challenge.tag_id,
-      challenge.start_date, challenge.end_date,
-      challenge.period, challenge.target_minutes,
-      challenge.end_date, 'UTC'
-    );
-    v_challengee_hits := _challenge_user_hits(
-      challenge.challengee_id, challenge.tag_id,
-      challenge.start_date, challenge.end_date,
-      challenge.period, challenge.target_minutes,
-      challenge.end_date, 'UTC'
-    );
-
     IF challenge.period = 'daily' THEN
       v_total_periods := (challenge.end_date - challenge.start_date) + 1;
     ELSE
       v_total_periods := ((challenge.end_date - challenge.start_date) + 1) / 7;
     END IF;
 
-    IF v_challenger_hits >= v_total_periods AND v_challengee_hits >= v_total_periods THEN
-      v_new_status := 'completed';
-    ELSE
-      v_new_status := 'failed';
-    END IF;
+    v_all_completed := TRUE;
+
+    FOR participant IN
+      SELECT * FROM grove_challenge_participants
+      WHERE challenge_id = challenge.id
+        AND status = 'accepted'
+    LOOP
+      v_hits := _challenge_user_hits(
+        participant.user_id, challenge.tag_id,
+        challenge.start_date, challenge.end_date,
+        challenge.period, challenge.target_minutes,
+        challenge.end_date, 'UTC'
+      );
+
+      UPDATE grove_challenge_participants
+      SET hits = v_hits,
+          outcome = CASE WHEN v_hits >= v_total_periods THEN 'completed' ELSE 'failed' END,
+          updated_at = now()
+      WHERE id = participant.id;
+
+      IF v_hits < v_total_periods THEN
+        v_all_completed := FALSE;
+      END IF;
+    END LOOP;
+
+    v_new_status := CASE WHEN v_all_completed THEN 'completed' ELSE 'failed' END;
 
     UPDATE grove_challenges
-    SET status = v_new_status,
-        challenger_hits = v_challenger_hits,
-        challengee_hits = v_challengee_hits,
-        updated_at = now()
+    SET status = v_new_status, updated_at = now()
     WHERE id = challenge.id;
 
     v_finalized := v_finalized + 1;
   END LOOP;
 
-  RETURN json_build_object('finalized', v_finalized);
+  RETURN json_build_object('finalized', v_finalized, 'cancelled', v_cancelled);
+END;
+$$;
+
+-- RPC: get_challenge_period_details
+-- Returns per-participant minutes arrays for the challenge period grid.
+CREATE OR REPLACE FUNCTION get_challenge_period_details(
+  p_challenge_id UUID,
+  p_user_tz TEXT DEFAULT 'UTC'
+)
+RETURNS JSON LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
+DECLARE
+  v_challenge grove_challenges%ROWTYPE;
+  v_period_dates DATE[];
+  v_period_date DATE;
+  v_participant RECORD;
+  v_participants JSON[];
+  v_minutes INTEGER[];
+  v_total_minutes INTEGER;
+  v_total_periods INTEGER;
+  v_profile grove_profiles%ROWTYPE;
+  v_hits INTEGER;
+BEGIN
+  SELECT * INTO v_challenge FROM grove_challenges WHERE id = p_challenge_id;
+  IF v_challenge IS NULL THEN
+    RETURN json_build_object('periods', '[]'::json, 'participants', '[]'::json, 'total_periods', 0);
+  END IF;
+
+  IF v_challenge.period = 'daily' THEN
+    v_period_dates := ARRAY(
+      SELECT generate_series(v_challenge.start_date, v_challenge.end_date, '1 day'::interval)::date
+    );
+  ELSE
+    v_period_dates := ARRAY(
+      SELECT generate_series(v_challenge.start_date, v_challenge.end_date, '7 days'::interval)::date
+    );
+  END IF;
+
+  v_total_periods := COALESCE(array_length(v_period_dates, 1), 0);
+  v_participants := ARRAY[]::JSON[];
+
+  FOR v_participant IN
+    SELECT cp.user_id, cp.role, cp.status, cp.hits, cp.outcome
+    FROM grove_challenge_participants cp
+    WHERE cp.challenge_id = p_challenge_id
+      AND cp.status = 'accepted'
+    ORDER BY cp.role ASC, cp.created_at ASC
+  LOOP
+    SELECT * INTO v_profile FROM grove_profiles WHERE user_id = v_participant.user_id;
+    v_minutes := ARRAY[]::INTEGER[];
+    v_hits := 0;
+
+    FOR i IN 1..COALESCE(v_total_periods, 0) LOOP
+      v_period_date := v_period_dates[i];
+      IF v_challenge.period = 'daily' THEN
+        SELECT COALESCE(SUM(COALESCE(fs.adjusted_duration, fs.duration)), 0)::INTEGER INTO v_total_minutes
+        FROM focus_sessions fs
+        WHERE fs.user_id = v_participant.user_id
+          AND fs.tag_id = v_challenge.tag_id
+          AND fs.deleted_at IS NULL
+          AND (fs.start_time AT TIME ZONE p_user_tz)::date = v_period_date;
+      ELSE
+        SELECT COALESCE(SUM(COALESCE(fs.adjusted_duration, fs.duration)), 0)::INTEGER INTO v_total_minutes
+        FROM focus_sessions fs
+        WHERE fs.user_id = v_participant.user_id
+          AND fs.tag_id = v_challenge.tag_id
+          AND fs.deleted_at IS NULL
+          AND (fs.start_time AT TIME ZONE p_user_tz)::date >= v_period_date
+          AND (fs.start_time AT TIME ZONE p_user_tz)::date < v_period_date + 7;
+      END IF;
+
+      v_minutes := v_minutes || v_total_minutes;
+      IF v_total_minutes >= v_challenge.target_minutes THEN
+        v_hits := v_hits + 1;
+      END IF;
+    END LOOP;
+
+    v_participants := v_participants || json_build_object(
+      'user_id', v_participant.user_id,
+      'display_name', COALESCE(v_profile.display_name, 'Unknown'),
+      'minutes', to_json(v_minutes),
+      'hits', v_hits
+    );
+  END LOOP;
+
+  RETURN json_build_object(
+    'periods', to_json(v_period_dates),
+    'participants', to_json(v_participants),
+    'total_periods', v_total_periods
+  );
 END;
 $$;
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, SafeAreaView, Image, ScrollView, Pressable, useColorScheme, RefreshControl } from 'react-native';
+import { View, SafeAreaView, Image, ScrollView, Pressable, useColorScheme, RefreshControl, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
@@ -7,6 +7,7 @@ import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { FriendCarousel } from '../../src/components/grove/FriendCarousel';
 import { ChallengeBanner } from '../../src/components/grove/ChallengeBanner';
 import { ChallengeCard } from '../../src/components/grove/ChallengeCard';
+import { ChallengeDetailSheet } from '../../src/components/grove/ChallengeDetailSheet';
 import { EmptyChallengesState } from '../../src/components/grove/EmptyChallengesState';
 import { Leaderboard } from '../../src/components/grove/Leaderboard';
 import { EmptyGroveState } from '../../src/components/grove/EmptyGroveState';
@@ -48,9 +49,12 @@ export default function GroveScreen() {
   const pauseHeartbeat = useAppStore((s) => s.grove.pauseHeartbeat);
   const resumeHeartbeat = useAppStore((s) => s.grove.resumeHeartbeat);
 
+  const deleteChallengeAction = useAppStore((s) => s.grove.deleteChallenge);
+
   const colorScheme = useColorScheme();
   const [showPauseSheet, setShowPauseSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState<typeof challenges[number] | null>(null);
   const isFirstFocus = useRef(true);
 
   // Fetch all grove data, optionally showing the refresh spinner
@@ -122,6 +126,30 @@ export default function GroveScreen() {
   const handleInnerCircle = useCallback(() => {
     router.push('/(modals)/inner-circle');
   }, []);
+
+  const handleDeleteChallenge = useCallback((challengeId: string) => {
+    const challenge = challenges.find(c => c.id === challengeId);
+    const isActive = challenge?.status === 'active';
+    const message = isActive
+      ? 'This challenge is currently active. Deleting it will remove it for all participants. Are you sure?'
+      : 'Are you sure you want to delete this challenge?';
+
+    Alert.alert('Delete Challenge', message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteChallengeAction(challengeId);
+            setSelectedChallenge(null);
+          } catch {
+            Alert.alert('Error', 'Failed to delete challenge.');
+          }
+        },
+      },
+    ]);
+  }, [deleteChallengeAction, challenges]);
 
   const handleHeartbeatPress = useCallback(() => {
     setShowPauseSheet(true);
@@ -310,6 +338,7 @@ export default function GroveScreen() {
                       key={challenge.id}
                       challenge={challenge}
                       currentUserId={currentUserId}
+                      onPress={() => setSelectedChallenge(challenge)}
                     />
                   ))}
                   {/* Create new challenge button */}
@@ -349,6 +378,13 @@ export default function GroveScreen() {
         settings={heartbeatSettings}
         onPause={pauseHeartbeat}
         onResume={resumeHeartbeat}
+      />
+
+      <ChallengeDetailSheet
+        challenge={selectedChallenge}
+        isVisible={selectedChallenge !== null}
+        onClose={() => setSelectedChallenge(null)}
+        onDelete={handleDeleteChallenge}
       />
     </SafeAreaView>
   );
