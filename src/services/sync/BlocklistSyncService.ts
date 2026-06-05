@@ -80,7 +80,8 @@ export class BlocklistSyncService {
    */
   static async sync(
     userId: string,
-    currentSelectionId: string | null
+    currentSelectionId: string | null,
+    skipBlocking = false
   ): Promise<string | null> {
     console.log('[BlocklistSync] Starting sync...');
 
@@ -109,7 +110,7 @@ export class BlocklistSyncService {
       // No local data — accept server blob entirely
       console.log('[BlocklistSync] No local data, accepting server blob');
       BlocklistSyncService.storeTempBlob(CANONICAL_SELECTION_ID, serverBlob);
-      BlocklistSyncService.applyLocally(currentSelectionId);
+      BlocklistSyncService.applyLocally(currentSelectionId, skipBlocking);
       await AsyncStorage.setItem(LAST_SYNCED_BLOB_KEY, serverBlob);
       return CANONICAL_SELECTION_ID;
     }
@@ -206,7 +207,7 @@ export class BlocklistSyncService {
     // 5. If local changed, apply locally
     if (localChanged) {
       console.log('[BlocklistSync] Local blocklist changed — applying merged blob');
-      BlocklistSyncService.applyLocally(currentSelectionId);
+      BlocklistSyncService.applyLocally(currentSelectionId, skipBlocking);
       return CANONICAL_SELECTION_ID;
     }
 
@@ -248,11 +249,12 @@ export class BlocklistSyncService {
    */
   static async importAndApply(
     blob: string,
-    oldSelectionId: string | null
+    oldSelectionId: string | null,
+    skipBlocking = false
   ): Promise<string> {
     console.log('[BlocklistSync] importAndApply — applying cloud blob');
     BlocklistSyncService.storeTempBlob(CANONICAL_SELECTION_ID, blob);
-    BlocklistSyncService.applyLocally(oldSelectionId);
+    BlocklistSyncService.applyLocally(oldSelectionId, skipBlocking);
     await AsyncStorage.setItem(LAST_SYNCED_BLOB_KEY, blob);
     return CANONICAL_SELECTION_ID;
   }
@@ -261,7 +263,11 @@ export class BlocklistSyncService {
    * Re-apply native blocking for an existing selection ID.
    * Used on cold start when data hasn't changed but native state may have been cleared.
    */
-  static reapplyBlocking(selectionId: string): void {
+  static reapplyBlocking(selectionId: string, skipBlocking = false): void {
+    if (skipBlocking) {
+      console.log('[BlocklistSync] Skipping reapplyBlocking — active unlock session');
+      return;
+    }
     console.log('[BlocklistSync] Re-applying native blocking for:', selectionId);
     blockSelection({ activitySelectionId: selectionId });
   }
@@ -297,10 +303,18 @@ export class BlocklistSyncService {
 
   /**
    * Swap blocking from old selection to the canonical selection.
+   * If skipBlocking is true, still clean up old selection but don't apply
+   * native blocking (used when an unlock session is active so we don't
+   * re-block prematurely — the updated blob is still stored under the
+   * canonical ID and will be used when the unlock expires).
    */
-  private static applyLocally(oldSelectionId: string | null): void {
+  private static applyLocally(oldSelectionId: string | null, skipBlocking = false): void {
     if (oldSelectionId && oldSelectionId !== CANONICAL_SELECTION_ID) {
       unblockSelection({ activitySelectionId: oldSelectionId });
+    }
+    if (skipBlocking) {
+      console.log('[BlocklistSync] Skipping blockSelection — active unlock session');
+      return;
     }
     blockSelection({ activitySelectionId: CANONICAL_SELECTION_ID });
   }

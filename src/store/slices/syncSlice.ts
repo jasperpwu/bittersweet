@@ -142,7 +142,20 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
       // Sync blocklist (3-way merge)
       try {
         const currentSelectionId = get().blocklist.currentSelectionId;
-        const newSelectionId = await BlocklistSyncService.sync(userId, currentSelectionId);
+
+        // Check if there's an active (non-expired) unlock session.
+        // If so, still sync the blob data but skip native blockSelection()
+        // so we don't re-block apps during an unlock. The updated blob is
+        // stored under the canonical selection ID and will be used when
+        // the unlock expires and the native intervalDidEnd fires.
+        const hasActiveUnlock = Object.values(get().blocklist.activeSessions.byId).some(
+          (s: any) => s.isActive && new Date(s.endTime) > new Date()
+        );
+        if (hasActiveUnlock) {
+          console.log('☁️ Active unlock session detected — syncing data but skipping blockSelection');
+        }
+
+        const newSelectionId = await BlocklistSyncService.sync(userId, currentSelectionId, hasActiveUnlock);
         if (newSelectionId) {
           const counts = BlocklistSyncService.getCounts(newSelectionId);
           set((s: any) => ({
@@ -164,7 +177,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
         } else if (currentSelectionId) {
           // No data change, but re-apply native blocking in case it was
           // cleared on cold start / app restart
-          BlocklistSyncService.reapplyBlocking(currentSelectionId);
+          BlocklistSyncService.reapplyBlocking(currentSelectionId, hasActiveUnlock);
           const currentBalance = get().rewards.balance;
           await FamilyControlsModule.updateShieldBalance(currentBalance);
           console.log('☁️ Blocklist unchanged — re-applied native blocking');
@@ -258,9 +271,16 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
       try {
         if (remoteData.blocklistBlob) {
           const oldSelectionId = get().blocklist.currentSelectionId;
+          const hasActiveUnlock = Object.values(get().blocklist.activeSessions.byId).some(
+            (s: any) => s.isActive && new Date(s.endTime) > new Date()
+          );
+          if (hasActiveUnlock) {
+            console.log('☁️ Active unlock session detected — importing data but skipping blockSelection');
+          }
           const newSelectionId = await BlocklistSyncService.importAndApply(
             remoteData.blocklistBlob,
-            oldSelectionId
+            oldSelectionId,
+            hasActiveUnlock
           );
           const counts = BlocklistSyncService.getCounts(newSelectionId);
           set((s: any) => ({
