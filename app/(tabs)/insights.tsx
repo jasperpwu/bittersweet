@@ -8,6 +8,7 @@ import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
 import { useFocus, useFocusActions, useAppStore } from '../../src/store';
+import { SharedTagStats } from '../../src/components/analytics/SharedTagStats/SharedTagStats';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { TimePeriod, FocusGoal, Badge, ChartSegment } from '../../src/store/types';
@@ -28,8 +29,8 @@ export default function InsightsScreen() {
   const weekStartDay = 1; // Always Monday
 
   // Get data from focus store
-  const { sessions, tags, goals } = useFocus();
-  const { deleteGoal, concludeGoal, deleteBadge, reorderGoals } = useFocusActions();
+  const { sessions, tags, goals, sharedTagStats } = useFocus();
+  const { deleteGoal, concludeGoal, deleteBadge, reorderGoals, fetchJoinerStats, removeJoiner } = useFocusActions();
 
   // Extract sessions array from normalized state
   const safeSessions = (sessions && sessions.allIds && sessions.byId)
@@ -55,6 +56,14 @@ export default function InsightsScreen() {
         return !!tag && !tag.deletedAt;
       });
   }, [goals, tags]);
+
+  // Tags the user is actively sharing (for SharedTagStats)
+  const sharingTags = useMemo(() => {
+    if (!tags?.allIds || !tags?.byId) return [];
+    return tags.allIds
+      .map(id => tags.byId[id])
+      .filter(t => t && !t.deletedAt && t.isSharing);
+  }, [tags]);
 
   // Get badges from store
   const badgeStore = useAppStore((state) => state.focus.badges);
@@ -321,6 +330,14 @@ export default function InsightsScreen() {
           <BadgeCollection
             badges={badges}
             onDeleteBadge={deleteBadge}
+          />
+
+          {/* Shared Tag Stats */}
+          <SharedTagStats
+            sharingTags={sharingTags}
+            sharedTagStats={sharedTagStats}
+            onFetchStats={fetchJoinerStats}
+            onRemoveJoiner={removeJoiner}
           />
 
           {/* Statistics View */}

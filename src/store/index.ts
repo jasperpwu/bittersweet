@@ -16,6 +16,7 @@ import { AuthSlice, createAuthSlice } from './slices/authSlice';
 import { SubscriptionSlice, createSubscriptionSlice } from './slices/subscriptionSlice';
 import { SyncSlice, createSyncSlice } from './slices/syncSlice';
 import { GroveSlice, createGroveSlice } from './slices/groveSlice';
+import { SharedTagService } from '../services/sharedTag/SharedTagService';
 
 interface AppStore {
   // Focus sessions and tags
@@ -110,8 +111,23 @@ interface AppStore {
       error: string | null;
       lastUpdated: Date | null;
     };
+
+    // Shared tag actions
+    shareTag: (tagId: string) => Promise<string>; // returns share code
+    stopSharingTag: (tagId: string) => Promise<void>;
+    joinSharedTag: (code: string) => Promise<SessionTag>; // returns the new local tag
+    leaveSharedTag: (tagId: string) => Promise<void>;
+    removeJoiner: (membershipId: string) => Promise<void>;
+    fetchJoinerStats: (ownerTagId: string, startDate: string, endDate: string) => Promise<any[]>;
+
+    // Shared tag stats (ephemeral)
+    sharedTagStats: {
+      joinerStats: any[];
+      loading: boolean;
+      currentTagId: string | null;
+    };
   };
-  
+
   // UI
   ui: {
     isHydrated: boolean;
@@ -970,6 +986,222 @@ export const useAppStore = create<AppStore>()(
             };
           });
         },
+
+        // --- Shared Tag Actions ---
+
+        sharedTagStats: {
+          joinerStats: [],
+          loading: false,
+          currentTagId: null,
+        },
+
+        shareTag: async (tagId: string) => {
+          const link = await SharedTagService.generateShareCode(tagId);
+
+          // Mark local tag as sharing
+          set((state) => {
+            const existingTag = state.focus.tags.byId[tagId];
+            if (!existingTag) return state;
+            return {
+              focus: {
+                ...state.focus,
+                tags: {
+                  ...state.focus.tags,
+                  byId: {
+                    ...state.focus.tags.byId,
+                    [tagId]: { ...existingTag, isSharing: true, updatedAt: new Date() },
+                  },
+                },
+              },
+            };
+          });
+
+          return link.code;
+        },
+
+        stopSharingTag: async (tagId: string) => {
+          await SharedTagService.deactivateShareCode(tagId);
+
+          set((state) => {
+            const existingTag = state.focus.tags.byId[tagId];
+            if (!existingTag) return state;
+            return {
+              focus: {
+                ...state.focus,
+                tags: {
+                  ...state.focus.tags,
+                  byId: {
+                    ...state.focus.tags.byId,
+                    [tagId]: { ...existingTag, isSharing: false, updatedAt: new Date() },
+                  },
+                },
+              },
+            };
+          });
+        },
+
+        joinSharedTag: async (code: string) => {
+          const result = await SharedTagService.resolveShareCode(code);
+
+          // Create a local tag (copy of owner's tag)
+          const tagId = generateId();
+          const goalId = generateId();
+          const now = new Date();
+
+          const newTag: SessionTag = {
+            id: tagId,
+            name: result.tag_name,
+            icon: result.tag_icon,
+            color: result.tag_color,
+            usageCount: 0,
+            sortOrder: get().focus.tags.allIds.length,
+            createdAt: now,
+            updatedAt: now,
+            sharedFromTagId: result.owner_tag_id,
+            sharedFromUserId: result.owner_user_id,
+            sharedOwnerName: result.owner_display_name,
+          };
+
+          const newGoal: FocusGoal = {
+            id: goalId,
+            userId: 'local-user',
+            tagId: tagId,
+            activePeriod: 'daily',
+            dailyTargetMinutes: 0,
+            dailyRestDayTargetMinutes: 0,
+            weeklyTargetMinutes: 0,
+            monthlyTargetMinutes: 0,
+            targetHistory: [],
+            isActive: false,
+            isRepeating: true,
+            showTotalHours: true,
+            currentProgress: 0,
+            lastResetDate: now,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          // Create membership on server
+          await SharedTagService.createMembership(
+            result.owner_tag_id,
+            result.owner_user_id,
+            tagId
+          );
+
+          set((state) => ({
+            focus: {
+              ...state.focus,
+              tags: {
+                ...state.focus.tags,
+                byId: { ...state.focus.tags.byId, [tagId]: newTag },
+                allIds: [...state.focus.tags.allIds, tagId],
+              },
+              goals: {
+                ...state.focus.goals,
+                byId: { ...state.focus.goals.byId, [goalId]: newGoal },
+                allIds: [...state.focus.goals.allIds, goalId],
+              },
+            },
+          }));
+
+          return newTag;
+        },
+
+        leaveSharedTag: async (tagId: string) => {
+          await SharedTagService.leaveMembership(tagId);
+
+          // Soft-delete the local tag
+          set((state) => {
+            const existingTag = state.focus.tags.byId[tagId];
+            if (!existingTag) return state;
+
+            // Deactivate associated goal
+            const updatedGoals = { ...state.focus.goals.byId };
+            for (const gId of state.focus.goals.allIds) {
+              const goal = updatedGoals[gId];
+              if (goal && goal.tagId === tagId) {
+                updatedGoals[gId] = { ...goal, isActive: false, updatedAt: new Date() };
+              }
+            }
+
+            return {
+              focus: {
+                ...state.focus,
+                tags: {
+                  ...state.focus.tags,
+                  byId: {
+                    ...state.focus.tags.byId,
+                    [tagId]: { ...existingTag, deletedAt: new Date(), updatedAt: new Date() },
+                  },
+                },
+                goals: { ...state.focus.goals, byId: updatedGoals },
+              },
+            };
+          });
+        },
+
+        removeJoiner: async (membershipId: string) => {
+          await SharedTagService.removeJoiner(membershipId);
+
+          // Refresh stats if currently viewing
+          const currentTagId = get().focus.sharedTagStats.currentTagId;
+          if (currentTagId) {
+            // Remove joiner from local stats
+            set((state) => ({
+              focus: {
+                ...state.focus,
+                sharedTagStats: {
+                  ...state.focus.sharedTagStats,
+                  joinerStats: state.focus.sharedTagStats.joinerStats.filter(
+                    (j: any) => j.membership_id !== membershipId
+                  ),
+                },
+              },
+            }));
+          }
+        },
+
+        fetchJoinerStats: async (ownerTagId: string, startDate: string, endDate: string) => {
+          set((state) => ({
+            focus: {
+              ...state.focus,
+              sharedTagStats: {
+                ...state.focus.sharedTagStats,
+                loading: true,
+                currentTagId: ownerTagId,
+              },
+            },
+          }));
+
+          try {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const stats = await SharedTagService.fetchJoinerStats(ownerTagId, startDate, endDate, tz);
+
+            set((state) => ({
+              focus: {
+                ...state.focus,
+                sharedTagStats: {
+                  joinerStats: stats,
+                  loading: false,
+                  currentTagId: ownerTagId,
+                },
+              },
+            }));
+
+            return stats;
+          } catch (error) {
+            set((state) => ({
+              focus: {
+                ...state.focus,
+                sharedTagStats: {
+                  ...state.focus.sharedTagStats,
+                  loading: false,
+                },
+              },
+            }));
+            throw error;
+          }
+        },
       },
 
       // Auth state
@@ -1655,6 +1887,12 @@ export const useFocusActions = () => useAppStore((state) => ({
   deleteBadge: state.focus.deleteBadge,
   reorderGoals: state.focus.reorderGoals,
   getActiveGoals: state.focus.getActiveGoals,
+  shareTag: state.focus.shareTag,
+  stopSharingTag: state.focus.stopSharingTag,
+  joinSharedTag: state.focus.joinSharedTag,
+  leaveSharedTag: state.focus.leaveSharedTag,
+  removeJoiner: state.focus.removeJoiner,
+  fetchJoinerStats: state.focus.fetchJoinerStats,
 }));
 
 export const useUIActions = () => useAppStore((state) => ({

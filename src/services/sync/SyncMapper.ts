@@ -101,6 +101,10 @@ export function tagToRow(tag: any, userId: string): Record<string, any> {
     icon: tag.icon,
     color: tag.color,
     sort_order: tag.sortOrder ?? 0,
+    is_sharing: tag.isSharing ?? false,
+    shared_from_tag_id: tag.sharedFromTagId ?? null,
+    shared_from_user_id: tag.sharedFromUserId ?? null,
+    shared_owner_name: tag.sharedOwnerName ?? null,
   };
   // Only include timestamps if they exist — otherwise let DB defaults apply
   if (tag.createdAt instanceof Date) row.created_at = tag.createdAt.toISOString();
@@ -116,6 +120,10 @@ export function rowToTag(row: Record<string, any>): any {
     icon: row.icon,
     color: row.color,
     sortOrder: row.sort_order ?? 0,
+    isSharing: row.is_sharing ?? false,
+    ...(row.shared_from_tag_id ? { sharedFromTagId: row.shared_from_tag_id } : {}),
+    ...(row.shared_from_user_id ? { sharedFromUserId: row.shared_from_user_id } : {}),
+    ...(row.shared_owner_name ? { sharedOwnerName: row.shared_owner_name } : {}),
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
     ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),

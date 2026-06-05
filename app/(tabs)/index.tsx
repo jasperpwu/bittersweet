@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform, Alert, LayoutChangeEvent, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal, EMOJI_CATEGORIES } from '../../src/components/ui/EmojiPicker/EmojiPicker';
@@ -17,6 +18,7 @@ import { WidgetService } from '../../src/services/WidgetService';
 import { FamilyControlsModule } from '../../src/modules/BitterSweetFamilyControls';
 import { blockSelection, stopMonitoring } from 'react-native-device-activity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Clipboard from 'expo-clipboard';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { STORAGE_KEYS } from '../../src/config/constants';
@@ -30,7 +32,7 @@ const ROW_HEIGHT = 84; // row height (72px) + margin-bottom (12px from mb-3)
 const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 0.8 };
 
 type DraggableTagRowProps = {
-  tag: { id: string; name: string; icon?: string; color?: string };
+  tag: { id: string; name: string; icon?: string; color?: string; isSharing?: boolean; sharedFromTagId?: string; sharedOwnerName?: string };
   index: number;
   selectedTag: string | null;
   lastDuration: number;
@@ -41,6 +43,8 @@ type DraggableTagRowProps = {
   onSelect: (id: string) => void;
   onEdit: (tag: any, event: any) => void;
   onDelete: (tag: any, event: any) => void;
+  onShare?: (tag: any) => void;
+  onSwipeOpen?: (ref: any) => void;
   onDragStart: (index: number) => void;
   onDragMove: (translationY: number) => void;
   onDragEnd: () => void;
@@ -48,7 +52,7 @@ type DraggableTagRowProps = {
 
 function DraggableTagRow({
   tag, index, selectedTag, lastDuration, isDragging, dragOriginalIndex, dragTargetIndex,
-  isChallenge, onSelect, onEdit, onDelete, onDragStart, onDragMove, onDragEnd,
+  isChallenge, onSelect, onEdit, onDelete, onShare, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
 }: DraggableTagRowProps) {
   const colorScheme = useColorScheme();
   const isBeingDragged = isDragging && dragOriginalIndex === index;
@@ -57,6 +61,9 @@ function DraggableTagRow({
   const zIndex = useSharedValue(0);
   const displacement = useSharedValue(0);
   const gestureActive = useSharedValue(false);
+
+  const swipeableRef = useRef<any>(null);
+  const didSwipe = useRef(false);
 
   // Reset shared values when drag ends and array has reordered
   React.useEffect(() => {
@@ -85,8 +92,11 @@ function DraggableTagRow({
     displacement.value = withSpring(shift, SPRING_CONFIG);
   }, [isDragging, isBeingDragged, dragOriginalIndex, dragTargetIndex, index]);
 
+  const isSharedTag = !!tag.sharedFromTagId;
+  const isReadOnly = isChallenge || isSharedTag;
+
   const panGesture = Gesture.Pan()
-    .enabled(!isChallenge)
+    .enabled(!isReadOnly)
     .activateAfterLongPress(250)
     .onStart(() => {
       gestureActive.value = true;
@@ -126,9 +136,57 @@ function DraggableTagRow({
 
   const isSelected = selectedTag === tag.id;
 
+  const handleRowPress = () => {
+    if (didSwipe.current) {
+      didSwipe.current = false;
+      return;
+    }
+    onSelect(tag.id);
+  };
+
+  const renderRightActions = () => (
+    <View className="flex-row items-center ml-2">
+      <Pressable
+        onPress={() => {
+          swipeableRef.current?.close();
+          onEdit(tag, null);
+        }}
+        className="rounded-lg w-16 h-full items-center justify-center mr-2"
+        style={{ backgroundColor: 'rgba(200, 200, 200, 0.3)' }}
+      >
+        <Ionicons name="pencil-outline" size={16} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+        <Typography variant="tiny-10" color="secondary" className="mt-0.5">Edit</Typography>
+      </Pressable>
+      {onShare && (
+      <Pressable
+        onPress={() => {
+          swipeableRef.current?.close();
+          onShare(tag);
+        }}
+        className="rounded-lg w-16 h-full items-center justify-center mr-2"
+        style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}
+      >
+        <Ionicons name="share-outline" size={16} color="#3B82F6" />
+        <Typography variant="tiny-10" style={{ color: '#3B82F6' }} className="mt-0.5">Share</Typography>
+      </Pressable>
+      )}
+      <Pressable
+        onPress={() => {
+          swipeableRef.current?.close();
+          onDelete(tag, null);
+        }}
+        className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
+      >
+        <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+        <Typography variant="tiny-10" color="white" className="mt-0.5">Delete</Typography>
+      </Pressable>
+    </View>
+  );
+
   return (
     <GestureDetector gesture={panGesture}>
       <Reanimated.View
+        className="mb-3"
         style={[
           animatedStyle,
           isBeingDragged && {
@@ -140,71 +198,75 @@ function DraggableTagRow({
           },
         ]}
       >
-        <View
-          className={`mb-3 rounded-2xl p-4 ${isChallenge ? '' : 'pr-24'} flex-row items-center relative ${isSelected ? 'bg-primary bg-opacity-20 border border-primary' : 'bg-light-border/30 dark:bg-gray-700'}`}
-          style={[
-            {
-              borderLeftWidth: 4,
-              borderLeftColor: tag.color || '#6592E9',
-            },
-            isSelected && {
-              shadowColor: tag.color || '#6592E9',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.35,
-              shadowRadius: 8,
-              elevation: 8,
-              transform: [{ scale: 1.02 }],
-            },
-          ]}
+        <Swipeable
+          ref={swipeableRef}
+          renderRightActions={isReadOnly ? undefined : renderRightActions}
+          overshootRight={false}
+          onSwipeableWillOpen={() => {
+            didSwipe.current = true;
+            onSwipeOpen?.(swipeableRef.current);
+          }}
+          onSwipeableClose={() => {
+            setTimeout(() => { didSwipe.current = false; }, 100);
+          }}
         >
-          <Pressable
-            onPress={() => onSelect(tag.id)}
-            className="flex-1 flex-row items-center"
-          >
-            <View className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 border border-gray-500">
-              <Text className="text-xl">{tag.icon || '\uD83C\uDFF7\uFE0F'}</Text>
-            </View>
-            <View className="flex-1">
-              <View className="flex-row items-center">
-                <Typography
-                  variant="subtitle-16"
-                  color="primary"
-                  className={isSelected ? 'font-semibold' : ''}
-                >
-                  {tag.name}
-                </Typography>
-                {isChallenge && (
-                  <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(233, 160, 101, 0.2)' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#E9A065' }}>Challenge</Text>
-                  </View>
-                )}
+          <Pressable onPress={handleRowPress}>
+            <View
+              className={`rounded-2xl p-4 flex-row items-center ${isSelected ? 'bg-primary bg-opacity-20 border border-primary' : 'dark:bg-gray-700'}`}
+              style={[
+                {
+                  borderLeftWidth: 4,
+                  borderLeftColor: tag.color || '#6592E9',
+                  // Opaque background so swipe-to-reveal buttons don't bleed through
+                  ...(!isSelected ? { backgroundColor: colorScheme === 'dark' ? '#374151' : '#E8D9C4' } : {}),
+                },
+                isSelected && {
+                  shadowColor: tag.color || '#6592E9',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 8,
+                  elevation: 8,
+                  transform: [{ scale: 1.02 }],
+                },
+              ]}
+            >
+              <View className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 border border-gray-500">
+                <Text className="text-xl">{tag.icon || '\uD83C\uDFF7\uFE0F'}</Text>
               </View>
-              <Typography variant="body-12" color={isSelected ? 'primary' : 'secondary'} className="mt-1">
-                {lastDuration === 0 ? '\u221E' : `${lastDuration} min`}
-              </Typography>
+              <View className="flex-1">
+                <View className="flex-row items-center">
+                  <Typography
+                    variant="subtitle-16"
+                    color="primary"
+                    className={isSelected ? 'font-semibold' : ''}
+                  >
+                    {tag.name}
+                  </Typography>
+                  {isChallenge && (
+                    <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(233, 160, 101, 0.2)' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#E9A065' }}>Challenge</Text>
+                    </View>
+                  )}
+                  {tag.isSharing && (
+                    <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#3B82F6' }}>Sharing</Text>
+                    </View>
+                  )}
+                  {isSharedTag && (
+                    <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(20, 184, 166, 0.2)' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#14B8A6' }}>Shared</Text>
+                    </View>
+                  )}
+                </View>
+                <Typography variant="body-12" color={isSelected ? 'primary' : 'secondary'} className="mt-1">
+                  {isSharedTag && tag.sharedOwnerName
+                    ? `from ${tag.sharedOwnerName} \u00B7 ${lastDuration === 0 ? '\u221E' : `${lastDuration} min`}`
+                    : lastDuration === 0 ? '\u221E' : `${lastDuration} min`}
+                </Typography>
+              </View>
             </View>
           </Pressable>
-
-          {/* Edit & Delete buttons */}
-          {!isChallenge && (
-          <View className="absolute right-0 top-0 bottom-0 flex-row">
-            <Pressable
-              onPress={(event) => onEdit(tag, event)}
-              className="w-12 items-center justify-center active:opacity-60"
-              style={{ backgroundColor: 'rgba(200, 200, 200, 0.15)' }}
-            >
-              <Ionicons name="pencil-outline" size={16} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
-            </Pressable>
-            <Pressable
-              onPress={(event) => onDelete(tag, event)}
-              className="w-12 items-center justify-center rounded-r-2xl active:opacity-60"
-              style={{ backgroundColor: 'rgba(239, 68, 68, 0.25)' }}
-            >
-              <Ionicons name="trash-outline" size={16} color="#EF4444" />
-            </Pressable>
-          </View>
-          )}
-        </View>
+        </Swipeable>
       </Reanimated.View>
     </GestureDetector>
   );
@@ -220,11 +282,233 @@ type PersistedSession = {
   notificationId?: string; // scheduled completion notification
 };
 
+// --- Share Tag Overlay (rendered inside tag selection modal) ---
+function ShareTagOverlay({
+  tag, onClose, onShareTag, onStopSharing,
+}: {
+  tag: any;
+  onClose: () => void;
+  onShareTag: (tagId: string) => Promise<string>;
+  onStopSharing: (tagId: string) => Promise<void>;
+}) {
+  const colorScheme = useColorScheme();
+  const [shareCode, setShareCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setShareCode(null);
+    setCopied(false);
+    // Auto-generate if already sharing
+    if (tag?.isSharing) {
+      handleGenerate();
+    }
+  }, [tag?.id]);
+
+  const handleGenerate = async () => {
+    if (!tag) return;
+    setLoading(true);
+    try {
+      const code = await onShareTag(tag.id);
+      setShareCode(code);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to generate share code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!shareCode) return;
+    await Clipboard.setStringAsync(shareCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleStop = async () => {
+    if (!tag) return;
+    Alert.alert(
+      'Stop Sharing?',
+      'New users won\'t be able to join. Existing members keep their copies.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Stop Sharing',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await onStopSharing(tag.id);
+              onClose();
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'Failed to stop sharing');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <View className="absolute inset-0 bg-black/50 justify-center items-center p-4">
+      <View className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-xs overflow-hidden">
+        {/* Header */}
+        <View className="flex-row items-center justify-between p-4 border-b border-light-border dark:border-gray-700">
+          <Typography variant="headline-18" color="primary">
+            {tag?.isSharing ? 'Sharing Tag' : 'Share Tag'}
+          </Typography>
+          <Pressable onPress={onClose} className="w-8 h-8 rounded-full bg-light-border/50 dark:bg-gray-700 items-center justify-center" hitSlop={8}>
+            <Ionicons name="close" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+          </Pressable>
+        </View>
+
+        <View className="p-4">
+          {/* Tag preview */}
+          <View className="flex-row items-center mb-4">
+            <View className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 border border-gray-500">
+              <Text className="text-xl">{tag?.icon || '\uD83C\uDFF7\uFE0F'}</Text>
+            </View>
+            <Typography variant="subtitle-16" color="primary">{tag?.name}</Typography>
+          </View>
+
+          {/* Show code if already sharing or just generated */}
+          {(tag?.isSharing || shareCode) ? (
+            <View>
+              <Typography variant="body-14" color="secondary" className="mb-3">
+                Share this code with others to let them join:
+              </Typography>
+              <View className="flex-row items-center justify-center bg-light-border/30 dark:bg-gray-700 rounded-xl py-4 mb-4">
+                <Text style={{ fontSize: 28, fontWeight: '700', letterSpacing: 4, color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37' }}>
+                  {shareCode || '...'}
+                </Text>
+              </View>
+
+              <Pressable onPress={handleCopy} className="bg-blue-600 rounded-2xl py-3 items-center active:opacity-80 mb-3">
+                <Typography variant="subtitle-16" color="white" className="font-semibold">
+                  {copied ? 'Copied!' : 'Copy Code'}
+                </Typography>
+              </Pressable>
+
+              <Pressable onPress={handleStop} className="rounded-2xl py-3 items-center active:opacity-80 border border-red-500">
+                <Typography variant="subtitle-16" style={{ color: '#EF4444' }} className="font-semibold">
+                  Stop Sharing
+                </Typography>
+              </Pressable>
+            </View>
+          ) : (
+            <View>
+              <Typography variant="body-14" color="secondary" className="mb-4">
+                Generate a share code so others can join this tag and track their focus alongside you.
+              </Typography>
+              <Pressable onPress={handleGenerate} disabled={loading} className="bg-blue-600 rounded-2xl py-4 items-center active:opacity-80">
+                <Typography variant="subtitle-16" color="white" className="font-semibold">
+                  {loading ? 'Generating...' : 'Share This Tag'}
+                </Typography>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// --- Join Tag Modal ---
+function JoinTagModal({
+  visible, onClose, onJoin,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onJoin: (code: string) => Promise<any>;
+}) {
+  const colorScheme = useColorScheme();
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setCode('');
+      setError(null);
+    }
+  }, [visible]);
+
+  const handleJoin = async () => {
+    if (!code.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await onJoin(code.trim());
+      showToast('Tag added to your list', 'success');
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Failed to join');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+        <View className="flex-1 bg-black/50 justify-center items-center px-4">
+          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={onClose} />
+          <View className="bg-light-bg dark:bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
+            <View className="flex-row items-center justify-between p-6 border-b border-light-border dark:border-gray-700">
+              <Typography variant="headline-20" color="primary">
+                Join Shared Tag
+              </Typography>
+              <Pressable onPress={onClose} className="w-8 h-8 rounded-full bg-light-border/50 dark:bg-gray-700 items-center justify-center" hitSlop={8}>
+                <Ionicons name="close" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+              </Pressable>
+            </View>
+
+            <View className="p-6">
+              <Typography variant="body-14" color="secondary" className="mb-4">
+                Enter the share code to join a tag from another user.
+              </Typography>
+
+              <TextInput
+                value={code}
+                onChangeText={(t) => { setCode(t.toUpperCase()); setError(null); }}
+                placeholder="Enter code"
+                placeholderTextColor={colorScheme === 'dark' ? '#888' : '#AAA'}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={6}
+                className="bg-light-border/30 dark:bg-gray-700 rounded-xl px-4 py-4 text-center text-light-text-primary dark:text-dark-text-primary mb-4"
+                style={{ fontSize: 24, fontWeight: '700', letterSpacing: 4 }}
+              />
+
+              {error && (
+                <Typography variant="body-12" style={{ color: '#EF4444' }} className="mb-3 text-center">
+                  {error}
+                </Typography>
+              )}
+
+              <Pressable
+                onPress={handleJoin}
+                disabled={loading || code.trim().length < 4}
+                className={`rounded-2xl py-4 items-center active:opacity-80 ${code.trim().length >= 4 ? 'bg-blue-600' : 'bg-gray-400'}`}
+              >
+                <Typography variant="subtitle-16" color="white" className="font-semibold">
+                  {loading ? 'Joining...' : 'Join'}
+                </Typography>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 export default function FocusScreen() {
   const colorScheme = useColorScheme();
   // Get tags from store
   const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals } = useFocus();
-  const { createTag, updateTag, deleteTag, reorderTags, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag } = useFocusActions();
+  const { createTag, updateTag, deleteTag, reorderTags, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag, shareTag, stopSharingTag, joinSharedTag, leaveSharedTag } = useFocusActions();
   const rewards = useRewards();
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
@@ -290,6 +574,11 @@ export default function FocusScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<any>(null);
 
+  // Shared tag modals
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharingTag, setSharingTag] = useState<any>(null);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+
   // Drag-to-reorder state
   const [dragOrderIds, setDragOrderIds] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -297,6 +586,15 @@ export default function FocusScreen() {
   const [dragTargetIdx, setDragTargetIdx] = useState(-1);
   const dragOriginalIdxRef = useRef(-1);
   const dragTargetIdxRef = useRef(-1);
+
+  // Swipe-to-reveal: track open swipeable to close others
+  const openSwipeableRef = useRef<any>(null);
+  const handleSwipeOpen = useCallback((ref: any) => {
+    if (openSwipeableRef.current && openSwipeableRef.current !== ref) {
+      openSwipeableRef.current.close();
+    }
+    openSwipeableRef.current = ref;
+  }, []);
 
   // Sync dragOrderIds with store when modal opens
   useEffect(() => {
@@ -537,7 +835,7 @@ export default function FocusScreen() {
   };
   
   const handleEditTag = (tag: any, event: any) => {
-    event.stopPropagation();
+    event?.stopPropagation();
     setEditingTag({ id: tag.id, name: tag.name, icon: tag.icon, color: tag.color });
     setEditTagName(tag.name);
     setEditTagEmoji(tag.icon || '');
@@ -573,7 +871,7 @@ export default function FocusScreen() {
     });
 
   const handleDeleteTag = (tag: any, event: any) => {
-    event.stopPropagation(); // Prevent tag selection when clicking delete
+    event?.stopPropagation(); // Prevent tag selection when clicking delete
     setTagToDelete(tag);
     setShowDeleteModal(true);
     // Keep tag modal open - don't call setShowTagModal(false)
@@ -600,6 +898,11 @@ export default function FocusScreen() {
     setShowDeleteModal(false);
     setTagToDelete(null);
     // Tag modal remains open
+  };
+
+  const handleShareTag = (tag: any) => {
+    setSharingTag(tag);
+    setShowShareModal(true);
   };
 
   const stopUnlockSession = (sessionId: string, refundUnusedTime: boolean) => {
@@ -1623,12 +1926,12 @@ export default function FocusScreen() {
         visible={showTagModal}
         transparent
         animationType="fade"
-        onRequestClose={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
+        onRequestClose={() => { if (!showEditTagModal && !showDeleteModal && !showShareModal) setShowTagModal(false); }}
       >
         <View className="flex-1 bg-black/50 justify-center items-center px-4">
           <Pressable
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            onPress={() => { if (!showEditTagModal && !showDeleteModal) setShowTagModal(false); }}
+            onPress={() => { if (!showEditTagModal && !showDeleteModal && !showShareModal) setShowTagModal(false); }}
           />
           <View className="bg-light-bg dark:bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
             {/* Modal Header */}
@@ -1669,6 +1972,8 @@ export default function FocusScreen() {
                   onSelect={handleTagSelect}
                   onEdit={handleEditTag}
                   onDelete={handleDeleteTag}
+                  onShare={handleShareTag}
+                  onSwipeOpen={handleSwipeOpen}
                   onDragStart={handleDragStart}
                   onDragMove={handleDragMove}
                   onDragEnd={handleDragEnd}
@@ -1676,24 +1981,37 @@ export default function FocusScreen() {
               ))}
             </ScrollView>
 
-            {/* New Tag Button */}
+            {/* New Tag & Join Tag Buttons */}
             <View className="p-4 border-t border-light-border dark:border-gray-700">
-              <Pressable
-                onPress={() => {
-                  if (!canCreateTag) {
+              <View className="flex-row gap-3">
+                <Pressable
+                  onPress={() => {
                     setShowTagModal(false);
-                    setShowUpgradePrompt(true);
-                    return;
-                  }
-                  setShowTagModal(false);
-                  setShowNewTagModal(true);
-                }}
-                className="bg-blue-600 rounded-2xl py-4 items-center active:opacity-80"
-              >
-                <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  New Tag
-                </Typography>
-              </Pressable>
+                    setShowJoinModal(true);
+                  }}
+                  className="flex-1 rounded-2xl py-4 items-center active:opacity-80 border border-blue-600"
+                >
+                  <Typography variant="subtitle-16" className="font-semibold" style={{ color: '#3B82F6' }}>
+                    Join Tag
+                  </Typography>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    if (!canCreateTag) {
+                      setShowTagModal(false);
+                      setShowUpgradePrompt(true);
+                      return;
+                    }
+                    setShowTagModal(false);
+                    setShowNewTagModal(true);
+                  }}
+                  className="flex-1 bg-blue-600 rounded-2xl py-4 items-center active:opacity-80"
+                >
+                  <Typography variant="subtitle-16" color="white" className="font-semibold">
+                    New Tag
+                  </Typography>
+                </Pressable>
+              </View>
             </View>
             
           </View>
@@ -1884,6 +2202,16 @@ export default function FocusScreen() {
               )}
             </Pressable>
           </View>
+        )}
+
+        {/* Share Tag Overlay - covers entire screen including tag picker */}
+        {showShareModal && sharingTag && (
+          <ShareTagOverlay
+            tag={sharingTag}
+            onClose={() => { setShowShareModal(false); setSharingTag(null); }}
+            onShareTag={shareTag}
+            onStopSharing={stopSharingTag}
+          />
         )}
       </Modal>
 
@@ -2133,6 +2461,13 @@ export default function FocusScreen() {
       <UpgradeSheet
         isVisible={showUpgradeSheet}
         onClose={() => setShowUpgradeSheet(false)}
+      />
+
+      {/* Join Tag Modal */}
+      <JoinTagModal
+        visible={showJoinModal}
+        onClose={() => setShowJoinModal(false)}
+        onJoin={joinSharedTag}
       />
 
     </SafeAreaView>
