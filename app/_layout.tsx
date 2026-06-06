@@ -155,9 +155,11 @@ export default function RootLayout() {
       }
     );
 
+    // Fetch server-side subscription state immediately (before IAP init completes)
+    useAppStore.getState().subscription.fetchTierFromServer();
+
     // Initialize IAP connection
     useAppStore.getState().subscription.initializeIAP();
-    useAppStore.getState().subscription.checkSubscriptionStatus();
 
     // Restore auth session and listen for auth state changes
     useAppStore.getState().auth.restoreSession();

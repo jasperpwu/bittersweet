@@ -17,10 +17,13 @@ import { supabase } from '../../config/supabase';
 
 export type SubscriptionTier = 'free' | 'premium';
 
+export type MembershipSource = 'none' | 'app_store' | 'referral' | 'manual';
+
 export interface SubscriptionSlice {
   tier: SubscriptionTier;
   expiresAt: string | null;
   productId: string | null;
+  membershipSource: MembershipSource;
   products: ProductSubscription[];
   isLoading: boolean;
   error: string | null;
@@ -31,6 +34,7 @@ export interface SubscriptionSlice {
   purchase: (productId: string) => Promise<void>;
   restorePurchases: () => Promise<void>;
   checkSubscriptionStatus: () => Promise<void>;
+  fetchTierFromServer: () => Promise<void>;
   clearSubscriptionError: () => void;
 }
 
@@ -41,6 +45,7 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
   tier: 'free',
   expiresAt: null,
   productId: null,
+  membershipSource: 'none',
   products: [],
   isLoading: false,
   error: null,
@@ -83,6 +88,7 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
               .from('profiles')
               .update({
                 subscription_tier: 'premium',
+                membership_source: 'app_store',
                 original_transaction_id: purchase.transactionId,
               })
               .eq('id', user.id);
@@ -261,6 +267,7 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
             .from('profiles')
             .update({
               subscription_tier: 'premium',
+              membership_source: 'app_store',
               original_transaction_id: activeSub.transactionId ?? null,
             })
             .eq('id', user.id);
@@ -302,51 +309,54 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
 
   checkSubscriptionStatus: async () => {
     try {
+      // Check StoreKit locally for optimistic UI
       const isActive = await hasActiveSubscriptions([
         SUBSCRIPTION_PRODUCTS.monthly,
         SUBSCRIPTION_PRODUCTS.yearly,
       ]);
 
-      const currentTier = get().subscription.tier;
-
       if (isActive) {
+        // StoreKit says active — set optimistic premium locally
         set((state: any) => ({
           subscription: { ...state.subscription, tier: 'premium' },
         }));
+      }
 
-        // Sync to DB if tier changed
-        if (currentTier !== 'premium') {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase
-              .from('profiles')
-              .update({ subscription_tier: 'premium' })
-              .eq('id', user.id);
-          }
-        }
-      } else {
+      // Always defer to server as source of truth
+      await get().subscription.fetchTierFromServer();
+    } catch (error: any) {
+      console.error('Subscription status check error:', error);
+    }
+  },
+
+  fetchTierFromServer: async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('subscription_tier, membership_source, subscription_expires_at')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('[IAP] Failed to fetch tier from server:', error);
+        return;
+      }
+
+      if (profile) {
         set((state: any) => ({
           subscription: {
             ...state.subscription,
-            tier: 'free',
-            productId: null,
-            expiresAt: null,
+            tier: profile.subscription_tier as SubscriptionTier,
+            membershipSource: (profile.membership_source ?? 'none') as MembershipSource,
+            expiresAt: profile.subscription_expires_at ?? null,
           },
         }));
-
-        // Sync to DB if tier changed
-        if (currentTier !== 'free') {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase
-              .from('profiles')
-              .update({ subscription_tier: 'free', original_transaction_id: null })
-              .eq('id', user.id);
-          }
-        }
       }
     } catch (error: any) {
-      console.error('Subscription status check error:', error);
+      console.error('[IAP] fetchTierFromServer error:', error);
     }
   },
 
