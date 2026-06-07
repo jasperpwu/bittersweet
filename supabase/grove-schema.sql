@@ -452,13 +452,14 @@ $$;
 
 -- RPC: finalize_expired_challenges
 -- Called by daily cron. Auto-cancels pending challenges past start_date with no accepted invitees.
--- Finalizes expired active challenges: computes per-participant hits/outcome, sets challenge status.
+-- Finalizes expired active challenges: reads client-computed hits, sets outcome + challenge status.
+-- Does NOT recalculate hits server-side — trusts the timezone-aware hits written by clients.
+-- Waits 2 days past end_date so the last day has fully elapsed in all timezones (up to UTC+14).
 CREATE OR REPLACE FUNCTION finalize_expired_challenges()
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   challenge RECORD;
   participant RECORD;
-  v_hits INTEGER;
   v_total_periods INTEGER;
   v_all_completed BOOLEAN;
   v_new_status TEXT;
@@ -491,11 +492,12 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Phase 2: Finalize expired active challenges (past end_date)
+  -- Phase 2: Finalize expired active challenges
+  -- Wait 2 days past end_date so the last day has fully elapsed in all timezones (up to UTC+14)
   FOR challenge IN
     SELECT * FROM grove_challenges
     WHERE status = 'active'
-      AND end_date < CURRENT_DATE
+      AND end_date < CURRENT_DATE - 2
   LOOP
     IF challenge.period = 'daily' THEN
       v_total_periods := (challenge.end_date - challenge.start_date) + 1;
@@ -510,20 +512,13 @@ BEGIN
       WHERE challenge_id = challenge.id
         AND status = 'accepted'
     LOOP
-      v_hits := _challenge_user_hits(
-        participant.user_id, challenge.tag_id,
-        challenge.start_date, challenge.end_date,
-        challenge.period, challenge.target_minutes,
-        challenge.end_date, 'UTC'
-      );
-
+      -- Use client-computed hits (already timezone-aware) instead of recalculating
       UPDATE grove_challenge_participants
-      SET hits = v_hits,
-          outcome = CASE WHEN v_hits >= v_total_periods THEN 'completed' ELSE 'failed' END,
+      SET outcome = CASE WHEN participant.hits >= v_total_periods THEN 'completed' ELSE 'failed' END,
           updated_at = now()
       WHERE id = participant.id;
 
-      IF v_hits < v_total_periods THEN
+      IF participant.hits < v_total_periods THEN
         v_all_completed := FALSE;
       END IF;
     END LOOP;
@@ -890,6 +885,22 @@ SELECT cron.schedule(
   SELECT net.http_post(
     url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'project_url')
            || '/functions/v1/heartbeat-cron',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'publishable_key')
+    ),
+    body := '{}'::jsonb
+  ) AS request_id;
+  $$
+);
+
+SELECT cron.schedule(
+  'subscription-status-cron',
+  '0 3 * * *',
+  $$
+  SELECT net.http_post(
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'project_url')
+           || '/functions/v1/subscription-status-cron',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'publishable_key')
