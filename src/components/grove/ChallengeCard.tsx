@@ -9,6 +9,20 @@ interface ChallengeCardProps {
   onPress?: () => void;
 }
 
+function formatStartDate(startDate: string | null): { label: string; dateStr: string } | null {
+  if (!startDate) return null;
+  const date = new Date(startDate + 'T00:00:00');
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const month = date.toLocaleString('en-US', { month: 'short' });
+  const day = date.getDate();
+  const dateStr = date.getFullYear() !== now.getFullYear()
+    ? `${month} ${day}, ${date.getFullYear()}`
+    : `${month} ${day}`;
+  const label = date < today ? 'Started on' : 'Start on';
+  return { label, dateStr };
+}
+
 function daysRemaining(endDate: string | null): number {
   if (!endDate) return 0;
   const end = new Date(endDate);
@@ -16,6 +30,8 @@ function daysRemaining(endDate: string | null): number {
   const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   return Math.max(0, diff);
 }
+
+export { formatStartDate };
 
 export function formatTarget(targetMinutes: number, period: 'daily' | 'weekly'): string {
   const hours = targetMinutes / 60;
@@ -110,13 +126,26 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
         )}
       </View>
 
-      {/* Target badge */}
-      <View className="mb-3">
-        <View className="bg-primary/10 rounded-lg px-2 py-1 self-start">
-          <Typography variant="body-12" style={{ color: '#6592E9' }}>
-            {targetLabel}
+      {/* Start date + days left */}
+      <View className="flex-row items-center justify-between mb-3">
+        {(() => {
+          const start = formatStartDate(challenge.startDate);
+          return start ? (
+            <Typography variant="body-12" color="secondary">
+              {start.label}: {start.dateStr}
+            </Typography>
+          ) : <View />;
+        })()}
+        {challenge.status === 'active' && remaining > 0 && (
+          <Typography variant="body-12" color="secondary">
+            {remaining} {remaining === 1 ? 'day' : 'days'} left
           </Typography>
-        </View>
+        )}
+        {challenge.status === 'active' && !challenge.endDate && (
+          <Typography variant="body-12" color="secondary">
+            Ongoing
+          </Typography>
+        )}
       </View>
 
       {/* Participant progress bars */}
@@ -133,16 +162,11 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
 
       {/* Footer */}
       <View className="flex-row items-center justify-between">
-        {challenge.status === 'active' && remaining > 0 && (
-          <Typography variant="body-12" color="secondary">
-            {remaining} {remaining === 1 ? 'day' : 'days'} left
+        <View className="bg-primary/10 rounded-lg px-2 py-1">
+          <Typography variant="body-12" style={{ color: '#6592E9' }}>
+            {targetLabel}
           </Typography>
-        )}
-        {challenge.status === 'active' && !challenge.endDate && (
-          <Typography variant="body-12" color="secondary">
-            Ongoing
-          </Typography>
-        )}
+        </View>
         <Typography variant="body-12" color="secondary">
           +{challenge.fruitReward} fruits
         </Typography>

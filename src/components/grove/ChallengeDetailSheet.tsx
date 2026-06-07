@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
 import { UserGrid } from './ChallengeDetailGrid';
-import { formatTarget } from './ChallengeCard';
+import { formatTarget, formatStartDate } from './ChallengeCard';
 import { useAppStore } from '../../store';
 import type { ChallengeItem, ChallengePeriodDetailsResult } from '../../services/grove/GroveChallengeService';
 
@@ -108,13 +108,16 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
           )}
         </View>
 
-        {/* Target + meta row */}
-        <View className="flex-row items-center flex-wrap gap-2 mb-4">
-          <View className="bg-primary/10 rounded-lg px-2 py-1">
-            <Typography variant="body-12" style={{ color: '#6592E9' }}>
-              {targetLabel}
-            </Typography>
-          </View>
+        {/* Start date + days left */}
+        <View className="flex-row items-center justify-between mb-2">
+          {(() => {
+            const start = formatStartDate(challenge.startDate);
+            return start ? (
+              <Typography variant="body-12" color="secondary">
+                {start.label}: {start.dateStr}
+              </Typography>
+            ) : <View />;
+          })()}
           {challenge.status === 'active' && daysLeft !== null && daysLeft > 0 && (
             <Typography variant="body-12" color="secondary">
               {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
@@ -125,6 +128,15 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
               Ongoing
             </Typography>
           )}
+        </View>
+
+        {/* Target + fruits */}
+        <View className="flex-row items-center gap-2 mb-4">
+          <View className="bg-primary/10 rounded-lg px-2 py-1">
+            <Typography variant="body-12" style={{ color: '#6592E9' }}>
+              {targetLabel}
+            </Typography>
+          </View>
           <Typography variant="body-12" color="secondary">
             +{challenge.fruitReward} fruits
           </Typography>
