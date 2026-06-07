@@ -6,6 +6,7 @@ import { useAppStore } from '../store';
 
 const INVITE_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/invite\/(.+)/;
 const REFER_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/refer\/(.+)/;
+const INSIGHTS_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/insights\/?$/;
 
 const PENDING_REFERRAL_KEY = 'bittersweet-pending-referral-code';
 
@@ -86,6 +87,12 @@ function handleDeepLink(url: string) {
   const referralCode = extractReferralCode(url);
   if (referralCode) {
     handleReferralCode(referralCode);
+    return;
+  }
+
+  // Widget deep link: navigate to insights tab
+  if (INSIGHTS_PATTERN.test(url)) {
+    router.replace('/(tabs)/insights');
     return;
   }
 }

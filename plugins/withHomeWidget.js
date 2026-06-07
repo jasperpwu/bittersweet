@@ -46,6 +46,8 @@ const withHomeWidget = (config) => {
         "HomeScreenWidgetView.swift",
         "HomeScreenWidget.swift",
         "SupabaseClient.swift",
+        "GoalWidget.swift",
+        "GoalWidgetView.swift",
       ];
 
       // Files also needed in main app target (for LiveActivityIntent to run in app process)
@@ -239,6 +241,21 @@ const withHomeWidget = (config) => {
           fs.writeFileSync(bundlePath, bundleContent, "utf8");
           console.log(
             "[withHomeWidget] Added SmallFocusWidget + MediumFocusWidget to widget bundle"
+          );
+        }
+
+        // Re-read in case we just wrote above
+        bundleContent = fs.readFileSync(bundlePath, "utf8");
+
+        // Add GoalWidget if not already present
+        if (!bundleContent.includes("GoalWidget()")) {
+          bundleContent = bundleContent.replace(
+            "MediumFocusWidget()",
+            "MediumFocusWidget()\n    GoalWidget()"
+          );
+          fs.writeFileSync(bundlePath, bundleContent, "utf8");
+          console.log(
+            "[withHomeWidget] Added GoalWidget to widget bundle"
           );
         }
       }

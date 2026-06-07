@@ -26,6 +26,7 @@ import { useAppStore } from '../src/store';
 import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
 
+import { calculateGoalProgress, getTargetForDate } from '../src/utils/goalProgress';
 import { configureCrisp } from '../src/services/crisp';
 import { useDeepLinkHandler } from '../src/hooks/useDeepLinkHandler';
 import { PushNotificationService } from '../src/services/notifications/push';
@@ -378,11 +379,65 @@ export default function RootLayout() {
     }
   };
 
+  const syncWidgetGoalsData = () => {
+    try {
+      const store = useAppStore.getState();
+      const { goals, sessions, tags } = store.focus;
+      const { useUnifiedStore } = require('../src/store/unified-store');
+      const restDays: number[] = useUnifiedStore.getState().preferences.restDays ?? [0, 6];
+
+      // Get active goals sorted by sortOrder
+      const activeGoals = goals.allIds
+        .map(id => goals.byId[id])
+        .filter(g => g && g.isActive && !g.deletedAt)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+      if (activeGoals.length === 0) {
+        WidgetService.syncGoalsData([]);
+        return;
+      }
+
+      // Calculate fresh progress for all goals
+      const sessionsArray = sessions.allIds
+        .map(id => sessions.byId[id])
+        .filter(Boolean);
+      const freshProgress = calculateGoalProgress(activeGoals, sessionsArray);
+
+      // Build widget data (top 3)
+      const widgetGoals = activeGoals.slice(0, 6).map(goal => {
+        const currentMinutes = freshProgress[goal.id] || 0;
+        const effectiveTarget = getTargetForDate(goal, new Date(), restDays);
+        const percentage = effectiveTarget > 0 ? (currentMinutes / effectiveTarget) * 100 : 0;
+
+        const period = goal.activePeriod || 'daily';
+        const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
+
+        const tag = goal.tagId ? tags.byId[goal.tagId] : null;
+        const displayName = goal.customName || (tag ? `${tag.icon || ''} ${tag.name} Goal` : 'Goal');
+
+        return {
+          name: displayName,
+          currentMinutes,
+          targetMinutes: effectiveTarget,
+          percentage: Math.round(percentage),
+          period: periodLabel,
+          tagIcon: tag?.icon || '',
+          tagColor: tag?.color || '#6592E9',
+        };
+      });
+
+      WidgetService.syncGoalsData(widgetGoals);
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync goals data:', error);
+    }
+  };
+
   useEffect(() => {
     if (isHydrated && mainStoreHydrated) {
       checkExpiredUnlockSessions('mount');
       syncShieldConfiguration('mount');
       syncWidgetTagList();
+      syncWidgetGoalsData();
       // Sync currentSelectionId so native StopUnlockIntent can re-block apps
       WidgetService.syncCurrentSelectionId(useAppStore.getState().blocklist.currentSelectionId);
     }
@@ -462,6 +517,7 @@ export default function RootLayout() {
         checkExpiredUnlockSessions('foreground');
         syncShieldConfiguration('foreground');
         syncWidgetTagList();
+        syncWidgetGoalsData();
         WidgetService.syncCurrentSelectionId(useAppStore.getState().blocklist.currentSelectionId);
 
         // Re-check subscription status

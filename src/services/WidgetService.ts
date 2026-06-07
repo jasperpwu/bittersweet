@@ -18,6 +18,7 @@ const SUPABASE_ACCESS_TOKEN_KEY = 'supabaseAccessToken';
 const GROVE_SHARED_TAG_IDS_KEY = 'groveSharedTagIds';
 const GROVE_SHARE_NOTES_KEY = 'groveShareNotes';
 const GROVE_SHOW_LIVE_STATUS_KEY = 'groveShowLiveStatus';
+const GOALS_DATA_KEY = 'widgetGoalsData';
 const GROVE_ACTIVE_CHALLENGES_KEY = 'groveActiveChallenges';
 
 export interface WidgetSessionData {
@@ -65,6 +66,16 @@ export interface WidgetUnlockStopAction {
 export interface WidgetUnlockSessionData {
   isActive: boolean;
   endTime: number; // Unix timestamp ms
+}
+
+export interface WidgetGoalData {
+  name: string;
+  currentMinutes: number;
+  targetMinutes: number;
+  percentage: number;
+  period: string; // "Daily" / "Weekly" / "Monthly"
+  tagIcon: string;
+  tagColor: string;
 }
 
 export interface PendingWidgetAction {
@@ -364,6 +375,20 @@ export class WidgetService {
       console.log('📱 [Widget] Synced active challenges:', challenges.length);
     } catch (error) {
       console.error('📱 [Widget] Failed to sync active challenges:', error);
+    }
+  }
+
+  /**
+   * Sync pre-computed goal progress data to the widget.
+   * The caller (layout) calculates progress before calling this.
+   */
+  static syncGoalsData(goals: WidgetGoalData[]): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsSet(GOALS_DATA_KEY, goals);
+      console.log('📱 [Widget] Synced goals data:', goals.length, 'goals');
+      reloadWidgetTimelines();
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync goals data:', error);
     }
   }
 

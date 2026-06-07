@@ -5,5 +5,8 @@ import WidgetKit
 struct LiveActivityWidgetBundle: WidgetBundle {
   var body: some Widget {
     LiveActivityWidget()
+    SmallFocusWidget()
+    MediumFocusWidget()
+    GoalWidget()
   }
 }

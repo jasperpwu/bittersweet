@@ -21,6 +21,7 @@ enum WidgetKeys {
   static let widgetUnlockStopAction = "widgetUnlockStopAction"
   static let currentSelectionId = "widgetCurrentSelectionId"
   static let unlockSessionData = "widgetUnlockSessionData"
+  static let goalsData = "widgetGoalsData"
   static let scheduledNotificationId = "widgetScheduledNotificationId"
 
   // Supabase sync keys (written by JS for native intent REST calls)
@@ -95,6 +96,27 @@ struct WidgetUnlockSessionData {
   }
 }
 
+struct WidgetGoalItem {
+  let name: String
+  let currentMinutes: Double
+  let targetMinutes: Double
+  let percentage: Double
+  let period: String // "Daily" / "Weekly" / "Monthly"
+  let tagIcon: String
+  let tagColor: String
+
+  init?(dict: [String: Any]) {
+    guard let name = dict["name"] as? String else { return nil }
+    self.name = name
+    self.currentMinutes = dict["currentMinutes"] as? Double ?? 0
+    self.targetMinutes = dict["targetMinutes"] as? Double ?? 0
+    self.percentage = dict["percentage"] as? Double ?? 0
+    self.period = dict["period"] as? String ?? "Daily"
+    self.tagIcon = dict["tagIcon"] as? String ?? ""
+    self.tagColor = dict["tagColor"] as? String ?? ""
+  }
+}
+
 struct PendingWidgetAction {
   let action: String // "start" or "stop"
   let tagId: String?
@@ -158,6 +180,11 @@ struct WidgetDataManager {
   func getTagList() -> [WidgetTagInfo] {
     guard let array = userDefaults?.array(forKey: WidgetKeys.tagList) as? [[String: Any]] else { return [] }
     return array.compactMap { WidgetTagInfo(dict: $0) }
+  }
+
+  func getGoalsData() -> [WidgetGoalItem] {
+    guard let array = userDefaults?.array(forKey: WidgetKeys.goalsData) as? [[String: Any]] else { return [] }
+    return array.compactMap { WidgetGoalItem(dict: $0) }
   }
 
   // MARK: - Write Session Data
@@ -404,5 +431,6 @@ struct WidgetDataManager {
   func reloadTimelines() {
     WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.HomeScreenWidget")
     WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.MediumFocusWidget")
+    WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.GoalWidget")
   }
 }
