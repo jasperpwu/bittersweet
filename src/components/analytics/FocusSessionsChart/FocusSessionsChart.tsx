@@ -1,5 +1,5 @@
 import React, { FC, useState } from 'react';
-import { View, Dimensions, Pressable, Modal, useColorScheme } from 'react-native';
+import { View, Pressable, Modal, useColorScheme, useWindowDimensions } from 'react-native';
 import Svg, { Rect, Line, Text, Path, G } from 'react-native-svg';
 import { Typography } from '../../ui/Typography';
 import { Button } from '../../ui/Button';
@@ -12,10 +12,8 @@ interface FocusSessionsChartProps {
   height?: number;
 }
 
-const { width: screenWidth } = Dimensions.get('window');
 const CHART_PADDING = 40;
 const Y_AXIS_WIDTH = 50;
-const CHART_WIDTH = screenWidth - (CHART_PADDING * 2) - Y_AXIS_WIDTH;
 const GRID_LINES = 4;
 const BAR_RADIUS = 4;
 
@@ -60,6 +58,8 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
   onPeriodChange: _onPeriodChange,
   height = 200
 }) => {
+  const { width: screenWidth } = useWindowDimensions();
+  const CHART_WIDTH = screenWidth - (CHART_PADDING * 2) - Y_AXIS_WIDTH;
   const colorScheme = useColorScheme();
   const [selectedBar, setSelectedBar] = useState<ChartDataPoint | null>(null);
 

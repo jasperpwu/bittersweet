@@ -1,5 +1,5 @@
-import React, { useEffect, useCallback } from 'react';
-import { View, SafeAreaView, Pressable, ScrollView, Image, ActivityIndicator } from 'react-native';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
+import { View, SafeAreaView, Pressable, ScrollView, Image, ActivityIndicator, useColorScheme } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
@@ -7,7 +7,8 @@ import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { FocusingBadge } from '../../src/components/grove/FocusingBadge';
 import { ReactionButton } from '../../src/components/grove/ReactionButton';
 import { useAppStore } from '../../src/store';
-import type { FeedItem } from '../../src/services/grove/GroveFeedService';
+import type { FeedItem, FeedSession } from '../../src/services/grove/GroveFeedService';
+import type { GroveProfile } from '../../src/services/grove/GroveService';
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -34,19 +35,90 @@ function formatTime(dateString: string): string {
   });
 }
 
+type FilterType = 'has-photo' | 'has-notes';
+
 export default function FriendFeedModal() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
+  const currentUserId = useAppStore((s) => s.auth.user?.id ?? '');
+  const isCurrentUser = userId === currentUserId;
+
+  // Friend feed state (used when viewing a friend)
   const friendFeed = useAppStore((s) => s.grove.friendFeed);
   const friendFeedLoading = useAppStore((s) => s.grove.friendFeedLoading);
   const fetchFriendFeed = useAppStore((s) => s.grove.fetchFriendFeed);
   const addReaction = useAppStore((s) => s.grove.addReaction);
   const removeReaction = useAppStore((s) => s.grove.removeReaction);
 
+  // Local session data (used when viewing own sessions)
+  const sessions = useAppStore((s) => s.focus.sessions);
+  const tags = useAppStore((s) => s.focus.tags);
+  const challenges = useAppStore((s) => s.grove.challenges);
+  const profile = useAppStore((s) => s.grove.profile);
+
+  const colorScheme = useColorScheme();
+
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<Set<FilterType>>(new Set());
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (userId) {
+    if (userId && !isCurrentUser) {
       fetchFriendFeed(userId);
     }
-  }, [userId]);
+  }, [userId, isCurrentUser]);
+
+  // Build a tag lookup that includes challenge tags for resolving "Untagged" sessions
+  const challengeTagMap = useMemo(() => {
+    const map = new Map<string, { name: string; icon: string }>();
+    for (const c of challenges) {
+      if ((c.status === 'active' || c.status === 'pending' || c.status === 'completed') && c.tagId) {
+        map.set(c.tagId, { name: c.tagName, icon: c.tagIcon });
+      }
+    }
+    return map;
+  }, [challenges]);
+
+  // Convert local sessions to FeedItem[] format for unified rendering
+  const localFeedItems: FeedItem[] = useMemo(() => {
+    if (!isCurrentUser) return [];
+
+    return sessions.allIds
+      .map((id) => sessions.byId[id])
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+      .map((session) => {
+        const tag = session.tagId ? tags.byId[session.tagId] : null;
+        const challengeTag = !tag && session.tagId ? challengeTagMap.get(session.tagId) : null;
+        const tagInfo = tag
+          ? { name: tag.name, icon: tag.icon }
+          : challengeTag
+            ? { name: challengeTag.name, icon: challengeTag.icon }
+            : null;
+
+        const feedSession: FeedSession = {
+          id: session.id,
+          user_id: currentUserId,
+          tag_id: session.tagId,
+          duration: session.duration,
+          start_time: new Date(session.startTime).toISOString(),
+          end_time: new Date(session.endTime).toISOString(),
+          notes: session.notes ?? null,
+          photo_url: session.photoUrl ?? null,
+          created_at: new Date(session.createdAt).toISOString(),
+          session_tags: tagInfo,
+        };
+
+        return {
+          session: feedSession,
+          profile: (profile ?? {}) as GroveProfile,
+          reactionCount: 0,
+          hasReacted: false,
+        };
+      });
+  }, [isCurrentUser, sessions, tags, challengeTagMap, currentUserId, profile]);
+
+  const feedItems = isCurrentUser ? localFeedItems : friendFeed;
+  const isLoading = isCurrentUser ? false : friendFeedLoading;
 
   const handleReactionToggle = useCallback(
     (sessionId: string) => {
@@ -60,26 +132,211 @@ export default function FriendFeedModal() {
     [friendFeed, addReaction, removeReaction]
   );
 
-  // Get the friend's profile from the first feed item
-  const friendProfile = friendFeed.length > 0 ? friendFeed[0].profile : null;
+  // Get unique tags from the feed for the tag filter
+  const availableTags = useMemo(() => {
+    const tagMap = new Map<string, { id: string; name: string; icon: string }>();
+    for (const item of feedItems) {
+      const s = item.session;
+      if (s.tag_id && s.session_tags) {
+        tagMap.set(s.tag_id, {
+          id: s.tag_id,
+          name: s.session_tags.name,
+          icon: s.session_tags.icon,
+        });
+      }
+    }
+    return Array.from(tagMap.values());
+  }, [feedItems]);
+
+  // Apply filters
+  const filteredFeed = useMemo(() => {
+    if (activeFilters.size === 0 && !selectedTagId) return feedItems;
+
+    return feedItems.filter((item) => {
+      if (activeFilters.has('has-photo') && !item.session.photo_url) return false;
+      if (activeFilters.has('has-notes') && !item.session.notes) return false;
+      if (selectedTagId && item.session.tag_id !== selectedTagId) return false;
+      return true;
+    });
+  }, [feedItems, activeFilters, selectedTagId]);
+
+  const toggleFilter = useCallback((filter: FilterType) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(filter)) {
+        next.delete(filter);
+      } else {
+        next.add(filter);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleTagFilter = useCallback((tagId: string) => {
+    setSelectedTagId((prev) => (prev === tagId ? null : tagId));
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setActiveFilters(new Set());
+    setSelectedTagId(null);
+  }, []);
+
+  const hasActiveFilters = activeFilters.size > 0 || selectedTagId !== null;
+
+  // Get the friend's profile from the first feed item (only for friend view)
+  const friendProfile = !isCurrentUser && feedItems.length > 0 ? feedItems[0].profile : null;
+
+  const headerTitle = isCurrentUser
+    ? 'My Sessions'
+    : (friendProfile?.display_name ?? 'Sessions');
+
+  const emptyMessage = isCurrentUser
+    ? 'No sessions yet. Complete a focus session to see it here!'
+    : 'No shared sessions yet.';
+
+  const chipBg = colorScheme === 'dark' ? '#242540' : 'rgba(0,0,0,0.06)';
+  const chipActiveBg = '#6592E9';
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
-      <View className="h-[56px] px-5 flex-row items-center">
+      <View className="h-[56px] px-5 flex-row items-center justify-between">
+        <View className="flex-row items-center flex-1">
+          <Pressable
+            onPress={() => router.back()}
+            className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
+            hitSlop={8}
+          >
+            <Ionicons name="arrow-back" size={24} color="#6592E9" />
+          </Pressable>
+          <Typography variant="headline-18" color="primary" className="ml-2" numberOfLines={1}>
+            {headerTitle}
+          </Typography>
+        </View>
         <Pressable
-          onPress={() => router.back()}
-          className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
+          onPress={() => setShowFilters((v) => !v)}
+          className="w-10 h-10 items-center justify-center -mr-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color="#6592E9" />
+          <Ionicons
+            name={showFilters ? 'filter' : 'filter-outline'}
+            size={22}
+            color={hasActiveFilters ? '#6592E9' : (colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37')}
+          />
         </Pressable>
-        <Typography variant="headline-18" color="primary" className="ml-2">
-          {friendProfile?.display_name ?? 'Sessions'}
-        </Typography>
       </View>
 
-      {/* Friend profile header */}
+      {/* Filter bar */}
+      {showFilters && (
+        <View className="px-5 pb-3">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8 }}
+          >
+            {/* Has Photo chip */}
+            <Pressable
+              onPress={() => toggleFilter('has-photo')}
+              style={{
+                backgroundColor: activeFilters.has('has-photo') ? chipActiveBg : chipBg,
+                borderRadius: 16,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <Ionicons
+                name="image-outline"
+                size={14}
+                color={activeFilters.has('has-photo') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666')}
+              />
+              <Typography
+                variant="body-12"
+                style={{ color: activeFilters.has('has-photo') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666') }}
+              >
+                Photo
+              </Typography>
+            </Pressable>
+
+            {/* Has Notes chip */}
+            <Pressable
+              onPress={() => toggleFilter('has-notes')}
+              style={{
+                backgroundColor: activeFilters.has('has-notes') ? chipActiveBg : chipBg,
+                borderRadius: 16,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={14}
+                color={activeFilters.has('has-notes') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666')}
+              />
+              <Typography
+                variant="body-12"
+                style={{ color: activeFilters.has('has-notes') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666') }}
+              >
+                Notes
+              </Typography>
+            </Pressable>
+
+            {/* Tag chips */}
+            {availableTags.map((tag) => (
+              <Pressable
+                key={tag.id}
+                onPress={() => toggleTagFilter(tag.id)}
+                style={{
+                  backgroundColor: selectedTagId === tag.id ? chipActiveBg : chipBg,
+                  borderRadius: 16,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <Typography variant="body-12" style={{ color: selectedTagId === tag.id ? '#FFFFFF' : undefined }}>
+                  {tag.icon}
+                </Typography>
+                <Typography
+                  variant="body-12"
+                  style={{ color: selectedTagId === tag.id ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666') }}
+                >
+                  {tag.name}
+                </Typography>
+              </Pressable>
+            ))}
+
+            {/* Clear all */}
+            {hasActiveFilters && (
+              <Pressable
+                onPress={clearFilters}
+                style={{
+                  borderRadius: 16,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <Ionicons name="close-circle-outline" size={14} color="#FF3B30" />
+                <Typography variant="body-12" style={{ color: '#FF3B30' }}>
+                  Clear
+                </Typography>
+              </Pressable>
+            )}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Friend profile header (only for friend view) */}
       {friendProfile && (
         <View className="px-5 mb-4">
           <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4">
@@ -121,21 +378,21 @@ export default function FriendFeedModal() {
         </View>
       )}
 
-      {friendFeedLoading ? (
+      {isLoading ? (
         <View className="py-12 items-center">
           <ActivityIndicator size="large" color="#6592E9" />
         </View>
       ) : (
         <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
-          {friendFeed.length === 0 ? (
+          {filteredFeed.length === 0 ? (
             <View className="py-12 items-center">
               <Typography variant="body-14" color="secondary" className="text-center">
-                No shared sessions yet.
+                {hasActiveFilters ? 'No sessions match the selected filters.' : emptyMessage}
               </Typography>
             </View>
           ) : (
             <View className="pb-8">
-              {friendFeed.map((item: FeedItem) => (
+              {filteredFeed.map((item: FeedItem) => (
                 <View
                   key={item.session.id}
                   className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mb-3"
@@ -143,7 +400,7 @@ export default function FriendFeedModal() {
                   {/* Tag + duration */}
                   <View className="flex-row items-center mb-2">
                     <Typography variant="body-14" color="primary" className="mr-1.5">
-                      {item.session.tag_icon}
+                      {item.session.session_tags?.icon ?? '🎯'}
                     </Typography>
                     <Typography
                       variant="subtitle-14-medium"
@@ -151,7 +408,7 @@ export default function FriendFeedModal() {
                       className="flex-1"
                       numberOfLines={1}
                     >
-                      {item.session.tag_name}
+                      {item.session.session_tags?.name ?? 'Focus'}
                     </Typography>
                     <Typography variant="subtitle-14-medium" color="primary">
                       {formatDuration(item.session.duration)}
@@ -187,14 +444,16 @@ export default function FriendFeedModal() {
                     </View>
                   ) : null}
 
-                  {/* Reaction button */}
-                  <View className="flex-row justify-end mt-2">
-                    <ReactionButton
-                      hasReacted={item.hasReacted}
-                      reactionCount={item.reactionCount}
-                      onToggle={() => handleReactionToggle(item.session.id)}
-                    />
-                  </View>
+                  {/* Reaction button (only for friend view) */}
+                  {!isCurrentUser && (
+                    <View className="flex-row justify-end mt-2">
+                      <ReactionButton
+                        hasReacted={item.hasReacted}
+                        reactionCount={item.reactionCount}
+                        onToggle={() => handleReactionToggle(item.session.id)}
+                      />
+                    </View>
+                  )}
                 </View>
               ))}
             </View>

@@ -39,7 +39,8 @@
       }],
       ["crisp-sdk-react-native", {
         "websiteId": "cd116fcd-5d88-476c-8051-06566eea723a"
-      }]
+      }],
+      "./plugins/withDeviceOrientations"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -58,6 +59,7 @@
     ],
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": true,
       "deploymentTarget": "18.0",
       "appleTeamId": "WFHA987U5W",
       "splash": {

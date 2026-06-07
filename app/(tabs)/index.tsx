@@ -25,6 +25,7 @@ import { STORAGE_KEYS } from '../../src/config/constants';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
+import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
 
@@ -277,6 +278,7 @@ type PersistedSession = {
   endTime: number;   // Unix ms
   targetDuration: number; // minutes
   tagId: string;
+  tagLabel?: string; // pre-built "icon name" label for Live Activity idle state
   isInfinite: boolean;
   liveActivityId?: string; // iOS Live Activity ID to stop after app restart
   notificationId?: string; // scheduled completion notification
@@ -1062,6 +1064,7 @@ export default function FocusScreen() {
       endTime: infinite ? 0 : persistNow + timerSeconds * 1000,
       targetDuration: isDevTimer ? 1 : selectedTime,
       tagId: selectedTag || 'Focus',
+      tagLabel: selectedTagLabel,
       isInfinite: infinite,
       liveActivityId,
     } satisfies PersistedSession));
@@ -1426,11 +1429,13 @@ export default function FocusScreen() {
 
           // Write to AsyncStorage so the recovery phase below picks it up.
           // If the timer already expired, recovery will enter bonus-time mode.
-          const persistedSession = {
+          const tagIcon = startedSession.tagIcon || '🎯';
+          const persistedSession: PersistedSession = {
             startTime: startedSession.startTime,
             endTime: startedSession.isInfinite ? 0 : startedSession.endTime,
             targetDuration: startedSession.duration,
             tagId: startedSession.tagId,
+            tagLabel: `${tagIcon} ${startedSession.tagName}`,
             isInfinite: startedSession.isInfinite,
             liveActivityId: startedSession.liveActivityId,
           };
@@ -1470,10 +1475,11 @@ export default function FocusScreen() {
       });
 
       // Sync widget with recovered session state
+      // Use persisted tagLabel (saved at session start) to avoid store hydration
+      // race — tags.byId may be empty if Zustand hasn't rehydrated yet.
       const recoveredTag = useAppStore.getState().focus.tags.byId[persisted.tagId];
-      const recoveredTagLabel = recoveredTag
-        ? `${recoveredTag.icon || '🎯'} ${recoveredTag.name}`
-        : 'Focus';
+      const recoveredTagLabel = persisted.tagLabel
+        || (recoveredTag ? `${recoveredTag.icon || '🎯'} ${recoveredTag.name}` : 'Focus');
       WidgetService.syncSessionState({
         isActive: true,
         tagName: recoveredTag?.name || 'Focus',
@@ -1796,9 +1802,10 @@ export default function FocusScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
+    <SwipeableTabWrapper currentTab="index">
       {/* Header: Blocklist Icon (Left) + Fruit Counter (Right) */}
       <View
-        className="absolute top-16 left-0 right-0 z-50 flex-row items-center justify-between px-8"
+        className="absolute top-4 left-0 right-0 z-50 flex-row items-center justify-between px-8"
       >
         <Animated.View
           style={{ opacity: isUnlockActive ? 0 : headerOpacity }}
@@ -2470,6 +2477,7 @@ export default function FocusScreen() {
         onJoin={joinSharedTag}
       />
 
+    </SwipeableTabWrapper>
     </SafeAreaView>
   );
 }

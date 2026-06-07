@@ -586,7 +586,7 @@ export default function RootLayout() {
                   name="(modals)/my-session-feed"
                   options={{
                     headerShown: false,
-                    presentation: 'modal',
+                    presentation: 'card',
                     gestureEnabled: true,
                   }}
                 />
@@ -610,7 +610,7 @@ export default function RootLayout() {
                   name="(modals)/friend-feed"
                   options={{
                     headerShown: false,
-                    presentation: 'modal',
+                    presentation: 'card',
                     gestureEnabled: true,
                   }}
                 />

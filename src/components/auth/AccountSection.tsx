@@ -100,6 +100,10 @@ export const AccountSection: React.FC = () => {
   const [devPassword, setDevPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [referralSaved, setReferralSaved] = useState(false);
+  const userSinceLabel = user?.createdAt
+    ? `User since ${new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+    : null;
+
   const profile = useAppStore((s) => s.grove.profile);
   const isActive = useAppStore((s) => s.grove.isActive);
   const isGroveLoading = useAppStore((s) => s.grove.isLoading);
@@ -155,6 +159,11 @@ export const AccountSection: React.FC = () => {
                   <Typography variant="body-12" color="secondary">
                     @{profile.handle}
                   </Typography>
+                  {userSinceLabel && (
+                    <Typography variant="body-12" color="secondary" className="mt-0.5">
+                      {userSinceLabel}
+                    </Typography>
+                  )}
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
               </View>
@@ -171,6 +180,11 @@ export const AccountSection: React.FC = () => {
                     <Typography variant="subtitle-14-medium" color="primary">
                       {user.fullName || 'Apple User'}
                     </Typography>
+                    {userSinceLabel && (
+                      <Typography variant="body-12" color="secondary" className="mt-0.5">
+                        {userSinceLabel}
+                      </Typography>
+                    )}
                   </View>
                 </View>
               </View>

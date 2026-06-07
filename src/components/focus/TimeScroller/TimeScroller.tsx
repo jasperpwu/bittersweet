@@ -1,5 +1,5 @@
 import { FC, useRef, useEffect, useMemo } from 'react';
-import { View, Dimensions, Animated, useColorScheme } from 'react-native';
+import { View, Animated, useColorScheme, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 interface TimeScrollerProps {
@@ -7,7 +7,6 @@ interface TimeScrollerProps {
   onTimeChange: (time: number) => void;
 }
 
-const { width: screenWidth } = Dimensions.get('window');
 const TICK_SPACING = 100;
 
 // Graduated time values up to 8 hours:
@@ -35,9 +34,6 @@ const formatTickLabel = (minutes: number): string => {
 };
 
 const FONT_BOLD = 'Poppins-Bold';
-
-const centerPosition = screenWidth / 2;
-const centerOffset = (screenWidth - TICK_SPACING) / 2;
 
 /**
  * Animated tick item that reacts to scroll position for smooth scale/opacity transitions.
@@ -149,6 +145,9 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   selectedTime,
   onTimeChange,
 }) => {
+  const { width: screenWidth } = useWindowDimensions();
+  const centerPosition = screenWidth / 2;
+  const centerOffset = (screenWidth - TICK_SPACING) / 2;
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const textColor = isDark ? '#FFFFFF' : '#5D4E37';

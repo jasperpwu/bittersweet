@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string | null;
   fullName: string | null;
   avatarUrl: string | null;
+  createdAt: string | null;
 }
 
 export interface AuthSlice {
@@ -78,6 +79,7 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
             email: user.email ?? credential.email,
             fullName: fullName ?? user.user_metadata?.full_name ?? null,
             avatarUrl: user.user_metadata?.avatar_url ?? null,
+            createdAt: user.created_at ?? null,
           },
           isAuthenticated: true,
           isLoading: false,
@@ -136,6 +138,7 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
             email: user.email ?? null,
             fullName: user.user_metadata?.full_name ?? null,
             avatarUrl: user.user_metadata?.avatar_url ?? null,
+            createdAt: user.created_at ?? null,
           },
           isAuthenticated: true,
           isLoading: false,
@@ -208,6 +211,7 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
               email: user.email ?? null,
               fullName: user.user_metadata?.full_name ?? null,
               avatarUrl: user.user_metadata?.avatar_url ?? null,
+              createdAt: user.created_at ?? null,
             },
             isAuthenticated: true,
           },

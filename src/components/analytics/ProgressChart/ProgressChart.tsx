@@ -1,5 +1,5 @@
 import React, { FC } from 'react';
-import { View, Dimensions } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { Card } from '../../ui/Card';
 
@@ -20,8 +20,6 @@ interface ProgressChartProps {
   showLabels?: boolean;
 }
 
-const { width: screenWidth } = Dimensions.get('window');
-
 export const ProgressChart: FC<ProgressChartProps> = ({
   data,
   title,
@@ -32,6 +30,7 @@ export const ProgressChart: FC<ProgressChartProps> = ({
   showGrid = true,
   showLabels = true,
 }) => {
+  const { width: screenWidth } = useWindowDimensions();
   const chartWidth = screenWidth - 64; // Account for padding
 
   const maxValue = Math.max(...data.map(d => d.value));

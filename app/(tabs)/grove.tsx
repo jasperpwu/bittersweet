@@ -16,6 +16,7 @@ import { HeartbeatAlertCard } from '../../src/components/grove/HeartbeatAlertCar
 import { InnerCircleInviteBanner } from '../../src/components/grove/InnerCircleInviteBanner';
 import { HeartbeatPauseSheet } from '../../src/components/grove/HeartbeatPauseSheet';
 import { useAppStore } from '../../src/store';
+import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 
 export default function GroveScreen() {
   const profile = useAppStore((s) => s.grove.profile);
@@ -185,6 +186,7 @@ export default function GroveScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
+    <SwipeableTabWrapper currentTab="grove">
       {/* Header */}
       <View className="h-[56px] px-5 flex-row items-center justify-between">
         <Typography variant="headline-24" color="primary">
@@ -235,7 +237,7 @@ export default function GroveScreen() {
         {/* Profile Card */}
         <View className="px-5">
           <Pressable
-            onPress={() => router.push('/(modals)/my-session-feed')}
+            onPress={() => router.push(`/(modals)/friend-feed?userId=${currentUserId}`)}
             className="active:opacity-80"
           >
             <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mt-1">
@@ -386,6 +388,7 @@ export default function GroveScreen() {
         onClose={() => setSelectedChallenge(null)}
         onDelete={handleDeleteChallenge}
       />
+    </SwipeableTabWrapper>
     </SafeAreaView>
   );
 }

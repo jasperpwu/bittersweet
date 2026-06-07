@@ -672,6 +672,7 @@ export const useAppStore = create<AppStore>()(
           const goal: FocusGoal = {
             ...goalData,
             id: goalId,
+            sortOrder: get().focus.goals.allIds.length,
             createdAt: new Date(),
             updatedAt: new Date(),
           };
@@ -811,15 +812,29 @@ export const useAppStore = create<AppStore>()(
         },
 
         reorderGoals: (orderedIds) => {
-          set((state) => ({
-            focus: {
-              ...state.focus,
-              goals: {
-                ...state.focus.goals,
-                allIds: orderedIds,
+          const now = new Date();
+          set((state) => {
+            const updatedById = { ...state.focus.goals.byId };
+            orderedIds.forEach((id, index) => {
+              if (updatedById[id]) {
+                updatedById[id] = {
+                  ...updatedById[id],
+                  sortOrder: index,
+                  updatedAt: now,
+                };
               }
-            }
-          }));
+            });
+            return {
+              focus: {
+                ...state.focus,
+                goals: {
+                  ...state.focus.goals,
+                  byId: updatedById,
+                  allIds: orderedIds,
+                },
+              },
+            };
+          });
         },
 
         getActiveGoals: () => {
@@ -870,6 +885,7 @@ export const useAppStore = create<AppStore>()(
             isRepeating: true,
             showTotalHours: true,
             currentProgress: 0,
+            sortOrder: get().focus.goals.allIds.length,
             lastResetDate: new Date(),
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -1080,6 +1096,7 @@ export const useAppStore = create<AppStore>()(
             isRepeating: true,
             showTotalHours: true,
             currentProgress: 0,
+            sortOrder: get().focus.goals.allIds.length,
             lastResetDate: now,
             createdAt: now,
             updatedAt: now,

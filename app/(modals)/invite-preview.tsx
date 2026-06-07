@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Image, Alert, ActivityIndicator, Pressable, Dimensions } from 'react-native';
+import { View, Image, Alert, ActivityIndicator, Pressable, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -17,10 +17,11 @@ import { Button } from '../../src/components/ui/Button/Button';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
 
-const SHEET_HEIGHT = Dimensions.get('window').height * 0.42;
 const DISMISS_THRESHOLD = 100;
 
 export default function InvitePreviewModal() {
+  const { height: windowHeight } = useWindowDimensions();
+  const SHEET_HEIGHT = windowHeight * 0.42;
   const insets = useSafeAreaInsets();
   const pendingInvite = useAppStore((s) => s.grove.pendingInvite);
   const acceptPendingInvite = useAppStore((s) => s.grove.acceptPendingInvite);

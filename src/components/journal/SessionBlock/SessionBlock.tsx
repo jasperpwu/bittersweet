@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Typography } from '../../ui/Typography';
 import { FocusSession } from '../../../types/models';
-import { useFocus } from '../../../store';
+import { useFocus, useAppStore } from '../../../store';
 
 interface SessionBlockProps {
   session: FocusSession;
@@ -52,14 +52,18 @@ export const SessionBlock: FC<SessionBlockProps> = ({
   };
 
   const { tags } = useFocus();
+  const challenges = useAppStore((s) => s.grove.challenges);
 
   // Calculate block height based on duration
   const blockHeight = Math.max(session.duration * pixelsPerMinute, 1);
 
-  // Get tag dynamically from store
+  // Get tag dynamically from store, falling back to challenge tag info
   const tag = tags.byId[session.tagId];
-  const sessionColor = tag?.color || '#6592E9';
-  const tagName = tag?.name || 'Focus Session';
+  const challengeTag = !tag && session.tagId
+    ? challenges.find(c => c.tagId === session.tagId)
+    : null;
+  const sessionColor = tag?.color || (challengeTag ? '#E9A065' : '#6592E9');
+  const tagName = tag?.name || challengeTag?.tagName || 'Focus Session';
 
   return (
     <AnimatedPressable
@@ -86,6 +90,23 @@ export const SessionBlock: FC<SessionBlockProps> = ({
       onPressOut={handlePressOut}
       onPress={onPress}
     >
+      {/* Photo indicator */}
+      {session.photoUrl && (
+        <View style={{
+          position: 'absolute',
+          top: blockHeight <= 40 ? 2 : 6,
+          right: blockHeight <= 40 ? 4 : 8,
+          zIndex: 1,
+        }}>
+          <Typography
+            variant="tiny-10"
+            color="white"
+            style={{ opacity: 0.9 }}
+          >
+            📷
+          </Typography>
+        </View>
+      )}
       <View style={{ flex: 1, justifyContent: blockHeight <= 40 ? 'center' : 'space-between' }}>
         {/* Session info */}
         <View style={{ flex: blockHeight <= 40 ? 0 : 1, justifyContent: 'flex-start', flexDirection: blockHeight <= 40 ? 'row' : 'column', alignItems: blockHeight <= 40 ? 'center' : 'stretch' }}>

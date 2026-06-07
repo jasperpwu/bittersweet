@@ -3,6 +3,7 @@ import { syncQueue } from '../../services/sync/SyncQueue';
 import { BlocklistSyncService } from '../../services/sync/BlocklistSyncService';
 import { FamilyControlsModule } from '../../modules/BitterSweetFamilyControls';
 import { WidgetService } from '../../services/WidgetService';
+import { reconcileGoals } from './focusSlice';
 
 function buildLegacySelection(
   selectionId: string,
@@ -139,6 +140,9 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
         },
       }));
 
+      // Enforce 1:1 tag-goal invariant after merge
+      reconcileGoals(set, get);
+
       // Apply merged settings to unified store if remote won
       if (merged.settings && merged.settings !== localPrefs) {
         const { updatedAt, lastDurationByTagId: _, ...prefsToApply } = merged.settings;
@@ -271,6 +275,9 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           offlineQueueSize: 0,
         },
       }));
+
+      // Enforce 1:1 tag-goal invariant after pull
+      reconcileGoals(set, get);
 
       // Apply settings to unified store
       if (remoteData.settings) {

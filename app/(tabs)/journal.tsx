@@ -20,6 +20,7 @@ import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { DateSelector, Timeline } from '../../src/components/journal';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
+import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
 import { showToast } from '../../src/components/ui/Toast';
 import { isToday } from '../../src/utils/dateUtils';
 import { FocusSession } from '../../src/types/models';
@@ -394,6 +395,16 @@ export default function JournalScreen() {
   const syncIsSyncing = useAppStore((s) => s.sync.isSyncing);
   const flushOfflineQueue = useAppStore((s) => s.sync.flushOfflineQueue);
 
+  const challenges = useAppStore((s) => s.grove.challenges);
+
+  // Resolve tag name for the selected session (handles challenge/shared tags)
+  const selectedSessionTag = selectedSession?.tagId ? tags.byId[selectedSession.tagId] : null;
+  const selectedSessionChallengeTag = !selectedSessionTag && selectedSession?.tagId
+    ? challenges.find((c: ChallengeItem) => c.tagId === selectedSession.tagId)
+    : null;
+  const selectedSessionTagName = selectedSessionTag?.name
+    || selectedSessionChallengeTag?.tagName
+    || null;
   const journalAccelerateMultiplier = useAppStore((s) => s.rewards.isAccelerateActive()) ? 2 : 1;
   const currentFruits = isManual ? 0 : calculateFruitsEarnedForDuration(
     selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0,
@@ -562,7 +573,9 @@ export default function JournalScreen() {
         {selectedSession && (
           <Pressable onPress={Keyboard.dismiss} accessible={false}>
             <Typography variant="headline-20" color="primary" className="mb-1">
-              {isManual ? 'Focus Session (Manual)' : 'Focus Session'}
+              {selectedSessionTagName
+                ? (isManual ? `${selectedSessionTagName} (Manual)` : selectedSessionTagName)
+                : (isManual ? 'Focus Session (Manual)' : 'Focus Session')}
             </Typography>
 
             <Typography variant="body-14" color="secondary" className="mb-5">

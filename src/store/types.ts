@@ -114,6 +114,7 @@ export interface FocusGoal extends BaseEntity {
   showTotalHours: boolean;
   currentProgress: number;
   lastResetDate: Date;
+  sortOrder: number;
 }
 
 export interface Badge extends BaseEntity {

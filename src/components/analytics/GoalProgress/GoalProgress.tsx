@@ -530,8 +530,9 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   );
 
   const formatTime = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
+    const rounded = Math.round(minutes);
+    const hours = Math.floor(rounded / 60);
+    const mins = rounded % 60;
     if (hours > 0) {
       return `${hours}h ${mins}m`;
     }
@@ -589,11 +590,6 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
             >
               {displayName}
             </Typography>
-            {goal.isRepeating && (
-              <Typography variant="tiny-10" className="text-primary ml-2">
-                🔁
-              </Typography>
-            )}
           </View>
 
           <View className="flex-row items-center mt-0.5">
@@ -769,8 +765,9 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
   const totalMinutesAll = results.reduce((sum, r) => sum + r.totalMinutes, 0);
 
   const formatTotalHours = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
+    const rounded = Math.round(minutes);
+    const hours = Math.floor(rounded / 60);
+    const mins = rounded % 60;
     if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
     if (hours > 0) return `${hours}h`;
     return `${mins}m`;
@@ -857,8 +854,9 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
     const bottomRow = results.slice(6);
 
     const formatMinutes = (m: number) => {
-      const h = Math.floor(m / 60);
-      return h > 0 ? `${h}h` : `${m}m`;
+      const rounded = Math.round(m);
+      const h = Math.floor(rounded / 60);
+      return h > 0 ? `${h}h` : `${rounded}m`;
     };
 
     return (
@@ -990,9 +988,6 @@ const GoalEmptyPlaceholder: FC = () => {
             <View className="flex-row items-center">
               <Typography variant="body-14" className="text-light-text-primary dark:text-white font-poppins-semibold">
                 Study Goal
-              </Typography>
-              <Typography variant="tiny-10" className="text-primary ml-2">
-                🔁
               </Typography>
             </View>
             <View className="flex-row items-center mt-0.5">

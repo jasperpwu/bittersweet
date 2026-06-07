@@ -13,6 +13,7 @@ import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { ReferralCard } from '../../src/components/referral/ReferralCard';
 import { useAppStore } from '../../src/store';
 import { openChat } from '../../src/services/crisp';
+import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 
 // --- Inline sub-components ---
 
@@ -191,6 +192,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
+    <SwipeableTabWrapper currentTab="settings">
       {/* Header */}
       <View className="h-[56px] px-5 flex-row items-center">
         <Typography variant="headline-24" color="primary">
@@ -564,6 +566,7 @@ export default function SettingsScreen() {
           </View>
         </View>
       </BottomSheet>
+    </SwipeableTabWrapper>
     </SafeAreaView>
   );
 }

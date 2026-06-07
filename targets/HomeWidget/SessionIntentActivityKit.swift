@@ -2,6 +2,7 @@ import ActivityKit
 import FamilyControls
 import Foundation
 import ManagedSettings
+import UIKit
 
 // This file is ONLY compiled in the main app target (not the widget extension).
 // It provides the real ActivityKit implementations for the WidgetActivityKit
@@ -77,13 +78,20 @@ class WidgetActivityKitLoader: NSObject {
         dynamicIslandText: tagName
       )
 
+      // Match JS-side palette (LA_COLORS in LiveActivityService.ts)
+      let isDark = UITraitCollection.current.userInterfaceStyle == .dark
+      let bgColor      = isDark ? "#1B1C30" : "#F5E6D3"
+      let titleCol     = isDark ? "#FFFFFF" : "#8B4513"
+      let subtitleCol  = isDark ? "#CACACA" : "#8B4513"
+      let progressCol  = isDark ? "#FFFFFF" : "#8B4513"
+
       let attributes = LiveActivityAttributes(
         name: "focus",
-        backgroundColor: "#D2B48C",
-        titleColor: "#8B4513",
-        subtitleColor: "#8B4513",
+        backgroundColor: bgColor,
+        titleColor: titleCol,
+        subtitleColor: subtitleCol,
         progressViewTint: "#FF6347",
-        progressViewLabelColor: "#8B4513",
+        progressViewLabelColor: progressCol,
         deepLinkUrl: nil,
         timerType: .digital,
         sessionType: nil

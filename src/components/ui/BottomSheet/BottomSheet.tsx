@@ -1,5 +1,5 @@
 import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, View, Pressable, Dimensions, StyleSheet } from 'react-native';
+import { Modal, View, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -19,15 +19,16 @@ interface BottomSheetProps {
   showHandle?: boolean;
 }
 
-const { height: screenHeight } = Dimensions.get('window');
 const DISMISS_THRESHOLD = 100;
 
 export const BottomSheet: FC<BottomSheetProps> = ({
   isVisible,
   onClose,
   children,
-  height = screenHeight * 0.8,
+  height: heightProp,
 }) => {
+  const { height: screenHeight } = useWindowDimensions();
+  const height = heightProp ?? screenHeight * 0.8;
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(height);
   const contextY = useSharedValue(0);

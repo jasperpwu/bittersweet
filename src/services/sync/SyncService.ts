@@ -139,6 +139,7 @@ export class SyncService {
     const tags = rowsToNormalized(tagsRes.data ?? [], rowToTag);
     tags.allIds.sort((a, b) => (tags.byId[a]?.sortOrder ?? 0) - (tags.byId[b]?.sortOrder ?? 0));
     const goals = rowsToNormalized(goalsRes.data ?? [], rowToGoal);
+    goals.allIds.sort((a, b) => (goals.byId[a]?.sortOrder ?? 0) - (goals.byId[b]?.sortOrder ?? 0));
     const badges = rowsToNormalized(badgesRes.data ?? [], rowToBadge);
     const rewards = rewardsRes.data
       ? rowToRewards(rewardsRes.data)
@@ -200,7 +201,8 @@ export class SyncService {
         goals: SyncService.mergeNormalized(
           local.focus.goals,
           remote.focus.goals,
-          'updatedAt'
+          'updatedAt',
+          'sortOrder'
         ),
         badges: SyncService.mergeNormalized(
           local.focus.badges ?? { byId: {}, allIds: [] },

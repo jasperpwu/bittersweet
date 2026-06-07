@@ -147,6 +147,7 @@ export function goalToRow(goal: any, userId: string): Record<string, any> {
     is_active: goal.isActive ?? true,
     is_repeating: goal.isRepeating ?? true,
     show_total_hours: goal.showTotalHours ?? false,
+    sort_order: goal.sortOrder ?? 0,
   };
   if (goal.lastResetDate instanceof Date) row.last_reset_date = goal.lastResetDate.toISOString();
   if (goal.createdAt instanceof Date) row.created_at = goal.createdAt.toISOString();
@@ -168,6 +169,7 @@ export function rowToGoal(row: Record<string, any>): any {
     isActive: row.is_active ?? true,
     isRepeating: row.is_repeating ?? true,
     showTotalHours: row.show_total_hours ?? false,
+    sortOrder: row.sort_order ?? 0,
     lastResetDate: row.last_reset_date ? new Date(row.last_reset_date) : new Date(),
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),

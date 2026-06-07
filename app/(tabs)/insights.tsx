@@ -13,6 +13,7 @@ import { useAppSettings } from '../../src/store/unified-store';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { TimePeriod, FocusGoal, Badge, ChartSegment } from '../../src/store/types';
 import { calculateGoalProgress } from '../../src/utils/goalProgress';
+import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 
 type ViewMode = 'statistics' | 'history';
 
@@ -295,6 +296,7 @@ export default function InsightsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
+    <SwipeableTabWrapper currentTab="insights">
       {/* Header */}
       <View className="px-4 py-4 flex-row items-center justify-between">
         <View className="flex-row items-center">
@@ -377,6 +379,7 @@ export default function InsightsScreen() {
         isVisible={showUpgradeSheet}
         onClose={() => setShowUpgradeSheet(false)}
       />
+    </SwipeableTabWrapper>
     </SafeAreaView>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import { View, ScrollView, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
@@ -12,8 +12,6 @@ const OUTCOME_COLORS = {
   completed: '#22C55E',
   failed: '#EF4444',
 };
-
-const { height: screenHeight } = Dimensions.get('window');
 
 interface ChallengeDetailSheetProps {
   challenge: ChallengeItem | null;
@@ -28,6 +26,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
   onClose,
   onDelete,
 }) => {
+  const { height: screenHeight } = useWindowDimensions();
   const currentUserId = useAppStore((s) => s.auth.user?.id ?? '');
   const fetchChallengePeriodDetails = useAppStore((s) => s.grove.fetchChallengePeriodDetails);
 

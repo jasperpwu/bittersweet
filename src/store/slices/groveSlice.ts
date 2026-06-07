@@ -678,7 +678,7 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
 
   fetchFriendFeed: async (friendUserId: string) => {
     set((state: any) => ({
-      grove: { ...state.grove, friendFeedLoading: true },
+      grove: { ...state.grove, friendFeed: [], friendFeedLoading: true },
     }));
 
     try {
