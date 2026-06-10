@@ -95,6 +95,7 @@ function handleDeepLink(url: string) {
     router.replace('/(tabs)/insights');
     return;
   }
+
 }
 
 export { PENDING_REFERRAL_KEY };

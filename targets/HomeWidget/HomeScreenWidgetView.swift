@@ -63,16 +63,17 @@ struct HomeScreenWidgetView: View {
   }
 
   var body: some View {
-    if let session = entry.sessionData, session.isActive {
-      activeSessionView(session: session)
-        .widgetBackground(widgetBg)
-    } else if let unlock = entry.unlockData, unlock.isActive {
-      unlockSessionView(unlock: unlock)
-        .widgetBackground(widgetBg)
-    } else {
-      idleView
-        .widgetBackground(widgetBg)
+    Group {
+      if let session = entry.sessionData, session.isActive {
+        activeSessionView(session: session)
+      } else if let unlock = entry.unlockData, unlock.isActive {
+        unlockSessionView(unlock: unlock)
+      } else {
+        idleView
+      }
     }
+    .widgetURL(URL(string: "bittersweet-mobile://"))
+    .widgetBackground(widgetBg)
   }
 
   // MARK: - Active State

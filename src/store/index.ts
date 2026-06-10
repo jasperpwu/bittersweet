@@ -1550,20 +1550,20 @@ export const useAppStore = create<AppStore>()(
             console.log('📱 Store: current stored selectionId:', currentSelectionId);
             console.log('📱 selection:', selection);
 
-            // If we have a current selectionId and it's different from the new selection, unblock it first
-            if (currentSelectionId && currentSelectionId !== selection) {
-              console.log('📱 Store: SelectionId changed, unblocking previous selection:', currentSelectionId);
-              console.log('📱 Store: About to call FamilyControlsModule.removeRestrictions...');
-              const unblockSuccess = await FamilyControlsModule.removeRestrictions(currentSelectionId);
-              console.log('📱 Store: unblock previous result:', unblockSuccess);
+            // Always clear the internal blocklist before applying the new selection.
+            // This avoids a bug where the picker overwrites the canonical blob
+            // ('bittersweet-blocklist') before Save, causing unblockSelection-by-ID
+            // to diff against the NEW selection instead of the OLD one — leaving
+            // removed apps still in the internal blocklist.
+            if (currentSelectionId) {
+              console.log('📱 Store: Clearing internal blocklist before applying new selection');
+              const unblockSuccess = await FamilyControlsModule.removeRestrictions();
+              console.log('📱 Store: unblock result:', unblockSuccess);
 
               // Clear shield configuration when unblocking
               if (unblockSuccess) {
                 await FamilyControlsModule.clearShieldConfiguration();
               }
-            } else {
-              console.log('📱 Store: No selectionId change detected');
-              console.log('📱 Store: currentSelectionId:', currentSelectionId, 'newSelection:', selection);
             }
 
             // If selection is null or empty, clear the blocklist

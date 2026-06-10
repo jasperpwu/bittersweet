@@ -266,27 +266,23 @@ class BitterSweetFamilyControlsModule {
   }
 
   /**
-   * Remove app restrictions using stored selection ID
-   * @param selectionId - The selection ID to unblock
+   * Remove all current app restrictions by clearing the library's internal blocklist.
+   *
+   * Uses `{ currentBlocklist: true }` so the native side diffs against the ACTUAL
+   * internal blocklist rather than a named selection ID whose blob may have been
+   * overwritten by the picker before Save was pressed.
+   *
    * @returns Promise<boolean> - True if restrictions removed successfully
    */
-  async removeRestrictions(selectionId: FamilyActivitySelection): Promise<boolean> {
+  async removeRestrictions(): Promise<boolean> {
     try {
-      console.log('🔓 removeRestrictions called with selectionId:', selectionId);
-
-      if (!selectionId) {
-        console.log('No selectionId provided, nothing to unblock');
-        return true;
-      }
-
-      // Unblock the specific selection using the stored ID
-      console.log('🔓 Unblocking restrictions for selectionId:', selectionId);
+      console.log('🔓 removeRestrictions — clearing entire internal blocklist');
 
       ReactNativeDeviceActivity.unblockSelection({
-        activitySelectionId: selectionId,
+        currentBlocklist: true,
       });
 
-      console.log('✅ App restrictions removed for selectionId:', selectionId);
+      console.log('✅ All app restrictions removed');
       return true;
     } catch (error) {
       console.error('❌ Failed to remove restrictions:', error);

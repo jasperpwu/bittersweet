@@ -803,8 +803,8 @@ export default function FocusScreen() {
     // Restore last used duration for this tag (default 15 min)
     const duration = lastDurationByTagId[tagId] ?? 15;
     setSelectedTime(duration);
-    // Update idle Live Activity if one is showing
-    if (!isRunning && LiveActivityService.hasFocusActivity) {
+    // Update any idle Live Activity with the newly selected tag/duration
+    if (!isRunning) {
       const tag = tags.byId[tagId] || challengeTags.find(ct => ct.id === tagId);
       const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
       LiveActivityService.showIdleFocusActivity(tagLabel, tagId, duration);
@@ -1726,8 +1726,8 @@ export default function FocusScreen() {
           lastUsedAt: lastUsedByTag[tag.id] ?? 0,
       }));
       WidgetService.syncTagList(tagList);
-      // Update idle Live Activity if one is showing
-      if (!isRunning && LiveActivityService.hasFocusActivity) {
+      // Update any idle Live Activity with the new duration
+      if (!isRunning) {
         const tagObj = tags.byId[selectedTag];
         const tagLabel = tagObj ? `${tagObj.icon || '🎯'} ${tagObj.name}` : 'Focus';
         LiveActivityService.showIdleFocusActivity(tagLabel, selectedTag, time);
