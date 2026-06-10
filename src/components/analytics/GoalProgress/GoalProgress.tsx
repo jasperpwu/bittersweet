@@ -1,7 +1,6 @@
 import React, { FC, useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { View, Pressable, Share, Platform, useColorScheme } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
@@ -205,7 +204,7 @@ function DraggableGoalRow({
         style={{ backgroundColor: '#F59E0B' }}
       >
         <Typography variant="body-14" color="white">
-          Done
+          Badge
         </Typography>
       </Pressable>
       <Pressable
@@ -216,7 +215,7 @@ function DraggableGoalRow({
         className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
       >
         <Typography variant="body-14" color="white">
-          Off
+          Pause
         </Typography>
       </Pressable>
     </View>
@@ -300,18 +299,21 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   onReorderGoals,
 }) => {
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
-  const [shouldNudge, setShouldNudge] = useState(false);
 
-  // Check if swipe nudge hint has been shown before
-  const NUDGE_STORAGE_KEY = 'goal-swipe-nudge-shown';
+  // Swipe nudge hint — use unified preferences
+  const { preferences, updatePreferences } = useAppSettings();
+  const shouldNudge = !preferences.hasSeenGoalSwipeHint && goals.length > 0;
+
+  // Mark as seen after nudge animation plays
   useEffect(() => {
-    AsyncStorage.getItem(NUDGE_STORAGE_KEY).then(value => {
-      if (!value) {
-        setShouldNudge(true);
-        AsyncStorage.setItem(NUDGE_STORAGE_KEY, 'true');
-      }
-    });
-  }, []);
+    if (shouldNudge) {
+      // Mark seen after the nudge animation has played
+      const timer = setTimeout(() => {
+        updatePreferences({ hasSeenGoalSwipeHint: true });
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldNudge]);
 
   // Drag-to-reorder state — mirrors index.tsx tag drag pattern exactly
   const [isDragging, setIsDragging] = useState(false);
@@ -325,7 +327,6 @@ export const GoalProgress: FC<GoalProgressProps> = ({
 
   // Get tags and sessions from store for real data
   const { tags, sessions } = useFocus();
-  const { preferences } = useAppSettings();
   const restDays = preferences.restDays ?? [0, 6];
   const weekStartDay = 1; // Always Monday
 

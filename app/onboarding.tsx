@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { View, FlatList, useWindowDimensions, useColorScheme, Pressable, ActivityIndicator } from 'react-native';
+import { View, FlatList, useWindowDimensions, useColorScheme, Pressable, ActivityIndicator, TextInput, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,10 @@ import { Button } from '../src/components/ui/Button';
 import { useUnifiedStore } from '../src/store/unified-store';
 import { useAppStore } from '../src/store';
 
+const TAG_COLORS = ['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'];
+
+const SUGGESTED_EMOJIS = ['📚', '💼', '🏋️', '🎨', '🧘', '💻', '📖', '🎵'];
+
 const ONBOARDING_DATA = [
   {
     id: '1',
@@ -15,14 +19,15 @@ const ONBOARDING_DATA = [
     description: 'Stay focused to grow your tree and later enjoy the fruits of your hard work.',
     iconName: 'leaf-outline',
     iconColor: '#51BC6F',
+    interactive: false,
   },
   {
     id: '2',
-    title: 'Configure Your Focus',
-    description:
-      'Set your session tags, goals, and start your timer. Personalize your productivity journey.',
+    title: 'Create Your First Tag',
+    description: 'Tags help you categorize your focus sessions. Create one to get started!',
     iconName: 'timer-outline',
     iconColor: '#6592E9',
+    interactive: true,
   },
   {
     id: '3',
@@ -30,6 +35,7 @@ const ONBOARDING_DATA = [
     description: 'Use the fruits earned from focus sessions to unlock apps in your blocklist.',
     iconName: 'shield-checkmark-outline',
     iconColor: '#EF786C',
+    interactive: false,
   },
   {
     id: '4',
@@ -38,19 +44,28 @@ const ONBOARDING_DATA = [
       'We are actively developing this app and would love your feedback to shape its future.',
     iconName: 'megaphone-outline',
     iconColor: '#F5A623',
+    interactive: false,
   },
 ];
 
 export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
+  // Tag creation state
+  const [tagName, setTagName] = useState('');
+  const [tagEmoji, setTagEmoji] = useState('📚');
+  const [tagColor, setTagColor] = useState('#6592E9');
+  const [tagCreated, setTagCreated] = useState(false);
+
   const { isLoading: isSigningIn, error: signInError } = useAppStore((state) => state.auth);
   const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
   const clearAuthError = useAppStore((state) => state.auth.clearAuthError);
+  const createTag = useAppStore((state) => state.focus.createTag);
 
   const handleSignIn = useCallback(async () => {
     await signInWithApple();
@@ -83,6 +98,16 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)');
   };
 
+  const handleCreateTag = () => {
+    if (!tagName.trim() || !tagEmoji || tagCreated) return;
+    createTag({
+      name: tagName.trim(),
+      icon: tagEmoji,
+      color: tagColor,
+    });
+    setTagCreated(true);
+  };
+
   const handleNext = () => {
     if (currentIndex < ONBOARDING_DATA.length - 1) {
       flatListRef.current?.scrollToIndex({
@@ -103,11 +128,132 @@ export default function OnboardingScreen() {
   };
 
   const renderItem = ({ item }: { item: (typeof ONBOARDING_DATA)[0] }) => {
+    // Interactive tag creation slide
+    if (item.interactive) {
+      return (
+        <View style={{ width }} className="flex-1 px-8 pt-16">
+          {/* Header section */}
+          <View className="items-center mb-10">
+            <View className="mb-5">
+              <Ionicons name={item.iconName as any} size={56} color={item.iconColor} />
+            </View>
+            <Typography variant="headline-24" color="primary" className="mb-2 text-center">
+              {item.title}
+            </Typography>
+            <Typography variant="body-14" color="secondary" className="text-center">
+              {item.description}
+            </Typography>
+          </View>
+
+          {tagCreated ? (
+            // Success state
+            <View className="items-center mt-8">
+              <View
+                className="w-20 h-20 rounded-2xl items-center justify-center mb-4"
+                style={{ backgroundColor: tagColor + '20', borderWidth: 2, borderColor: tagColor }}
+              >
+                <Text style={{ fontSize: 36 }}>{tagEmoji}</Text>
+              </View>
+              <Typography variant="subtitle-16" color="primary" className="mb-1">
+                {tagName}
+              </Typography>
+              <View className="flex-row items-center mt-2">
+                <Ionicons name="checkmark-circle" size={20} color="#51BC6F" />
+                <Typography variant="body-14" className="ml-1.5" style={{ color: '#51BC6F' }}>
+                  Tag created!
+                </Typography>
+              </View>
+            </View>
+          ) : (
+            // Creation form
+            <View className="w-full self-center" style={{ maxWidth: 320 }}>
+              {/* Emoji selector */}
+              <Typography variant="body-12" color="secondary" className="mb-2">
+                Pick an emoji
+              </Typography>
+              <View className="flex-row flex-wrap mb-6" style={{ gap: 10 }}>
+                {SUGGESTED_EMOJIS.map((emoji) => (
+                  <Pressable
+                    key={emoji}
+                    onPress={() => setTagEmoji(emoji)}
+                    className="w-11 h-11 rounded-xl items-center justify-center"
+                    style={{
+                      backgroundColor: tagEmoji === emoji
+                        ? (isDark ? '#3A3A4E' : '#E0D4C0')
+                        : (isDark ? '#2A2A2A' : '#F0E0CC'),
+                      borderWidth: tagEmoji === emoji ? 2 : 0,
+                      borderColor: '#6592E9',
+                    }}
+                  >
+                    <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Tag name */}
+              <Typography variant="body-12" color="secondary" className="mb-2">
+                Tag name
+              </Typography>
+              <TextInput
+                value={tagName}
+                onChangeText={setTagName}
+                placeholder="e.g. Study, Work, Exercise"
+                placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
+                maxLength={30}
+                className="mb-6"
+                style={{
+                  backgroundColor: isDark ? '#2A2A2A' : '#F0E0CC',
+                  borderRadius: 12,
+                  padding: 14,
+                  fontSize: 16,
+                  color: isDark ? '#FFFFFF' : '#5D4E37',
+                  borderWidth: 1,
+                  borderColor: isDark ? '#444' : '#D4C4A8',
+                }}
+              />
+
+              {/* Color selector */}
+              <Typography variant="body-12" color="secondary" className="mb-2">
+                Color
+              </Typography>
+              <View className="flex-row flex-wrap mb-8" style={{ gap: 10 }}>
+                {TAG_COLORS.map((color) => (
+                  <Pressable
+                    key={color}
+                    onPress={() => setTagColor(color)}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: color,
+                      borderWidth: tagColor === color ? 3 : 0,
+                      borderColor: '#FFFFFF',
+                    }}
+                  />
+                ))}
+              </View>
+
+              {/* Create button */}
+              <Pressable
+                onPress={handleCreateTag}
+                disabled={!tagName.trim()}
+                className="bg-primary rounded-xl py-3.5 items-center active:opacity-80"
+                style={{ opacity: !tagName.trim() ? 0.5 : 1 }}
+              >
+                <Typography variant="subtitle-14-semibold" className="text-white">
+                  Create Tag
+                </Typography>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    // Standard info slide
     return (
       <View style={{ width }} className="flex-1 items-center justify-center px-8">
-        <View
-          className="mb-12 items-center justify-center rounded-[40px] p-10 shadow-sm"
-          style={{ width: width * 0.7, aspectRatio: 1, backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC' }}>
+        <View className="mb-12 items-center justify-center">
           <Ionicons name={item.iconName as any} size={100} color={item.iconColor} />
         </View>
         <Typography variant="headline-24" color="primary" className="mb-4 text-center">
@@ -158,6 +304,7 @@ export default function OnboardingScreen() {
         bounces={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        scrollEnabled={!(ONBOARDING_DATA[currentIndex]?.interactive && !tagCreated)}
       />
 
       <View className="px-8 pb-12 pt-4">
@@ -173,10 +320,12 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        {/* Action Button */}
-        <Button onPress={handleNext} variant="primary" size="large" className="w-full">
-          {currentIndex === ONBOARDING_DATA.length - 1 ? 'Get Started' : 'Next'}
-        </Button>
+        {/* Action Button — hidden on interactive slide until tag is created */}
+        {(ONBOARDING_DATA[currentIndex]?.interactive && !tagCreated) ? null : (
+          <Button onPress={handleNext} variant="primary" size="large" className="w-full">
+            {currentIndex === ONBOARDING_DATA.length - 1 ? 'Get Started' : 'Next'}
+          </Button>
+        )}
       </View>
     </View>
   );

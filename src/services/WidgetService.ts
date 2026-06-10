@@ -412,4 +412,31 @@ export class WidgetService {
       return null;
     }
   }
+
+  /**
+   * Clear all widget configuration and credentials from UserDefaults.
+   * Call on user sign-out or sign-in (before importing new data).
+   */
+  static clearAllWidgetData(): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsRemove(SESSION_DATA_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(TAG_LIST_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(SELECTED_TAG_ID_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(FRUIT_BALANCE_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(UNLOCK_SESSION_DATA_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(CURRENT_SELECTION_ID_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(SUPABASE_USER_ID_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(SUPABASE_ACCESS_TOKEN_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(GROVE_SHARED_TAG_IDS_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(GROVE_SHARE_NOTES_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(GROVE_SHOW_LIVE_STATUS_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(GOALS_DATA_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(GROVE_ACTIVE_CHALLENGES_KEY);
+      console.log('📱 [Widget] Cleared all widget data from UserDefaults');
+      reloadWidgetTimelines();
+    } catch (error) {
+      console.error('📱 [Widget] Failed to clear all widget data:', error);
+    }
+  }
 }
+

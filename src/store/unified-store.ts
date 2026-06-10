@@ -22,6 +22,9 @@ interface DeviceInfo {
 
 interface AppPreferences {
   hasSeenOnboarding: boolean;
+  hasSeenFruitCoachMark: boolean;
+  hasSeenTagSwipeHint: boolean;
+  hasSeenGoalSwipeHint: boolean;
   theme: 'light' | 'dark' | 'system';
   language: string;
   notifications: NotificationSettings;
@@ -118,6 +121,9 @@ const getDeviceInfo = async (): Promise<DeviceInfo> => {
 
 const createDefaultPreferences = (): AppPreferences => ({
   hasSeenOnboarding: false,
+  hasSeenFruitCoachMark: false,
+  hasSeenTagSwipeHint: false,
+  hasSeenGoalSwipeHint: false,
   theme: 'system',
   language: 'en',
   notifications: {
@@ -273,4 +279,20 @@ export const useAppState = () => useUnifiedStore((state) => ({
 export const initializeUnifiedStore = async () => {
   const store = useUnifiedStore.getState();
   await store.initializeApp();
+};
+
+/**
+ * Resets the unified store to its default/empty state.
+ */
+export const clearUnifiedStoreData = () => {
+  console.log('🧹 Clearing all local unified store data');
+  useUnifiedStore.setState({
+    preferences: createDefaultPreferences(),
+    stats: createDefaultStats(),
+    errors: [],
+    loading: {
+      app: false,
+      preferences: false,
+    }
+  });
 };

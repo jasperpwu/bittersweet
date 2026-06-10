@@ -8,6 +8,9 @@ import { createEventEmitter, STORE_EVENTS } from '../utils/eventBus';
 
 const defaultSettings: AppSettings = {
   hasSeenOnboarding: false,
+  hasSeenFruitCoachMark: false,
+  hasSeenTagSwipeHint: false,
+  hasSeenGoalSwipeHint: false,
   theme: 'system',
   language: 'en',
   notifications: {

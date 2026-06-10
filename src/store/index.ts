@@ -2081,3 +2081,110 @@ try {
 } catch (error) {
   console.error('❌ Failed to initialize store:', error);
 }
+
+/**
+ * Resets the entire store to its default/empty state.
+ * @param keepAuth - If true, the auth slice state is preserved (useful for sign-in refresh).
+ */
+export const clearAllStoreData = (keepAuth: boolean = false) => {
+  console.log('🧹 Clearing all local store data (keepAuth:', keepAuth, ')');
+  const s = useAppStore.getState();
+  useAppStore.setState({
+    focus: {
+      ...s.focus,
+      sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+      tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+      goals: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+      badges: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+      currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },
+      lastSelectedTagId: null,
+      lastDurationByTagId: {},
+    },
+    rewards: {
+      ...s.rewards,
+      balance: 0,
+      totalEarned: 0,
+      totalSpent: 0,
+      updatedAt: null,
+      unlockableApps: [],
+      accelerateCard: null,
+    },
+    blocklist: {
+      ...s.blocklist,
+      settings: {
+        blockedApps: {
+          applicationTokens: [],
+          categoryTokens: [],
+          webDomainTokens: []
+        },
+        unlockCostPerMinute: 1,
+        scheduleEnabled: false,
+      },
+      currentSelectionId: null,
+      activeSessions: { byId: {}, allIds: [] },
+      transactions: { byId: {}, allIds: [] },
+      editHistory: {
+        weekStart: getWeekStart().toISOString(),
+        editsThisWeek: 0,
+      },
+      lastUnlockDuration: null,
+      isAuthorized: false,
+      authorizationStatus: 0,
+      lastAuthCheck: null,
+    },
+    ...(keepAuth ? {} : {
+      auth: {
+        ...s.auth,
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        lastSignedInUserId: null,
+      }
+    }),
+    subscription: {
+      ...s.subscription,
+      tier: 'free',
+      expiresAt: null,
+      productId: null,
+      isLoading: false,
+      error: null,
+    },
+    sync: {
+      ...s.sync,
+      lastSyncTime: null,
+      isSyncing: false,
+      syncError: null,
+      offlineQueueSize: 0,
+      syncStatus: 'idle',
+    },
+    grove: {
+      ...s.grove,
+      profile: null,
+      privacySettings: null,
+      isActive: false,
+      isLoading: false,
+      error: null,
+      lastGroveVisit: null,
+      heartbeatSettings: null,
+      friends: [],
+      feed: [],
+      rankingsWeek: [],
+      rankingsMonth: [],
+      challenges: [],
+    },
+    referral: {
+      ...s.referral,
+      referralCode: null,
+      referralCount: 0,
+      claimedTier: 0,
+      isLoading: false,
+    },
+    ui: {
+      ...s.ui,
+      modals: {},
+      loading: { global: false, actions: {} },
+      errors: [],
+    }
+  });
+};

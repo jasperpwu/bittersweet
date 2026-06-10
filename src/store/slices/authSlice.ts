@@ -198,6 +198,20 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
 
   restoreSession: async () => {
     try {
+      // Detect fresh install: AsyncStorage is deleted on uninstall, but
+      // Keychain (expo-secure-store) persists. If our flag is missing,
+      // this is a fresh install — clear the stale Keychain session.
+      const INSTALLED_FLAG_KEY = 'bittersweet-installed';
+      const hasLaunchedBefore = await AsyncStorage.getItem(INSTALLED_FLAG_KEY);
+
+      if (!hasLaunchedBefore) {
+        console.log('🔐 Fresh install detected — clearing stale Keychain session');
+        await supabase.auth.signOut();
+        await AsyncStorage.setItem(INSTALLED_FLAG_KEY, 'true');
+        // No session to restore after clearing
+        return;
+      }
+
       const { data, error } = await supabase.auth.getSession();
       if (error) throw error;
 

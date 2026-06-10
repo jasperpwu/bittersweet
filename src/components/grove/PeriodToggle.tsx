@@ -18,8 +18,7 @@ export const PeriodToggle: React.FC<PeriodToggleProps> = ({ period, onPeriodChan
       >
         <Typography
           variant="subtitle-14-medium"
-          style={{ color: period === 'week' ? '#FFFFFF' : undefined }}
-          color={period === 'week' ? undefined : 'secondary'}
+          color={period === 'week' ? 'white' : 'secondary'}
         >
           Week
         </Typography>
@@ -32,8 +31,7 @@ export const PeriodToggle: React.FC<PeriodToggleProps> = ({ period, onPeriodChan
       >
         <Typography
           variant="subtitle-14-medium"
-          style={{ color: period === 'month' ? '#FFFFFF' : undefined }}
-          color={period === 'month' ? undefined : 'secondary'}
+          color={period === 'month' ? 'white' : 'secondary'}
         >
           Month
         </Typography>

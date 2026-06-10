@@ -17,7 +17,6 @@ import { Typography } from '../../src/components/ui/Typography';
 import { AvatarPicker } from '../../src/components/grove/AvatarPicker';
 import { GenderPicker } from '../../src/components/grove/GenderPicker';
 import { HandleInput } from '../../src/components/grove/HandleInput';
-import { PrivacyToggleList } from '../../src/components/grove/PrivacyToggleList';
 import { InterestPicker } from '../../src/components/grove/InterestPicker';
 import { useHandleValidation } from '../../src/hooks/useHandleValidation';
 import { useAppStore } from '../../src/store';
@@ -29,10 +28,7 @@ export default function GroveEditModal() {
   const isDark = colorScheme === 'dark';
 
   const profile = useAppStore((s) => s.grove.profile);
-  const privacySettings = useAppStore((s) => s.grove.privacySettings);
-  const tags = useAppStore((s) => s.focus.tags);
   const updateProfile = useAppStore((s) => s.grove.updateProfile);
-  const updatePrivacySettings = useAppStore((s) => s.grove.updatePrivacySettings);
   const uploadAvatar = useAppStore((s) => s.grove.uploadAvatar);
   const removeAvatar = useAppStore((s) => s.grove.removeAvatar);
 
@@ -78,33 +74,11 @@ export default function GroveEditModal() {
     setAvatarRemoved(true);
   };
 
-  // Privacy fields
-  const [sharedTagIds, setSharedTagIds] = useState<string[]>(
-    privacySettings?.shared_tag_ids ?? []
-  );
-  const [shareNotes, setShareNotes] = useState(privacySettings?.share_notes ?? false);
-  const [showLiveStatus, setShowLiveStatus] = useState(
-    privacySettings?.show_live_status ?? false
-  );
-
   const [isSaving, setIsSaving] = useState(false);
-
-  const activeTags = tags.allIds
-    .map((id) => tags.byId[id])
-    .filter((tag) => tag && !tag.deletedAt)
-    .map((tag) => ({ id: tag.id, name: tag.name, icon: tag.icon || '🎯' }));
-
-  const handleToggleTag = (tagId: string) => {
-    setSharedTagIds((prev) =>
-      prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId]
-    );
-  };
 
   // Change detection
   const hasChanges = useMemo(() => {
-    if (!profile || !privacySettings) return false;
+    if (!profile) return false;
 
     const profileChanged =
       displayName.trim() !== profile.display_name ||
@@ -115,18 +89,11 @@ export default function GroveEditModal() {
 
     const avatarChanged = newAvatarUri !== null || avatarRemoved;
 
-    const privacyChanged =
-      shareNotes !== privacySettings.share_notes ||
-      showLiveStatus !== privacySettings.show_live_status ||
-      JSON.stringify([...sharedTagIds].sort()) !==
-        JSON.stringify([...privacySettings.shared_tag_ids].sort());
-
-    return profileChanged || avatarChanged || privacyChanged;
+    return profileChanged || avatarChanged;
   }, [
     displayName, effectiveHandle, gender, interests,
     newAvatarUri, avatarRemoved,
-    sharedTagIds, shareNotes, showLiveStatus,
-    profile, privacySettings,
+    profile,
   ]);
 
   // Validation
@@ -141,7 +108,7 @@ export default function GroveEditModal() {
   const canSave = hasChanges && isValid && !isSaving;
 
   const handleSave = async () => {
-    if (!profile || !privacySettings) return;
+    if (!profile) return;
     setIsSaving(true);
 
     try {
@@ -167,21 +134,6 @@ export default function GroveEditModal() {
         await uploadAvatar(newAvatarUri);
       } else if (avatarRemoved && profile.avatar_url) {
         await removeAvatar();
-      }
-
-      // Update privacy if changed
-      const privacyChanged =
-        shareNotes !== privacySettings.share_notes ||
-        showLiveStatus !== privacySettings.show_live_status ||
-        JSON.stringify([...sharedTagIds].sort()) !==
-          JSON.stringify([...privacySettings.shared_tag_ids].sort());
-
-      if (privacyChanged) {
-        await updatePrivacySettings({
-          shared_tag_ids: sharedTagIds,
-          share_notes: shareNotes,
-          show_live_status: showLiveStatus,
-        });
       }
 
       router.back();
@@ -321,21 +273,6 @@ export default function GroveEditModal() {
             </Typography>
           </View>
 
-          {/* Privacy */}
-          <View className="mb-6">
-            <Typography variant="subtitle-16" color="primary" className="font-poppins-semibold mb-4">
-              Privacy & Sharing
-            </Typography>
-            <PrivacyToggleList
-              tags={activeTags}
-              sharedTagIds={sharedTagIds}
-              shareNotes={shareNotes}
-              showLiveStatus={showLiveStatus}
-              onToggleTag={handleToggleTag}
-              onToggleShareNotes={setShareNotes}
-              onToggleShowLiveStatus={setShowLiveStatus}
-            />
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -10,6 +10,7 @@ import { TimeScroller, DurationPicker } from '../../src/components/focus';
 
 import { useFocus, useFocusActions, useRewards, useAppStore, useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
 import { useAppSettings } from '../../src/store/unified-store';
+import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { FruitCounter } from '../../src/components/rewards';
 import { showToast } from '../../src/components/ui/Toast';
@@ -517,7 +518,7 @@ export default function FocusScreen() {
   const { currentSession } = useFocus();
   const blocklistEditCost = useBlocklistEditCost();
   const { triggerHaptic } = useDeviceIntegration();
-  const { preferences } = useAppSettings();
+  const { preferences, updatePreferences } = useAppSettings();
   const timerPickerStyle = preferences.focus.timerPickerStyle ?? 'scroller';
   const { canCreateTag } = useSubscriptionGate();
   const challenges = useAppStore((s) => s.grove.challenges);
@@ -589,6 +590,10 @@ export default function FocusScreen() {
   const dragOriginalIdxRef = useRef(-1);
   const dragTargetIdxRef = useRef(-1);
 
+  // Tag swipe coach mark
+  const firstTagRef = useRef<View>(null);
+  const [showTagSwipeCoachMark, setShowTagSwipeCoachMark] = useState(false);
+
   // Swipe-to-reveal: track open swipeable to close others
   const openSwipeableRef = useRef<any>(null);
   const handleSwipeOpen = useCallback((ref: any) => {
@@ -602,6 +607,12 @@ export default function FocusScreen() {
   useEffect(() => {
     if (showTagModal) {
       setDragOrderIds(tags.allIds);
+      // Show tag swipe coach mark after a short delay
+      if (availableTags.length >= 2 && !preferences.hasSeenTagSwipeHint) {
+        setTimeout(() => setShowTagSwipeCoachMark(true), 500);
+      }
+    } else {
+      setShowTagSwipeCoachMark(false);
     }
   }, [showTagModal, tags.allIds]);
 
@@ -1966,25 +1977,26 @@ export default function FocusScreen() {
                 </View>
               )}
               {orderedTags.map((tag, index) => (
-                <DraggableTagRow
-                  key={tag.id}
-                  tag={tag}
-                  index={index}
-                  selectedTag={selectedTag}
-                  lastDuration={lastDurationByTagId[tag.id] ?? 15}
-                  isDragging={isDragging}
-                  dragOriginalIndex={dragOriginalIdx}
-                  dragTargetIndex={dragTargetIdx}
-                  isChallenge={'isChallenge' in tag && tag.isChallenge === true}
-                  onSelect={handleTagSelect}
-                  onEdit={handleEditTag}
-                  onDelete={handleDeleteTag}
-                  onShare={handleShareTag}
-                  onSwipeOpen={handleSwipeOpen}
-                  onDragStart={handleDragStart}
-                  onDragMove={handleDragMove}
-                  onDragEnd={handleDragEnd}
-                />
+                <View key={tag.id} ref={index === 0 ? firstTagRef : undefined} collapsable={false}>
+                  <DraggableTagRow
+                    tag={tag}
+                    index={index}
+                    selectedTag={selectedTag}
+                    lastDuration={lastDurationByTagId[tag.id] ?? 15}
+                    isDragging={isDragging}
+                    dragOriginalIndex={dragOriginalIdx}
+                    dragTargetIndex={dragTargetIdx}
+                    isChallenge={'isChallenge' in tag && tag.isChallenge === true}
+                    onSelect={handleTagSelect}
+                    onEdit={handleEditTag}
+                    onDelete={handleDeleteTag}
+                    onShare={handleShareTag}
+                    onSwipeOpen={handleSwipeOpen}
+                    onDragStart={handleDragStart}
+                    onDragMove={handleDragMove}
+                    onDragEnd={handleDragEnd}
+                  />
+                </View>
               ))}
             </ScrollView>
 
@@ -2023,6 +2035,18 @@ export default function FocusScreen() {
             
           </View>
         </View>
+
+        {/* Tag Swipe Coach Mark */}
+        <CoachMark
+          targetRef={firstTagRef as React.RefObject<View>}
+          title="Manage your tags"
+          message="Hold to reorder, swipe to edit"
+          visible={showTagSwipeCoachMark && !preferences.hasSeenTagSwipeHint}
+          onDismiss={() => {
+            setShowTagSwipeCoachMark(false);
+            updatePreferences({ hasSeenTagSwipeHint: true });
+          }}
+        />
 
         {/* Edit Tag Overlay - covers entire screen including tag picker */}
         {showEditTagModal && (

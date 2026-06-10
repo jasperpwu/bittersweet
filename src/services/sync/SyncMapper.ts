@@ -275,6 +275,9 @@ export function settingsToRow(
     week_start_day: preferences.weekStartDay ?? 1,
     last_duration_by_tag: lastDurationByTagId ?? {},
     has_seen_onboarding: preferences.hasSeenOnboarding ?? false,
+    has_seen_fruit_coach_mark: preferences.hasSeenFruitCoachMark ?? false,
+    has_seen_tag_swipe_hint: preferences.hasSeenTagSwipeHint ?? false,
+    has_seen_goal_swipe_hint: preferences.hasSeenGoalSwipeHint ?? false,
     updated_at: new Date().toISOString(),
   };
 }
@@ -285,6 +288,9 @@ export function settingsToRow(
 export function rowToSettings(row: Record<string, any>): any {
   return {
     hasSeenOnboarding: row.has_seen_onboarding ?? false,
+    hasSeenFruitCoachMark: row.has_seen_fruit_coach_mark ?? false,
+    hasSeenTagSwipeHint: row.has_seen_tag_swipe_hint ?? false,
+    hasSeenGoalSwipeHint: row.has_seen_goal_swipe_hint ?? false,
     theme: row.theme ?? 'system',
     language: row.language ?? 'en',
     notifications: {

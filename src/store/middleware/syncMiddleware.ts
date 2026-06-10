@@ -125,6 +125,17 @@ export function initSyncMiddleware(store: any): () => void {
 
       console.log(`[SyncMW] Debounce fired — processing: sessions:${changes.sessions} tags:${changes.tags} goals:${changes.goals} badges:${changes.badges} rewards:${changes.rewards}`);
       try {
+        // Diff tags before sessions because focus_sessions.tag_id has a DB
+        // foreign key to session_tags.id.
+        if (changes.tags) {
+          await diffAndEnqueue(
+            'session_tags',
+            lastSyncedSnapshot!.tags,
+            state.focus.tags.byId,
+            (item: any) => tagToRow(item, userId)
+          );
+        }
+
         // Diff sessions
         if (changes.sessions) {
           const oldIds = Object.keys(lastSyncedSnapshot!.sessions);
@@ -134,17 +145,15 @@ export function initSyncMiddleware(store: any): () => void {
             'focus_sessions',
             lastSyncedSnapshot!.sessions,
             state.focus.sessions.byId,
-            (item: any) => sessionToRow(item, userId)
-          );
-        }
-
-        // Diff tags
-        if (changes.tags) {
-          await diffAndEnqueue(
-            'session_tags',
-            lastSyncedSnapshot!.tags,
-            state.focus.tags.byId,
-            (item: any) => tagToRow(item, userId)
+            (item: any) => sessionToRow(item, userId),
+            async (item: any) => {
+              const tag = state.focus.tags.byId[item.tagId];
+              if (!tag) {
+                console.warn(`[SyncMW] Session ${item.id} references missing local tag ${item.tagId}`);
+                return;
+              }
+              await SyncService.enqueue('session_tags', 'upsert', tagToRow(tag, userId));
+            }
           );
         }
 
@@ -242,7 +251,8 @@ async function diffAndEnqueue(
   table: string,
   oldById: Record<string, any>,
   newById: Record<string, any>,
-  mapFn: (item: any) => Record<string, any>
+  mapFn: (item: any) => Record<string, any>,
+  beforeUpsert?: (item: any) => Promise<void>
 ): Promise<void> {
   let upsertCount = 0;
   let deleteCount = 0;
@@ -256,6 +266,7 @@ async function diffAndEnqueue(
       if (table === 'focus_sessions') {
         console.log(`[SyncMW]   duration=${row.duration} start_time=${row.start_time} end_time=${row.end_time} tag_id=${row.tag_id}`);
       }
+      await beforeUpsert?.(newById[id]);
       await SyncService.enqueue(table, 'upsert', row);
       upsertCount++;
     }

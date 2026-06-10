@@ -8,8 +8,7 @@ import { View, Text, useColorScheme } from 'react-native';
 import { StatusBar } from '../src/components/ui/StatusBar';
 import { AnimatedSplashScreen } from '../src/components/ui/AnimatedSplashScreen';
 import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
-import { useAppState, initializeUnifiedStore } from '../src/store/unified-store';
-import { autoInitializeMockData } from '../src/store/initializeMockData';
+import { useAppState, initializeUnifiedStore, clearUnifiedStoreData } from '../src/store/unified-store';
 import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
 import { useGoalNudgeNotifications } from '../src/hooks/useGoalNudgeNotifications';
 import { useEffect, useRef, useState } from 'react';
@@ -22,7 +21,7 @@ import { Toast } from '../src/components/ui/Toast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
 import { WidgetService } from '../src/services/WidgetService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAppStore } from '../src/store';
+import { useAppStore, clearAllStoreData } from '../src/store';
 import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
 
@@ -116,7 +115,6 @@ export default function RootLayout() {
   // Initialize stores and global error handling
   useEffect(() => {
     initializeUnifiedStore();
-    autoInitializeMockData(); // Initialize main store with mock data
     configureCrisp();
 
     // Request notification permissions for focus timer completion sound
@@ -171,17 +169,38 @@ export default function RootLayout() {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
+          console.log('🚪 SIGNED_OUT — clearing all app data');
           PushNotificationService.unregisterPushToken();
           resetSyncSnapshot();
           useAppStore.getState().grove.resetGrove();
           WidgetService.clearSupabaseCredentials();
-          useAppStore.setState((state) => ({
-            auth: {
-              ...state.auth,
-              user: null,
-              isAuthenticated: false,
-            },
-          }));
+
+          // 1. Unblock any current selection and clear shield configuration
+          try {
+            const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
+            if (currentSelectionId) {
+              const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
+              await FamilyControlsModule.removeRestrictions(currentSelectionId);
+              await FamilyControlsModule.clearShieldConfiguration();
+            }
+          } catch (e) {
+            console.error('Error removing restrictions on sign-out:', e);
+          }
+
+          // 2. Clear all widget data from UserDefaults
+          WidgetService.clearAllWidgetData();
+
+          // 3. Clear AsyncStorage (except installed flag)
+          try {
+            await AsyncStorage.clear();
+            await AsyncStorage.setItem('bittersweet-installed', 'true');
+          } catch (e) {
+            console.error('Error clearing AsyncStorage on sign-out:', e);
+          }
+
+          // 4. Clear/reset all store states
+          clearAllStoreData(false); // keepAuth = false
+          clearUnifiedStoreData();
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           // Sync refreshed JWT so native intents always have a valid token
           WidgetService.syncSupabaseCredentials(session.user.id, session.access_token);
@@ -198,29 +217,33 @@ export default function RootLayout() {
             console.log('🔄 User switch detected:', previousUserId, '→', user.id, '— clearing local data');
             resetSyncSnapshot();
             useAppStore.getState().grove.resetGrove();
-            useAppStore.setState((state) => ({
-              focus: {
-                ...state.focus,
-                sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-                tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-                goals: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-                badges: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-                lastSelectedTagId: null,
-                lastDurationByTagId: {},
-              },
-              rewards: {
-                ...state.rewards,
-                balance: 0,
-                totalEarned: 0,
-                totalSpent: 0,
-                updatedAt: null,
-                transactions: [],
-              },
-              sync: {
-                ...state.sync,
-                lastSyncTime: null,
-              },
-            }));
+
+            // 1. Unblock any current selection and clear shield configuration
+            try {
+              const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
+              if (currentSelectionId) {
+                const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
+                await FamilyControlsModule.removeRestrictions(currentSelectionId);
+                await FamilyControlsModule.clearShieldConfiguration();
+              }
+            } catch (e) {
+              console.error('Error removing restrictions on user switch:', e);
+            }
+
+            // 2. Clear all widget data
+            WidgetService.clearAllWidgetData();
+
+            // 3. Clear AsyncStorage (except installed flag)
+            try {
+              await AsyncStorage.clear();
+              await AsyncStorage.setItem('bittersweet-installed', 'true');
+            } catch (e) {
+              console.error('Error clearing AsyncStorage on user switch:', e);
+            }
+
+            // 4. Clear/reset all store states (keeping newly signed in auth)
+            clearAllStoreData(true);
+            clearUnifiedStoreData();
           }
 
           useAppStore.setState((state) => ({
@@ -243,36 +266,51 @@ export default function RootLayout() {
           // Sync strategy depends on auth event type
           try {
             if (event === 'SIGNED_IN') {
-              // Reinstall / fresh sign-in: cloud is source of truth
-              console.log('🔄 SIGNED_IN — clearing local data, pulling from cloud');
+              console.log('🔄 SIGNED_IN — clearing all local app data, pulling from cloud');
 
-              // Clear all local data
-              resetSyncSnapshot();
+              // 1. Unblock any current selection and clear shield configuration
+              try {
+                const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
+                if (currentSelectionId) {
+                  const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
+                  await FamilyControlsModule.removeRestrictions(currentSelectionId);
+                  await FamilyControlsModule.clearShieldConfiguration();
+                }
+              } catch (e) {
+                console.error('Error removing restrictions on sign-in:', e);
+              }
+
+              // 2. Clear all widget data
+              WidgetService.clearAllWidgetData();
+
+              // 3. Clear AsyncStorage (except installed flag)
+              try {
+                await AsyncStorage.clear();
+                await AsyncStorage.setItem('bittersweet-installed', 'true');
+              } catch (e) {
+                console.error('Error clearing AsyncStorage on sign-in:', e);
+              }
+
+              // 4. Clear/reset all store states (keeping auth)
+              clearAllStoreData(true);
+              clearUnifiedStoreData();
+
+              // 5. Restore user auth state
               useAppStore.setState((state) => ({
-                focus: {
-                  ...state.focus,
-                  sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-                  tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-                  goals: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-                  badges: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
-                  lastSelectedTagId: null,
-                  lastDurationByTagId: {},
-                },
-                rewards: {
-                  ...state.rewards,
-                  balance: 0,
-                  totalEarned: 0,
-                  totalSpent: 0,
-                  updatedAt: null,
-                  transactions: [],
-                },
-                sync: {
-                  ...state.sync,
-                  lastSyncTime: null,
+                auth: {
+                  ...state.auth,
+                  user: {
+                    id: user.id,
+                    email: user.email ?? null,
+                    fullName: user.user_metadata?.full_name ?? null,
+                    avatarUrl: user.user_metadata?.avatar_url ?? null,
+                  },
+                  isAuthenticated: true,
+                  lastSignedInUserId: user.id,
                 },
               }));
 
-              // Pull from cloud and apply directly (no merge)
+              // 6. Pull from cloud and apply directly (no merge)
               await useAppStore.getState().sync.pullAndApply();
             } else {
               // INITIAL_SESSION (cold start): merge local + cloud
@@ -698,6 +736,22 @@ export default function RootLayout() {
                 <Stack.Screen
                   name="fruit-store"
                   options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="settings/preferences"
+                  options={{ headerShown: false, presentation: 'card' }}
+                />
+                <Stack.Screen
+                  name="settings/subscription"
+                  options={{ headerShown: false, presentation: 'card' }}
+                />
+                <Stack.Screen
+                  name="settings/grove-settings"
+                  options={{ headerShown: false, presentation: 'card' }}
+                />
+                <Stack.Screen
+                  name="settings/support"
+                  options={{ headerShown: false, presentation: 'card' }}
                 />
               </Stack>
 

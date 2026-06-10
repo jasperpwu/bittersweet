@@ -1,13 +1,25 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollView, Platform, useColorScheme, Image, ActivityIndicator, Alert, Linking } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+  withDelay,
+  withTiming,
+  FadeIn,
+} from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
+import { ConfettiOverlay } from '../../src/components/ui/ConfettiOverlay';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
 import { saveSessionPhoto, uploadSessionPhoto } from '../../src/services/sessionPhotoService';
+import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
+import { useAppSettings } from '../../src/store/unified-store';
 
 export default function SessionCompleteModal() {
   const colorScheme = useColorScheme();
@@ -20,6 +32,52 @@ export default function SessionCompleteModal() {
   const [notes, setNotes] = useState(session?.notes ?? '');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isSavingPhoto, setIsUploadingPhoto] = useState(false);
+
+  // Coach mark
+  const fruitRef = useRef<View>(null);
+  const { preferences, updatePreferences } = useAppSettings();
+  const [showFruitCoachMark, setShowFruitCoachMark] = useState(false);
+
+
+  // Celebration animations
+  const emojiScale = useSharedValue(0);
+  const durationTranslateY = useSharedValue(12);
+  const durationOpacity = useSharedValue(0);
+  const fruitScale = useSharedValue(1);
+
+  // Trigger animations on mount
+  useState(() => {
+    // Emoji bounces in from scale 0 -> 1 with spring
+    emojiScale.value = withSpring(1, { damping: 8, stiffness: 120 });
+
+    // Duration fades in with upward slide after slight delay
+    durationOpacity.value = withDelay(200, withTiming(1, { duration: 400 }));
+    durationTranslateY.value = withDelay(200, withTiming(0, { duration: 400 }));
+
+    // Fruit counter pulses once after emoji lands
+    fruitScale.value = withDelay(500, withSequence(
+      withTiming(1.15, { duration: 200 }),
+      withSpring(1, { damping: 10, stiffness: 150 })
+    ));
+
+    // Show fruit coach mark after animations settle (if applicable)
+    setTimeout(() => {
+      setShowFruitCoachMark(true);
+    }, 1000);
+  });
+
+  const emojiAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: emojiScale.value }],
+  }));
+
+  const durationAnimStyle = useAnimatedStyle(() => ({
+    opacity: durationOpacity.value,
+    transform: [{ translateY: durationTranslateY.value }],
+  }));
+
+  const fruitAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fruitScale.value }],
+  }));
 
   if (!session) {
     return (
@@ -146,6 +204,7 @@ export default function SessionCompleteModal() {
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
+      <ConfettiOverlay />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -157,20 +216,22 @@ export default function SessionCompleteModal() {
         >
           {/* Tag emoji + name */}
           <View className="items-center mb-6">
-            <Typography variant="headline-24" color="primary" className="mb-2">
-              {tag?.icon || '🏷️'}
-            </Typography>
+            <Animated.View style={emojiAnimStyle}>
+              <Typography variant="headline-24" color="primary" className="mb-2">
+                {tag?.icon || '🏷️'}
+              </Typography>
+            </Animated.View>
             <Typography variant="headline-20" color="primary">
               {tag?.name || 'Focus Session'}
             </Typography>
           </View>
 
           {/* Duration */}
-          <View className="items-center">
+          <Animated.View className="items-center" style={durationAnimStyle}>
             <Typography variant="headline-24" color="primary" className="mb-2">
               {formatDuration(session.duration)}
             </Typography>
-          </View>
+          </Animated.View>
 
           {/* Start / End time */}
           <View className="items-center mb-8">
@@ -182,12 +243,16 @@ export default function SessionCompleteModal() {
           {/* Fruits earned */}
           {fruitsEarned > 0 && (
             <View className="items-center mb-8">
-              <View className="bg-light-border/30 dark:bg-gray-700 rounded-2xl px-6 py-4 items-center">
+              <Animated.View
+                ref={fruitRef}
+                className="bg-light-border/30 dark:bg-gray-700 rounded-2xl px-6 py-4 items-center"
+                style={fruitAnimStyle}
+              >
                 <Typography variant="body-12" color="secondary" className="mb-1">
                   Earned
                 </Typography>
                 <FruitCounter fruitCount={fruitsEarned} size="large" />
-              </View>
+              </Animated.View>
             </View>
           )}
 
@@ -324,6 +389,20 @@ export default function SessionCompleteModal() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Fruit Coach Mark */}
+      {fruitsEarned > 0 && (
+        <CoachMark
+          targetRef={fruitRef as React.RefObject<View>}
+          title="You earned fruits!"
+          message="Spend them to unblock apps or purchase items in the Fruit Store."
+          visible={showFruitCoachMark && !preferences.hasSeenFruitCoachMark}
+          onDismiss={() => {
+            setShowFruitCoachMark(false);
+            updatePreferences({ hasSeenFruitCoachMark: true });
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }

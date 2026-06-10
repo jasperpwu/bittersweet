@@ -187,6 +187,9 @@ struct StopSessionIntent: LiveActivityIntent {
         SupabaseClient.recordSession(
           sessionId: sessionId,
           tagId: tagId,
+          tagName: tagName,
+          tagIcon: tagIcon,
+          tagColor: sessionInfo["tagColor"] as? String ?? "",
           duration: durationMinutes,
           startTime: startTime,
           endTime: stopTimestamp

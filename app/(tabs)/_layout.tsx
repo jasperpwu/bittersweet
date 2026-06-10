@@ -2,6 +2,19 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, useColorScheme } from 'react-native';
 import { useAppStore } from '../../src/store';
+import { Typography } from '../../src/components/ui/Typography';
+
+const ActiveDot = () => (
+  <View
+    style={{
+      width: 14,
+      height: 4,
+      backgroundColor: '#6592E9',
+      borderRadius: 100,
+      marginTop: 2,
+    }}
+  />
+);
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -28,7 +41,11 @@ export default function TabLayout() {
           paddingTop: 8,
           paddingBottom: 24,
         },
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontFamily: 'Poppins-Medium',
+          fontSize: 10,
+        },
         tabBarItemStyle: {
           height: 50,
         },
@@ -37,20 +54,18 @@ export default function TabLayout() {
         name="journal"
         options={{
           title: 'Journal',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <Ionicons name="book-outline" size={24} color={color} />
-              {focused && (
-                <View
-                  style={{
-                    width: 14,
-                    height: 4,
-                    backgroundColor: '#6592E9',
-                    borderRadius: 100,
-                    marginTop: 6,
-                  }}
-                />
-              )}
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="calendar-outline" size={24} color={color} />
+          ),
+          tabBarLabel: ({ focused, color }) => (
+            <View style={{ alignItems: 'center' }}>
+              <Typography
+                variant="tiny-10"
+                style={{ color, fontFamily: 'Poppins-Medium' }}
+              >
+                Journal
+              </Typography>
+              {focused && <ActiveDot />}
             </View>
           ),
         }}
@@ -59,20 +74,18 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Focus',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <Ionicons name="play" size={30} color={color} />
-              {focused && (
-                <View
-                  style={{
-                    width: 14,
-                    height: 4,
-                    backgroundColor: '#6592E9',
-                    borderRadius: 100,
-                    marginTop: 2,
-                  }}
-                />
-              )}
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="play" size={30} color={color} />
+          ),
+          tabBarLabel: ({ focused, color }) => (
+            <View style={{ alignItems: 'center' }}>
+              <Typography
+                variant="tiny-10"
+                style={{ color, fontFamily: 'Poppins-Medium' }}
+              >
+                Focus
+              </Typography>
+              {focused && <ActiveDot />}
             </View>
           ),
         }}
@@ -81,20 +94,18 @@ export default function TabLayout() {
         name="insights"
         options={{
           title: 'Goals',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <Ionicons name="trophy-outline" size={24} color={color} />
-              {focused && (
-                <View
-                  style={{
-                    width: 14,
-                    height: 4,
-                    backgroundColor: '#6592E9',
-                    borderRadius: 100,
-                    marginTop: 6,
-                  }}
-                />
-              )}
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="stats-chart-outline" size={24} color={color} />
+          ),
+          tabBarLabel: ({ focused, color }) => (
+            <View style={{ alignItems: 'center' }}>
+              <Typography
+                variant="tiny-10"
+                style={{ color, fontFamily: 'Poppins-Medium' }}
+              >
+                Goals
+              </Typography>
+              {focused && <ActiveDot />}
             </View>
           ),
         }}
@@ -104,35 +115,33 @@ export default function TabLayout() {
         options={{
           title: 'Grove',
           href: isGroveActive ? '/(tabs)/grove' : null,
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <View>
-                <Ionicons name="people-outline" size={24} color={color} />
-                {groveBadgeCount > 0 && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: -2,
-                      right: -4,
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: '#FF3B30',
-                    }}
-                  />
-                )}
-              </View>
-              {focused && (
+          tabBarIcon: ({ color }) => (
+            <View>
+              <Ionicons name="people-outline" size={24} color={color} />
+              {groveBadgeCount > 0 && (
                 <View
                   style={{
-                    width: 14,
-                    height: 4,
-                    backgroundColor: '#6592E9',
-                    borderRadius: 100,
-                    marginTop: 6,
+                    position: 'absolute',
+                    top: -2,
+                    right: -4,
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: '#FF3B30',
                   }}
                 />
               )}
+            </View>
+          ),
+          tabBarLabel: ({ focused, color }) => (
+            <View style={{ alignItems: 'center' }}>
+              <Typography
+                variant="tiny-10"
+                style={{ color, fontFamily: 'Poppins-Medium' }}
+              >
+                Grove
+              </Typography>
+              {focused && <ActiveDot />}
             </View>
           ),
         }}
@@ -141,20 +150,18 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', height: 50 }}>
-              <Ionicons name="settings-outline" size={24} color={color} />
-              {focused && (
-                <View
-                  style={{
-                    width: 14,
-                    height: 4,
-                    backgroundColor: '#6592E9',
-                    borderRadius: 100,
-                    marginTop: 6,
-                  }}
-                />
-              )}
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="settings-outline" size={24} color={color} />
+          ),
+          tabBarLabel: ({ focused, color }) => (
+            <View style={{ alignItems: 'center' }}>
+              <Typography
+                variant="tiny-10"
+                style={{ color, fontFamily: 'Poppins-Medium' }}
+              >
+                Settings
+              </Typography>
+              {focused && <ActiveDot />}
             </View>
           ),
         }}

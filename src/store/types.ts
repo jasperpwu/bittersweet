@@ -160,6 +160,9 @@ export interface UnlockableApp extends BaseEntity {
 // Settings Types
 export interface AppSettings {
   hasSeenOnboarding: boolean;
+  hasSeenFruitCoachMark: boolean;
+  hasSeenTagSwipeHint: boolean;
+  hasSeenGoalSwipeHint: boolean;
   theme: 'light' | 'dark' | 'system';
   language: string;
   notifications: {

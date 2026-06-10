@@ -25,6 +25,7 @@ import { showToast } from '../../src/components/ui/Toast';
 import { isToday } from '../../src/utils/dateUtils';
 import { FocusSession } from '../../src/types/models';
 import { saveSessionPhoto, deleteSessionPhoto } from '../../src/services/sessionPhotoService';
+import { EmptyState } from '../../src/components/ui/EmptyState/EmptyState';
 
 
 export default function JournalScreen() {
@@ -415,6 +416,8 @@ export default function JournalScreen() {
   const fruitDelta = adjustedFruits - currentFruits;
 
   // Convert store sessions to component format and filter for selected date
+  const hasAnySessions = sessions?.allIds?.length > 0;
+
   const sessionsForSelectedDate = useMemo(() => {
     // Safety check to handle undefined sessions
     if (!sessions || !sessions.allIds || !sessions.byId) {
@@ -455,76 +458,94 @@ export default function JournalScreen() {
 
   return (
     <View className="flex-1 bg-light-bg dark:bg-dark-bg" style={{ paddingTop: insets.top }}>
-      {/* Header + Date Selector */}
-      <View className="bg-light-bg dark:bg-dark-bg border-b border-light-border dark:border-dark-border">
-        {/* Header row */}
-        <View className="flex-row items-center justify-between px-4 pt-2 pb-1">
-          <Typography variant="headline-20" color="primary" style={{ fontWeight: '700' }}>
-            {headerDateString}
-          </Typography>
-          <View className="flex-row items-center" style={{ gap: 8 }}>
-            <Pressable
-              onPress={openManualEntryModal}
-              className="w-9 h-9 items-center justify-center rounded-lg active:opacity-80 bg-black/10 dark:bg-white/10"
-              accessibilityLabel="Add manual focus session"
-            >
-              <Ionicons name="add" size={20} color="#FFFFFF" />
-            </Pressable>
-          </View>
+      {/* Global Empty State — covers entire tab when user has no sessions at all */}
+      {!hasAnySessions && (
+        <View className="flex-1">
+          <EmptyState
+            icon="leaf-outline"
+            iconColor="#51BC6F"
+            title="Your journal is empty"
+            description="Complete your first focus session to start tracking your progress here."
+            buttonLabel="Start a Focus Session"
+            onButtonPress={() => router.push('/(tabs)')}
+          />
         </View>
+      )}
 
-        {/* Week strip */}
-        <DateSelector
-          selectedDate={selectedDate}
-          onDateSelect={handleDateSelect}
-        />
-      </View>
-
-      <View className="flex-1">
-
-        {/* Timeline */}
-        <GestureDetector gesture={swipeGesture}>
-          <Animated.View className="flex-1 px-5 pt-4" style={animatedTimelineStyle}>
-            <Timeline
-              sessions={sessionsForSelectedDate}
-              currentTime={currentTime}
-              isToday={!showJumpToToday}
-              onSessionPress={handleSessionPress}
-              scrollToSessionId={scrollToSessionId}
-              onScrollComplete={() => setScrollToSessionId(null)}
-            />
-          </Animated.View>
-        </GestureDetector>
-
-        {/* Jump to Today floating button */}
-        {showJumpToToday && (
-          <Animated.View
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(200)}
-            style={{
-              position: 'absolute',
-              bottom: 12,
-              right: 20,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 5,
-            }}
-          >
-            <Pressable
-              onPress={handleJumpToToday}
-              className="flex-row items-center rounded-full px-4 py-2.5 active:opacity-80"
-              style={{ backgroundColor: 'rgba(101, 146, 233, 0.5)' }}
-            >
-              <Ionicons name="today-outline" size={18} color="#fff" />
-              <Typography variant="subtitle-14-semibold" color="white" className="ml-1.5">
-                Back to Today
+      {/* Normal journal UI — header, date carousel, timeline */}
+      {hasAnySessions && (
+        <>
+          {/* Header + Date Selector */}
+          <View className="bg-light-bg dark:bg-dark-bg border-b border-light-border dark:border-dark-border">
+            {/* Header row */}
+            <View className="flex-row items-center justify-between px-4 pt-2 pb-1">
+              <Typography variant="headline-20" color="primary" style={{ fontWeight: '700' }}>
+                {headerDateString}
               </Typography>
-            </Pressable>
-          </Animated.View>
-        )}
-      </View>
+              <View className="flex-row items-center" style={{ gap: 8 }}>
+                <Pressable
+                  onPress={openManualEntryModal}
+                  className="w-9 h-9 items-center justify-center rounded-lg active:opacity-80 bg-black/10 dark:bg-white/10"
+                  accessibilityLabel="Add manual focus session"
+                >
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Week strip */}
+            <DateSelector
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+            />
+          </View>
+
+          <View className="flex-1">
+            {/* Timeline */}
+            <GestureDetector gesture={swipeGesture}>
+              <Animated.View className="flex-1 px-5 pt-4" style={animatedTimelineStyle}>
+                <Timeline
+                  sessions={sessionsForSelectedDate}
+                  currentTime={currentTime}
+                  isToday={!showJumpToToday}
+                  onSessionPress={handleSessionPress}
+                  scrollToSessionId={scrollToSessionId}
+                  onScrollComplete={() => setScrollToSessionId(null)}
+                />
+              </Animated.View>
+            </GestureDetector>
+
+            {/* Jump to Today floating button */}
+            {showJumpToToday && (
+              <Animated.View
+                entering={FadeIn.duration(200)}
+                exiting={FadeOut.duration(200)}
+                style={{
+                  position: 'absolute',
+                  bottom: 12,
+                  right: 20,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: 5,
+                }}
+              >
+                <Pressable
+                  onPress={handleJumpToToday}
+                  className="flex-row items-center rounded-full px-4 py-2.5 active:opacity-80"
+                  style={{ backgroundColor: 'rgba(101, 146, 233, 0.5)' }}
+                >
+                  <Ionicons name="today-outline" size={18} color="#fff" />
+                  <Typography variant="subtitle-14-semibold" color="white" className="ml-1.5">
+                    Back to Today
+                  </Typography>
+                </Pressable>
+              </Animated.View>
+            )}
+          </View>
+        </>
+      )}
 
       {/* Sync Status Banner (dev-only) */}
       {(syncBannerUserId === '9c931ba0-39e9-4597-b691-4b941b0c7118' || syncBannerUserId === 'b022d7ab-fd25-4bbc-9ebc-1df65e87248a') && (() => {

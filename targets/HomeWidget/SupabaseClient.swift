@@ -46,7 +46,7 @@ enum SupabaseClient {
     return request
   }
 
-  private static func fire(_ request: URLRequest, label: String) {
+  private static func fire(_ request: URLRequest, label: String, completion: (() -> Void)? = nil) {
     URLSession.shared.dataTask(with: request) { _, response, error in
       if let error = error {
         print("⚡️ [SupabaseClient] \(label) failed: \(error.localizedDescription)")
@@ -57,6 +57,7 @@ enum SupabaseClient {
         print("⚡️ [SupabaseClient] \(label) HTTP \(httpResponse.statusCode)")
       } else {
         print("⚡️ [SupabaseClient] \(label) succeeded")
+        completion?()
       }
     }.resume()
   }
@@ -95,6 +96,9 @@ enum SupabaseClient {
   static func recordSession(
     sessionId: String,
     tagId: String,
+    tagName: String,
+    tagIcon: String,
+    tagColor: String,
     duration: Int,
     startTime: Double,
     endTime: Double
@@ -105,7 +109,16 @@ enum SupabaseClient {
     let endDate = Date(timeIntervalSince1970: endTime / 1000)
     let formatter = ISO8601DateFormatter()
 
-    let body: [String: Any] = [
+    let tagBody: [String: Any] = [
+      "id": tagId,
+      "user_id": creds.userId,
+      "name": tagName.isEmpty ? "Focus" : tagName,
+      "icon": tagIcon,
+      "color": tagColor.isEmpty ? "#6592E9" : tagColor,
+      "updated_at": formatter.string(from: Date()),
+    ]
+
+    let sessionBody: [String: Any] = [
       "id": sessionId,
       "user_id": creds.userId,
       "tag_id": tagId,
@@ -117,15 +130,25 @@ enum SupabaseClient {
       "is_manual_entry": false,
     ]
 
-    guard let request = makeRequest(
-      path: "/rest/v1/focus_sessions",
+    guard let tagRequest = makeRequest(
+      path: "/rest/v1/session_tags",
       method: "POST",
-      body: body,
+      body: tagBody,
       accessToken: creds.accessToken,
       extraHeaders: ["Prefer": "resolution=merge-duplicates"]
     ) else { return }
 
-    fire(request, label: "recordSession(\(sessionId))")
+    guard let sessionRequest = makeRequest(
+      path: "/rest/v1/focus_sessions",
+      method: "POST",
+      body: sessionBody,
+      accessToken: creds.accessToken,
+      extraHeaders: ["Prefer": "resolution=merge-duplicates"]
+    ) else { return }
+
+    fire(tagRequest, label: "upsertSessionTag(\(tagId))") {
+      fire(sessionRequest, label: "recordSession(\(sessionId))")
+    }
   }
 
   /// Record challenge progress via the server-side RPC.

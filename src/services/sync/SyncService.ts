@@ -22,6 +22,26 @@ import {
 
 const BATCH_SIZE = 100;
 
+const FLUSH_PRIORITY: Record<string, number> = {
+  session_tags: 10,
+  focus_goals: 20,
+  focus_sessions: 30,
+};
+
+function sortEntriesForFlush(entries: SyncQueueEntry[]): SyncQueueEntry[] {
+  return [...entries].sort((a, b) => {
+    const aPriority = a.operation === 'upsert'
+      ? FLUSH_PRIORITY[a.table] ?? 50
+      : 100;
+    const bPriority = b.operation === 'upsert'
+      ? FLUSH_PRIORITY[b.table] ?? 50
+      : 100;
+
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    return a.timestamp - b.timestamp;
+  });
+}
+
 export class SyncService {
   /**
    * Upload all local data on first sign-in (when cloud has no data).
@@ -243,7 +263,7 @@ export class SyncService {
 
     console.log(`☁️ Flushing ${syncQueue.size} queued operations...`);
 
-    const entries = await syncQueue.dequeue(50);
+    const entries = sortEntriesForFlush(await syncQueue.dequeue(syncQueue.size));
     const succeeded: string[] = [];
     let failed = 0;
 
@@ -269,6 +289,11 @@ export class SyncService {
         succeeded.push(entry.id);
       } catch (error: any) {
         console.error(`[SyncFlush] ✗ FAILED entry ${entry.id} (${entry.table} ${entry.operation}):`, error?.message || error, JSON.stringify(error));
+        if (entry.table === 'focus_sessions') {
+          console.error(
+            `[SyncFlush] Failed focus session payload: id=${entry.data?.id ?? '?'} user_id=${entry.data?.user_id ?? '?'} tag_id=${entry.data?.tag_id ?? '?'}`
+          );
+        }
         failed++;
       }
     }
