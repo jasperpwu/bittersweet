@@ -119,6 +119,16 @@ export default function OnboardingScreen() {
     }
   };
 
+  // Tag creation is optional. If the user filled in the form (name + emoji),
+  // create the tag before advancing; otherwise just skip ahead.
+  const tagFormReady = !!tagName.trim() && !!tagEmoji;
+  const handleInteractiveNext = () => {
+    if (!tagCreated && tagFormReady) {
+      handleCreateTag();
+    }
+    handleNext();
+  };
+
   const onScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
     const index = Math.round(scrollPosition / width);
@@ -304,7 +314,6 @@ export default function OnboardingScreen() {
         bounces={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        scrollEnabled={!(ONBOARDING_DATA[currentIndex]?.interactive && !tagCreated)}
       />
 
       <View className="px-8 pb-12 pt-4">
@@ -320,8 +329,18 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        {/* Action Button — hidden on interactive slide until tag is created */}
-        {(ONBOARDING_DATA[currentIndex]?.interactive && !tagCreated) ? null : (
+        {/* Action Button — tag creation is optional: show "Skip" until the user
+            fills in a tag, then "Next" (which creates the tag and advances). */}
+        {ONBOARDING_DATA[currentIndex]?.interactive ? (
+          <Button
+            onPress={handleInteractiveNext}
+            variant={tagCreated || tagFormReady ? 'primary' : 'secondary'}
+            size="large"
+            className="w-full"
+          >
+            {tagCreated || tagFormReady ? 'Next' : 'Skip'}
+          </Button>
+        ) : (
           <Button onPress={handleNext} variant="primary" size="large" className="w-full">
             {currentIndex === ONBOARDING_DATA.length - 1 ? 'Get Started' : 'Next'}
           </Button>

@@ -206,6 +206,14 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
 
       if (!hasLaunchedBefore) {
         console.log('🔐 Fresh install detected — clearing stale Keychain session');
+        // Seed the four default tags for this brand-new local (signed-out) user
+        // FIRST — before any await yields and before the user can reach the
+        // onboarding sign-in button. Seeding once here (and only here) guarantees
+        // defaults exist before any sign-in; the install flag is never cleared on
+        // sign-out, so this branch — and the seed — never runs again.
+        // Dynamic import avoids a static circular dependency (index → authSlice).
+        const { seedDefaultTags } = await import('../index');
+        seedDefaultTags();
         await supabase.auth.signOut();
         await AsyncStorage.setItem(INSTALLED_FLAG_KEY, 'true');
         // No session to restore after clearing

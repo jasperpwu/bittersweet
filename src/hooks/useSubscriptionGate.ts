@@ -1,7 +1,6 @@
 import { useAppStore } from '../store';
 
 const FREE_LIMITS = {
-  maxTags: 3,
   maxActiveGoals: 1,
 } as const;
 
@@ -18,13 +17,14 @@ export function useSubscriptionGate() {
 
   return {
     isPremium,
-    canCreateTag: isPremium || tagCount < FREE_LIMITS.maxTags,
+    // Tags are unlimited for everyone — no premium gate on tag count.
+    canCreateTag: true,
     canActivateGoal: isPremium || activeGoalCount < FREE_LIMITS.maxActiveGoals,
     // Keep canCreateGoal for backward compat (alias for canActivateGoal)
     canCreateGoal: isPremium || activeGoalCount < FREE_LIMITS.maxActiveGoals,
     tagCount,
     activeGoalCount,
-    maxTags: isPremium ? Infinity : FREE_LIMITS.maxTags,
+    maxTags: Infinity,
     maxActiveGoals: isPremium ? Infinity : FREE_LIMITS.maxActiveGoals,
   };
 }
