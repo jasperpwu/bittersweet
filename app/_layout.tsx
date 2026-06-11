@@ -266,52 +266,75 @@ export default function RootLayout() {
           // Sync strategy depends on auth event type
           try {
             if (event === 'SIGNED_IN') {
-              console.log('🔄 SIGNED_IN — clearing all local app data, pulling from cloud');
+              // Distinguish a brand-new sign-up from a sign-in to an existing
+              // account. The app can't tell directly (Apple Sign-In auto-creates
+              // accounts), so we probe the cloud: a brand-new account has no
+              // sessions/tags yet (the signup trigger seeds only profiles +
+              // rewards). If the cloud is empty we PRESERVE local data and upload
+              // it (so a pre-account user keeps everything they built); if the
+              // cloud has data we CLEAR local and pull the cloud clean.
+              // pullFromCloud() returns null on network error — that falls into
+              // the PRESERVE branch, which is safe: initialUpload is upsert-only,
+              // so a misclassified existing user neither loses local data nor
+              // wipes cloud data, and the next cold-start reconciles.
+              const remoteData = await useAppStore.getState().sync.pullFromCloud();
+              const cloudHasData =
+                !!remoteData &&
+                (remoteData.focus.sessions.allIds.length > 0 ||
+                  remoteData.focus.tags.allIds.length > 0);
 
-              // 1. Unblock any current selection and clear shield configuration
-              try {
-                const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
-                if (currentSelectionId) {
-                  const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
-                  await FamilyControlsModule.removeRestrictions(currentSelectionId);
-                  await FamilyControlsModule.clearShieldConfiguration();
+              if (cloudHasData) {
+                console.log('🔄 SIGNED_IN (existing account) — clearing local data, pulling cloud clean');
+
+                // 1. Unblock any current selection and clear shield configuration
+                try {
+                  const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
+                  if (currentSelectionId) {
+                    const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
+                    await FamilyControlsModule.removeRestrictions(currentSelectionId);
+                    await FamilyControlsModule.clearShieldConfiguration();
+                  }
+                } catch (e) {
+                  console.error('Error removing restrictions on sign-in:', e);
                 }
-              } catch (e) {
-                console.error('Error removing restrictions on sign-in:', e);
-              }
 
-              // 2. Clear all widget data
-              WidgetService.clearAllWidgetData();
+                // 2. Clear all widget data
+                WidgetService.clearAllWidgetData();
 
-              // 3. Clear AsyncStorage (except installed flag)
-              try {
-                await AsyncStorage.clear();
-                await AsyncStorage.setItem('bittersweet-installed', 'true');
-              } catch (e) {
-                console.error('Error clearing AsyncStorage on sign-in:', e);
-              }
+                // 3. Clear AsyncStorage (except installed flag)
+                try {
+                  await AsyncStorage.clear();
+                  await AsyncStorage.setItem('bittersweet-installed', 'true');
+                } catch (e) {
+                  console.error('Error clearing AsyncStorage on sign-in:', e);
+                }
 
-              // 4. Clear/reset all store states (keeping auth)
-              clearAllStoreData(true);
-              clearUnifiedStoreData();
+                // 4. Clear/reset all store states (keeping auth)
+                clearAllStoreData(true);
+                clearUnifiedStoreData();
 
-              // 5. Restore user auth state
-              useAppStore.setState((state) => ({
-                auth: {
-                  ...state.auth,
-                  user: {
-                    id: user.id,
-                    email: user.email ?? null,
-                    fullName: user.user_metadata?.full_name ?? null,
-                    avatarUrl: user.user_metadata?.avatar_url ?? null,
+                // 5. Restore user auth state
+                useAppStore.setState((state) => ({
+                  auth: {
+                    ...state.auth,
+                    user: {
+                      id: user.id,
+                      email: user.email ?? null,
+                      fullName: user.user_metadata?.full_name ?? null,
+                      avatarUrl: user.user_metadata?.avatar_url ?? null,
+                    },
+                    isAuthenticated: true,
+                    lastSignedInUserId: user.id,
                   },
-                  isAuthenticated: true,
-                  lastSignedInUserId: user.id,
-                },
-              }));
+                }));
 
-              // 6. Pull from cloud and apply directly (no merge)
-              await useAppStore.getState().sync.pullAndApply();
+                // 6. Pull from cloud and apply directly (no merge)
+                await useAppStore.getState().sync.pullAndApply();
+              } else {
+                // Brand-new account: keep local data and push it to the cloud.
+                console.log('🔄 SIGNED_IN (brand-new account) — preserving local data, uploading to cloud');
+                await useAppStore.getState().sync.initialUpload();
+              }
             } else {
               // INITIAL_SESSION (cold start): merge local + cloud
               console.log('🔄 INITIAL_SESSION — merging local with cloud');

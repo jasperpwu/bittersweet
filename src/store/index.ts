@@ -2111,6 +2111,7 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
       currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },
       lastSelectedTagId: null,
       lastDurationByTagId: {},
+      sharedTagStats: { joinerStats: [], loading: false, currentTagId: null },
     },
     rewards: {
       ...s.rewards,

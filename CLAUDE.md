@@ -51,11 +51,20 @@ When fixing bugs, follow this structured approach:
 ## Data Sync Philosophy (Single-Device)
 - **Lists** (sessions, tags, goals, badges): pull latest cloud data, compute diff, write finalized to cloud
 - **Objects/values** (rewards, settings): pull latest, compare `updated_at`, latest wins, write to remote
-- **On reinstall/sign-in** (`SIGNED_IN`): Clear all local data, pull from cloud as source of truth
 - **On cold start** (`INITIAL_SESSION`): Merge — flush offline queue, pull from cloud, last-write-wins per entity
 - **Grove drag-to-refresh**: Pull all grove social data from cloud
 - All syncable data types: focus sessions, session tags, focus goals, badges, rewards, blocklist, settings
 - **Sync logic belongs in slice methods** (`triggerSync`, `pullAndApply`), not in `_layout.tsx`. The layout should only call the slice method; all store updates, UserDefaults writes, and side effects (shield, widget sync) happen inside the slice. Do not duplicate sync logic across files.
+
+## Auth Data Lifecycle Policy
+How local data is treated on each auth transition (`onAuthStateChange` in `app/_layout.tsx`). The driving principle: **never destroy the only copy of a user's data, and never leak one user's data to another.**
+
+- **Brand-new sign-up** → **preserve local data and upload it.** A user who built data before creating an account keeps everything. We can't ask Apple Sign-In whether the account is new (it auto-creates), so we detect it by probing the cloud: on `SIGNED_IN`, `pullFromCloud()` first — if the cloud has **no sessions and no tags**, it's a brand-new account (the signup DB trigger seeds only `profiles` + `rewards`, never tags/sessions), so call `initialUpload()` and do **not** clear anything.
+- **Sign-in to an existing account** → **clear all local data, then pull the cloud clean.** If the cloud probe finds sessions/tags, treat it as a returning user: wipe local (see below) and `pullAndApply()` so the device exactly mirrors the cloud.
+- **Sign-out** → **always wipe all local data** (privacy — no data may survive for the next person on the device).
+- **User switch** (different `lastSignedInUserId` on `SIGNED_IN`/`INITIAL_SESSION`) → wipe local before adopting the new user.
+- **"Wipe all local data" means everything**, via this exact sequence: (1) remove native restrictions + clear shield config, (2) `WidgetService.clearAllWidgetData()`, (3) `AsyncStorage.clear()` (then re-set the `bittersweet-installed` flag), (4) `clearAllStoreData()` (sessions, tags, goals, badges, rewards, blocklist, subscription, referral, **shared-tag stats**, grove/challenge data, etc.), (5) `clearUnifiedStoreData()` (settings/preferences), plus `resetSyncSnapshot()` and `grove.resetGrove()`. When adding any new persisted state, make sure `clearAllStoreData` zeroes it too — an omission leaks data across accounts.
+- **Detection is cloud-emptiness, not timestamps:** chosen because it makes data loss impossible — we only ever clear local when there is cloud data to replace it with.
 
 ## Blocklist Architecture
 - **Single canonical UserDefaults key:** The blocklist uses `"bittersweet-blocklist"` as the single canonical selection ID in UserDefaults. The picker (`DeviceActivitySelectionViewPersisted`), blocking (`blockSelection`), sync merge operations, and the Zustand store all use this same key. Never introduce a separate "merged" or "temp" ID that persists beyond a single sync operation — having two IDs for the same data leads to them getting out of sync.
