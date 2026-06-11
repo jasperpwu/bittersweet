@@ -16,6 +16,8 @@ export interface ChallengeParticipant {
   status: 'pending' | 'accepted' | 'declined';
   hits: number;
   outcome: 'completed' | 'failed' | null;
+  /** This participant's own local tag id for the challenge, or null until they accept. */
+  tagId: string | null;
   profile: ChallengeProfile;
 }
 
@@ -118,6 +120,8 @@ export const GroveChallengeService = {
         user_id: user.id,
         role: 'creator',
         status: 'accepted',
+        // Creator already focuses with this tag, so seed their own tag id.
+        tag_id: input.tagId,
       },
       ...input.inviteeIds.map(inviteeId => ({
         challenge_id: challenge.id,
@@ -136,9 +140,10 @@ export const GroveChallengeService = {
 
   /**
    * Accept a pending challenge invitation.
-   * Updates the participant row status to 'accepted'.
+   * Updates the participant row status to 'accepted' and records the
+   * participant's own local tag id used to track challenge progress.
    */
-  async acceptChallenge(challengeId: string): Promise<void> {
+  async acceptChallenge(challengeId: string, tagId: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -146,6 +151,7 @@ export const GroveChallengeService = {
       .from('grove_challenge_participants')
       .update({
         status: 'accepted',
+        tag_id: tagId,
         updated_at: new Date().toISOString(),
       })
       .eq('challenge_id', challengeId)
@@ -263,6 +269,7 @@ export const GroveChallengeService = {
         status: p.status,
         hits: p.hits,
         outcome: p.outcome,
+        tagId: p.tag_id ?? null,
         profile: profileMap.get(p.user_id) || defaultProfile,
       }));
 
@@ -274,7 +281,9 @@ export const GroveChallengeService = {
         creatorId: c.creator_id,
         participants,
         myParticipant,
-        tagId: c.tag_id,
+        // The current user's own tag drives client/native progress matching;
+        // fall back to the challenge's tag id for legacy rows not yet migrated.
+        tagId: myParticipant?.tagId ?? c.tag_id,
         tagName: c.tag_name,
         tagIcon: c.tag_icon,
         period,

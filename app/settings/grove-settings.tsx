@@ -16,6 +16,7 @@ export default function GroveSettingsScreen() {
   const { triggerHaptic } = useDeviceIntegration();
 
   const profile = useAppStore((s) => s.grove.profile);
+  const profileLoaded = useAppStore((s) => s.grove.profileLoaded);
   const isActive = useAppStore((s) => s.grove.isActive);
   const isGroveLoading = useAppStore((s) => s.grove.isLoading);
   const toggleGroveActive = useAppStore((s) => s.grove.toggleGroveActive);
@@ -94,16 +95,21 @@ export default function GroveSettingsScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {!profile ? (
-          <SettingsSection title="Profile">
-            <SettingsItem
-              title="Set Up Grove Profile"
-              subtitle="Share your focus journey with friends"
-              icon="people-outline"
-              hasChevron
-              onPress={() => router.push('/(modals)/grove-setup')}
-              isLast
-            />
-          </SettingsSection>
+          // Only surface the setup CTA once the profile fetch has resolved —
+          // otherwise it flashes after sign-in (profile reset to null) before
+          // the cloud fetch confirms the user actually has no profile.
+          profileLoaded ? (
+            <SettingsSection title="Profile">
+              <SettingsItem
+                title="Set Up Grove Profile"
+                subtitle="Share your focus journey with friends"
+                icon="people-outline"
+                hasChevron
+                onPress={() => router.push('/(modals)/grove-setup')}
+                isLast
+              />
+            </SettingsSection>
+          ) : null
         ) : (
           <>
             {/* Friends */}

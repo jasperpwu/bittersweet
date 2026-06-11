@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { ChallengeCard, formatTarget } from '../../src/components/grove/ChallengeCard';
 import { ChallengeDetailSheet } from '../../src/components/grove/ChallengeDetailSheet';
+import { ChallengeAcceptSheet } from '../../src/components/grove/ChallengeAcceptSheet';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
 import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
@@ -13,23 +14,15 @@ export default function ChallengesModal() {
   const challenges = useAppStore((s) => s.grove.challenges);
   const currentUserId = useAppStore((s) => s.auth.user?.id ?? '');
   const fetchChallenges = useAppStore((s) => s.grove.fetchChallenges);
-  const acceptChallenge = useAppStore((s) => s.grove.acceptChallenge);
   const declineChallenge = useAppStore((s) => s.grove.declineChallenge);
   const deleteChallengeAction = useAppStore((s) => s.grove.deleteChallenge);
 
   const [selectedChallenge, setSelectedChallenge] = useState<ChallengeItem | null>(null);
+  const [acceptingChallenge, setAcceptingChallenge] = useState<ChallengeItem | null>(null);
 
   useEffect(() => {
     fetchChallenges();
   }, []);
-
-  const handleAccept = useCallback(async (challengeId: string) => {
-    try {
-      await acceptChallenge(challengeId);
-    } catch {
-      Alert.alert('Error', 'Failed to accept challenge. Please try again.');
-    }
-  }, [acceptChallenge]);
 
   const handleDecline = useCallback(async (challengeId: string) => {
     try {
@@ -113,7 +106,7 @@ export default function ChallengesModal() {
             <Ionicons name="close" size={18} color="#8A8A8A" />
           </Pressable>
           <Pressable
-            onPress={() => handleAccept(challenge.id)}
+            onPress={() => setAcceptingChallenge(challenge)}
             className="w-9 h-9 rounded-full bg-[#E9A065] items-center justify-center active:opacity-80"
           >
             <Ionicons name="checkmark" size={18} color="#FFFFFF" />
@@ -277,6 +270,12 @@ export default function ChallengesModal() {
         isVisible={selectedChallenge !== null}
         onClose={() => setSelectedChallenge(null)}
         onDelete={handleDelete}
+      />
+
+      <ChallengeAcceptSheet
+        challenge={acceptingChallenge}
+        isVisible={acceptingChallenge !== null}
+        onClose={() => setAcceptingChallenge(null)}
       />
     </SafeAreaView>
   );

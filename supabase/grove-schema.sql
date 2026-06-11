@@ -330,6 +330,9 @@ CREATE TABLE grove_challenge_participants (
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
   hits INTEGER NOT NULL DEFAULT 0,
   outcome TEXT CHECK (outcome IN ('completed', 'failed')),
+  -- Each participant tracks the challenge against their OWN local tag id.
+  -- NULL until an invitee accepts and picks/creates a matching tag.
+  tag_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT unique_challenge_participant UNIQUE (challenge_id, user_id)
@@ -374,13 +377,14 @@ RETURNS TABLE (
   status TEXT,
   hits INTEGER,
   outcome TEXT,
+  tag_id TEXT,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
 BEGIN
   RETURN QUERY
     SELECT cp.id, cp.challenge_id, cp.user_id, cp.role, cp.status,
-           cp.hits, cp.outcome, cp.created_at, cp.updated_at
+           cp.hits, cp.outcome, cp.tag_id, cp.created_at, cp.updated_at
     FROM grove_challenge_participants cp
     WHERE cp.challenge_id = ANY(p_challenge_ids)
       AND EXISTS (
@@ -554,6 +558,7 @@ DECLARE
   v_total_periods INTEGER;
   v_profile grove_profiles%ROWTYPE;
   v_hits INTEGER;
+  v_tag_id TEXT;
 BEGIN
   SELECT * INTO v_challenge FROM grove_challenges WHERE id = p_challenge_id;
   IF v_challenge IS NULL THEN
@@ -574,13 +579,14 @@ BEGIN
   v_participants := ARRAY[]::JSON[];
 
   FOR v_participant IN
-    SELECT cp.user_id, cp.role, cp.status, cp.hits, cp.outcome
+    SELECT cp.user_id, cp.role, cp.status, cp.hits, cp.outcome, cp.tag_id
     FROM grove_challenge_participants cp
     WHERE cp.challenge_id = p_challenge_id
       AND cp.status = 'accepted'
     ORDER BY cp.role ASC, cp.created_at ASC
   LOOP
     SELECT * INTO v_profile FROM grove_profiles WHERE user_id = v_participant.user_id;
+    v_tag_id := COALESCE(v_participant.tag_id, v_challenge.tag_id);
     v_minutes := ARRAY[]::INTEGER[];
     v_hits := 0;
 
@@ -590,14 +596,14 @@ BEGIN
         SELECT COALESCE(SUM(COALESCE(fs.adjusted_duration, fs.duration)), 0)::INTEGER INTO v_total_minutes
         FROM focus_sessions fs
         WHERE fs.user_id = v_participant.user_id
-          AND fs.tag_id = v_challenge.tag_id
+          AND fs.tag_id = v_tag_id
           AND fs.deleted_at IS NULL
           AND (fs.start_time AT TIME ZONE p_user_tz)::date = v_period_date;
       ELSE
         SELECT COALESCE(SUM(COALESCE(fs.adjusted_duration, fs.duration)), 0)::INTEGER INTO v_total_minutes
         FROM focus_sessions fs
         WHERE fs.user_id = v_participant.user_id
-          AND fs.tag_id = v_challenge.tag_id
+          AND fs.tag_id = v_tag_id
           AND fs.deleted_at IS NULL
           AND (fs.start_time AT TIME ZONE p_user_tz)::date >= v_period_date
           AND (fs.start_time AT TIME ZONE p_user_tz)::date < v_period_date + 7;

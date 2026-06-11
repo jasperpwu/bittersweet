@@ -59,6 +59,7 @@ export default function SettingsScreen() {
   const { user, isAuthenticated, isLoading: authLoading, error: authError } = useAppStore((state) => state.auth);
   const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
   const profile = useAppStore((s) => s.grove.profile);
+  const profileLoaded = useAppStore((s) => s.grove.profileLoaded);
   const referralCount = useAppStore((s) => s.referral.referralCount);
   const fetchReferralStatus = useAppStore((s) => s.referral.fetchReferralStatus);
   const { shareLink, isGenerating } = useReferralLink();
@@ -189,7 +190,7 @@ export default function SettingsScreen() {
                   </Typography>
                 </Pressable>
               )}
-              {!profile && (
+              {!profile && profileLoaded && (
                 <Pressable
                   onPress={() => router.push('/(modals)/grove-setup')}
                   className="mt-3 bg-primary/10 rounded-xl py-2.5 items-center active:opacity-70"

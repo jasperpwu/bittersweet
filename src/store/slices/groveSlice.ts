@@ -31,6 +31,11 @@ export interface GroveSlice {
   privacySettings: GrovePrivacySettings | null;
   isActive: boolean;
   isLoading: boolean;
+  // True once fetchProfile has completed at least once, so the UI can tell
+  // "no profile yet, still loading" apart from "confirmed no profile". Gating
+  // the setup CTA on this prevents it flashing after sign-in (which resets
+  // profile to null) before the cloud fetch resolves.
+  profileLoaded: boolean;
   error: string | null;
 
   // Phase 2
@@ -94,7 +99,7 @@ export interface GroveSlice {
   setRankingsPeriod: (period: 'week' | 'month') => void;
   fetchChallenges: () => Promise<void>;
   createChallenge: (input: CreateChallengeInput) => Promise<void>;
-  acceptChallenge: (challengeId: string) => Promise<void>;
+  acceptChallenge: (challengeId: string, tagId: string) => Promise<void>;
   declineChallenge: (challengeId: string) => Promise<void>;
   updateMyHitsLocally: (challenge: ChallengeItem) => Promise<{ myHits: number; totalPeriods: number }>;
   fetchChallengePeriodDetails: (challengeId: string) => Promise<ChallengePeriodDetailsResult>;
@@ -135,6 +140,7 @@ const initialState = {
   privacySettings: null,
   isActive: false,
   isLoading: false,
+  profileLoaded: false,
   error: null,
   // Phase 2
   friends: [],
@@ -183,6 +189,7 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
             profile,
             privacySettings: privacy,
             isActive: profile.is_active,
+            profileLoaded: true,
           },
         }));
 
@@ -201,11 +208,17 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
             profile: null,
             privacySettings: null,
             isActive: false,
+            profileLoaded: true,
           },
         }));
       }
     } catch (error: any) {
       console.error('Failed to fetch grove profile:', error);
+      // Mark loaded even on failure so the setup CTA isn't suppressed forever
+      // for a genuine no-profile user when the network request errors out.
+      set((state: any) => ({
+        grove: { ...state.grove, profileLoaded: true },
+      }));
     }
   },
 
@@ -225,6 +238,7 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
           privacySettings,
           isActive: true,
           isLoading: false,
+          profileLoaded: true,
         },
       }));
     } catch (error: any) {
@@ -761,9 +775,9 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }
   },
 
-  acceptChallenge: async (challengeId: string) => {
+  acceptChallenge: async (challengeId: string, tagId: string) => {
     try {
-      await GroveChallengeService.acceptChallenge(challengeId);
+      await GroveChallengeService.acceptChallenge(challengeId, tagId);
       await get().grove.fetchChallenges();
     } catch (error: any) {
       console.error('Failed to accept challenge:', error);
