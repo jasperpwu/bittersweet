@@ -182,20 +182,17 @@ export default function SessionCompleteModal() {
       setIsUploadingPhoto(false);
     }
 
-    // Check for active challenges matching this tag
+    // Challenge hits were already recomputed when the session was created
+    // (createCompletedSession). Just surface the current progress as a toast.
     const grove = useAppStore.getState().grove;
     if (grove.profile && grove.isActive && session.tagId) {
       const activeChallenges = grove.challenges.filter(
         (c) => c.status === 'active' && c.tagId === session.tagId
       );
       for (const challenge of activeChallenges) {
-        try {
-          const { myHits, totalPeriods } = await grove.updateMyHitsLocally(challenge);
-          const periodLabel = challenge.period === 'daily' ? 'Day' : 'Week';
-          showToast(`${periodLabel} ${myHits}/${totalPeriods}`, 'success');
-        } catch (error) {
-          console.error('Failed to update challenge hits:', error);
-        }
+        const myHits = challenge.myParticipant?.hits ?? 0;
+        const periodLabel = challenge.period === 'daily' ? 'Day' : 'Week';
+        showToast(`${periodLabel} ${myHits}/${challenge.totalPeriods}`, 'success');
       }
     }
 

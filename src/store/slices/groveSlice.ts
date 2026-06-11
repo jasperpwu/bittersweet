@@ -102,6 +102,9 @@ export interface GroveSlice {
   acceptChallenge: (challengeId: string, tagId: string) => Promise<void>;
   declineChallenge: (challengeId: string) => Promise<void>;
   updateMyHitsLocally: (challenge: ChallengeItem) => Promise<{ myHits: number; totalPeriods: number }>;
+  recomputeChallengeHitsForTag: (
+    tagId: string | undefined
+  ) => Promise<{ challenge: ChallengeItem; myHits: number; totalPeriods: number }[]>;
   fetchChallengePeriodDetails: (challengeId: string) => Promise<ChallengePeriodDetailsResult>;
   deleteChallenge: (challengeId: string) => Promise<void>;
 
@@ -863,6 +866,28 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
 
       const totalPeriods = computeTotalPeriods(challenge.startDate, challenge.endDate, challenge.period);
 
+      // Write the locally-computed result into local state immediately, so the
+      // UI/toast reflects fresh hits even offline. The cloud write + re-pull
+      // below are reconciliation; if they fail (e.g. offline) this still stands.
+      set((state: any) => ({
+        grove: {
+          ...state.grove,
+          challenges: state.grove.challenges.map((c: ChallengeItem) =>
+            c.id === challenge.id
+              ? {
+                  ...c,
+                  myParticipant: c.myParticipant
+                    ? { ...c.myParticipant, hits: myHits }
+                    : c.myParticipant,
+                  participants: c.participants.map((p) =>
+                    p.userId === currentUserId ? { ...p, hits: myHits } : p
+                  ),
+                }
+              : c
+          ),
+        },
+      }));
+
       // Write to participant row directly (no isChallenger needed)
       await GroveChallengeService.updateMyHits(challenge.id, myHits);
 
@@ -874,6 +899,29 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       console.error('Failed to update challenge hits locally:', error);
       throw error;
     }
+  },
+
+  // Recompute hits for every active challenge tracked by the given tag. Called
+  // whenever the underlying local sessions for that tag change — on finishing,
+  // adjusting, or deleting a focus session — so challenge progress stays in sync.
+  recomputeChallengeHitsForTag: async (tagId: string | undefined) => {
+    const grove = get().grove;
+    if (!grove.profile || !grove.isActive || !tagId) return [];
+
+    const activeChallenges = grove.challenges.filter(
+      (c: ChallengeItem) => c.status === 'active' && c.tagId === tagId
+    );
+
+    const results: { challenge: ChallengeItem; myHits: number; totalPeriods: number }[] = [];
+    for (const challenge of activeChallenges) {
+      try {
+        const { myHits, totalPeriods } = await get().grove.updateMyHitsLocally(challenge);
+        results.push({ challenge, myHits, totalPeriods });
+      } catch (error) {
+        console.error('Failed to recompute challenge hits:', error);
+      }
+    }
+    return results;
   },
 
   fetchChallengePeriodDetails: async (challengeId: string) => {

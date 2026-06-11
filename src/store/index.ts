@@ -418,6 +418,9 @@ export const useAppStore = create<AppStore>()(
               console.error('Failed to update shield balance after session adjustment:', error);
             });
           }
+
+          // Duration change alters this session's challenge contribution — recompute.
+          get().grove.recomputeChallengeHitsForTag(session.tagId).catch(() => {});
         },
         
         deleteSession: (sessionId) => {
@@ -466,6 +469,9 @@ export const useAppStore = create<AppStore>()(
             FamilyControlsModule.updateShieldBalance(newBalance, focusActive).catch((error) => {
               console.error('Failed to update shield balance after deleting session:', error);
             });
+
+            // Removing the session changes challenge hits for its tag — recompute.
+            get().grove.recomputeChallengeHitsForTag(sessionToDelete.tagId).catch(() => {});
           }
         },
         
@@ -616,6 +622,12 @@ export const useAppStore = create<AppStore>()(
             });
             console.log('🍎 Fruits earned:', fruitsEarned, 'for completed session:', sessionId);
           }
+
+          // Any new session can land in a challenge's tag/date range — recompute
+          // its hits. Fire-and-forget so creation stays synchronous; the method
+          // swallows its own errors. Covers every creation flow (manual entry,
+          // widget/Live Activity stop, in-app finish) from one place.
+          get().grove.recomputeChallengeHitsForTag(params.tagId).catch(() => {});
 
           console.log('✅ Completed focus session created:', completedSession);
           return completedSession;
