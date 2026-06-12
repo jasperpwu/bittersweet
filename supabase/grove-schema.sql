@@ -728,9 +728,10 @@ CREATE TRIGGER check_inner_circle_limit
 CREATE TABLE heartbeat_notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   target_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  about_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  about_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   trigger_type TEXT NOT NULL
-    CHECK (trigger_type IN ('quiet_threshold', 'blocklist_edit', 'heartbeat_paused')),
+    CHECK (trigger_type IN ('quiet_threshold', 'blocklist_edit', 'heartbeat_paused', 'account_deleted', 'circle_removed')),
+  -- about_user_id is NULL only for 'account_deleted' (the user is already gone).
   notification_text TEXT NOT NULL,
   sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   read_at TIMESTAMPTZ

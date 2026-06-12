@@ -21,24 +21,36 @@ export const HeartbeatAlertCard: React.FC<HeartbeatAlertCardProps> = ({
   return (
     <View className="mx-5 mb-3 bg-[#FF6B6B]/10 rounded-2xl p-4">
       <View className="flex-row items-center mb-3">
-        {profile.avatar_url ? (
-          <Image
-            source={{ uri: profile.avatar_url }}
-            style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }}
-          />
-        ) : (
-          <View className="mr-2.5">
-            <DefaultAvatar
-              displayName={profile.display_name}
-              color={profile.avatar_color}
-              size={36}
+        {profile ? (
+          profile.avatar_url ? (
+            <Image
+              source={{ uri: profile.avatar_url }}
+              style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }}
             />
+          ) : (
+            <View className="mr-2.5">
+              <DefaultAvatar
+                displayName={profile.display_name}
+                color={profile.avatar_color}
+                size={36}
+              />
+            </View>
+          )
+        ) : (
+          // Deletion alert: the user no longer exists, so there's no profile.
+          <View
+            className="mr-2.5 items-center justify-center rounded-full bg-[#FF6B6B]/20"
+            style={{ width: 36, height: 36 }}
+          >
+            <Ionicons name="person-remove-outline" size={18} color="#FF6B6B" />
           </View>
         )}
         <View className="flex-1">
-          <Typography variant="subtitle-14-medium" color="primary">
-            {profile.display_name}
-          </Typography>
+          {profile && (
+            <Typography variant="subtitle-14-medium" color="primary">
+              {profile.display_name}
+            </Typography>
+          )}
           <Typography variant="body-12" color="secondary">
             {alert.notificationText}
           </Typography>

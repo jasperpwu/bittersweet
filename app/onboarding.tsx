@@ -88,7 +88,7 @@ export default function OnboardingScreen() {
   // Dev-only: email/password login to bypass Apple Sign-In (e.g. when testing
   // with an Apple sandbox account). Hardcoded test credentials.
   const handleTestLogin = useCallback(async () => {
-    await signInWithEmail('jasper@test.com', 'test');
+    await signInWithEmail('jasper@test.com', 'Test123456!');
     await finishSignIn();
   }, [signInWithEmail, finishSignIn]);
 

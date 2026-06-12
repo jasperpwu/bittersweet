@@ -122,14 +122,44 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
     }));
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const signInResult = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      let user = signInResult.data.user;
 
-      const user = data.user;
+      if (signInResult.error) {
+        // No matching auth record (e.g. a test account that was deleted) →
+        // transparently sign up instead. Supabase returns the same
+        // `invalid_credentials` error for "no such user" AND "wrong password"
+        // (deliberate anti-enumeration), so we can't tell them apart: we just
+        // try to create the account. If the email already exists, signUp fails
+        // (or returns no session) and we surface the original sign-in error.
+        if (signInResult.error.code === 'invalid_credentials') {
+          const signUpResult = await supabase.auth.signUp({ email, password });
+          console.log('🔐 Auto-signup fallback:', {
+            signUpError: signUpResult.error?.message,
+            signUpErrorCode: signUpResult.error?.code,
+            hasSession: !!signUpResult.data.session,
+            hasUser: !!signUpResult.data.user,
+            // empty identities array = email already registered (obfuscated)
+            identities: signUpResult.data.user?.identities?.length,
+          });
+          if (signUpResult.error || !signUpResult.data.session) {
+            throw signInResult.error;
+          }
+          // Brand-new account created and signed in. The onAuthStateChange
+          // listener in _layout.tsx handles the new-signup data lifecycle
+          // (cloud-empty probe → initialUpload).
+          user = signUpResult.data.user;
+        } else {
+          throw signInResult.error;
+        }
+      }
+
+      if (!user) throw signInResult.error ?? new Error('Sign-in failed');
+
       set((state: any) => ({
         auth: {
           ...state.auth,
@@ -251,10 +281,23 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session) {
-        await supabase.functions.invoke('delete-account');
+      if (!sessionData.session) {
+        throw new Error('You must be signed in to delete your account.');
       }
 
+      // Permanently delete the account + all cloud data. The function returns
+      // errors in its result (it does not throw), and a handled failure comes
+      // back as { data: { error } } — check both so we never wipe local state
+      // and sign out while cloud data still exists.
+      const { data, error } = await supabase.functions.invoke('delete-account');
+      if (error) {
+        throw new Error(error.message || 'Account deletion failed.');
+      }
+      if (data?.error) {
+        throw new Error(data.detail || data.error);
+      }
+
+      // Sign-out triggers the auth listener, which wipes all local data.
       await supabase.auth.signOut();
 
       set((state: any) => ({
@@ -274,6 +317,9 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
           error: error.message || 'Account deletion failed',
         },
       }));
+      // Re-throw so the UI can tell the user it failed (we stayed signed in
+      // and kept local data — nothing was deleted).
+      throw error;
     }
   },
 

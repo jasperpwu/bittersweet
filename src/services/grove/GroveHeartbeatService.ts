@@ -25,9 +25,15 @@ export interface InnerCircleMember {
 
 export interface HeartbeatAlert {
   id: string;
-  aboutUserId: string;
-  aboutProfile: GroveProfile;
-  triggerType: 'quiet_threshold' | 'blocklist_edit' | 'heartbeat_paused';
+  // null for account_deleted alerts — the user no longer exists.
+  aboutUserId: string | null;
+  aboutProfile: GroveProfile | null;
+  triggerType:
+    | 'quiet_threshold'
+    | 'blocklist_edit'
+    | 'heartbeat_paused'
+    | 'account_deleted'
+    | 'circle_removed';
   notificationText: string;
   sentAt: string;
   readAt: string | null;
@@ -267,13 +273,17 @@ export const GroveHeartbeatService = {
   },
 
   /**
-   * Remove a member from the inner circle.
+   * Remove a member from the inner circle. Runs server-side so the removed
+   * member can be notified ("<owner> removed you from their inner circle.")
+   * with a push — inserting a notification targeting another user requires the
+   * service role. Only an accepted member is notified; withdrawing a pending
+   * invite removes silently.
    */
   async removeFromInnerCircle(memberId: string): Promise<void> {
-    const { error } = await supabase
-      .from('heartbeat_inner_circle')
-      .update({ status: 'removed' })
-      .eq('id', memberId);
+    const { error } = await supabase.functions.invoke(
+      'heartbeat-inner-circle-remove',
+      { body: { memberId } }
+    );
 
     if (error) throw error;
   },
@@ -365,11 +375,13 @@ export const GroveHeartbeatService = {
     if (error) throw error;
     if (!data || data.length === 0) return [];
 
-    const aboutUserIds = data.map((n) => n.about_user_id);
-    const { data: profiles, error: profileError } = await supabase
-      .from('grove_profiles')
-      .select('*')
-      .in('user_id', aboutUserIds);
+    // about_user_id is null for account_deleted alerts (the user is gone).
+    const aboutUserIds = data
+      .map((n) => n.about_user_id)
+      .filter((id): id is string => id !== null);
+    const { data: profiles, error: profileError } = aboutUserIds.length
+      ? await supabase.from('grove_profiles').select('*').in('user_id', aboutUserIds)
+      : { data: [], error: null };
 
     if (profileError) throw profileError;
 
@@ -380,8 +392,12 @@ export const GroveHeartbeatService = {
 
     return data
       .map((n) => {
-        const profile = profileByUserId.get(n.about_user_id);
-        if (!profile) return null;
+        const profile = n.about_user_id
+          ? profileByUserId.get(n.about_user_id) ?? null
+          : null;
+        // Only drop alerts that reference a user we expected to find but
+        // couldn't (stale rows). Deletion alerts intentionally have no profile.
+        if (n.trigger_type !== 'account_deleted' && !profile) return null;
         return {
           id: n.id,
           aboutUserId: n.about_user_id,

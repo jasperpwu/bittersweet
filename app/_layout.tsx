@@ -160,77 +160,45 @@ export default function RootLayout() {
     // Initialize IAP connection
     useAppStore.getState().subscription.initializeIAP();
 
-    // Restore auth session and listen for auth state changes
-    useAppStore.getState().auth.restoreSession();
-
     // Initialize sync middleware
     const teardownSync = initSyncMiddleware(useAppStore);
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT') {
-          console.log('🚪 SIGNED_OUT — clearing all app data');
-          PushNotificationService.unregisterPushToken();
-          resetSyncSnapshot();
-          useAppStore.getState().grove.resetGrove();
-          WidgetService.clearSupabaseCredentials();
+    // Gate the auth listener on restoreSession() completing first. On a fresh
+    // install the Keychain still holds a stale (e.g. deleted-account) session
+    // that supabase-js would otherwise replay as INITIAL_SESSION the instant we
+    // register — before restoreSession()'s signOut clears it — driving the
+    // signed-in flow (grove.fetchProfile → getUser) against a dead token.
+    let authListener: { subscription: { unsubscribe: () => void } } | undefined;
+    let authListenerCancelled = false;
 
-          // 1. Unblock any current selection and clear shield configuration
-          try {
-            const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
-            if (currentSelectionId) {
-              const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
-              await FamilyControlsModule.removeRestrictions(currentSelectionId);
-              await FamilyControlsModule.clearShieldConfiguration();
-            }
-          } catch (e) {
-            console.error('Error removing restrictions on sign-out:', e);
-          }
-
-          // 2. Clear all widget data from UserDefaults
-          WidgetService.clearAllWidgetData();
-
-          // 3. Clear AsyncStorage (except installed flag)
-          try {
-            await AsyncStorage.clear();
-            await AsyncStorage.setItem('bittersweet-installed', 'true');
-          } catch (e) {
-            console.error('Error clearing AsyncStorage on sign-out:', e);
-          }
-
-          // 4. Clear/reset all store states
-          clearAllStoreData(false); // keepAuth = false
-          clearUnifiedStoreData();
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          // Sync refreshed JWT so native intents always have a valid token
-          WidgetService.syncSupabaseCredentials(session.user.id, session.access_token);
-        }
-
-        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-          console.log('🔑 onAuthStateChange fired:', event, 'user:', session.user.id);
-          const user = session.user;
-
-          // Detect user switch — clear local data if signing in as a different user
-          const previousUserId = useAppStore.getState().auth.lastSignedInUserId;
-          const isUserSwitch = previousUserId && previousUserId !== user.id;
-          if (isUserSwitch) {
-            console.log('🔄 User switch detected:', previousUserId, '→', user.id, '— clearing local data');
+    useAppStore
+      .getState()
+      .auth.restoreSession()
+      .then(() => {
+        if (authListenerCancelled) return;
+        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_OUT') {
+            console.log('🚪 SIGNED_OUT — clearing all app data');
+            PushNotificationService.unregisterPushToken();
             resetSyncSnapshot();
             useAppStore.getState().grove.resetGrove();
+            WidgetService.clearSupabaseCredentials();
 
             // 1. Unblock any current selection and clear shield configuration
             try {
               const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
               if (currentSelectionId) {
-                const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
+                const { FamilyControlsModule } = await import(
+                  '../src/modules/BitterSweetFamilyControls'
+                );
                 await FamilyControlsModule.removeRestrictions(currentSelectionId);
                 await FamilyControlsModule.clearShieldConfiguration();
               }
             } catch (e) {
-              console.error('Error removing restrictions on user switch:', e);
+              console.error('Error removing restrictions on sign-out:', e);
             }
 
-            // 2. Clear all widget data
+            // 2. Clear all widget data from UserDefaults
             WidgetService.clearAllWidgetData();
 
             // 3. Clear AsyncStorage (except installed flag)
@@ -238,156 +206,219 @@ export default function RootLayout() {
               await AsyncStorage.clear();
               await AsyncStorage.setItem('bittersweet-installed', 'true');
             } catch (e) {
-              console.error('Error clearing AsyncStorage on user switch:', e);
+              console.error('Error clearing AsyncStorage on sign-out:', e);
             }
 
-            // 4. Clear/reset all store states (keeping newly signed in auth)
-            clearAllStoreData(true);
+            // 4. Clear/reset all store states
+            clearAllStoreData(false); // keepAuth = false
             clearUnifiedStoreData();
+          } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+            // Sync refreshed JWT so native intents always have a valid token
+            WidgetService.syncSupabaseCredentials(session.user.id, session.access_token);
           }
 
-          useAppStore.setState((state) => ({
-            auth: {
-              ...state.auth,
-              user: {
-                id: user.id,
-                email: user.email ?? null,
-                fullName: user.user_metadata?.full_name ?? null,
-                avatarUrl: user.user_metadata?.avatar_url ?? null,
+          if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+            console.log('🔑 onAuthStateChange fired:', event, 'user:', session.user.id);
+            const user = session.user;
+
+            // Detect user switch — clear local data if signing in as a different user
+            const previousUserId = useAppStore.getState().auth.lastSignedInUserId;
+            const isUserSwitch = previousUserId && previousUserId !== user.id;
+            if (isUserSwitch) {
+              console.log(
+                '🔄 User switch detected:',
+                previousUserId,
+                '→',
+                user.id,
+                '— clearing local data'
+              );
+              resetSyncSnapshot();
+              useAppStore.getState().grove.resetGrove();
+
+              // 1. Unblock any current selection and clear shield configuration
+              try {
+                const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
+                if (currentSelectionId) {
+                  const { FamilyControlsModule } = await import(
+                    '../src/modules/BitterSweetFamilyControls'
+                  );
+                  await FamilyControlsModule.removeRestrictions(currentSelectionId);
+                  await FamilyControlsModule.clearShieldConfiguration();
+                }
+              } catch (e) {
+                console.error('Error removing restrictions on user switch:', e);
+              }
+
+              // 2. Clear all widget data
+              WidgetService.clearAllWidgetData();
+
+              // 3. Clear AsyncStorage (except installed flag)
+              try {
+                await AsyncStorage.clear();
+                await AsyncStorage.setItem('bittersweet-installed', 'true');
+              } catch (e) {
+                console.error('Error clearing AsyncStorage on user switch:', e);
+              }
+
+              // 4. Clear/reset all store states (keeping newly signed in auth)
+              clearAllStoreData(true);
+              clearUnifiedStoreData();
+            }
+
+            useAppStore.setState((state) => ({
+              auth: {
+                ...state.auth,
+                user: {
+                  id: user.id,
+                  email: user.email ?? null,
+                  fullName: user.user_metadata?.full_name ?? null,
+                  avatarUrl: user.user_metadata?.avatar_url ?? null,
+                },
+                isAuthenticated: true,
+                lastSignedInUserId: user.id,
               },
-              isAuthenticated: true,
-              lastSignedInUserId: user.id,
-            },
-          }));
+            }));
 
-          // Sync Supabase credentials to UserDefaults for native intent REST calls
-          WidgetService.syncSupabaseCredentials(user.id, session.access_token);
+            // Sync Supabase credentials to UserDefaults for native intent REST calls
+            WidgetService.syncSupabaseCredentials(user.id, session.access_token);
 
-          // Sync strategy depends on auth event type
-          try {
-            if (event === 'SIGNED_IN') {
-              // Distinguish a brand-new sign-up from a sign-in to an existing
-              // account. The app can't tell directly (Apple Sign-In auto-creates
-              // accounts), so we probe the cloud: a brand-new account has no
-              // sessions/tags yet (the signup trigger seeds only profiles +
-              // rewards). If the cloud is empty we PRESERVE local data and upload
-              // it (so a pre-account user keeps everything they built); if the
-              // cloud has data we CLEAR local and pull the cloud clean.
-              // pullFromCloud() returns null on network error — that falls into
-              // the PRESERVE branch, which is safe: initialUpload is upsert-only,
-              // so a misclassified existing user neither loses local data nor
-              // wipes cloud data, and the next cold-start reconciles.
-              const remoteData = await useAppStore.getState().sync.pullFromCloud();
-              const cloudHasData =
-                !!remoteData &&
-                (remoteData.focus.sessions.allIds.length > 0 ||
-                  remoteData.focus.tags.allIds.length > 0);
+            // Sync strategy depends on auth event type
+            try {
+              if (event === 'SIGNED_IN') {
+                // Distinguish a brand-new sign-up from a sign-in to an existing
+                // account. The app can't tell directly (Apple Sign-In auto-creates
+                // accounts), so we probe the cloud: a brand-new account has no
+                // sessions/tags yet (the signup trigger seeds only profiles +
+                // rewards). If the cloud is empty we PRESERVE local data and upload
+                // it (so a pre-account user keeps everything they built); if the
+                // cloud has data we CLEAR local and pull the cloud clean.
+                // pullFromCloud() returns null on network error — that falls into
+                // the PRESERVE branch, which is safe: initialUpload is upsert-only,
+                // so a misclassified existing user neither loses local data nor
+                // wipes cloud data, and the next cold-start reconciles.
+                const remoteData = await useAppStore.getState().sync.pullFromCloud();
+                const cloudHasData =
+                  !!remoteData &&
+                  (remoteData.focus.sessions.allIds.length > 0 ||
+                    remoteData.focus.tags.allIds.length > 0);
 
-              if (cloudHasData) {
-                console.log('🔄 SIGNED_IN (existing account) — clearing local data, pulling cloud clean');
+                if (cloudHasData) {
+                  console.log(
+                    '🔄 SIGNED_IN (existing account) — clearing local data, pulling cloud clean'
+                  );
 
-                // 1. Unblock any current selection and clear shield configuration
-                try {
-                  const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
-                  if (currentSelectionId) {
-                    const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
-                    await FamilyControlsModule.removeRestrictions(currentSelectionId);
-                    await FamilyControlsModule.clearShieldConfiguration();
+                  // 1. Unblock any current selection and clear shield configuration
+                  try {
+                    const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
+                    if (currentSelectionId) {
+                      const { FamilyControlsModule } = await import(
+                        '../src/modules/BitterSweetFamilyControls'
+                      );
+                      await FamilyControlsModule.removeRestrictions(currentSelectionId);
+                      await FamilyControlsModule.clearShieldConfiguration();
+                    }
+                  } catch (e) {
+                    console.error('Error removing restrictions on sign-in:', e);
                   }
-                } catch (e) {
-                  console.error('Error removing restrictions on sign-in:', e);
-                }
 
-                // 2. Clear all widget data
-                WidgetService.clearAllWidgetData();
+                  // 2. Clear all widget data
+                  WidgetService.clearAllWidgetData();
 
-                // 3. Clear AsyncStorage (except installed flag)
-                try {
-                  await AsyncStorage.clear();
-                  await AsyncStorage.setItem('bittersweet-installed', 'true');
-                } catch (e) {
-                  console.error('Error clearing AsyncStorage on sign-in:', e);
-                }
+                  // 3. Clear AsyncStorage (except installed flag)
+                  try {
+                    await AsyncStorage.clear();
+                    await AsyncStorage.setItem('bittersweet-installed', 'true');
+                  } catch (e) {
+                    console.error('Error clearing AsyncStorage on sign-in:', e);
+                  }
 
-                // 4. Clear/reset all store states (keeping auth)
-                clearAllStoreData(true);
-                clearUnifiedStoreData();
+                  // 4. Clear/reset all store states (keeping auth)
+                  clearAllStoreData(true);
+                  clearUnifiedStoreData();
 
-                // 5. Restore user auth state
-                useAppStore.setState((state) => ({
-                  auth: {
-                    ...state.auth,
-                    user: {
-                      id: user.id,
-                      email: user.email ?? null,
-                      fullName: user.user_metadata?.full_name ?? null,
-                      avatarUrl: user.user_metadata?.avatar_url ?? null,
+                  // 5. Restore user auth state
+                  useAppStore.setState((state) => ({
+                    auth: {
+                      ...state.auth,
+                      user: {
+                        id: user.id,
+                        email: user.email ?? null,
+                        fullName: user.user_metadata?.full_name ?? null,
+                        avatarUrl: user.user_metadata?.avatar_url ?? null,
+                      },
+                      isAuthenticated: true,
+                      lastSignedInUserId: user.id,
                     },
-                    isAuthenticated: true,
-                    lastSignedInUserId: user.id,
-                  },
-                }));
+                  }));
 
-                // 6. Pull from cloud and apply directly (no merge)
-                await useAppStore.getState().sync.pullAndApply();
+                  // 6. Pull from cloud and apply directly (no merge)
+                  await useAppStore.getState().sync.pullAndApply();
+                } else {
+                  // Brand-new account: keep local data and push it to the cloud.
+                  console.log(
+                    '🔄 SIGNED_IN (brand-new account) — preserving local data, uploading to cloud'
+                  );
+                  await useAppStore.getState().sync.initialUpload();
+                }
               } else {
-                // Brand-new account: keep local data and push it to the cloud.
-                console.log('🔄 SIGNED_IN (brand-new account) — preserving local data, uploading to cloud');
-                await useAppStore.getState().sync.initialUpload();
+                // INITIAL_SESSION (cold start): merge local + cloud
+                console.log('🔄 INITIAL_SESSION — merging local with cloud');
+
+                const remoteData = await useAppStore.getState().sync.pullFromCloud();
+                const localState = useAppStore.getState();
+                const hasLocalData =
+                  localState.focus.sessions.allIds.length > 0 ||
+                  localState.focus.tags.allIds.length > 0;
+                const hasRemoteData =
+                  remoteData &&
+                  (remoteData.focus.sessions.allIds.length > 0 ||
+                    remoteData.focus.tags.allIds.length > 0);
+
+                if (hasRemoteData) {
+                  // Cloud has data — merge (pulls remote into local)
+                  await useAppStore.getState().sync.triggerSync();
+                } else if (hasLocalData) {
+                  // Cloud empty but local has data — initial upload
+                  await useAppStore.getState().sync.initialUpload();
+                }
+                // Both empty — nothing to do
               }
-            } else {
-              // INITIAL_SESSION (cold start): merge local + cloud
-              console.log('🔄 INITIAL_SESSION — merging local with cloud');
+            } catch (error) {
+              console.error('Post sign-in sync error:', error);
+            }
 
-              const remoteData = await useAppStore.getState().sync.pullFromCloud();
-              const localState = useAppStore.getState();
-              const hasLocalData =
-                localState.focus.sessions.allIds.length > 0 ||
-                localState.focus.tags.allIds.length > 0;
-              const hasRemoteData =
-                remoteData &&
-                (remoteData.focus.sessions.allIds.length > 0 ||
-                  remoteData.focus.tags.allIds.length > 0);
+            // Blocklist sync is handled inside triggerSync() and pullAndApply()
 
-              if (hasRemoteData) {
-                // Cloud has data — merge (pulls remote into local)
-                await useAppStore.getState().sync.triggerSync();
-              } else if (hasLocalData) {
-                // Cloud empty but local has data — initial upload
-                await useAppStore.getState().sync.initialUpload();
+            // Register push token after sign-in
+            PushNotificationService.registerPushToken();
+
+            // Fetch grove profile and social data after sign-in
+            try {
+              console.log('🌳 Fetching grove profile after sign-in...');
+              await useAppStore.getState().grove.fetchProfile();
+              const groveState = useAppStore.getState().grove;
+              console.log(
+                '🌳 Grove profile result:',
+                groveState.profile ? 'found' : 'null',
+                'isActive:',
+                groveState.isActive
+              );
+              if (groveState.profile && groveState.isActive) {
+                groveState.fetchFriends();
+                groveState.fetchFeed();
+                groveState.fetchFriendRequests();
+                groveState.fetchChallenges();
+                groveState.fetchHeartbeatSettings();
+                groveState.fetchIncomingCircleInvites();
+                groveState.fetchHeartbeatAlerts();
               }
-              // Both empty — nothing to do
+            } catch (error) {
+              console.error('🌳 Post sign-in grove fetch error:', error);
             }
-          } catch (error) {
-            console.error('Post sign-in sync error:', error);
           }
-
-          // Blocklist sync is handled inside triggerSync() and pullAndApply()
-
-          // Register push token after sign-in
-          PushNotificationService.registerPushToken();
-
-          // Fetch grove profile and social data after sign-in
-          try {
-            console.log('🌳 Fetching grove profile after sign-in...');
-            await useAppStore.getState().grove.fetchProfile();
-            const groveState = useAppStore.getState().grove;
-            console.log('🌳 Grove profile result:', groveState.profile ? 'found' : 'null', 'isActive:', groveState.isActive);
-            if (groveState.profile && groveState.isActive) {
-              groveState.fetchFriends();
-              groveState.fetchFeed();
-              groveState.fetchFriendRequests();
-              groveState.fetchChallenges();
-              groveState.fetchHeartbeatSettings();
-              groveState.fetchIncomingCircleInvites();
-              groveState.fetchHeartbeatAlerts();
-            }
-          } catch (error) {
-            console.error('🌳 Post sign-in grove fetch error:', error);
-          }
-        }
-      }
-    );
+        });
+        authListener = data;
+      });
 
     // Debug: Clear storage if needed (change to true if needed)
     if (__DEV__ && false) {
@@ -399,8 +430,9 @@ export default function RootLayout() {
     }
 
     return () => {
+      authListenerCancelled = true;
       notificationSubscription.remove();
-      authListener.subscription.unsubscribe();
+      authListener?.subscription.unsubscribe();
       useAppStore.getState().subscription.teardownIAP();
       teardownSync();
     };
@@ -416,20 +448,24 @@ export default function RootLayout() {
       for (const id of sessions.allIds) {
         const s = sessions.byId[id];
         if (!s) continue;
-        const t = s.startTime instanceof Date ? s.startTime.getTime() : new Date(s.startTime).getTime();
+        const t =
+          s.startTime instanceof Date ? s.startTime.getTime() : new Date(s.startTime).getTime();
         if (!lastUsedByTag[s.tagId] || t > lastUsedByTag[s.tagId]) {
           lastUsedByTag[s.tagId] = t;
         }
       }
 
-      const tagList = tags.allIds.map(id => tags.byId[id]).filter(tag => tag && !tag.deletedAt).map(tag => ({
+      const tagList = tags.allIds
+        .map((id) => tags.byId[id])
+        .filter((tag) => tag && !tag.deletedAt)
+        .map((tag) => ({
           id: tag.id,
           name: tag.name,
           icon: tag.icon || '🎯',
           color: tag.color || '#8B4513',
           lastDuration: lastDurationByTagId[tag.id] ?? 15,
           lastUsedAt: lastUsedByTag[tag.id] ?? 0,
-      }));
+        }));
       WidgetService.syncTagList(tagList);
 
       // Sync the currently selected tag for the small widget
@@ -449,8 +485,8 @@ export default function RootLayout() {
 
       // Get active goals sorted by sortOrder
       const activeGoals = goals.allIds
-        .map(id => goals.byId[id])
-        .filter(g => g && g.isActive && !g.deletedAt)
+        .map((id) => goals.byId[id])
+        .filter((g) => g && g.isActive && !g.deletedAt)
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
       if (activeGoals.length === 0) {
@@ -459,13 +495,11 @@ export default function RootLayout() {
       }
 
       // Calculate fresh progress for all goals
-      const sessionsArray = sessions.allIds
-        .map(id => sessions.byId[id])
-        .filter(Boolean);
+      const sessionsArray = sessions.allIds.map((id) => sessions.byId[id]).filter(Boolean);
       const freshProgress = calculateGoalProgress(activeGoals, sessionsArray);
 
       // Build widget data (top 3)
-      const widgetGoals = activeGoals.slice(0, 6).map(goal => {
+      const widgetGoals = activeGoals.slice(0, 6).map((goal) => {
         const currentMinutes = freshProgress[goal.id] || 0;
         const effectiveTarget = getTargetForDate(goal, new Date(), restDays);
         const percentage = effectiveTarget > 0 ? (currentMinutes / effectiveTarget) * 100 : 0;
@@ -474,7 +508,8 @@ export default function RootLayout() {
         const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
 
         const tag = goal.tagId ? tags.byId[goal.tagId] : null;
-        const displayName = goal.customName || (tag ? `${tag.icon || ''} ${tag.name} Goal` : 'Goal');
+        const displayName =
+          goal.customName || (tag ? `${tag.icon || ''} ${tag.name} Goal` : 'Goal');
 
         return {
           name: displayName,
@@ -525,14 +560,18 @@ export default function RootLayout() {
         // Don't show unlock sheet during a focus session
         const activeSession = await AsyncStorage.getItem('active-focus-session');
         if (activeSession) {
-          console.log('🛡️ [SHIELD_LAYOUT] Focus session active (AsyncStorage), skipping unlock sheet');
+          console.log(
+            '🛡️ [SHIELD_LAYOUT] Focus session active (AsyncStorage), skipping unlock sheet'
+          );
           return;
         }
 
         // Also check for widget-started sessions not yet adopted into AsyncStorage
         const widgetSession = WidgetService.readWidgetStartedSession();
         if (widgetSession) {
-          console.log('🛡️ [SHIELD_LAYOUT] Widget-started focus session pending adoption, skipping unlock sheet');
+          console.log(
+            '🛡️ [SHIELD_LAYOUT] Widget-started focus session pending adoption, skipping unlock sheet'
+          );
           return;
         }
 
@@ -620,8 +659,13 @@ export default function RootLayout() {
     if (isReady) {
       const { useUnifiedStore } = require('../src/store/unified-store');
       const hasSeenOnboarding = useUnifiedStore.getState().preferences?.hasSeenOnboarding;
+      // An authenticated user has already passed through onboarding (it's the only
+      // path to the sign-in button). Don't bounce them back: a sign-in to an existing
+      // account briefly wipes hasSeenOnboarding (clearUnifiedStoreData) before
+      // pullAndApply restores it from cloud — gating on auth avoids that transient redirect.
+      const isAuthenticated = useAppStore.getState().auth?.isAuthenticated;
 
-      if (!hasSeenOnboarding && pathname !== '/onboarding') {
+      if (!hasSeenOnboarding && !isAuthenticated && pathname !== '/onboarding') {
         // Small delay to ensure router is ready
         setTimeout(() => {
           router.replace('/onboarding');
@@ -748,18 +792,9 @@ export default function RootLayout() {
                     gestureEnabled: true,
                   }}
                 />
-                <Stack.Screen
-                  name="invite/[code]"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="refer/[code]"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="fruit-store"
-                  options={{ headerShown: false }}
-                />
+                <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
+                <Stack.Screen name="refer/[code]" options={{ headerShown: false }} />
+                <Stack.Screen name="fruit-store" options={{ headerShown: false }} />
                 <Stack.Screen
                   name="settings/preferences"
                   options={{ headerShown: false, presentation: 'card' }}
@@ -799,7 +834,9 @@ export default function RootLayout() {
                 alignItems: 'center',
                 backgroundColor: systemColorScheme === 'dark' ? '#1B1C30' : '#F5E6D3',
               }}>
-              <Text style={{ color: systemColorScheme === 'dark' ? '#FFFFFF' : '#5D4E37' }}>Loading...</Text>
+              <Text style={{ color: systemColorScheme === 'dark' ? '#FFFFFF' : '#5D4E37' }}>
+                Loading...
+              </Text>
             </View>
           )}
         </GestureHandlerRootView>

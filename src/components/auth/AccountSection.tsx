@@ -31,13 +31,23 @@ export const AccountActions: React.FC = () => {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'This will permanently delete your account and all synced data. Local data on this device will not be affected. This cannot be undone.',
+      'This will permanently delete your account and erase all of your data, both in the cloud and on this device. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete Account',
           style: 'destructive',
-          onPress: deleteAccount,
+          onPress: async () => {
+            try {
+              await deleteAccount();
+            } catch (error: any) {
+              Alert.alert(
+                'Deletion Failed',
+                error?.message ||
+                  'We could not delete your account. Please try again.'
+              );
+            }
+          },
         },
       ]
     );
