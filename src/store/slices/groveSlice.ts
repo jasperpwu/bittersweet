@@ -756,7 +756,7 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
 
       // Sync active challenges to UserDefaults for native intent REST calls
       const activeChallenges = challenges
-        .filter((c: ChallengeItem) => c.status === 'active')
+        .filter((c: ChallengeItem) => c.status === 'active' && c.hasStarted)
         .map((c: ChallengeItem) => ({ id: c.id, tagId: c.tagId }));
       WidgetService.syncActiveChallenges(activeChallenges);
     } catch (error: any) {
@@ -807,7 +807,7 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
 
       // Re-sync active challenges to UserDefaults
       const activeChallenges = get().grove.challenges
-        .filter((c: ChallengeItem) => c.status === 'active')
+        .filter((c: ChallengeItem) => c.status === 'active' && c.hasStarted)
         .map((c: ChallengeItem) => ({ id: c.id, tagId: c.tagId }));
       WidgetService.syncActiveChallenges(activeChallenges);
     } catch (error: any) {

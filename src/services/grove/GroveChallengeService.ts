@@ -39,6 +39,8 @@ export interface ChallengeItem {
   fruitReward: number;
   /** True if the current user is an invitee with a pending status */
   isIncoming: boolean;
+  /** True once start_date has been reached (challenge is running, not upcoming). */
+  hasStarted: boolean;
   createdAt: string;
 }
 
@@ -255,6 +257,10 @@ export const GroveChallengeService = {
       participantsByChallenge.set(p.challenge_id, list);
     }
 
+    // Local calendar day as YYYY-MM-DD, matching the format of c.start_date.
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     return challenges.map(c => {
       const period: 'daily' | 'weekly' = c.period || 'daily';
       const totalPeriods = (c.start_date && c.end_date)
@@ -276,6 +282,20 @@ export const GroveChallengeService = {
       const myParticipant = participants.find(p => p.userId === user.id) || null;
       const isIncoming = myParticipant?.role === 'invitee' && myParticipant?.status === 'pending';
 
+      // "Active" is derived, not stored: a challenge is active for me the moment
+      // my own participation is accepted (the creator is implicitly accepted at
+      // creation). Counting begins naturally at start_date because the hit math
+      // filters by date range — no server-side activation toggle is needed.
+      // Terminal states finalized by the cron (completed/failed/cancelled) win.
+      const myStatus = myParticipant?.role === 'creator' ? 'accepted' : myParticipant?.status;
+      const hasStarted = !!c.start_date && c.start_date <= today;
+      const effectiveStatus: ChallengeItem['status'] =
+        c.status === 'completed' || c.status === 'failed' || c.status === 'cancelled'
+          ? c.status
+          : myStatus === 'accepted'
+            ? 'active'
+            : 'pending';
+
       return {
         id: c.id,
         creatorId: c.creator_id,
@@ -289,11 +309,12 @@ export const GroveChallengeService = {
         period,
         targetMinutes: c.target_minutes || 60,
         totalPeriods,
-        status: c.status,
+        status: effectiveStatus,
         startDate: c.start_date,
         endDate: c.end_date,
         fruitReward: c.fruit_reward,
         isIncoming,
+        hasStarted,
         createdAt: c.created_at,
       };
     });

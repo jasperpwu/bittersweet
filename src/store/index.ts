@@ -18,6 +18,7 @@ import { SyncSlice, createSyncSlice } from './slices/syncSlice';
 import { GroveSlice, createGroveSlice } from './slices/groveSlice';
 import { ReferralSlice, createReferralSlice } from './slices/referralSlice';
 import { SharedTagService } from '../services/sharedTag/SharedTagService';
+import type { SharedTagResolveResult } from '../services/sharedTag/types';
 
 interface AppStore {
   // Focus sessions and tags
@@ -116,7 +117,10 @@ interface AppStore {
     // Shared tag actions
     shareTag: (tagId: string) => Promise<string>; // returns share code
     stopSharingTag: (tagId: string) => Promise<void>;
-    joinSharedTag: (code: string) => Promise<SessionTag>; // returns the new local tag
+    resolveSharedTagCode: (code: string) => Promise<SharedTagResolveResult>;
+    // Join a resolved shared tag. Pass an existing local tag id to map onto it,
+    // or omit to clone a fresh tag. Returns the joiner's local tag either way.
+    joinSharedTag: (result: SharedTagResolveResult, existingTagId?: string) => Promise<SessionTag>;
     leaveSharedTag: (tagId: string) => Promise<void>;
     removeJoiner: (membershipId: string) => Promise<void>;
     fetchJoinerStats: (ownerTagId: string, startDate: string, endDate: string) => Promise<any[]>;
@@ -948,6 +952,15 @@ export const useAppStore = create<AppStore>()(
           console.log('🗑️ Soft-deleting tag:', tagId);
           const tag = get().focus.tags.byId[tagId];
 
+          // Weak link: if this tag is one the user joined from someone else,
+          // end the membership so the owner stops seeing them in shared stats.
+          // Fire-and-forget — deletion is never blocked on the server call.
+          if (tag?.sharedFromTagId) {
+            SharedTagService.leaveMembership(tagId).catch((e) =>
+              console.warn('Failed to end shared-tag membership on delete:', e?.message)
+            );
+          }
+
           if (tag) {
             set((state) => {
               // Remove last duration entry for this tag
@@ -1072,13 +1085,50 @@ export const useAppStore = create<AppStore>()(
           });
         },
 
-        joinSharedTag: async (code: string) => {
-          const result = await SharedTagService.resolveShareCode(code);
+        resolveSharedTagCode: async (code: string) => {
+          return SharedTagService.resolveShareCode(code);
+        },
 
-          // Create a local tag (copy of owner's tag)
+        joinSharedTag: async (result: SharedTagResolveResult, existingTagId?: string) => {
+          const now = new Date();
+          // Fields stamped on the joiner's local tag so the UI shows the
+          // "from {owner}" / Shared badge. These are purely cosmetic — the
+          // owner→joiner link that drives stats lives in shared_tag_memberships.
+          const sharedFields = {
+            sharedFromTagId: result.owner_tag_id,
+            sharedFromUserId: result.owner_user_id,
+            sharedOwnerName: result.owner_display_name,
+          };
+
+          // --- Path A: map onto an existing local tag (challenge parity) ---
+          if (existingTagId) {
+            const existingTag = get().focus.tags.byId[existingTagId];
+            if (!existingTag) throw new Error('Tag no longer exists');
+
+            // Membership first so a server failure leaves local state untouched.
+            await SharedTagService.createMembership(
+              result.owner_tag_id,
+              result.owner_user_id,
+              existingTagId
+            );
+
+            const stampedTag: SessionTag = { ...existingTag, ...sharedFields, updatedAt: now };
+            set((state) => ({
+              focus: {
+                ...state.focus,
+                tags: {
+                  ...state.focus.tags,
+                  byId: { ...state.focus.tags.byId, [existingTagId]: stampedTag },
+                },
+              },
+            }));
+
+            return stampedTag;
+          }
+
+          // --- Path B: clone a fresh local tag (copy of owner's tag) ---
           const tagId = generateId();
           const goalId = generateId();
-          const now = new Date();
 
           const newTag: SessionTag = {
             id: tagId,
@@ -1089,9 +1139,7 @@ export const useAppStore = create<AppStore>()(
             sortOrder: get().focus.tags.allIds.length,
             createdAt: now,
             updatedAt: now,
-            sharedFromTagId: result.owner_tag_id,
-            sharedFromUserId: result.owner_user_id,
-            sharedOwnerName: result.owner_display_name,
+            ...sharedFields,
           };
 
           const newGoal: FocusGoal = {
@@ -1143,20 +1191,15 @@ export const useAppStore = create<AppStore>()(
         leaveSharedTag: async (tagId: string) => {
           await SharedTagService.leaveMembership(tagId);
 
-          // Soft-delete the local tag
+          // Unlink only — keep the tag, its sessions, and its goal. Clearing the
+          // shared-from fields turns it back into a plain tag (the swipe action
+          // reverts from Unlink to Delete). SyncMapper writes these as null, so
+          // the unlink propagates to the cloud copy too.
           set((state) => {
             const existingTag = state.focus.tags.byId[tagId];
             if (!existingTag) return state;
 
-            // Deactivate associated goal
-            const updatedGoals = { ...state.focus.goals.byId };
-            for (const gId of state.focus.goals.allIds) {
-              const goal = updatedGoals[gId];
-              if (goal && goal.tagId === tagId) {
-                updatedGoals[gId] = { ...goal, isActive: false, updatedAt: new Date() };
-              }
-            }
-
+            const { sharedFromTagId, sharedFromUserId, sharedOwnerName, ...rest } = existingTag;
             return {
               focus: {
                 ...state.focus,
@@ -1164,10 +1207,9 @@ export const useAppStore = create<AppStore>()(
                   ...state.focus.tags,
                   byId: {
                     ...state.focus.tags.byId,
-                    [tagId]: { ...existingTag, deletedAt: new Date(), updatedAt: new Date() },
+                    [tagId]: { ...rest, updatedAt: new Date() },
                   },
                 },
-                goals: { ...state.focus.goals, byId: updatedGoals },
               },
             };
           });
@@ -1925,6 +1967,7 @@ export const useFocusActions = () => useAppStore((state) => ({
   getActiveGoals: state.focus.getActiveGoals,
   shareTag: state.focus.shareTag,
   stopSharingTag: state.focus.stopSharingTag,
+  resolveSharedTagCode: state.focus.resolveSharedTagCode,
   joinSharedTag: state.focus.joinSharedTag,
   leaveSharedTag: state.focus.leaveSharedTag,
   removeJoiner: state.focus.removeJoiner,

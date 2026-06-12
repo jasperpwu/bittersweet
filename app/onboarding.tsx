@@ -64,12 +64,12 @@ export default function OnboardingScreen() {
 
   const { isLoading: isSigningIn, error: signInError } = useAppStore((state) => state.auth);
   const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
+  const signInWithEmail = useAppStore((state) => state.auth.signInWithEmail);
   const clearAuthError = useAppStore((state) => state.auth.clearAuthError);
   const createTag = useAppStore((state) => state.focus.createTag);
 
-  const handleSignIn = useCallback(async () => {
-    await signInWithApple();
-    // Check if sign-in succeeded (auth state updated synchronously in store)
+  // Shared post-sign-in navigation: mark onboarding seen and enter the app.
+  const finishSignIn = useCallback(async () => {
     const { isAuthenticated } = useAppStore.getState().auth;
     if (isAuthenticated) {
       const updatePreferences = useUnifiedStore.getState().updatePreferences;
@@ -78,7 +78,19 @@ export default function OnboardingScreen() {
       }
       router.replace('/(tabs)');
     }
-  }, [signInWithApple]);
+  }, []);
+
+  const handleSignIn = useCallback(async () => {
+    await signInWithApple();
+    await finishSignIn();
+  }, [signInWithApple, finishSignIn]);
+
+  // Dev-only: email/password login to bypass Apple Sign-In (e.g. when testing
+  // with an Apple sandbox account). Hardcoded test credentials.
+  const handleTestLogin = useCallback(async () => {
+    await signInWithEmail('jasper@test.com', 'test');
+    await finishSignIn();
+  }, [signInWithEmail, finishSignIn]);
 
   // Auto-clear error after 3 seconds
   useEffect(() => {
@@ -279,7 +291,7 @@ export default function OnboardingScreen() {
   return (
     <View className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Sign-in button */}
-      <View style={{ paddingTop: insets.top + 8 }} className="flex-row justify-end px-5">
+      <View style={{ paddingTop: insets.top + 8 }} className="flex-row justify-end items-center px-5">
         <Pressable
           onPress={handleSignIn}
           disabled={isSigningIn}
@@ -293,6 +305,19 @@ export default function OnboardingScreen() {
             </Typography>
           )}
         </Pressable>
+
+        {/* Dev-only email login (bypasses Apple Sign-In for sandbox testing) */}
+        {__DEV__ && (
+          <Pressable
+            onPress={handleTestLogin}
+            disabled={isSigningIn}
+            className="flex-row items-center py-2 px-3 active:opacity-70"
+          >
+            <Typography variant="body-14" className="text-primary opacity-60">
+              Test Login
+            </Typography>
+          </Pressable>
+        )}
       </View>
 
       {signInError && (

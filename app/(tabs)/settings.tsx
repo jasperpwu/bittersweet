@@ -283,7 +283,7 @@ export default function SettingsScreen() {
                   </View>
                   <View className="flex-1">
                     <Typography variant="subtitle-16" color="primary" className="font-poppins-semibold">
-                      Refer Friends, Earn Apples
+                      Refer Friends, Earn Rewards
                     </Typography>
                   </View>
                 </View>
@@ -291,7 +291,7 @@ export default function SettingsScreen() {
                 <Typography variant="body-14" color="secondary" className="mb-4">
                   {referralCount > 0
                     ? `You've referred ${referralCount} friend${referralCount === 1 ? '' : 's'}. Keep sharing to unlock more rewards!`
-                    : 'Share your link with friends and earn apple rewards for each one who joins.'}
+                    : 'Share your link with friends and earn apple rewards and membership.'}
                 </Typography>
 
                 <View className="flex-row items-center" style={{ gap: 10 }}>

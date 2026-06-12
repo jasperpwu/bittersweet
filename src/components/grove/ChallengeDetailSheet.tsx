@@ -118,12 +118,12 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
               </Typography>
             ) : <View />;
           })()}
-          {challenge.status === 'active' && daysLeft !== null && daysLeft > 0 && (
+          {challenge.status === 'active' && challenge.hasStarted && daysLeft !== null && daysLeft > 0 && (
             <Typography variant="body-12" color="secondary">
               {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
             </Typography>
           )}
-          {challenge.status === 'active' && !challenge.endDate && (
+          {challenge.status === 'active' && challenge.hasStarted && !challenge.endDate && (
             <Typography variant="body-12" color="secondary">
               Ongoing
             </Typography>

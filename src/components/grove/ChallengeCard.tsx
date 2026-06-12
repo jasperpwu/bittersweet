@@ -136,12 +136,12 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
             </Typography>
           ) : <View />;
         })()}
-        {challenge.status === 'active' && remaining > 0 && (
+        {challenge.status === 'active' && challenge.hasStarted && remaining > 0 && (
           <Typography variant="body-12" color="secondary">
             {remaining} {remaining === 1 ? 'day' : 'days'} left
           </Typography>
         )}
-        {challenge.status === 'active' && !challenge.endDate && (
+        {challenge.status === 'active' && challenge.hasStarted && !challenge.endDate && (
           <Typography variant="body-12" color="secondary">
             Ongoing
           </Typography>

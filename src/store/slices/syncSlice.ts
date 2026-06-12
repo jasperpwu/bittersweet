@@ -1,5 +1,6 @@
 import { SyncService } from '../../services/sync/SyncService';
 import { syncQueue } from '../../services/sync/SyncQueue';
+import { invalidateSyncSnapshot } from '../middleware/syncMiddleware';
 import { BlocklistSyncService } from '../../services/sync/BlocklistSyncService';
 import { FamilyControlsModule } from '../../modules/BitterSweetFamilyControls';
 import { WidgetService } from '../../services/WidgetService';
@@ -226,6 +227,13 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
 
     try {
       const remoteData = await SyncService.pullAll(userId);
+
+      // Drop the diff baseline so the apply below re-baselines to this cloud data
+      // instead of the middleware seeing every pulled row as a brand-new local row and
+      // re-enqueuing all of it for upload. Without this, signing into an existing account
+      // queues ~all cloud sessions; an immediate sign-out then flushes them with no
+      // session and they all fail RLS.
+      invalidateSyncSnapshot();
 
       // Clear local data and apply cloud data directly
       set((s: any) => ({

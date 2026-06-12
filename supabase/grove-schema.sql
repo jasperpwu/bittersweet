@@ -456,7 +456,10 @@ $$;
 
 -- RPC: finalize_expired_challenges
 -- Called by daily cron. Auto-cancels pending challenges past start_date with no accepted invitees.
--- Finalizes expired active challenges: reads client-computed hits, sets outcome + challenge status.
+-- Does NOT toggle challenges to 'active' — "active" is derived on the client (a challenge is
+-- active for a participant once their own row is accepted; hits count from start_date). Live
+-- challenges stay status = 'pending' in the DB until finalized here.
+-- Finalizes expired challenges: reads client-computed hits, sets outcome + challenge status.
 -- Does NOT recalculate hits server-side — trusts the timezone-aware hits written by clients.
 -- Waits 2 days past end_date so the last day has fully elapsed in all timezones (up to UTC+14).
 CREATE OR REPLACE FUNCTION finalize_expired_challenges()
@@ -471,7 +474,9 @@ DECLARE
   v_cancelled INTEGER := 0;
   v_accepted_count INTEGER;
 BEGIN
-  -- Phase 1: Auto-cancel pending challenges past start_date with zero accepted invitees
+  -- Phase 1: Auto-cancel pending challenges past start_date with zero accepted invitees.
+  -- (No activation branch: an accepted challenge stays 'pending' in the DB and is treated as
+  --  active on the client until Phase 2 finalizes it.)
   FOR challenge IN
     SELECT * FROM grove_challenges
     WHERE status = 'pending'
@@ -489,19 +494,23 @@ BEGIN
       SET status = 'cancelled', updated_at = now()
       WHERE id = challenge.id;
       v_cancelled := v_cancelled + 1;
-    ELSE
-      UPDATE grove_challenges
-      SET status = 'active', updated_at = now()
-      WHERE id = challenge.id;
     END IF;
   END LOOP;
 
-  -- Phase 2: Finalize expired active challenges
-  -- Wait 2 days past end_date so the last day has fully elapsed in all timezones (up to UTC+14)
+  -- Phase 2: Finalize expired challenges (past end_date) that have an accepted invitee.
+  -- Selects on "not terminal" rather than status = 'active', since live challenges are no longer
+  -- toggled to 'active'. The accepted-invitee guard avoids vacuously completing a participant-less
+  -- challenge. Wait 2 days past end_date so the last day has fully elapsed in all timezones (UTC+14).
   FOR challenge IN
-    SELECT * FROM grove_challenges
-    WHERE status = 'active'
-      AND end_date < CURRENT_DATE - 2
+    SELECT * FROM grove_challenges c
+    WHERE c.status NOT IN ('completed', 'failed', 'cancelled')
+      AND c.end_date < CURRENT_DATE - 2
+      AND EXISTS (
+        SELECT 1 FROM grove_challenge_participants cp
+        WHERE cp.challenge_id = c.id
+          AND cp.role = 'invitee'
+          AND cp.status = 'accepted'
+      )
   LOOP
     IF challenge.period = 'daily' THEN
       v_total_periods := (challenge.end_date - challenge.start_date) + 1;

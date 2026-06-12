@@ -27,6 +27,8 @@ import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
+import { JoinSharedTagSheet } from '../../src/components/grove/JoinSharedTagSheet';
+import type { SharedTagResolveResult } from '../../src/services/sharedTag/types';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
 
@@ -45,6 +47,7 @@ type DraggableTagRowProps = {
   onSelect: (id: string) => void;
   onEdit: (tag: any, event: any) => void;
   onDelete: (tag: any, event: any) => void;
+  onUnlink?: (tag: any) => void;
   onShare?: (tag: any) => void;
   onSwipeOpen?: (ref: any) => void;
   onDragStart: (index: number) => void;
@@ -54,7 +57,7 @@ type DraggableTagRowProps = {
 
 function DraggableTagRow({
   tag, index, selectedTag, lastDuration, isDragging, dragOriginalIndex, dragTargetIndex,
-  isChallenge, onSelect, onEdit, onDelete, onShare, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
+  isChallenge, onSelect, onEdit, onDelete, onUnlink, onShare, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
 }: DraggableTagRowProps) {
   const colorScheme = useColorScheme();
   const isBeingDragged = isDragging && dragOriginalIndex === index;
@@ -95,7 +98,11 @@ function DraggableTagRow({
   }, [isDragging, isBeingDragged, dragOriginalIndex, dragTargetIndex, index]);
 
   const isSharedTag = !!tag.sharedFromTagId;
-  const isReadOnly = isChallenge || isSharedTag;
+  // Joined shared tags are a weak link, not a guarded state: the owner→joiner
+  // link lives server-side in shared_tag_memberships, so a joined tag stays a
+  // normal, fully-editable/deletable/shareable/reorderable tag. Only synthetic
+  // challenge rows (no real local tag yet) remain read-only.
+  const isReadOnly = isChallenge;
 
   const panGesture = Gesture.Pan()
     .enabled(!isReadOnly)
@@ -172,16 +179,31 @@ function DraggableTagRow({
         <Typography variant="tiny-10" style={{ color: '#3B82F6' }} className="mt-0.5">Share</Typography>
       </Pressable>
       )}
-      <Pressable
-        onPress={() => {
-          swipeableRef.current?.close();
-          onDelete(tag, null);
-        }}
-        className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
-      >
-        <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
-        <Typography variant="tiny-10" color="white" className="mt-0.5">Delete</Typography>
-      </Pressable>
+      {isSharedTag ? (
+        // Joined tag: Unlink (non-destructive) keeps the tag + sessions and ends
+        // the membership. Once unlinked it's a plain tag and Delete returns.
+        <Pressable
+          onPress={() => {
+            swipeableRef.current?.close();
+            onUnlink?.(tag);
+          }}
+          className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
+        >
+          <Ionicons name="unlink-outline" size={16} color="#FFFFFF" />
+          <Typography variant="tiny-10" color="white" className="mt-0.5">Unlink</Typography>
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={() => {
+            swipeableRef.current?.close();
+            onDelete(tag, null);
+          }}
+          className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
+        >
+          <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+          <Typography variant="tiny-10" color="white" className="mt-0.5">Delete</Typography>
+        </Pressable>
+      )}
     </View>
   );
 
@@ -416,12 +438,16 @@ function ShareTagOverlay({
 }
 
 // --- Join Tag Modal ---
+// Step 1 of joining: collect + resolve the share code. On success it hands the
+// resolved tag info up to the parent, which opens JoinSharedTagSheet (step 2:
+// map onto an existing tag or clone a new one).
 function JoinTagModal({
-  visible, onClose, onJoin,
+  visible, onClose, onResolve, onResolved,
 }: {
   visible: boolean;
   onClose: () => void;
-  onJoin: (code: string) => Promise<any>;
+  onResolve: (code: string) => Promise<SharedTagResolveResult>;
+  onResolved: (result: SharedTagResolveResult) => void;
 }) {
   const colorScheme = useColorScheme();
   const [code, setCode] = useState('');
@@ -440,9 +466,8 @@ function JoinTagModal({
     setLoading(true);
     setError(null);
     try {
-      await onJoin(code.trim());
-      showToast('Tag added to your list', 'success');
-      onClose();
+      const result = await onResolve(code.trim());
+      onResolved(result);
     } catch (e: any) {
       setError(e.message || 'Failed to join');
     } finally {
@@ -511,7 +536,7 @@ export default function FocusScreen() {
   const colorScheme = useColorScheme();
   // Get tags from store
   const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals } = useFocus();
-  const { createTag, updateTag, deleteTag, reorderTags, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag, shareTag, stopSharingTag, joinSharedTag, leaveSharedTag } = useFocusActions();
+  const { createTag, updateTag, deleteTag, reorderTags, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag, shareTag, stopSharingTag, resolveSharedTagCode, leaveSharedTag } = useFocusActions();
   const rewards = useRewards();
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
@@ -572,7 +597,9 @@ export default function FocusScreen() {
   const [editTagEmoji, setEditTagEmoji] = useState('');
   const [editTagColor, setEditTagColor] = useState('#6592E9');
   const [showEditEmojiGrid, setShowEditEmojiGrid] = useState(false);
-  
+  // Resolved shared tag awaiting the map-or-clone choice (step 2 of joining)
+  const [resolvedSharedTag, setResolvedSharedTag] = useState<SharedTagResolveResult | null>(null);
+
   // Delete functionality
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<any>(null);
@@ -883,6 +910,30 @@ export default function FocusScreen() {
       return goal && goal.tagId === tagId && goal.isActive;
     });
 
+  // A tag is locked from deletion while it is tied to a non-terminal challenge
+  // (pending or active — i.e. ongoing or upcoming). `challenge.tagId` resolves to
+  // the current user's own participant tag, so this guards both the challenger and
+  // the challengee. Terminal challenges (completed/failed/cancelled/declined) don't block.
+  const tagHasOngoingChallenge = (tagId: string) =>
+    challenges.some(c => c.tagId === tagId && (c.status === 'active' || c.status === 'pending'));
+
+  // Returns a human-readable reason the tag can't be deleted, or null if it can.
+  const tagDeletionBlockReason = (tag: { id: string; name: string } | null): string | null => {
+    if (!tag) return null;
+    const hasGoal = tagHasActiveGoal(tag.id);
+    const hasChallenge = tagHasOngoingChallenge(tag.id);
+    if (hasGoal && hasChallenge) {
+      return `"${tag.name}" has an active goal and is part of an ongoing or upcoming challenge. Conclude or deactivate the goal and wait for the challenge to finish before deleting.`;
+    }
+    if (hasGoal) {
+      return `"${tag.name}" has an active goal. Please conclude or deactivate the goal first before deleting.`;
+    }
+    if (hasChallenge) {
+      return `"${tag.name}" is part of an ongoing or upcoming challenge. The challenge must finish before you can delete this tag.`;
+    }
+    return null;
+  };
+
   const handleDeleteTag = (tag: any, event: any) => {
     event?.stopPropagation(); // Prevent tag selection when clicking delete
     setTagToDelete(tag);
@@ -916,6 +967,30 @@ export default function FocusScreen() {
   const handleShareTag = (tag: any) => {
     setSharingTag(tag);
     setShowShareModal(true);
+  };
+
+  // Joiner unlinks from a shared tag: ends the membership but keeps the tag and
+  // its sessions. After unlinking it becomes a plain tag (Delete returns).
+  const handleUnlinkTag = (tag: any) => {
+    Alert.alert(
+      'Unlink shared tag?',
+      `You'll stop sharing progress with ${tag.sharedOwnerName ?? 'the owner'}. Your "${tag.name}" tag and its sessions stay.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unlink',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveSharedTag(tag.id);
+              showToast('Unlinked from shared tag', 'success');
+            } catch (e: any) {
+              showToast(e?.message || 'Failed to unlink', 'error');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const stopUnlockSession = (sessionId: string, refundUnusedTime: boolean) => {
@@ -1990,6 +2065,7 @@ export default function FocusScreen() {
                     onSelect={handleTagSelect}
                     onEdit={handleEditTag}
                     onDelete={handleDeleteTag}
+                    onUnlink={handleUnlinkTag}
                     onShare={handleShareTag}
                     onSwipeOpen={handleSwipeOpen}
                     onDragStart={handleDragStart}
@@ -2166,7 +2242,7 @@ export default function FocusScreen() {
         {showDeleteModal && (
           <View className="absolute inset-0 bg-black/50 justify-center items-center p-4">
             <Pressable className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-xs">
-              {tagToDelete && tagHasActiveGoal(tagToDelete.id) ? (
+              {tagToDelete && tagDeletionBlockReason(tagToDelete) ? (
                 <>
                   {/* Cannot Delete Header */}
                   <View className="p-4 border-b border-light-border dark:border-gray-700">
@@ -2178,7 +2254,7 @@ export default function FocusScreen() {
                   {/* Explanation */}
                   <View className="p-4">
                     <Typography variant="body-14" color="primary" className="leading-5">
-                      "{tagToDelete.name}" has an active goal. Please conclude or deactivate the goal first before deleting.
+                      {tagDeletionBlockReason(tagToDelete)}
                     </Typography>
                   </View>
 
@@ -2494,11 +2570,22 @@ export default function FocusScreen() {
         onClose={() => setShowUpgradeSheet(false)}
       />
 
-      {/* Join Tag Modal */}
+      {/* Join Tag — step 1: enter + resolve the share code */}
       <JoinTagModal
         visible={showJoinModal}
         onClose={() => setShowJoinModal(false)}
-        onJoin={joinSharedTag}
+        onResolve={resolveSharedTagCode}
+        onResolved={(result) => {
+          setShowJoinModal(false);
+          setResolvedSharedTag(result);
+        }}
+      />
+
+      {/* Join Tag — step 2: map onto an existing tag or clone a new one */}
+      <JoinSharedTagSheet
+        resolved={resolvedSharedTag}
+        isVisible={!!resolvedSharedTag}
+        onClose={() => setResolvedSharedTag(null)}
       />
 
     </SwipeableTabWrapper>

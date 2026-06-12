@@ -62,14 +62,12 @@ export default function ChallengesModal() {
 
   // Group into sections
   const pendingIncoming = challenges.filter(c => c.status === 'pending' && c.isIncoming);
-  const pendingOutgoing = challenges.filter(c => c.status === 'pending' && !c.isIncoming);
   const active = challenges.filter(c => c.status === 'active');
   const completed = challenges.filter(c => c.status === 'completed' || c.status === 'failed');
   const cancelled = challenges.filter(c => c.status === 'cancelled');
 
   const sections = [
     ...(pendingIncoming.length > 0 ? [{ title: 'Incoming Challenges', data: pendingIncoming }] : []),
-    ...(pendingOutgoing.length > 0 ? [{ title: 'Sent Challenges', data: pendingOutgoing }] : []),
     ...(active.length > 0 ? [{ title: 'Active', data: active }] : []),
     ...(completed.length > 0 ? [{ title: 'Completed', data: completed }] : []),
     ...(cancelled.length > 0 ? [{ title: 'Cancelled', data: cancelled }] : []),
@@ -116,43 +114,6 @@ export default function ChallengesModal() {
     );
   };
 
-  const renderPendingOutgoing = (item: ChallengeItem) => {
-    const invitees = item.participants.filter(p => p.role === 'invitee');
-    const inviteeNames = invitees.map(p => p.profile.display_name);
-    const displayName = inviteeNames.length <= 2
-      ? inviteeNames.join(', ')
-      : `${inviteeNames[0]}, ${inviteeNames[1]}, +${inviteeNames.length - 2}`;
-    const firstInvitee = invitees[0];
-
-    return (
-      <View className="flex-row items-center py-3 px-5">
-        <View className="mr-3">
-          {firstInvitee && (
-            <DefaultAvatar
-              displayName={firstInvitee.profile.display_name}
-              color={firstInvitee.profile.avatar_color}
-              size={40}
-            />
-          )}
-        </View>
-        <View className="flex-1">
-          <Typography variant="subtitle-14-medium" color="primary" numberOfLines={1}>
-            {displayName}
-          </Typography>
-          <Typography variant="body-12" color="secondary">
-            {item.tagIcon} {item.tagName} · {formatTarget(item.targetMinutes, item.period)} · Pending
-          </Typography>
-        </View>
-        <Pressable
-          onPress={() => handleDelete(item.id)}
-          className="w-9 h-9 rounded-full bg-red-500/20 items-center justify-center active:opacity-70"
-        >
-          <Ionicons name="trash-outline" size={16} color="#EF4444" />
-        </Pressable>
-      </View>
-    );
-  };
-
   const renderCancelled = (item: ChallengeItem) => {
     const isCreator = item.creatorId === currentUserId;
     return (
@@ -182,10 +143,6 @@ export default function ChallengesModal() {
   const renderItem = ({ item, section }: { item: ChallengeItem; section: { title: string } }) => {
     if (section.title === 'Incoming Challenges') {
       return renderPendingIncoming(item);
-    }
-
-    if (section.title === 'Sent Challenges') {
-      return renderPendingOutgoing(item);
     }
 
     if (section.title === 'Cancelled') {

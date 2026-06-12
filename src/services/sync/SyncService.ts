@@ -258,6 +258,16 @@ export class SyncService {
    * Flush the offline queue to Supabase.
    */
   static async flush(): Promise<{ flushed: number; failed: number }> {
+    // Never flush without a valid auth session. Every syncable table's RLS policy is
+    // WITH CHECK (auth.uid() = user_id), so flushing post-sign-out (or mid-token-loss)
+    // fails every row. A debounced flush scheduled while authenticated can fire after
+    // the token is already gone — this guard stops that error storm at the source.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      console.log('☁️ Skipping flush — no authenticated session');
+      return { flushed: 0, failed: 0 };
+    }
+
     await syncQueue.load();
     if (syncQueue.size === 0) return { flushed: 0, failed: 0 };
 

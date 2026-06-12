@@ -1,4 +1,5 @@
 import { SyncService } from '../../services/sync/SyncService';
+import { syncQueue } from '../../services/sync/SyncQueue';
 import { BlocklistSyncService } from '../../services/sync/BlocklistSyncService';
 import {
   sessionToRow,
@@ -285,12 +286,42 @@ async function diffAndEnqueue(
 }
 
 /**
- * Reset the sync snapshot (call on sign-out).
+ * Drop the diff baseline and cancel any pending debounced flush — WITHOUT clearing the
+ * offline queue. Call this right before applying freshly-pulled cloud data (pullAndApply)
+ * so the middleware re-baselines to that cloud data on the next set() instead of diffing
+ * it against the prior (often empty) snapshot and re-enqueuing all of it as "new" local
+ * rows to push straight back up. Cancelling the pending debounce is correct here because
+ * pullAndApply is cloud-wins: any not-yet-flushed local diff is about to be overwritten.
  */
-export function resetSyncSnapshot(): void {
+export function invalidateSyncSnapshot(): void {
   lastSyncedSnapshot = null;
   lastSyncedSettings = null;
   pendingChanges = { sessions: false, tags: false, goals: false, badges: false, rewards: false, blocklist: false, settings: false };
+
+  // Cancel any debounced flush already scheduled — otherwise it fires later and (post
+  // sign-out) every upsert fails RLS, or it dereferences the now-null snapshot.
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+  if (settingsDebounceTimer) {
+    clearTimeout(settingsDebounceTimer);
+    settingsDebounceTimer = null;
+  }
+}
+
+/**
+ * Full reset for sign-out / user-switch: drop the baseline AND the queued ops.
+ */
+export function resetSyncSnapshot(): void {
+  invalidateSyncSnapshot();
+
+  // Drop the departing user's queued ops. AsyncStorage.clear() wipes the persisted
+  // copy but NOT this in-memory singleton (loaded stays true), so a later flush would
+  // otherwise replay these rows — failing RLS post-sign-out, or leaking into the next
+  // account on a user switch.
+  void syncQueue.clear();
+
   // Clear blocklist sync baseline on sign-out
   BlocklistSyncService.clearBaseline();
 }
