@@ -53,7 +53,7 @@ interface FocusSlice {
   resumeSession: () => void;
   completeSession: () => void;
   cancelSession: () => void;
-  createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string; isManualEntry?: boolean }) => void;
+  createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => void;
   
   // Tag Management
   addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => Tag;
@@ -426,7 +426,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
       }
     },
 
-    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string; isManualEntry?: boolean }) => {
+    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => {
       const completedSession: FocusSession = {
         id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         startTime: params.startTime,
@@ -435,6 +435,7 @@ export function createFocusSlice(set: any, get: any, api: any): FocusSlice {
         duration: params.duration,
         isPaused: false,
         tagId: params.tagId,
+        secondaryTagId: params.secondaryTagId,
         notes: params.notes,
         createdAt: new Date(),
         updatedAt: new Date(),

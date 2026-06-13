@@ -77,6 +77,7 @@ export interface FocusSession extends BaseEntity {
   duration: number;
   targetDuration: number;
   tagId: string;
+  secondaryTagId?: string; // Optional second tag for dual-activity sessions
   notes?: string;
   fruitsEarned: number;
   pauseHistory: PauseRecord[];

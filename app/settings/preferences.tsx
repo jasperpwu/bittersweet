@@ -9,17 +9,37 @@ import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { TimePicker } from '../../src/components/ui/TimePicker';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
+import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
+import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
 
 export default function PreferencesScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { preferences, updatePreferences } = useAppSettings();
+  const { isPremium } = useSubscriptionGate();
   const {
     hasNotifications,
     triggerHaptic,
     requestNotificationPermissions,
   } = useDeviceIntegration();
   const [notificationSheetVisible, setNotificationSheetVisible] = useState(false);
+  const [showAdhdUpgrade, setShowAdhdUpgrade] = useState(false);
+
+  const handleAdhdModeToggle = async (value: boolean) => {
+    // Premium gate: non-subscribers see the upgrade prompt instead of toggling.
+    if (!isPremium) {
+      triggerHaptic('light');
+      setShowAdhdUpgrade(true);
+      return;
+    }
+    try {
+      await updatePreferences({ adhdModeEnabled: value });
+      triggerHaptic('light');
+    } catch (error) {
+      console.error('Failed to update ADHD mode setting:', error);
+      triggerHaptic('error');
+    }
+  };
 
   const ensureNotificationPermissions = async (): Promise<boolean> => {
     if (hasNotifications) return true;
@@ -146,6 +166,15 @@ export default function PreferencesScreen() {
 
         {/* Focus */}
         <SettingsSection title="Focus">
+          <SettingsItem
+            title="ADHD Mode"
+            subtitle="Add an optional second tag to a session for two activities at once"
+            icon="git-branch-outline"
+            premiumBadge
+            hasToggle
+            toggleValue={isPremium && preferences.adhdModeEnabled}
+            onToggleChange={handleAdhdModeToggle}
+          />
           <SettingsItem
             title="Timer Picker Style"
             subtitle="Choose how you set the timer duration"
@@ -280,6 +309,14 @@ export default function PreferencesScreen() {
           </View>
         </View>
       </BottomSheet>
+
+      {/* ADHD Mode premium gate */}
+      <UpgradePrompt
+        isVisible={showAdhdUpgrade}
+        onClose={() => setShowAdhdUpgrade(false)}
+        onUpgrade={() => router.push('/settings/subscription' as any)}
+        limitType="adhd"
+      />
     </SafeAreaView>
   );
 }

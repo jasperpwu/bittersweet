@@ -33,6 +33,7 @@ export interface FocusSession {
   resumedAt?: Date;
 
   tagId: string; // Required single tag ID for each session
+  secondaryTagId?: string; // Optional second tag for dual-activity sessions (e.g. workout + audiobook)
 
   liveActivityId?: string; // iOS Live Activity ID for timer display
   isManualEntry?: boolean; // Whether the session was added manually without timer

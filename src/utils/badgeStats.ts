@@ -14,10 +14,10 @@ export function computeBadgeStats(
   // Filter sessions for this goal's tag
   const tagSessions = sessions.filter(s => {
     if (goal.tagId) {
-      return s.tagId === goal.tagId;
+      return s.tagId === goal.tagId || s.secondaryTagId === goal.tagId;
     }
     const legacyIds = (goal as any).tagIds || [];
-    return legacyIds.includes(s.tagId);
+    return legacyIds.includes(s.tagId) || legacyIds.includes(s.secondaryTagId);
   });
 
   const totalMinutes = tagSessions.reduce((sum, s) => sum + (s.duration || 0), 0);

@@ -15,6 +15,8 @@ export interface SettingsItemProps {
   valueLabel?: string;
   onPress?: () => void;
   isLast?: boolean;
+  /** Shows a small "PREMIUM" pill next to the title to mark a paid feature. */
+  premiumBadge?: boolean;
 }
 
 export const SettingsItem: React.FC<SettingsItemProps> = ({
@@ -28,6 +30,7 @@ export const SettingsItem: React.FC<SettingsItemProps> = ({
   valueLabel,
   onPress,
   isLast = false,
+  premiumBadge = false,
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -49,9 +52,19 @@ export const SettingsItem: React.FC<SettingsItemProps> = ({
       )}
 
       <View className="flex-1 mr-3">
-        <Typography variant="subtitle-14-medium" color="primary">
-          {title}
-        </Typography>
+        <View className="flex-row items-center">
+          <Typography variant="subtitle-14-medium" color="primary">
+            {title}
+          </Typography>
+          {premiumBadge && (
+            <View className="ml-2 px-2 py-0.5 rounded-full bg-primary/15 flex-row items-center">
+              <Ionicons name="diamond" size={9} color="#8B7FFF" />
+              <Typography variant="tiny-10" className="ml-1 text-primary font-poppins-semibold">
+                PREMIUM
+              </Typography>
+            </View>
+          )}
+        </View>
         {subtitle && (
           <Typography variant="body-12" color="secondary" className="mt-0.5">
             {subtitle}

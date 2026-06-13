@@ -31,6 +31,7 @@ interface AppPreferences {
   focus: FocusSettings;
   restDays: number[];    // day indices (0=Sun..6=Sat), default [0, 6]
   weekStartDay: number;  // 0=Sun..6=Sat, default 0
+  adhdModeEnabled: boolean; // premium-only; unlocks a secondary tag per session
 }
 
 interface NotificationSettings {
@@ -139,6 +140,7 @@ const createDefaultPreferences = (): AppPreferences => ({
   },
   restDays: [0, 6],
   weekStartDay: 1,
+  adhdModeEnabled: false,
 });
 
 const createDefaultStats = (): AppStats => ({

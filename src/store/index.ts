@@ -77,7 +77,7 @@ interface AppStore {
     pauseSession: () => void;
     resumeSession: () => void;
     completeSession: (id?: string) => void;
-    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
+    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
     
     // View actions
     setSelectedDate: (date: Date) => void;
@@ -425,6 +425,9 @@ export const useAppStore = create<AppStore>()(
 
           // Duration change alters this session's challenge contribution — recompute.
           get().grove.recomputeChallengeHitsForTag(session.tagId).catch(() => {});
+          if (session.secondaryTagId && session.secondaryTagId !== session.tagId) {
+            get().grove.recomputeChallengeHitsForTag(session.secondaryTagId).catch(() => {});
+          }
         },
         
         deleteSession: (sessionId) => {
@@ -476,6 +479,9 @@ export const useAppStore = create<AppStore>()(
 
             // Removing the session changes challenge hits for its tag — recompute.
             get().grove.recomputeChallengeHitsForTag(sessionToDelete.tagId).catch(() => {});
+            if (sessionToDelete.secondaryTagId && sessionToDelete.secondaryTagId !== sessionToDelete.tagId) {
+              get().grove.recomputeChallengeHitsForTag(sessionToDelete.secondaryTagId).catch(() => {});
+            }
           }
         },
         
@@ -583,7 +589,7 @@ export const useAppStore = create<AppStore>()(
           }
         },
         
-        createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; notes?: string; isManualEntry?: boolean }) => {
+        createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => {
           console.log('📝 Creating completed session:', params);
           const sessionId = generateId();
 
@@ -599,6 +605,7 @@ export const useAppStore = create<AppStore>()(
             adjustedDuration: params.duration,
             isPaused: false,
             tagId: params.tagId,
+            secondaryTagId: params.secondaryTagId,
             notes: params.notes,
             accelerateMultiplier: createCompletedMultiplier,
             createdAt: new Date(),
@@ -632,6 +639,9 @@ export const useAppStore = create<AppStore>()(
           // swallows its own errors. Covers every creation flow (manual entry,
           // widget/Live Activity stop, in-app finish) from one place.
           get().grove.recomputeChallengeHitsForTag(params.tagId).catch(() => {});
+          if (params.secondaryTagId && params.secondaryTagId !== params.tagId) {
+            get().grove.recomputeChallengeHitsForTag(params.secondaryTagId).catch(() => {});
+          }
 
           console.log('✅ Completed focus session created:', completedSession);
           return completedSession;

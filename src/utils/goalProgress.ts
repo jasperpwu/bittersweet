@@ -69,14 +69,18 @@ export const calculateGoalProgress = (
 
     // Calculate total minutes from sessions that overlap with this period
     const totalMinutes = sessions.reduce((sum, session) => {
-      // 1:1 tag filter (new model: tagId)
+      // Tag filter (new model: tagId). A session counts toward the goal if either
+      // its primary OR secondary tag matches — dual-tagged sessions credit both.
       if (goal.tagId) {
-        if ((session as any).tagId !== goal.tagId) return sum;
+        const matches = (session as any).tagId === goal.tagId || (session as any).secondaryTagId === goal.tagId;
+        if (!matches) return sum;
       } else {
         // Legacy fallback: tagIds array
         const goalTagIds = (goal as any).tagIds || [];
         if (goalTagIds.length > 0) {
-          const hasMatchingTag = (session as any).tagId && goalTagIds.includes((session as any).tagId);
+          const hasMatchingTag =
+            ((session as any).tagId && goalTagIds.includes((session as any).tagId)) ||
+            ((session as any).secondaryTagId && goalTagIds.includes((session as any).secondaryTagId));
           if (!hasMatchingTag) return sum;
         }
       }

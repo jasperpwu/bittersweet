@@ -26,6 +26,7 @@ import { isToday } from '../../src/utils/dateUtils';
 import { FocusSession } from '../../src/types/models';
 import { saveSessionPhoto, deleteSessionPhoto } from '../../src/services/sessionPhotoService';
 import { EmptyState } from '../../src/components/ui/EmptyState/EmptyState';
+import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
 
 
 export default function JournalScreen() {
@@ -36,6 +37,7 @@ export default function JournalScreen() {
   const [adjustedDuration, setAdjustedDuration] = useState(0);
   const { sessions, tags } = useFocus();
   const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession } = useFocusActions();
+  const secondaryTagEnabled = useSecondaryTagEnabled();
 
   // Manual Entry State
   const [isManualEntryModalVisible, setIsManualEntryModalVisible] = useState(false);
@@ -47,13 +49,15 @@ export default function JournalScreen() {
   const [manualEndTime, setManualEndTime] = useState(new Date());
   const [manualDate, setManualDate] = useState(new Date());
   const [manualTag, setManualTag] = useState<string>('');
+  const [manualSecondaryTag, setManualSecondaryTag] = useState<string>('');
   const [manualNotes, setManualNotes] = useState('');
   const [manualPhotoUri, setManualPhotoUri] = useState<string | null>(null);
   const [manualEntryError, setManualEntryError] = useState<string | null>(null);
   const [isManualSaving, setIsManualSaving] = useState(false);
 
-  // Edit session state (notes + photo for existing sessions)
+  // Edit session state (notes + photo + secondary tag for existing sessions)
   const [editNotes, setEditNotes] = useState('');
+  const [editSecondaryTag, setEditSecondaryTag] = useState<string>('');
   const [editPhotoUri, setEditPhotoUri] = useState<string | null>(null);
   const [isEditSaving, setIsEditSaving] = useState(false);
 
@@ -98,6 +102,7 @@ export default function JournalScreen() {
     setManualEndTime(now);
     setManualDate(selectedDate);
     setManualTag('');
+    setManualSecondaryTag('');
     setManualNotes('');
     setManualPhotoUri(null);
     setManualEntryError(null);
@@ -161,6 +166,7 @@ export default function JournalScreen() {
       duration: duration,
       targetDuration: duration,
       tagId: manualTag,
+      secondaryTagId: manualSecondaryTag || undefined,
       notes: manualNotes.trim() || undefined,
       isManualEntry: true,
     });
@@ -318,6 +324,7 @@ export default function JournalScreen() {
     setSelectedSession(session);
     setAdjustedDuration(Math.max(0, Math.min(actualDuration, currentAdjustedDuration)));
     setEditNotes(session.notes ?? '');
+    setEditSecondaryTag(session.secondaryTagId ?? '');
     setEditPhotoUri(null);
   };
 
@@ -336,6 +343,20 @@ export default function JournalScreen() {
     const trimmedNotes = editNotes.trim();
     if (trimmedNotes !== (selectedSession.notes ?? '')) {
       updateSession(selectedSession.id, { notes: trimmedNotes || undefined });
+    }
+
+    // Save secondary tag if changed. updateSession doesn't recompute challenges,
+    // so do it here for both the old and new secondary tag (either may gain/lose
+    // this session's contribution).
+    const prevSecondary = selectedSession.secondaryTagId ?? '';
+    const nextSecondary = editSecondaryTag || '';
+    if (nextSecondary !== prevSecondary) {
+      updateSession(selectedSession.id, { secondaryTagId: nextSecondary || undefined });
+      [prevSecondary, nextSecondary].forEach(tagId => {
+        if (tagId && tagId !== selectedSession.tagId) {
+          recomputeChallengeHitsForTag(tagId).catch(() => {});
+        }
+      });
     }
 
     // Upload photo if selected and session doesn't already have a photo
@@ -397,6 +418,7 @@ export default function JournalScreen() {
   const flushOfflineQueue = useAppStore((s) => s.sync.flushOfflineQueue);
 
   const challenges = useAppStore((s) => s.grove.challenges);
+  const recomputeChallengeHitsForTag = useAppStore((s) => s.grove.recomputeChallengeHitsForTag);
 
   // Resolve tag name for the selected session (handles challenge/shared tags)
   const selectedSessionTag = selectedSession?.tagId ? tags.byId[selectedSession.tagId] : null;
@@ -646,6 +668,21 @@ export default function JournalScreen() {
               </View>
             )}
 
+            {/* Optional secondary tag (premium ADHD mode) — two activities at once */}
+            {secondaryTagEnabled && (
+              <View className="mb-5">
+                <Typography variant="body-12" color="secondary" className="mb-2">
+                  Secondary tag (optional)
+                </Typography>
+                <HorizontalTagSelector
+                  tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt && t.id !== selectedSession.tagId)}
+                  selectedTags={editSecondaryTag ? [editSecondaryTag] : []}
+                  onTagSelect={(id) => setEditSecondaryTag(prev => (prev === id ? '' : id))}
+                  maxSelections={1}
+                />
+              </View>
+            )}
+
             {/* Notes section */}
             <View className="mb-5">
               <Typography variant="body-12" color="secondary" className="mb-2">
@@ -829,10 +866,31 @@ export default function JournalScreen() {
               <HorizontalTagSelector
                 tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt)}
                 selectedTags={manualTag ? [manualTag] : []}
-                onTagSelect={setManualTag}
+                onTagSelect={(id) => {
+                  setManualTag(id);
+                  // Keep the two tags distinct: clear secondary if it now matches primary.
+                  if (manualSecondaryTag === id) setManualSecondaryTag('');
+                }}
                 maxSelections={1}
               />
             </View>
+
+            {/* Optional secondary tag (premium ADHD mode) — two activities at once */}
+            {secondaryTagEnabled && (
+              <>
+                <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
+                  Secondary tag (optional)
+                </Typography>
+                <View className="mb-4">
+                  <HorizontalTagSelector
+                    tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt && t.id !== manualTag)}
+                    selectedTags={manualSecondaryTag ? [manualSecondaryTag] : []}
+                    onTagSelect={(id) => setManualSecondaryTag(prev => (prev === id ? '' : id))}
+                    maxSelections={1}
+                  />
+                </View>
+              </>
+            )}
 
             {/* Notes input */}
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">

@@ -13,6 +13,7 @@ import Animated, {
   FadeIn,
 } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
+import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { ConfettiOverlay } from '../../src/components/ui/ConfettiOverlay';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
@@ -20,6 +21,7 @@ import { showToast } from '../../src/components/ui/Toast';
 import { saveSessionPhoto, uploadSessionPhoto } from '../../src/services/sessionPhotoService';
 import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
 import { useAppSettings } from '../../src/store/unified-store';
+import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
 
 export default function SessionCompleteModal() {
   const colorScheme = useColorScheme();
@@ -29,7 +31,9 @@ export default function SessionCompleteModal() {
 
   const session = sessionId ? sessions.byId[sessionId] : null;
 
+  const secondaryTagEnabled = useSecondaryTagEnabled();
   const [notes, setNotes] = useState(session?.notes ?? '');
+  const [secondaryTag, setSecondaryTag] = useState<string>(session?.secondaryTagId ?? '');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isSavingPhoto, setIsUploadingPhoto] = useState(false);
 
@@ -158,6 +162,20 @@ export default function SessionCompleteModal() {
       updateSession(session.id, { notes: trimmedNotes || undefined });
     }
 
+    // Persist the optional secondary tag if the user changed it. The session was
+    // created with only its primary tag, so the secondary tag's challenge
+    // contribution must be recomputed here (await so the toast below is fresh).
+    const prevSecondary = session.secondaryTagId ?? '';
+    if (secondaryTag !== prevSecondary) {
+      updateSession(session.id, { secondaryTagId: secondaryTag || undefined });
+      const groveState = useAppStore.getState().grove;
+      for (const tagId of [prevSecondary, secondaryTag]) {
+        if (tagId && tagId !== session.tagId) {
+          await groveState.recomputeChallengeHitsForTag(tagId).catch(() => {});
+        }
+      }
+    }
+
     // Upload photo if one was selected
     if (photoUri) {
       setIsUploadingPhoto(true);
@@ -187,7 +205,7 @@ export default function SessionCompleteModal() {
     const grove = useAppStore.getState().grove;
     if (grove.profile && grove.isActive && session.tagId) {
       const activeChallenges = grove.challenges.filter(
-        (c) => c.status === 'active' && c.tagId === session.tagId
+        (c) => c.status === 'active' && (c.tagId === session.tagId || (!!secondaryTag && c.tagId === secondaryTag))
       );
       for (const challenge of activeChallenges) {
         const myHits = challenge.myParticipant?.hits ?? 0;
@@ -281,6 +299,21 @@ export default function SessionCompleteModal() {
               Your notes help summarize your week and generate tips.
             </Typography>
           </View>
+
+          {/* Optional secondary tag (premium ADHD mode) — two activities at once */}
+          {secondaryTagEnabled && (
+            <View className="w-full mb-6">
+              <Typography variant="body-14" color="secondary" className="mb-2">
+                Secondary tag (optional)
+              </Typography>
+              <HorizontalTagSelector
+                tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt && t.id !== session.tagId)}
+                selectedTags={secondaryTag ? [secondaryTag] : []}
+                onTagSelect={(id) => setSecondaryTag(prev => (prev === id ? '' : id))}
+                maxSelections={1}
+              />
+            </View>
+          )}
 
           {/* Photo section */}
           {!hasExistingPhoto && (

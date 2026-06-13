@@ -836,7 +836,7 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
           const t = new Date(s.startTime).getTime();
           return t >= startDate.getTime()
             && t <= endDate.getTime()
-            && s.tagId === challenge.tagId;
+            && (s.tagId === challenge.tagId || s.secondaryTagId === challenge.tagId);
         });
 
       // Group by period bucket and count hits
