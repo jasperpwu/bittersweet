@@ -20,6 +20,7 @@ import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
 import { Toast } from '../src/components/ui/Toast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
 import { WidgetService } from '../src/services/WidgetService';
+import { syncHealthKitWorkouts } from '../src/services/health/syncHealthKitWorkouts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore, clearAllStoreData } from '../src/store';
 import { supabase } from '../src/config/supabase';
@@ -626,6 +627,9 @@ export default function RootLayout() {
         // Flush any pending offline sync operations
         useAppStore.getState().sync.flushOfflineQueue();
 
+        // Pull any new Apple Health workouts as sessions (no-ops if disconnected)
+        syncHealthKitWorkouts();
+
         // Record heartbeat activity if grove is active, heartbeat enabled, and not paused
         const groveState = useAppStore.getState().grove;
         if (
@@ -809,6 +813,10 @@ export default function RootLayout() {
                 />
                 <Stack.Screen
                   name="settings/support"
+                  options={{ headerShown: false, presentation: 'card' }}
+                />
+                <Stack.Screen
+                  name="settings/health"
                   options={{ headerShown: false, presentation: 'card' }}
                 />
               </Stack>

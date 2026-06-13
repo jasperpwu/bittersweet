@@ -4,7 +4,6 @@ import { invalidateSyncSnapshot } from '../middleware/syncMiddleware';
 import { BlocklistSyncService } from '../../services/sync/BlocklistSyncService';
 import { FamilyControlsModule } from '../../modules/BitterSweetFamilyControls';
 import { WidgetService } from '../../services/WidgetService';
-import { reconcileGoals } from './focusSlice';
 
 function buildLegacySelection(
   selectionId: string,
@@ -425,3 +424,69 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
     }));
   },
 });
+
+/**
+ * Collapse duplicate goals that share a tagId down to a single winner
+ * (active first, then most-recently-updated). Called after sync pulls/merges,
+ * which can briefly produce duplicate goals for the same tag.
+ */
+export function reconcileGoals(set: any, get: any): void {
+  const goals = get().focus.goals;
+  const byTagId: Record<string, any[]> = {};
+
+  // Group goals by tagId
+  for (const id of goals.allIds) {
+    const goal = goals.byId[id];
+    if (!goal) continue;
+    const tagId = goal.tagId;
+    if (!tagId) continue;
+    if (!byTagId[tagId]) byTagId[tagId] = [];
+    byTagId[tagId].push(goal);
+  }
+
+  // Check if there are any duplicates at all
+  const hasDuplicates = Object.values(byTagId).some((arr) => arr.length > 1);
+  if (!hasDuplicates) return;
+
+  // Pick the winner for each tagId group and collect IDs to remove
+  const idsToRemove = new Set<string>();
+
+  for (const [, groupGoals] of Object.entries(byTagId)) {
+    if (groupGoals.length <= 1) continue;
+
+    // Sort: active first, then by updatedAt descending
+    groupGoals.sort((a, b) => {
+      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+      const aTime = new Date(a.updatedAt || 0).getTime();
+      const bTime = new Date(b.updatedAt || 0).getTime();
+      return bTime - aTime;
+    });
+
+    // Keep the first (winner), remove the rest
+    for (let i = 1; i < groupGoals.length; i++) {
+      idsToRemove.add(groupGoals[i].id);
+    }
+  }
+
+  if (idsToRemove.size === 0) return;
+
+  console.log(`[reconcileGoals] Removing ${idsToRemove.size} duplicate goal(s)`);
+
+  set((s: any) => {
+    const newById = { ...s.focus.goals.byId };
+    for (const id of idsToRemove) {
+      delete newById[id];
+    }
+    const newAllIds = s.focus.goals.allIds.filter((id: string) => !idsToRemove.has(id));
+    return {
+      focus: {
+        ...s.focus,
+        goals: {
+          ...s.focus.goals,
+          byId: newById,
+          allIds: newAllIds,
+        },
+      },
+    };
+  });
+}

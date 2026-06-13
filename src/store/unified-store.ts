@@ -20,6 +20,14 @@ interface DeviceInfo {
   locale: string;
 }
 
+// Apple Health integration (device-local only — intentionally NOT synced to cloud).
+interface HealthKitPreferences {
+  enabled: boolean;            // user connected Apple Health and wants workout import
+  linkedTagId: string | null;  // tag that imported workouts are filed under
+  anchor: string | null;       // opaque HealthKit query anchor for incremental fetch
+  skipUserEntered: boolean;    // ignore workouts hand-logged in the Health app
+}
+
 interface AppPreferences {
   hasSeenOnboarding: boolean;
   hasSeenFruitCoachMark: boolean;
@@ -32,6 +40,7 @@ interface AppPreferences {
   restDays: number[];    // day indices (0=Sun..6=Sat), default [0, 6]
   weekStartDay: number;  // 0=Sun..6=Sat, default 0
   adhdModeEnabled: boolean; // premium-only; unlocks a secondary tag per session
+  healthKit: HealthKitPreferences;
 }
 
 interface NotificationSettings {
@@ -141,6 +150,12 @@ const createDefaultPreferences = (): AppPreferences => ({
   restDays: [0, 6],
   weekStartDay: 1,
   adhdModeEnabled: false,
+  healthKit: {
+    enabled: false,
+    linkedTagId: null,
+    anchor: null,
+    skipUserEntered: false,
+  },
 });
 
 const createDefaultStats = (): AppStats => ({
@@ -206,6 +221,10 @@ export const useUnifiedStore = create<UnifiedStore>()(
                 ...get().preferences.focus,
                 ...updates.focus,
               },
+              healthKit: {
+                ...get().preferences.healthKit,
+                ...updates.healthKit,
+              },
             };
 
             set({ preferences: updatedPreferences });
@@ -252,6 +271,26 @@ export const useUnifiedStore = create<UnifiedStore>()(
           preferences: state.preferences,
           stats: state.stats,
         }),
+        // Deep-merge persisted prefs over current defaults so nested keys added in
+        // newer versions (e.g. `healthKit`) are backfilled for existing users instead
+        // of being left `undefined` by zustand's default shallow merge.
+        merge: (persisted: any, current: any) => {
+          const p = persisted ?? {};
+          const cp = current.preferences;
+          const pp = p.preferences ?? {};
+          return {
+            ...current,
+            ...p,
+            preferences: {
+              ...cp,
+              ...pp,
+              notifications: { ...cp.notifications, ...pp.notifications },
+              focus: { ...cp.focus, ...pp.focus },
+              healthKit: { ...cp.healthKit, ...pp.healthKit },
+            },
+            stats: { ...current.stats, ...p.stats },
+          };
+        },
       }
     ),
     { name: 'bittersweet-store' }

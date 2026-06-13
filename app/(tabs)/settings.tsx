@@ -8,6 +8,8 @@ import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
 import { AccountActions } from '../../src/components/auth/AccountSection';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
+import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
+import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { useAppStore } from '../../src/store';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
@@ -19,9 +21,11 @@ interface CategoryCardProps {
   title: string;
   subtitle: string;
   onPress: () => void;
+  /** Shows a small "PREMIUM" pill next to the title to mark a paid feature. */
+  premiumBadge?: boolean;
 }
 
-const CategoryCard: React.FC<CategoryCardProps> = ({ icon, iconColor, title, subtitle, onPress }) => {
+const CategoryCard: React.FC<CategoryCardProps> = ({ icon, iconColor, title, subtitle, onPress, premiumBadge = false }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -37,9 +41,19 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ icon, iconColor, title, sub
         <Ionicons name={icon} size={22} color={iconColor} />
       </View>
       <View className="flex-1">
-        <Typography variant="subtitle-14-medium" color="primary">
-          {title}
-        </Typography>
+        <View className="flex-row items-center">
+          <Typography variant="subtitle-14-medium" color="primary">
+            {title}
+          </Typography>
+          {premiumBadge && (
+            <View className="ml-2 px-2 py-0.5 rounded-full bg-primary/15 flex-row items-center">
+              <Ionicons name="diamond" size={9} color="#8B7FFF" />
+              <Typography variant="tiny-10" className="ml-1 text-primary font-poppins-semibold">
+                PREMIUM
+              </Typography>
+            </View>
+          )}
+        </View>
         <Typography variant="body-12" color="secondary" className="mt-0.5">
           {subtitle}
         </Typography>
@@ -55,6 +69,8 @@ export default function SettingsScreen() {
   const { preferences } = useAppSettings();
   const { triggerHaptic, deviceInfo } = useDeviceIntegration();
   const [upgradeSheetVisible, setUpgradeSheetVisible] = useState(false);
+  const [showHealthUpgrade, setShowHealthUpgrade] = useState(false);
+  const { isPremium } = useSubscriptionGate();
 
   const { user, isAuthenticated, isLoading: authLoading, error: authError } = useAppStore((state) => state.auth);
   const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
@@ -240,6 +256,23 @@ export default function SettingsScreen() {
           />
 
           <CategoryCard
+            icon="heart-outline"
+            iconColor="#FF6B6B"
+            title="Apple Health"
+            subtitle="Sync Apple Fitness workouts as sessions"
+            premiumBadge
+            onPress={() => {
+              triggerHaptic('light');
+              // Premium gate: non-subscribers see the upgrade prompt instead of the screen.
+              if (!isPremium) {
+                setShowHealthUpgrade(true);
+                return;
+              }
+              router.push('/settings/health' as any);
+            }}
+          />
+
+          <CategoryCard
             icon="help-circle-outline"
             iconColor="#F5A623"
             title="Support & About"
@@ -382,6 +415,14 @@ export default function SettingsScreen() {
       <UpgradeSheet
         isVisible={upgradeSheetVisible}
         onClose={() => setUpgradeSheetVisible(false)}
+      />
+
+      {/* Apple Health premium gate */}
+      <UpgradePrompt
+        isVisible={showHealthUpgrade}
+        onClose={() => setShowHealthUpgrade(false)}
+        onUpgrade={() => router.push('/settings/subscription' as any)}
+        limitType="health"
       />
     </SwipeableTabWrapper>
     </SafeAreaView>

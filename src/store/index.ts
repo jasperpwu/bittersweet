@@ -79,7 +79,12 @@ interface AppStore {
     resumeSession: () => void;
     completeSession: (id?: string) => void;
     createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
-    
+    importHealthKitWorkouts: (
+      workouts: { uuid: string; startDate: Date; endDate: Date; durationMinutes: number; wasUserEntered: boolean }[],
+      tagId: string,
+      options?: { skipUserEntered?: boolean }
+    ) => { imported: number; skipped: number };
+
     // View actions
     setSelectedDate: (date: Date) => void;
     setViewMode: (mode: 'day' | 'week' | 'month') => void;
@@ -647,7 +652,77 @@ export const useAppStore = create<AppStore>()(
           console.log('✅ Completed focus session created:', completedSession);
           return completedSession;
         },
-        
+
+        importHealthKitWorkouts: (workouts, tagId, options) => {
+          const skipUserEntered = options?.skipUserEntered ?? false;
+          const state0 = get();
+
+          // Validate the linked tag still exists before importing anything
+          // (e.g. it may have been deleted, or belong to a previous account).
+          if (!state0.focus.tags.byId[tagId]) {
+            console.warn(`[HealthKit] import skipped: tag ${tagId} not found`);
+            return { imported: 0, skipped: workouts.length };
+          }
+
+          const existingById = state0.focus.sessions.byId;
+          const now = new Date();
+          const toAdd: FocusSession[] = [];
+          let skipped = 0;
+
+          for (const w of workouts) {
+            // Deterministic id from the HealthKit UUID makes import idempotent and
+            // survives cloud pulls / AsyncStorage wipes — re-importing the same
+            // workout computes the same id and is skipped below.
+            const id = `hk-${w.uuid}`;
+
+            if (existingById[id]) { skipped++; continue; }
+            if (skipUserEntered && w.wasUserEntered) { skipped++; continue; }
+            if (!(w.durationMinutes > 0)) { skipped++; continue; }
+
+            toAdd.push({
+              id,
+              startTime: w.startDate,
+              endTime: w.endDate,
+              duration: w.durationMinutes,
+              initialSetDuration: w.durationMinutes,
+              actualDuration: w.durationMinutes,
+              adjustedDuration: w.durationMinutes,
+              isPaused: false,
+              tagId,
+              accelerateMultiplier: 1,
+              createdAt: now,
+              updatedAt: now,
+              // Reward-neutral, exactly like a manual entry — prevents fruit
+              // farming via hand-logged Apple Health workouts.
+              isManualEntry: true,
+            });
+          }
+
+          if (toAdd.length > 0) {
+            set((state) => {
+              const byId = { ...state.focus.sessions.byId };
+              const allIds = [...state.focus.sessions.allIds];
+              for (const s of toAdd) {
+                byId[s.id] = s;
+                allIds.push(s.id);
+              }
+              return {
+                focus: {
+                  ...state.focus,
+                  sessions: { ...state.focus.sessions, byId, allIds },
+                },
+              };
+            });
+
+            // Imported sessions can land in a challenge's tag/date range — keep
+            // challenge hit counts correct, same as createCompletedSession.
+            get().grove.recomputeChallengeHitsForTag(tagId).catch(() => {});
+          }
+
+          console.log(`[HealthKit] import: imported=${toAdd.length} skipped=${skipped} tagId=${tagId}`);
+          return { imported: toAdd.length, skipped };
+        },
+
         // View actions
         setSelectedDate: (date) => {
           console.log('📅 Setting selected date:', date);

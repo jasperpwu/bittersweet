@@ -276,6 +276,10 @@ export function settingsToRow(
     rest_days: preferences.restDays ?? [0, 6],
     week_start_day: preferences.weekStartDay ?? 1,
     adhd_mode_enabled: preferences.adhdModeEnabled ?? false,
+    // Apple Health settings (the `anchor` is intentionally device-local — not synced).
+    healthkit_enabled: preferences.healthKit?.enabled ?? false,
+    healthkit_linked_tag_id: preferences.healthKit?.linkedTagId ?? null,
+    healthkit_skip_user_entered: preferences.healthKit?.skipUserEntered ?? false,
     last_duration_by_tag: lastDurationByTagId ?? {},
     has_seen_onboarding: preferences.hasSeenOnboarding ?? false,
     has_seen_fruit_coach_mark: preferences.hasSeenFruitCoachMark ?? false,
@@ -310,6 +314,13 @@ export function rowToSettings(row: Record<string, any>): any {
     restDays: row.rest_days ?? [0, 6],
     weekStartDay: row.week_start_day ?? 1,
     adhdModeEnabled: row.adhd_mode_enabled ?? false,
+    // Apple Health: restore synced fields only. `anchor` is omitted on purpose so
+    // the unified-store deep-merge preserves this device's local query cursor.
+    healthKit: {
+      enabled: row.healthkit_enabled ?? false,
+      linkedTagId: row.healthkit_linked_tag_id ?? null,
+      skipUserEntered: row.healthkit_skip_user_entered ?? false,
+    },
     lastDurationByTagId: row.last_duration_by_tag ?? {},
     updatedAt: row.updated_at ?? null,
   };

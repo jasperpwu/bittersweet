@@ -16,6 +16,14 @@
       "expo-splash-screen",
       "expo-dev-client",
       [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Bittersweet reads your completed workouts so they can show up as focus sessions.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
+      ],
+      [
         "react-native-device-activity",
         {
           "appleTeamId": "WFHA987U5W",

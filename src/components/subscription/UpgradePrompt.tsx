@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
 
-type LimitType = 'tags' | 'goals' | 'adhd';
+type LimitType = 'tags' | 'goals' | 'adhd' | 'health';
 
 interface UpgradePromptProps {
   isVisible: boolean;
@@ -25,6 +25,10 @@ const LIMIT_COPY: Record<LimitType, { title: string; subtitle: string }> = {
   adhd: {
     title: 'ADHD mode is a Premium feature',
     subtitle: 'Upgrade to Premium to add a second tag to a session — perfect for tracking two things you do at once, like a workout and an audiobook.',
+  },
+  health: {
+    title: 'Apple Health is a Premium feature',
+    subtitle: 'Upgrade to Premium to import your workouts as focus sessions, including workouts logged by popular fitness apps like SmartGym and Peloton.',
   },
 };
 
