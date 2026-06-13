@@ -1,6 +1,7 @@
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { View, useColorScheme } from 'react-native';
 import LottieView from 'lottie-react-native';
+import Svg, { Defs, LinearGradient as SvgGradient, Stop, Rect } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,7 +21,7 @@ import {
   getSessionMinutesInPeriod,
 } from '../../../utils/goalProgress';
 
-const confettiSource = require('../../../../assets/Confetti.json');
+const celebrationSource = require('../../../../assets/goal.json');
 
 // Banner palettes. Per CLAUDE.md we avoid raw inline hex; these are named
 // constants chosen to read on both light/dark backgrounds. Green = goal hit,
@@ -35,6 +36,16 @@ const BLUE = {
 };
 const ON_BANNER = '#FFFFFF'; // text/fill color on the colored banner
 const TRACK_ON_BANNER = 'rgba(255, 255, 255, 0.28)'; // unfilled bar
+
+// Shiny tip at the leading edge of the white fill — fades from the white bar
+// into a glow whose color reflects goal state: blue while in progress, green
+// once reached. Colors reuse the banner palette.
+const TIP = {
+  blue: BLUE.light.bg, // '#6592E9'
+  green: GREEN.light.bg, // '#34C759'
+};
+const TIP_WIDTH = 48; // px width of the gradient accent at the bar's leading edge
+const BAR_HEIGHT = 14; // progress bar / track height
 
 const formatTime = (minutes: number): string => {
   const rounded = Math.round(minutes);
@@ -99,6 +110,7 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
 
   const [visible, setVisible] = useState(true);
   const [celebrate, setCelebrate] = useState(false);
+  const celebrationRef = useRef<LottieView>(null);
 
   const opacity = useSharedValue(0);
   const fill = useSharedValue(computed?.beforePct ?? 0);
@@ -141,6 +153,7 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
   const goalName = goal.customName || (tag ? `${tag.icon} ${tag.name}` : 'Goal');
   const reached = computed.afterMinutes >= computed.target;
   const palette = reached ? (isDark ? GREEN.dark : GREEN.light) : (isDark ? BLUE.dark : BLUE.light);
+  const tipColor = reached ? TIP.green : TIP.blue;
 
   return (
     <Animated.View
@@ -192,7 +205,7 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
         {/* Progress bar */}
         <View
           style={{
-            height: 14,
+            height: BAR_HEIGHT,
             borderRadius: 999,
             backgroundColor: TRACK_ON_BANNER,
             overflow: 'hidden',
@@ -200,18 +213,50 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
         >
           <Animated.View
             style={[{ height: '100%', borderRadius: 999, backgroundColor: ON_BANNER }, fillStyle]}
-          />
+          >
+            {/* Shiny tip riding the leading edge of the fill. Blue while the
+                goal is still in progress, green once it's reached. */}
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                right: 0,
+                width: TIP_WIDTH,
+                shadowColor: tipColor,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.9,
+                shadowRadius: 4,
+              }}
+            >
+              <Svg width={TIP_WIDTH} height={BAR_HEIGHT}>
+                <Defs>
+                  <SvgGradient id="barTip" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor={ON_BANNER} stopOpacity={0} />
+                    <Stop offset="1" stopColor={tipColor} stopOpacity={1} />
+                  </SvgGradient>
+                </Defs>
+                <Rect x="0" y="0" width="100%" height="100%" fill="url(#barTip)" />
+              </Svg>
+            </View>
+          </Animated.View>
         </View>
       </View>
 
-      {/* Goal-hit celebration over the bar */}
+      {/* Goal-hit celebration over the bar. This is a large animation, so we
+          use `contain` and let it overflow the banner bounds (the parent View
+          has no `overflow: hidden`) so it's never cropped. */}
       {celebrate && (
         <LottieView
-          source={confettiSource}
-          autoPlay
+          ref={celebrationRef}
+          source={celebrationSource}
+          // Skip the first 0.3s (18 frames at 60fps). The clip spans frames
+          // 262–466, so start at 280 instead of using `autoPlay`.
+          onLayout={() => celebrationRef.current?.play(280, 466)}
           loop={false}
-          resizeMode="cover"
-          style={{ position: 'absolute', top: 40, left: 0, right: 0, height: 200 }}
+          speed={1.5}
+          resizeMode="contain"
+          style={{ position: 'absolute', top: -10, left: -40, right: -40, height: 360 }}
         />
       )}
     </Animated.View>

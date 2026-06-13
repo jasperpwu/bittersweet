@@ -15,7 +15,6 @@ import Animated, {
 import { Typography } from '../../src/components/ui';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { GoalProgressBanner } from '../../src/components/focus/GoalProgressBanner';
-import { ConfettiOverlay } from '../../src/components/ui/ConfettiOverlay';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
@@ -220,7 +219,6 @@ export default function SessionCompleteModal() {
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
-      <ConfettiOverlay />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

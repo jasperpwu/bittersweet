@@ -1047,16 +1047,18 @@ export default function FocusScreen() {
       console.log('🔒 Ended unlock session for focus start:', id);
     });
 
-    // Dev-only: -1 means 5-second test timer
-    const isDevTimer = selectedTime === -1;
-    const timerSeconds = isDevTimer ? 5 : selectedTime * 60;
+    // Dev-only test timers: -1 = 5s (counts as 1 min), -2 = 10s (counts as 30 min)
+    const isDevTimer = selectedTime === -1 || selectedTime === -2;
+    const devSeconds = selectedTime === -1 ? 5 : 10;
+    const devCountsAsMinutes = selectedTime === -1 ? 1 : 30;
+    const timerSeconds = isDevTimer ? devSeconds : selectedTime * 60;
     const infinite = selectedTime === 0;
     setIsInfinite(infinite);
     setIsRunning(true);
 
     const now = Date.now();
     sessionStartTimeRef.current = now;
-    sessionTargetDurationRef.current = isDevTimer ? 1 : selectedTime;
+    sessionTargetDurationRef.current = isDevTimer ? devCountsAsMinutes : selectedTime;
 
     if (infinite) {
       setElapsedSeconds(0);
@@ -1071,7 +1073,7 @@ export default function FocusScreen() {
     // Store tag info for later idle state (when session ends, LA transitions to idle)
     const selectedTagObj = selectedTag ? (tags.byId[selectedTag] || challengeTags.find(ct => ct.id === selectedTag)) : undefined;
     const selectedTagLabel = selectedTagObj ? `${selectedTagObj.icon || '🎯'} ${selectedTagObj.name}` : 'Focus';
-    LiveActivityService.setLastTag(selectedTag || undefined, selectedTagLabel, isDevTimer ? 1 : selectedTime);
+    LiveActivityService.setLastTag(selectedTag || undefined, selectedTagLabel, isDevTimer ? devCountsAsMinutes : selectedTime);
 
     if (infinite) {
       // Infinite mode: no end time — use a count-up live activity
@@ -1092,7 +1094,7 @@ export default function FocusScreen() {
       sessionEndTimeRef.current = endTime.getTime();
       const activityId = LiveActivityService.startFocusTimer(
         endTime,
-        isDevTimer ? 1 : selectedTime,
+        isDevTimer ? devCountsAsMinutes : selectedTime,
         selectedTagLabel
       );
       if (activityId) {
@@ -1114,7 +1116,7 @@ export default function FocusScreen() {
         content: {
           title: 'Focus Session Complete',
           body: isDevTimer
-            ? `Your 5s dev test session is done!`
+            ? `Your ${devSeconds}s dev test session is done!`
             : `Your ${selectedTime}m ${selectedTag ? tags.byId[selectedTag]?.name || 'focus' : 'focus'} session is done!`,
           sound: true,
         },
@@ -1148,7 +1150,7 @@ export default function FocusScreen() {
     AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
       startTime: persistNow,
       endTime: infinite ? 0 : persistNow + timerSeconds * 1000,
-      targetDuration: isDevTimer ? 1 : selectedTime,
+      targetDuration: isDevTimer ? devCountsAsMinutes : selectedTime,
       tagId: selectedTag || 'Focus',
       tagLabel: selectedTagLabel,
       isInfinite: infinite,

@@ -18,14 +18,15 @@ const BASE_TIME_VALUES = [
   300, 360, 420, 480,
 ];
 
-// -1 is a dev-only sentinel for "5 seconds" test mode
+// -1 / -2 are dev-only sentinels for "5 seconds" / "10 seconds" test modes
 const TIME_VALUES = __DEV__
-  ? [-1, ...BASE_TIME_VALUES]
+  ? [-1, -2, ...BASE_TIME_VALUES]
   : BASE_TIME_VALUES;
 
 /** Format minutes for display: values < 60 show as number, >= 60 show as e.g. 1h, 1h15, 2h30 */
 const formatTickLabel = (minutes: number): string => {
   if (minutes === -1) return '5s';
+  if (minutes === -2) return '10s';
   if (minutes === 0) return '\u221E'; // ∞
   if (minutes < 60) return String(minutes);
   const h = Math.floor(minutes / 60);
