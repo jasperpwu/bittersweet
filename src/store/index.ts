@@ -416,8 +416,9 @@ export const useAppStore = create<AppStore>()(
             },
             rewards: fruitDelta === 0 ? state.rewards : {
               ...state.rewards,
-              balance: state.rewards.balance + fruitDelta,
-              totalEarned: state.rewards.totalEarned + fruitDelta,
+              // Balance can never drop below 0 (fruitDelta may be negative).
+              balance: Math.max(0, state.rewards.balance + fruitDelta),
+              totalEarned: Math.max(0, state.rewards.totalEarned + fruitDelta),
               updatedAt: new Date().toISOString(),
             }
           }));
@@ -446,8 +447,11 @@ export const useAppStore = create<AppStore>()(
             // Remove the session
             const { [sessionId]: removed, ...remainingSessions } = state.focus.sessions.byId;
 
-            // Calculate fruits to deduct based on session duration and multiplier
-            const fruitsToDeduct = sessionToDelete
+            // Calculate fruits to deduct based on session duration and multiplier.
+            // Manual entries never earned fruits on creation (isManualEntry → 0),
+            // so they must deduct 0 here — otherwise deleting one removes fruits
+            // that were never granted.
+            const fruitsToDeduct = sessionToDelete && !sessionToDelete.isManualEntry
               ? calculateFruitsEarnedForDuration(
                   sessionToDelete.adjustedDuration ?? sessionToDelete.duration ?? 0,
                   sessionToDelete.initialSetDuration ?? sessionToDelete.duration ?? 0,
@@ -466,8 +470,9 @@ export const useAppStore = create<AppStore>()(
               },
               rewards: {
                 ...state.rewards,
-                balance: state.rewards.balance - fruitsToDeduct,
-                totalEarned: state.rewards.totalEarned - fruitsToDeduct,
+                // Never let the balance (or lifetime total) go negative.
+                balance: Math.max(0, state.rewards.balance - fruitsToDeduct),
+                totalEarned: Math.max(0, state.rewards.totalEarned - fruitsToDeduct),
                 updatedAt: new Date().toISOString(),
               }
             };
@@ -1499,7 +1504,8 @@ export const useAppStore = create<AppStore>()(
           set((state) => ({
             rewards: {
               ...state.rewards,
-              balance: state.rewards.balance - amount,
+              // Balance can never drop below 0.
+              balance: Math.max(0, state.rewards.balance - amount),
               totalSpent: state.rewards.totalSpent + amount,
               updatedAt: new Date().toISOString(),
             }
@@ -1517,7 +1523,8 @@ export const useAppStore = create<AppStore>()(
             set((state) => ({
               rewards: {
                 ...state.rewards,
-                balance: state.rewards.balance - app.price,
+                // Balance can never drop below 0.
+                balance: Math.max(0, state.rewards.balance - app.price),
                 totalSpent: state.rewards.totalSpent + app.price,
                 updatedAt: new Date().toISOString(),
                 unlockableApps: state.rewards.unlockableApps.filter(a => a.id !== appId)
