@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
+import { GoalProgressBanner } from '../../src/components/focus/GoalProgressBanner';
 import { ConfettiOverlay } from '../../src/components/ui/ConfettiOverlay';
 import { FruitCounter } from '../../src/components/rewards';
 import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
@@ -419,6 +420,9 @@ export default function SessionCompleteModal() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Goal progress banner — animates the goal bar for this session's tag */}
+      <GoalProgressBanner session={session} />
 
       {/* Fruit Coach Mark */}
       {fruitsEarned > 0 && (
