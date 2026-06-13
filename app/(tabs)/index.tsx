@@ -6,7 +6,7 @@ import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal, EMOJI_CATEGORIES } from '../../src/components/ui/EmojiPicker/EmojiPicker';
-import { TimeScroller, DurationPicker } from '../../src/components/focus';
+import { TimeScroller, DurationPicker, TagColorPicker } from '../../src/components/focus';
 
 import { useFocus, useFocusActions, useRewards, useAppStore, useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
 import { useAppSettings } from '../../src/store/unified-store';
@@ -2168,22 +2168,9 @@ export default function FocusScreen() {
                   <Typography variant="body-14" color="primary" className="mb-3">
                     Color
                   </Typography>
-                  <View className="flex-row flex-wrap" style={{ gap: 12 }}>
-                    {(['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'] as const).map((color) => (
-                      <Pressable
-                        key={color}
-                        onPress={() => setEditTagColor(color)}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          backgroundColor: color,
-                          borderWidth: editTagColor === color ? 3 : 0,
-                          borderColor: '#FFFFFF',
-                        }}
-                      />
-                    ))}
-                  </View>
+                  <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                    <TagColorPicker selectedColor={editTagColor} onSelectColor={setEditTagColor} />
+                  </ScrollView>
                 </View>
               </View>
 
@@ -2404,22 +2391,9 @@ export default function FocusScreen() {
                   <Typography variant="body-14" color="primary" className="mb-3">
                     Color
                   </Typography>
-                  <View className="flex-row flex-wrap" style={{ gap: 12 }}>
-                    {(['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'] as const).map((color) => (
-                      <Pressable
-                        key={color}
-                        onPress={() => setNewTagColor(color)}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          backgroundColor: color,
-                          borderWidth: newTagColor === color ? 3 : 0,
-                          borderColor: '#FFFFFF',
-                        }}
-                      />
-                    ))}
-                  </View>
+                  <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                    <TagColorPicker selectedColor={newTagColor} onSelectColor={setNewTagColor} />
+                  </ScrollView>
                 </View>
               </View>
 

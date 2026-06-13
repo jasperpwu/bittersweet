@@ -1,14 +1,13 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { View, FlatList, useWindowDimensions, useColorScheme, Pressable, ActivityIndicator, TextInput, Text } from 'react-native';
+import { View, FlatList, ScrollView, useWindowDimensions, useColorScheme, Pressable, ActivityIndicator, TextInput, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../src/components/ui/Typography';
 import { Button } from '../src/components/ui/Button';
+import { TagColorPicker } from '../src/components/focus';
 import { useUnifiedStore } from '../src/store/unified-store';
 import { useAppStore } from '../src/store';
-
-const TAG_COLORS = ['#6592E9', '#51BC6F', '#FFC107', '#FF9800', '#FD5B71', '#9C27B0', '#9E9E9E', '#2196F3'];
 
 const SUGGESTED_EMOJIS = ['📚', '💼', '🏋️', '🎨', '🧘', '💻', '📖', '🎵'];
 
@@ -238,22 +237,9 @@ export default function OnboardingScreen() {
               <Typography variant="body-12" color="secondary" className="mb-2">
                 Color
               </Typography>
-              <View className="flex-row flex-wrap mb-8" style={{ gap: 10 }}>
-                {TAG_COLORS.map((color) => (
-                  <Pressable
-                    key={color}
-                    onPress={() => setTagColor(color)}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: color,
-                      borderWidth: tagColor === color ? 3 : 0,
-                      borderColor: '#FFFFFF',
-                    }}
-                  />
-                ))}
-              </View>
+              <ScrollView style={{ maxHeight: 220 }} className="mb-8" nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                <TagColorPicker selectedColor={tagColor} onSelectColor={setTagColor} swatchSize={32} />
+              </ScrollView>
 
               {/* Create button */}
               <Pressable

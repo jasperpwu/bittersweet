@@ -11,6 +11,7 @@ import { WidgetService } from '../services/WidgetService';
 import { FocusGoal } from './types';
 import { persistenceConfig } from './middleware/persistence';
 import { computeBadgeStats } from '../utils/badgeStats';
+import { CLASSIC_TAG_COLORS, DEFAULT_TAG_COLOR } from '../config/tagColors';
 import * as Notifications from 'expo-notifications';
 import { AuthSlice, createAuthSlice } from './slices/authSlice';
 import { SubscriptionSlice, createSubscriptionSlice } from './slices/subscriptionSlice';
@@ -2071,18 +2072,18 @@ function populateDefaults() {
   try {
     // Backfill color for existing tags that don't have one
     const defaultColorMap: Record<string, string> = {
-      'Work': '#6592E9',
-      'Study': '#FFC107',
-      'Reading': '#FF9800',
-      'Exercise': '#51BC6F',
-      'Creative': '#9C27B0',
-      'Personal': '#2196F3',
+      'Work': CLASSIC_TAG_COLORS.blue,
+      'Study': CLASSIC_TAG_COLORS.amber,
+      'Reading': CLASSIC_TAG_COLORS.orange,
+      'Exercise': CLASSIC_TAG_COLORS.green,
+      'Creative': CLASSIC_TAG_COLORS.purple,
+      'Personal': CLASSIC_TAG_COLORS.skyBlue,
     };
     const currentState = getStoreState();
     for (const tagId of currentState.focus.tags.allIds) {
       const tag = currentState.focus.tags.byId[tagId];
       if (tag && !tag.color) {
-        currentState.focus.updateTag(tagId, { color: defaultColorMap[tag.name] || '#6592E9' });
+        currentState.focus.updateTag(tagId, { color: defaultColorMap[tag.name] || DEFAULT_TAG_COLOR });
       }
     }
 
@@ -2130,10 +2131,10 @@ function populateDefaults() {
  * tags come from the cloud pull.
  */
 const DEFAULT_TAGS: Array<{ name: string; icon: string; color: string }> = [
-  { name: 'Exercise', icon: '🏋️', color: '#51BC6F' },
-  { name: 'Study', icon: '📚', color: '#FFC107' },
-  { name: 'Work', icon: '💼', color: '#6592E9' },
-  { name: 'Mindful Rest', icon: '🧘', color: '#9C27B0' },
+  { name: 'Exercise', icon: '🏋️', color: CLASSIC_TAG_COLORS.green },
+  { name: 'Study', icon: '📚', color: CLASSIC_TAG_COLORS.amber },
+  { name: 'Work', icon: '💼', color: CLASSIC_TAG_COLORS.blue },
+  { name: 'Mindful Rest', icon: '🧘', color: CLASSIC_TAG_COLORS.purple },
 ];
 
 export function seedDefaultTags() {
