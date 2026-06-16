@@ -275,6 +275,10 @@ export class SyncService {
 
     const entries = sortEntriesForFlush(await syncQueue.dequeue(syncQueue.size));
     const succeeded: string[] = [];
+    // Entries we intentionally give up on (non-retryable) so they stop replaying
+    // every flush. Removed from the queue alongside `succeeded`, but not counted
+    // as failures since there's nothing to retry.
+    const quarantined: string[] = [];
     let failed = 0;
 
     for (const entry of entries) {
@@ -304,13 +308,38 @@ export class SyncService {
             `[SyncFlush] Failed focus session payload: id=${entry.data?.id ?? '?'} user_id=${entry.data?.user_id ?? '?'} tag_id=${entry.data?.tag_id ?? '?'}`
           );
         }
+
+        // Quarantine the one known non-retryable case: a HealthKit-imported
+        // session (`hk-` id, derived from the global Apple Health workout UUID)
+        // whose cloud row is owned by a different account that previously
+        // imported the same physical workout on this device. The PK collides on
+        // `id`, so the upsert takes the UPDATE path and Postgres rejects it with
+        // 42501 (RLS USING: auth.uid() != the existing row's user_id). Local
+        // wipes can't remove another account's cloud row, so this would retry
+        // forever. Drop it — the import already exists locally and stays.
+        const id = entry.data?.id;
+        if (
+          entry.operation === 'upsert' &&
+          entry.table === 'focus_sessions' &&
+          typeof id === 'string' &&
+          id.startsWith('hk-') &&
+          error?.code === '42501'
+        ) {
+          console.warn(
+            `[SyncFlush] Quarantining cross-account HealthKit session ${id} (owned by another account in cloud) — dropping from queue`
+          );
+          quarantined.push(entry.id);
+          continue;
+        }
+
         failed++;
       }
     }
 
-    await syncQueue.remove(succeeded);
+    await syncQueue.remove([...succeeded, ...quarantined]);
     console.log(
-      `☁️ Flush complete: ${succeeded.length} succeeded, ${failed} failed`
+      `☁️ Flush complete: ${succeeded.length} succeeded, ${failed} failed` +
+        (quarantined.length ? `, ${quarantined.length} quarantined` : '')
     );
 
     return { flushed: succeeded.length, failed };

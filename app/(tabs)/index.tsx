@@ -6,7 +6,7 @@ import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerModal, EMOJI_CATEGORIES } from '../../src/components/ui/EmojiPicker/EmojiPicker';
-import { TimeScroller, DurationPicker, TagColorPicker, CircularTimer } from '../../src/components/focus';
+import { TimeScroller, DurationPicker, TagColorPicker } from '../../src/components/focus';
 import * as Haptics from 'expo-haptics';
 
 import { useFocus, useFocusActions, useRewards, useAppStore, useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
@@ -1181,7 +1181,7 @@ export default function FocusScreen() {
             // Timer reached 0 — enter bonus time mode instead of stopping
             if (timerRef.current) clearInterval(timerRef.current as any);
             timerRef.current = null;
-            // Session reached its goal — celebrate the moment the ring turns gold.
+            // Session reached its goal — celebrate the moment.
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setIsBonusTime(true);
             setBonusSeconds(0);
@@ -1831,16 +1831,6 @@ export default function FocusScreen() {
   const timerDisplayTime = isUnlockActive ? formatTime(unlockRemainingSeconds) : displayTime;
   const timerTextColor = isBonusTime && !isUnlockActive ? '#4CAF7C' : (colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37');
 
-  // Focus ring progress: how "ripe" the session is (0..1). Dev timers run on
-  // 5s/10s; infinite (∞) sessions have no target, so the ring spins instead.
-  const ringTotalSeconds = selectedTime === -1 ? 5 : selectedTime === -2 ? 10 : selectedTime * 60;
-  const ringProgress = isBonusTime
-    ? 1
-    : ringTotalSeconds > 0
-      ? Math.min(1, Math.max(0, (ringTotalSeconds - remainingSeconds) / ringTotalSeconds))
-      : 0;
-  const ringIndeterminate = isInfinite && !isBonusTime;
-
   const selectedTagObj = selectedTag
     ? (tags.byId[selectedTag] || challengeTags.find(ct => ct.id === selectedTag) || null)
     : null;
@@ -1952,22 +1942,12 @@ export default function FocusScreen() {
               />
             )}
           </Animated.View>
-          {/* Premium focus ring — grows green→gold as the session ripens. Sits
-              behind the countdown; hidden while idle (timerOpacity 0) and during unlock. */}
-          <Animated.View
-            pointerEvents="none"
-            style={{ position: 'absolute', opacity: isUnlockActive ? 0 : timerOpacity, transform: [{ scale: timerScale }], zIndex: 50, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <CircularTimer
-              progress={ringProgress}
-              indeterminate={ringIndeterminate}
-              isBonus={isBonusTime}
-              size={300}
-              strokeWidth={12}
-            />
-          </Animated.View>
           <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 1 : timerOpacity, transform: [{ scale: isUnlockActive ? 1 : timerScale }, { translateY: isUnlockActive ? 0 : timerTranslateY }], zIndex: 100, alignItems: 'center' }}>
-            {isRunning && !isBonusTime && !isUnlockActive && (
+            {/* Gate on isSessionActive (set synchronously at start) rather than
+                isRunning — isRunning's re-render lands behind startTimer()'s heavy
+                synchronous native work, so gating on it makes the tag/hint appear
+                ~1s after the natively-animated countdown number. */}
+            {isSessionActive && !isBonusTime && !isUnlockActive && (
               <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
                 {selectedTagName && (
                   <Text style={{ color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37', fontSize: 24, lineHeight: 28, fontFamily: 'Poppins-SemiBold', textAlign: 'center', marginBottom: 4 }}>
@@ -2001,7 +1981,7 @@ export default function FocusScreen() {
         <View style={{ width: '100%', marginBottom: 64, minHeight: 96, justifyContent: 'center' }}>
           <Animated.View style={{ opacity: isUnlockActive ? 0 : tagsOpacity }} pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
             <Pressable
-              onPress={() => setShowTagModal(true)}
+              onPress={() => { Haptics.selectionAsync(); setShowTagModal(true); }}
               className="bg-light-border/30 dark:bg-gray-700 rounded-2xl py-4 px-6 flex-row items-center justify-between active:opacity-80"
             >
               <View className="flex-row items-center">
@@ -2021,10 +2001,10 @@ export default function FocusScreen() {
           onPress={handleStartFocus}
           className="bg-white dark:bg-white rounded-2xl py-4 items-center active:opacity-80"
           style={{
-            shadowColor: colorScheme === 'dark' ? '#000000' : '#5D4E37',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: colorScheme === 'dark' ? 0.35 : 0.18,
-            shadowRadius: 16,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
             elevation: 8,
           }}
         >

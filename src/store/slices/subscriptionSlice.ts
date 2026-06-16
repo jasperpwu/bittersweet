@@ -334,11 +334,16 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // maybeSingle (not single): on a fresh reinstall fetchTierFromServer can
+      // run before the profile row exists for the authenticated user (mount-time
+      // call races ahead of the signup trigger / sign-in reconciliation). single()
+      // would turn that benign "0 rows" state into a logged PGRST116 error; with
+      // maybeSingle a missing profile is data:null and we simply no-op below.
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('subscription_tier, membership_source, subscription_expires_at')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('[IAP] Failed to fetch tier from server:', error);
