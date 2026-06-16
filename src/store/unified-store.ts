@@ -25,7 +25,6 @@ interface HealthKitPreferences {
   enabled: boolean;            // user connected Apple Health and wants workout import
   linkedTagId: string | null;  // tag that imported workouts are filed under
   anchor: string | null;       // opaque HealthKit query anchor for incremental fetch
-  skipUserEntered: boolean;    // ignore workouts hand-logged in the Health app
 }
 
 interface AppPreferences {
@@ -154,7 +153,6 @@ const createDefaultPreferences = (): AppPreferences => ({
     enabled: false,
     linkedTagId: null,
     anchor: null,
-    skipUserEntered: false,
   },
 });
 

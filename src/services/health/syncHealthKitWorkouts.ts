@@ -38,9 +38,7 @@ export async function syncHealthKitWorkouts(): Promise<{
       sinceDate,
     });
 
-    const result = useAppStore.getState().focus.importHealthKitWorkouts(workouts, hk.linkedTagId, {
-      skipUserEntered: hk.skipUserEntered,
-    });
+    const result = useAppStore.getState().focus.importHealthKitWorkouts(workouts, hk.linkedTagId);
 
     // Persist the new anchor so the next sync only fetches newer workouts.
     // (Re-read prefs in case the user toggled something during the await.)

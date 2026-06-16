@@ -81,8 +81,7 @@ interface AppStore {
     createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
     importHealthKitWorkouts: (
       workouts: { uuid: string; startDate: Date; endDate: Date; durationMinutes: number; wasUserEntered: boolean }[],
-      tagId: string,
-      options?: { skipUserEntered?: boolean }
+      tagId: string
     ) => { imported: number; skipped: number };
 
     // View actions
@@ -658,8 +657,7 @@ export const useAppStore = create<AppStore>()(
           return completedSession;
         },
 
-        importHealthKitWorkouts: (workouts, tagId, options) => {
-          const skipUserEntered = options?.skipUserEntered ?? false;
+        importHealthKitWorkouts: (workouts, tagId) => {
           const state0 = get();
 
           // Validate the linked tag still exists before importing anything
@@ -673,6 +671,7 @@ export const useAppStore = create<AppStore>()(
           const now = new Date();
           const toAdd: FocusSession[] = [];
           let skipped = 0;
+          let fruitsEarned = 0;
 
           for (const w of workouts) {
             // Deterministic id from the HealthKit UUID makes import idempotent and
@@ -681,8 +680,14 @@ export const useAppStore = create<AppStore>()(
             const id = `hk-${w.uuid}`;
 
             if (existingById[id]) { skipped++; continue; }
-            if (skipUserEntered && w.wasUserEntered) { skipped++; continue; }
+            // Always skip hand-logged Health entries: only genuine device-recorded
+            // workouts are imported, which keeps reward-bearing imports un-farmable.
+            if (w.wasUserEntered) { skipped++; continue; }
             if (!(w.durationMinutes > 0)) { skipped++; continue; }
+
+            // Reward-bearing like a real completed session. No accelerate multiplier:
+            // these are backfilled past workouts, so current accelerate must not apply.
+            fruitsEarned += calculateFruitsEarnedForDuration(w.durationMinutes, w.durationMinutes, 1);
 
             toAdd.push({
               id,
@@ -697,9 +702,7 @@ export const useAppStore = create<AppStore>()(
               accelerateMultiplier: 1,
               createdAt: now,
               updatedAt: now,
-              // Reward-neutral, exactly like a manual entry — prevents fruit
-              // farming via hand-logged Apple Health workouts.
-              isManualEntry: true,
+              isManualEntry: false,
             });
           }
 
@@ -718,6 +721,13 @@ export const useAppStore = create<AppStore>()(
                 },
               };
             });
+
+            // Award fruits for the imported workouts. Deletion deducts the same
+            // amount (isManualEntry === false), so the grant stays symmetric.
+            if (fruitsEarned > 0) {
+              get().rewards.earnFruits(fruitsEarned, 'healthkit_import', { count: toAdd.length });
+              console.log('🍎 Fruits earned:', fruitsEarned, 'for', toAdd.length, 'imported workouts');
+            }
 
             // Imported sessions can land in a challenge's tag/date range — keep
             // challenge hit counts correct, same as createCompletedSession.
