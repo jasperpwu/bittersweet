@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, KeyboardAvoidingView, Platform, Alert, LayoutChangeEvent, useColorScheme } from 'react-native';
+import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, Keyboard, KeyboardAvoidingView, Platform, Alert, LayoutChangeEvent, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
-import { EmojiPickerModal, EMOJI_CATEGORIES } from '../../src/components/ui/EmojiPicker/EmojiPicker';
+import { EmojiPickerOverlay } from '../../src/components/ui/EmojiPicker/EmojiPicker';
 import { TimeScroller, DurationPicker, TagColorPicker } from '../../src/components/focus';
 import * as Haptics from 'expo-haptics';
 
@@ -842,14 +842,14 @@ export default function FocusScreen() {
   };
 
   const handleNewTagEmojiPress = () => {
-    setShowNewTagModal(false);
+    // Keep the New Tag overlay mounted underneath; the emoji overlay covers it.
+    Keyboard.dismiss();
     setShowEmojiPicker(true);
   };
 
   const handleEmojiSelect = (emoji: string) => {
     setNewTagEmoji(emoji);
     setShowEmojiPicker(false);
-    setShowNewTagModal(true);
   };
 
   const handleCreateNewTag = () => {
@@ -887,7 +887,8 @@ export default function FocusScreen() {
   };
 
   const handleEditTagEmojiPress = () => {
-    setShowEditEmojiGrid(prev => !prev);
+    Keyboard.dismiss();
+    setShowEditEmojiGrid(true);
   };
 
   const handleSaveEditTag = () => {
@@ -1735,8 +1736,10 @@ export default function FocusScreen() {
       return;
     }
     
-    // If no tags exist, show new tag modal
+    // If no tags exist, show new tag modal (the New Tag overlay lives inside the
+    // tag picker Modal, so that Modal must be mounted for the overlay to render)
     if (availableTags.length === 0) {
+      setShowTagModal(true);
       setShowNewTagModal(true);
       return;
     }
@@ -2030,12 +2033,12 @@ export default function FocusScreen() {
         visible={showTagModal}
         transparent
         animationType="fade"
-        onRequestClose={() => { if (!showEditTagModal && !showDeleteModal && !showShareModal) setShowTagModal(false); }}
+        onRequestClose={() => { if (!showEditTagModal && !showDeleteModal && !showShareModal && !showNewTagModal) setShowTagModal(false); }}
       >
         <View className="flex-1 bg-black/50 justify-center items-center px-4">
           <Pressable
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            onPress={() => { if (!showEditTagModal && !showDeleteModal && !showShareModal) setShowTagModal(false); }}
+            onPress={() => { if (!showEditTagModal && !showDeleteModal && !showShareModal && !showNewTagModal) setShowTagModal(false); }}
           />
           <View className="bg-light-bg dark:bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
             {/* Modal Header */}
@@ -2108,7 +2111,6 @@ export default function FocusScreen() {
                       setShowUpgradePrompt(true);
                       return;
                     }
-                    setShowTagModal(false);
                     setShowNewTagModal(true);
                   }}
                   className="flex-1 bg-blue-600 rounded-2xl py-4 items-center active:opacity-80"
@@ -2185,33 +2187,6 @@ export default function FocusScreen() {
                 </View>
               </View>
 
-              {/* Inline Emoji Picker */}
-              {showEditEmojiGrid && (
-                <ScrollView style={{ maxHeight: 200 }} className="px-4 pb-2 border-t border-light-border dark:border-gray-700" nestedScrollEnabled>
-                  {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
-                    <View key={category} className="mt-3">
-                      <Typography variant="body-12" color="secondary" className="mb-2">
-                        {category}
-                      </Typography>
-                      <View className="flex-row flex-wrap" style={{ gap: 6 }}>
-                        {emojis.map((emoji, index) => (
-                          <Pressable
-                            key={index}
-                            onPress={() => {
-                              setEditTagEmoji(emoji);
-                              setShowEditEmojiGrid(false);
-                            }}
-                            className="w-10 h-10 items-center justify-center rounded-lg bg-gray-700 active:bg-gray-600"
-                          >
-                            <Text className="text-xl">{emoji}</Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-
               {/* Action buttons */}
               <View className="p-3 border-t border-light-border dark:border-gray-700 flex-row" style={{ gap: 8 }}>
                 <Pressable
@@ -2234,6 +2209,18 @@ export default function FocusScreen() {
               </View>
             </View>
           </View>
+        )}
+
+        {/* Edit Tag — Emoji Picker Overlay (on top of the Edit Tag overlay) */}
+        {showEditTagModal && showEditEmojiGrid && (
+          <EmojiPickerOverlay
+            title="Choose Emoji for Tag"
+            onClose={() => setShowEditEmojiGrid(false)}
+            onEmojiSelect={(emoji) => {
+              setEditTagEmoji(emoji);
+              setShowEditEmojiGrid(false);
+            }}
+          />
         )}
 
         {/* Delete Confirmation Popup - covers entire screen including tag picker */}
@@ -2318,26 +2305,15 @@ export default function FocusScreen() {
             onStopSharing={stopSharingTag}
           />
         )}
-      </Modal>
 
-      {/* New Tag Creation Modal */}
-      <Modal
-        visible={showNewTagModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowNewTagModal(false);
-          setNewTagName('');
-          setNewTagEmoji('');
-          setNewTagColor('#6592E9');
-        }}
-      >
+        {/* New Tag Creation Overlay - covers entire screen including tag picker */}
+        {showNewTagModal && (
         <KeyboardAvoidingView
-          className="flex-1"
+          className="absolute inset-0"
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <Pressable
-            className="flex-1 bg-black bg-opacity-50 justify-center items-center px-4"
+            className="flex-1 bg-black/50 justify-center items-center px-4"
             onPress={() => {
               setShowNewTagModal(false);
               setNewTagName('');
@@ -2437,12 +2413,18 @@ export default function FocusScreen() {
             </Pressable>
           </Pressable>
         </KeyboardAvoidingView>
+        )}
+
+        {/* New Tag — Emoji Picker Overlay (on top of the New Tag overlay) */}
+        {showNewTagModal && showEmojiPicker && (
+          <EmojiPickerOverlay
+            title="Choose Emoji for New Tag"
+            onClose={() => setShowEmojiPicker(false)}
+            onEmojiSelect={handleEmojiSelect}
+          />
+        )}
       </Modal>
 
-
-
-
-      {/* Emoji Picker */}
       {/* Blocklist Tip Modal */}
       <Modal
         visible={showBlocklistTip}
@@ -2532,16 +2514,6 @@ export default function FocusScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-
-      <EmojiPickerModal
-        visible={showEmojiPicker}
-        onClose={() => {
-          setShowEmojiPicker(false);
-          setShowNewTagModal(true);
-        }}
-        onEmojiSelect={handleEmojiSelect}
-        title="Choose Emoji for New Tag"
-      />
 
       <UpgradePrompt
         isVisible={showUpgradePrompt}
