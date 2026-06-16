@@ -1,5 +1,5 @@
-import { FC, useMemo, useRef, useEffect } from 'react';
-import { View, ScrollView, useColorScheme } from 'react-native';
+import { FC, useMemo, useRef, useEffect, useState } from 'react';
+import { View, ScrollView, useColorScheme, ViewStyle } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { SessionBlock } from '../SessionBlock';
 import { FocusSession } from '../../../types/models';
@@ -21,6 +21,60 @@ const END_HOUR = 23; // 11:00 PM
 const TOTAL_HOURS = END_HOUR - START_HOUR + 1;
 const HOUR_HEIGHT = 80;
 const PIXELS_PER_MINUTE = HOUR_HEIGHT / 60;
+
+// Horizontal layout for session blocks. Sessions that overlap in time are
+// split into side-by-side columns within the content area.
+const BLOCK_H_PADDING = 12; // gutter on each side of the content area
+const BLOCK_GAP = 4; // horizontal gap between stacked columns
+
+/**
+ * Calendar-style overlap layout. Sorted sessions are grouped into clusters of
+ * transitively-overlapping events; within a cluster each event is greedily
+ * placed into the first column whose previous event has already ended. Every
+ * event in a cluster is sized to 1/numCols of the width so nothing overlaps.
+ *
+ * Returns a map of session id → { colIndex, numCols }.
+ */
+const computeOverlapColumns = (sessions: FocusSession[]) => {
+  const layout = new Map<string, { colIndex: number; numCols: number }>();
+  let columns: FocusSession[][] = [];
+  let groupEnd = 0;
+
+  const flushGroup = () => {
+    const numCols = columns.length;
+    columns.forEach((col, colIndex) => {
+      col.forEach((ev) => layout.set(ev.id, { colIndex, numCols }));
+    });
+    columns = [];
+    groupEnd = 0;
+  };
+
+  for (const session of sessions) {
+    const start = session.startTime.getTime();
+    const end = session.endTime.getTime();
+
+    // A new event starting at/after the whole group's end closes the group.
+    if (columns.length > 0 && start >= groupEnd) {
+      flushGroup();
+    }
+
+    // Place into the first column whose last event has already ended.
+    let placed = false;
+    for (const col of columns) {
+      if (start >= col[col.length - 1].endTime.getTime()) {
+        col.push(session);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) columns.push([session]);
+
+    groupEnd = Math.max(groupEnd, end);
+  }
+  flushGroup();
+
+  return layout;
+};
 
 const formatHour = (hour: number) => {
   const period = hour >= 12 ? 'PM' : 'AM';
@@ -61,11 +115,19 @@ export const Timeline: FC<TimelineProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const scrollViewRef = useRef<ScrollView>(null);
+  // Measured width of the timeline content area, used to size overlap columns.
+  const [contentWidth, setContentWidth] = useState(0);
   // Filter sessions for the visible time range and sort by start time
   const sortedSessions = useMemo(() => {
     return [...sessions]
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   }, [sessions]);
+
+  // Side-by-side column assignment for overlapping sessions.
+  const overlapLayout = useMemo(
+    () => computeOverlapColumns(sortedSessions),
+    [sortedSessions]
+  );
 
   // Generate hour slots
   const hourSlots = useMemo(() => {
@@ -137,12 +199,13 @@ export const Timeline: FC<TimelineProps> = ({
           </View>
 
           {/* Timeline content */}
-          <View 
+          <View
             className="flex-1"
-            style={{ 
+            style={{
               minHeight: TOTAL_HOURS * HOUR_HEIGHT,
               position: 'relative',
             }}
+            onLayout={(e) => setContentWidth(e.nativeEvent.layout.width)}
           >
             {/* Hour grid lines */}
             {hourSlots.map((hour, hourIndex) => (
@@ -199,7 +262,25 @@ export const Timeline: FC<TimelineProps> = ({
             {/* Session blocks */}
             {sortedSessions.map((session) => {
               const topPosition = getTopPosition(session.startTime);
-              
+              const { colIndex, numCols } = overlapLayout.get(session.id) ?? {
+                colIndex: 0,
+                numCols: 1,
+              };
+
+              // Single-column (no overlap) or pre-measurement: full width.
+              // Once measured and overlapping, split into side-by-side columns.
+              let horizontalStyle: ViewStyle;
+              if (numCols <= 1 || contentWidth === 0) {
+                horizontalStyle = { left: BLOCK_H_PADDING, right: BLOCK_H_PADDING };
+              } else {
+                const available = contentWidth - BLOCK_H_PADDING * 2;
+                const colWidth = (available - BLOCK_GAP * (numCols - 1)) / numCols;
+                horizontalStyle = {
+                  left: BLOCK_H_PADDING + colIndex * (colWidth + BLOCK_GAP),
+                  width: colWidth,
+                };
+              }
+
               return (
                 <SessionBlock
                   key={session.id}
@@ -210,8 +291,7 @@ export const Timeline: FC<TimelineProps> = ({
                   style={{
                     position: 'absolute',
                     top: topPosition,
-                    left: 12,
-                    right: 12,
+                    ...horizontalStyle,
                   }}
                 />
               );

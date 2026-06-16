@@ -600,6 +600,15 @@ export default function RootLayout() {
   // Check on app mount
   useEffect(() => {
     checkShieldOpening('mount');
+
+    // Cold-start Apple Health sync. The foreground handler only fires on a
+    // background→active transition, which never happens on a fresh launch, so
+    // a cold start would otherwise miss workouts recorded while the app was
+    // killed. Gated on hydration so prefs/subscription are loaded first;
+    // no-ops cleanly when disconnected.
+    if (isHydrated) {
+      syncHealthKitWorkouts();
+    }
   }, [fontsLoaded, isHydrated]);
 
   // Check when app comes to foreground
