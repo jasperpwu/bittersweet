@@ -422,8 +422,8 @@ export const GoalProgress: FC<GoalProgressProps> = ({
 
   return (
     <View className="px-5 mb-6">
-      {/* Placeholder when no active goals */}
-      {!hasActiveGoals && <GoalEmptyPlaceholder />}
+      {/* CTA when no active goals */}
+      {!hasActiveGoals && <GoalCTAHeader />}
 
       {/* Active Goals */}
       {hasActiveGoals && (
@@ -470,13 +470,16 @@ export const GoalProgress: FC<GoalProgressProps> = ({
       {/* Inactive Goals Section */}
       {hasInactiveGoals && (
         <View className={hasActiveGoals ? 'mt-6' : ''}>
-          <View className="flex-row items-center mb-3">
-            <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
-            <Typography variant="body-12" color="secondary" className="mx-3">
-              Not Activated
-            </Typography>
-            <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
-          </View>
+          {/* Divider only distinguishes inactive from active — skip it when there are no active goals */}
+          {hasActiveGoals && (
+            <View className="flex-row items-center mb-3">
+              <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
+              <Typography variant="body-12" color="secondary" className="mx-3">
+                Not Activated
+              </Typography>
+              <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
+            </View>
+          )}
           <View className="gap-y-2">
             {inactiveGoals!.map((goal) => {
               const tag = tags.byId[goal.tagId];
@@ -504,6 +507,9 @@ export const GoalProgress: FC<GoalProgressProps> = ({
           </View>
         </View>
       )}
+
+      {/* Example placeholder when no active goals — sits below the unactivated goals */}
+      {!hasActiveGoals && <GoalPlaceholderExample />}
     </View>
   );
 };
@@ -948,31 +954,36 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
 // ---------- Empty State Placeholder ----------
 
-const GoalEmptyPlaceholder: FC = () => {
+const GoalCTAHeader: FC = () => (
+  <View className="items-center mb-4">
+    <Typography variant="headline-18" className="text-light-text-primary dark:text-white text-center">
+      Activate goals!
+    </Typography>
+  </View>
+);
+
+const GoalPlaceholderExample: FC = () => {
   const targetHours = 10;
   const placeholderWeeks = [
-    { label: 'W40', hours: 11, hit: true },
-    { label: 'W41', hours: 10, hit: true },
-    { label: 'W42', hours: 8, hit: false },
-    { label: 'W43', hours: 12, hit: true },
-    { label: 'W44', hours: 9, hit: false },
-    { label: 'W45', hours: 10, hit: true },
-    { label: 'W46', hours: 11, hit: true },
-    { label: 'W47', hours: 10, hit: true },
-    { label: 'W48', hours: 7, hit: false },
-    { label: 'W49', hours: 11, hit: true },
-    { label: 'W50', hours: 12, hit: true },
-    { label: 'W51', hours: 5, hit: false },
+    { hours: 11, hit: true },
+    { hours: 10, hit: true },
+    { hours: 8, hit: false },
+    { hours: 12, hit: true },
+    { hours: 9, hit: false },
+    { hours: 10, hit: true },
+    { hours: 11, hit: true },
+    { hours: 10, hit: true },
+    { hours: 7, hit: false },
+    { hours: 11, hit: true },
+    { hours: 12, hit: true },
+    { hours: 5, hit: false },
   ].map(w => ({ ...w, fillPercent: Math.min(w.hours / targetHours, 1) * 100 }));
 
   return (
-    <View className="px-5 mb-6">
-      {/* Call to action */}
-      <View className="items-center mb-4">
-        <Typography variant="body-14" className="text-light-text-primary dark:text-white text-center">
-          Activate goals!
-        </Typography>
-        <Typography variant="body-12" className="text-light-text-secondary dark:text-gray-200 text-center mt-1">
+    <View className="mt-6">
+      {/* Subtitle introducing the example */}
+      <View className="mb-4">
+        <Typography variant="body-12" className="text-light-text-secondary dark:text-gray-200">
           Here&apos;s what a goal looks like
         </Typography>
       </View>
@@ -1059,9 +1070,6 @@ const GoalEmptyPlaceholder: FC = () => {
                   />
                 </View>
               )}
-              <Typography variant="tiny-10" className="text-gray-300 text-center">
-                {w.label}
-              </Typography>
             </View>
           ))}
         </View>
