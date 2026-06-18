@@ -20,6 +20,21 @@ const STEP_HOURS: Record<GoalPeriod, number> = {
   monthly: 5,
 };
 
+// Daily goals use non-uniform stops: 15m and 30m at the low end, then 30m
+// increments (0:15, 0:30, 1:00, 1:30, ... up to 12h).
+const DAILY_VALUES: number[] = [
+  0.25,
+  ...Array.from({ length: MAX_HOURS.daily * 2 }, (_, i) => (i + 1) * 0.5),
+];
+
+// Snap a daily-hours value to the nearest allowed stop.
+const snapDailyHours = (hours: number, allowZero = false): number => {
+  const points = allowZero ? [0, ...DAILY_VALUES] : DAILY_VALUES;
+  return points.reduce((a, b) =>
+    Math.abs(b - hours) < Math.abs(a - hours) ? b : a
+  );
+};
+
 interface FocusGoalFormProps {
   onSubmit: (goal: {
     customName?: string;
@@ -73,9 +88,9 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       const weekly = editingGoal.weeklyTargetMinutes || 0;
       const monthly = editingGoal.monthlyTargetMinutes || 0;
 
-      setDailyTargetHours(daily > 0 ? Math.round(daily / 60 * 2) / 2 : 1);
+      setDailyTargetHours(daily > 0 ? snapDailyHours(daily / 60) : 1);
       setDailyRestDayTargetHours(
-        Math.round((editingGoal.dailyRestDayTargetMinutes || 0) / 60 * 2) / 2
+        snapDailyHours((editingGoal.dailyRestDayTargetMinutes || 0) / 60, true)
       );
       setWeeklyTargetHours(weekly > 0 ? Math.round(weekly / 60) : 7);
       setMonthlyTargetHours(monthly > 0 ? Math.round(monthly / 60 / 5) * 5 : 30);
@@ -109,18 +124,21 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   useEffect(() => {
     const max = MAX_HOURS[activePeriod];
     const step = STEP_HOURS[activePeriod];
-    let clamped = Math.min(currentTargetHours, max);
-    clamped = Math.round(clamped / step) * step;
-    clamped = Math.max(step, clamped);
+    let clamped: number;
+    if (activePeriod === 'daily') {
+      clamped = snapDailyHours(Math.min(currentTargetHours, max));
+    } else {
+      clamped = Math.min(currentTargetHours, max);
+      clamped = Math.round(clamped / step) * step;
+      clamped = Math.max(step, clamped);
+    }
     if (clamped !== currentTargetHours) {
       setCurrentTargetHours(clamped);
     }
 
     // Also clamp rest day target
     if (activePeriod === 'daily') {
-      let clampedRest = Math.min(dailyRestDayTargetHours, max);
-      clampedRest = Math.round(clampedRest / step) * step;
-      clampedRest = Math.max(0, clampedRest);
+      const clampedRest = snapDailyHours(Math.min(dailyRestDayTargetHours, max), true);
       if (clampedRest !== dailyRestDayTargetHours) {
         setDailyRestDayTargetHours(clampedRest);
       }
@@ -205,9 +223,10 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
           </Typography>
           <Slider
             value={currentTargetHours}
-            minimumValue={STEP_HOURS[activePeriod]}
+            minimumValue={activePeriod === 'daily' ? DAILY_VALUES[0] : STEP_HOURS[activePeriod]}
             maximumValue={MAX_HOURS[activePeriod]}
             step={STEP_HOURS[activePeriod]}
+            snapPoints={activePeriod === 'daily' ? DAILY_VALUES : undefined}
             onValueChange={setCurrentTargetHours}
             unit="h"
           />
@@ -229,6 +248,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
               minimumValue={0}
               maximumValue={MAX_HOURS[activePeriod]}
               step={STEP_HOURS[activePeriod]}
+              snapPoints={[0, ...DAILY_VALUES]}
               onValueChange={setDailyRestDayTargetHours}
               unit="h"
             />

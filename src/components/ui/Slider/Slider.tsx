@@ -15,6 +15,12 @@ interface SliderProps {
   minimumValue: number;
   maximumValue: number;
   step?: number;
+  /**
+   * Discrete, possibly non-uniform stops (ascending). When provided, the thumb
+   * snaps to these values (evenly spaced across the track by index) and `step`
+   * is ignored. `minimumValue`/`maximumValue` are still used for the end labels.
+   */
+  snapPoints?: number[];
   onValueChange: (value: number) => void;
   onSlidingComplete?: (value: number) => void;
   disabled?: boolean;
@@ -29,6 +35,7 @@ export const Slider: FC<SliderProps> = ({
   minimumValue,
   maximumValue,
   step = 1,
+  snapPoints,
   onValueChange,
   onSlidingComplete,
   disabled = false,
@@ -46,10 +53,25 @@ export const Slider: FC<SliderProps> = ({
 
   // Calculate initial position
   React.useEffect(() => {
-    const range = maximumValue - minimumValue;
-    const percentage = range > 0 ? (value - minimumValue) / range : 0;
+    let percentage: number;
+    if (snapPoints && snapPoints.length > 1) {
+      // Evenly space stops by index; position thumb at the nearest stop.
+      let nearest = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < snapPoints.length; i++) {
+        const d = Math.abs(snapPoints[i] - value);
+        if (d < bestDist) {
+          bestDist = d;
+          nearest = i;
+        }
+      }
+      percentage = nearest / (snapPoints.length - 1);
+    } else {
+      const range = maximumValue - minimumValue;
+      percentage = range > 0 ? (value - minimumValue) / range : 0;
+    }
     translateX.value = percentage * trackWidth;
-  }, [value, minimumValue, maximumValue, trackWidth, translateX]);
+  }, [value, minimumValue, maximumValue, trackWidth, translateX, snapPoints]);
 
   const updateValue = useCallback((newValue: number) => {
     onValueChange(newValue);
@@ -71,9 +93,15 @@ export const Slider: FC<SliderProps> = ({
 
       // Calculate new value
       const percentage = trackWidth > 0 ? newTranslateX / trackWidth : 0;
-      const rawValue = minimumValue + percentage * (maximumValue - minimumValue);
-      const steppedValue = Math.round(rawValue / step) * step;
-      const clampedValue = Math.max(minimumValue, Math.min(maximumValue, steppedValue));
+      let clampedValue: number;
+      if (snapPoints && snapPoints.length > 1) {
+        const idx = Math.round(percentage * (snapPoints.length - 1));
+        clampedValue = snapPoints[Math.max(0, Math.min(snapPoints.length - 1, idx))];
+      } else {
+        const rawValue = minimumValue + percentage * (maximumValue - minimumValue);
+        const steppedValue = Math.round(rawValue / step) * step;
+        clampedValue = Math.max(minimumValue, Math.min(maximumValue, steppedValue));
+      }
 
       runOnJS(updateValue)(clampedValue);
     },

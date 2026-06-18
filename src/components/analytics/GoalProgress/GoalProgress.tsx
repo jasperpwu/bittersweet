@@ -529,6 +529,37 @@ const TRACK_COLORS: Record<UrgencyLevel | 'healthy', string> = {
   high: '#D9364B',    // strong urgent red
 };
 
+// Duolingo-style streak cell: a filled green circle with a white checkmark when
+// the period's target was hit; otherwise a circular track with a bottom-up
+// partial fill showing how close the period came.
+const StreakCell: FC<{ hit: boolean; fillPercent: number; size: number }> = ({
+  hit,
+  fillPercent,
+  size,
+}) => {
+  if (hit) {
+    return (
+      <View
+        className="items-center justify-center rounded-full bg-success"
+        style={{ width: size, height: size }}
+      >
+        <Ionicons name="checkmark-sharp" size={Math.round(size * 0.62)} color="#FFFFFF" />
+      </View>
+    );
+  }
+  return (
+    <View
+      className="rounded-full bg-light-border dark:bg-dark-border overflow-hidden"
+      style={{ width: size, height: size }}
+    >
+      <View
+        className="absolute bottom-0 left-0 right-0 bg-primary"
+        style={{ height: `${fillPercent}%` }}
+      />
+    </View>
+  );
+};
+
 const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   const effectiveTarget = goal._effectiveTarget ?? getGoalCurrentTarget(goal);
   const urgency = useMemo(
@@ -578,14 +609,22 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   return (
     <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-3">
       <View className="flex-row items-center">
-        {/* Compact progress indicator */}
-        <View className="mr-3 items-center justify-center w-10 h-10 rounded-full bg-light-border dark:bg-dark-border">
-          <Typography
-            variant="body-12"
-            className="text-light-text-primary dark:text-white font-poppins-semibold"
-          >
-            {Math.round(goal.percentage)}%
-          </Typography>
+        {/* Compact progress indicator — checkmark once the target is hit */}
+        <View
+          className={`mr-3 items-center justify-center w-10 h-10 rounded-full ${
+            goal.percentage >= 100 ? 'bg-success' : 'bg-light-border dark:bg-dark-border'
+          }`}
+        >
+          {goal.percentage >= 100 ? (
+            <Ionicons name="checkmark-sharp" size={22} color="#FFFFFF" />
+          ) : (
+            <Typography
+              variant="body-12"
+              className="text-light-text-primary dark:text-white font-poppins-semibold"
+            >
+              {Math.round(goal.percentage)}%
+            </Typography>
+          )}
         </View>
 
         {/* Goal info */}
@@ -834,16 +873,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
             {paddedResults.map((r, i) => (
               <View key={i} className="items-center justify-center" style={{ width: '14.28%', aspectRatio: 1 }}>
                 {r ? (
-                  r.hit ? (
-                    <View className="w-5 h-5 rounded-sm" style={{ backgroundColor: TRACK_COLORS.healthy }} />
-                  ) : (
-                    <View className="w-5 h-5 rounded-sm bg-light-border dark:bg-dark-border overflow-hidden">
-                      <View
-                        className="absolute bottom-0 left-0 right-0 bg-primary"
-                        style={{ height: `${r.fillPercent}%` }}
-                      />
-                    </View>
-                  )
+                  <StreakCell hit={r.hit} fillPercent={r.fillPercent} size={20} />
                 ) : (
                   <View className="w-5 h-5" />
                 )}
@@ -882,22 +912,9 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
             <View key={rowIdx} className={`flex-row justify-between ${rowIdx === 0 ? 'mb-2' : ''}`}>
               {row.map((r, i) => (
                 <View key={i} className="items-center" style={{ flex: 1 }}>
-                  {r.hit ? (
-                    <View
-                      className="rounded-sm mb-1"
-                      style={{ width: 28, height: 28, backgroundColor: TRACK_COLORS.healthy }}
-                    />
-                  ) : (
-                    <View
-                      className="rounded-sm mb-1 bg-light-border dark:bg-dark-border overflow-hidden"
-                      style={{ width: 28, height: 28 }}
-                    >
-                      <View
-                        className="absolute bottom-0 left-0 right-0 bg-primary"
-                        style={{ height: `${r.fillPercent}%` }}
-                      />
-                    </View>
-                  )}
+                  <View className="mb-1">
+                    <StreakCell hit={r.hit} fillPercent={r.fillPercent} size={28} />
+                  </View>
                   <Typography variant="tiny-10" color="secondary" className="text-center">
                     {r.label}
                   </Typography>
@@ -930,16 +947,9 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
         <View className="flex-row justify-between">
           {results.map((r, i) => (
             <View key={i} className="items-center" style={{ flex: 1 }}>
-              {r.hit ? (
-                <View className="w-5 h-5 rounded-sm mb-1" style={{ backgroundColor: TRACK_COLORS.healthy }} />
-              ) : (
-                <View className="w-5 h-5 rounded-sm mb-1 bg-light-border dark:bg-dark-border overflow-hidden">
-                  <View
-                    className="absolute bottom-0 left-0 right-0 bg-primary"
-                    style={{ height: `${r.fillPercent}%` }}
-                  />
-                </View>
-              )}
+              <View className="mb-1">
+                <StreakCell hit={r.hit} fillPercent={r.fillPercent} size={20} />
+              </View>
               <Typography variant="tiny-10" color="secondary" className="text-center">
                 {r.label}
               </Typography>
@@ -1060,16 +1070,7 @@ const GoalPlaceholderExample: FC = () => {
         <View className="flex-row justify-between">
           {placeholderWeeks.map((w, i) => (
             <View key={i} className="items-center" style={{ flex: 1 }}>
-              {w.hit ? (
-                <View className="w-5 h-5 rounded-sm mb-1" style={{ backgroundColor: TRACK_COLORS.healthy }} />
-              ) : (
-                <View className="w-5 h-5 rounded-sm mb-1 bg-light-border dark:bg-dark-border overflow-hidden">
-                  <View
-                    className="absolute bottom-0 left-0 right-0 bg-primary"
-                    style={{ height: `${w.fillPercent}%` }}
-                  />
-                </View>
-              )}
+              <StreakCell hit={w.hit} fillPercent={w.fillPercent} size={20} />
             </View>
           ))}
         </View>

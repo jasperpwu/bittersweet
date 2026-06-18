@@ -190,6 +190,56 @@ export const getHistoricalPeriodRanges = (
   return ranges;
 };
 
+/**
+ * Counts how many consecutive most-recent periods (ending at `referenceDate`'s
+ * period) hit the goal's target — the goal's "streak". Uses the same per-period
+ * hit definition as the consistency calendar (`getTargetForDate` +
+ * `getSessionMinutesInPeriod`), so the number always agrees with the green
+ * checkmark cells. Walking backward from the current period, it stops at the
+ * first period that did not hit. Rest-day periods with a 0 target count as hits
+ * (they never break the streak), matching the calendar.
+ */
+export const calculateGoalStreak = (
+  goal: FocusGoal,
+  sessions: FocusSession[],
+  restDays: number[],
+  weekStartDay: number = 1,
+  referenceDate: Date = new Date(),
+): number => {
+  const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+  const normalized = (period === 'yearly' ? 'monthly' : period) as 'daily' | 'weekly' | 'monthly';
+
+  // How far back a streak can stretch before we stop counting.
+  const maxLookback = normalized === 'daily' ? 365 : normalized === 'weekly' ? 104 : 36;
+  const ranges = getHistoricalPeriodRanges(normalized, maxLookback, referenceDate, weekStartDay);
+
+  const goalTagId = (goal as any).tagId;
+  const relevant = goalTagId
+    ? sessions.filter(
+        (s) => (s as any).tagId === goalTagId || (s as any).secondaryTagId === goalTagId,
+      )
+    : sessions;
+
+  let streak = 0;
+  // Ranges are oldest-first; walk from the most recent period backward.
+  for (let i = ranges.length - 1; i >= 0; i--) {
+    const { periodStart, periodEnd } = ranges[i];
+    const totalMinutes = relevant.reduce(
+      (sum, s) => sum + getSessionMinutesInPeriod(s, periodStart, periodEnd),
+      0,
+    );
+    const target = getTargetForDate(goal, periodStart, restDays, normalized);
+    const hit = target > 0 ? totalMinutes >= target : true;
+    if (hit) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+};
+
 export const isGoalActive = (goal: FocusGoal): boolean => {
   return goal.isActive;
 };

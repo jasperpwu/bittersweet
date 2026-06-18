@@ -7,6 +7,8 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withDelay,
+  withSpring,
+  withSequence,
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
@@ -16,10 +18,13 @@ import { useFocus } from '../../../store';
 import { useAppSettings } from '../../../store/unified-store';
 import {
   calculateGoalProgress,
+  calculateGoalStreak,
   getTargetForDate,
   getGoalPeriodRange,
   getSessionMinutesInPeriod,
 } from '../../../utils/goalProgress';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 
 const celebrationSource = require('../../../../assets/goal.json');
 
@@ -35,6 +40,8 @@ const BLUE = {
   dark: { bg: '#4F7FD6', border: '#3B6BBF' }, // theme `primary-light`
 };
 const ON_BANNER = '#FFFFFF'; // text/fill color on the colored banner
+const FLAME = '#FF9500'; // streak flame — iOS system orange, reads on the banner
+const SCRIM = 'rgba(0, 0, 0, 0.6)'; // semi-opaque backdrop behind the goal-met celebration
 const TRACK_ON_BANNER = 'rgba(255, 255, 255, 0.28)'; // unfilled bar
 
 // Shiny tip at the leading edge of the white fill — fades from the white bar
@@ -105,40 +112,97 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
     const afterPct = Math.min((afterMinutes / target) * 100, 100);
     const reachedNow = beforeMinutes < target && afterMinutes >= target;
 
-    return { target, afterMinutes, beforePct, afterPct, reachedNow };
+    // Consecutive-completed-period streak (includes this just-completed period).
+    // Only needed for the celebration, so skip the walk unless the goal was
+    // actually reached by this session.
+    const streak = reachedNow
+      ? calculateGoalStreak(goal as any, safeSessions as any, restDays, weekStartDay)
+      : 0;
+
+    return { target, afterMinutes, beforePct, afterPct, reachedNow, streak, period: normalized };
   }, [goal, sessions, preferences.restDays, session]);
 
   const [visible, setVisible] = useState(true);
   const [celebrate, setCelebrate] = useState(false);
+  // The streak number currently shown — starts at the previous streak and ticks
+  // up to the new value so the user sees today's period get added.
+  const [displayStreak, setDisplayStreak] = useState(0);
   const celebrationRef = useRef<LottieView>(null);
 
   const opacity = useSharedValue(0);
   const fill = useSharedValue(computed?.beforePct ?? 0);
+  const streakScale = useSharedValue(0.7);
+  const streakOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (!computed) return;
     // Fade in, then animate the bar from `before` to `after`.
-    opacity.value = withTiming(1, { duration: 300 });
+    opacity.value = withTiming(1, { duration: 250 });
     fill.value = withDelay(
-      400,
-      withTiming(computed.afterPct, { duration: 1200, easing: Easing.out(Easing.cubic) }),
+      200,
+      withTiming(computed.afterPct, { duration: 800, easing: Easing.out(Easing.cubic) }),
     );
 
-    // Pop confetti once the bar has filled, only if the goal was just reached.
+    // Pop confetti as the bar lands, only if the goal was just reached.
     const celebrateTimer = computed.reachedNow
-      ? setTimeout(() => setCelebrate(true), 1600)
+      ? setTimeout(() => setCelebrate(true), 900)
       : undefined;
 
-    // Auto-dismiss: fade out and unmount.
+    // Streak reveal: the count fades in showing the *previous* streak, a short
+    // ramping "drumroll" of haptics builds, then today's period ticks the number
+    // up (+1) with a scale punch and a strong success tap.
+    const streakTimers: ReturnType<typeof setTimeout>[] = [];
+    if (computed.reachedNow && computed.streak > 0) {
+      const finalStreak = computed.streak;
+      const hasIncrement = finalStreak > 1;
+      setDisplayStreak(hasIncrement ? finalStreak - 1 : finalStreak);
+
+      const appearAt = 1100;
+      streakTimers.push(
+        setTimeout(() => {
+          streakOpacity.value = withTiming(1, { duration: 220 });
+          streakScale.value = withSpring(1, { damping: 12, stiffness: 200 });
+        }, appearAt),
+      );
+
+      // Ramping drumroll of light→medium taps leading into the increment.
+      [0, 110, 220, 330].forEach((dt, idx) => {
+        streakTimers.push(
+          setTimeout(() => {
+            Haptics.impactAsync(
+              idx < 2 ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium,
+            ).catch(() => {});
+          }, appearAt + 140 + dt),
+        );
+      });
+
+      // The "+1 day" moment: tick the number up, punch the scale, strong haptic.
+      streakTimers.push(
+        setTimeout(() => {
+          if (hasIncrement) setDisplayStreak(finalStreak);
+          streakScale.value = withSequence(
+            withSpring(1.28, { damping: 8, stiffness: 200 }),
+            withSpring(1, { damping: 12, stiffness: 200 }),
+          );
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        }, appearAt + 560),
+      );
+    }
+
+    // Auto-dismiss: fade out and unmount. For the celebration, hold the fully
+    // settled final state (streak ticked up, goal-met animation finishes ≈4s
+    // at speed 1.0) for ~1s before fading so the end state reads as a beat.
+    const dismissDelay = computed.reachedNow && computed.streak > 0 ? 5000 : 4000;
     const fadeTimer = setTimeout(() => {
       opacity.value = withTiming(0, { duration: 400 }, (finished) => {
         if (finished) runOnJS(setVisible)(false);
       });
-    }, 4000);
+    }, dismissDelay);
 
     return () => {
       if (celebrateTimer) clearTimeout(celebrateTimer);
       clearTimeout(fadeTimer);
+      streakTimers.forEach(clearTimeout);
     };
     // Runs once — `computed` is stable for a given session/goal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,6 +210,10 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
 
   const containerStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
   const fillStyle = useAnimatedStyle(() => ({ width: `${fill.value}%` }));
+  const streakStyle = useAnimatedStyle(() => ({
+    opacity: streakOpacity.value,
+    transform: [{ scale: streakScale.value }],
+  }));
 
   if (!goal || !computed || !visible) return null;
 
@@ -155,110 +223,159 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
   const palette = reached ? (isDark ? GREEN.dark : GREEN.light) : (isDark ? BLUE.dark : BLUE.light);
   const tipColor = reached ? TIP.green : TIP.blue;
 
+  const showStreak = computed.reachedNow && computed.streak > 0;
+  const periodNoun = computed.period === 'weekly' ? 'week' : computed.period === 'monthly' ? 'month' : 'day';
+
+  // The session that *crosses* the target gets the full celebration: a dimmed
+  // full-screen backdrop holding the banner, the goal-met animation, and the
+  // streak. A plain progress update keeps the lightweight top banner.
+  const celebrating = computed.reachedNow;
+
   return (
     <Animated.View
       pointerEvents="none"
       style={[
-        {
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          paddingTop: 56,
-          paddingHorizontal: 16,
-        },
+        celebrating
+          ? {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 50,
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              paddingTop: 24,
+              paddingHorizontal: 16,
+              backgroundColor: SCRIM,
+            }
+          : {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 50,
+              paddingTop: 56,
+              paddingHorizontal: 16,
+            },
         containerStyle,
       ]}
     >
-      <View
-        style={{
-          backgroundColor: palette.bg,
-          borderRadius: 22,
-          borderWidth: 1,
-          borderColor: palette.border,
-          paddingHorizontal: 20,
-          paddingVertical: 18,
-          overflow: 'hidden',
-          // Lift it off the page so it reads as a distinct banner
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.25,
-          shadowRadius: 12,
-          elevation: 8,
-        }}
-      >
-        <View className="flex-row items-center justify-between mb-3">
-          <Typography
-            variant="subtitle-16"
-            numberOfLines={1}
-            className="font-poppins-semibold"
-            style={{ color: ON_BANNER, flexShrink: 1, marginRight: 8 }}
-          >
-            {goalName}
-          </Typography>
-          <Typography variant="subtitle-14-medium" style={{ color: ON_BANNER }}>
-            {reached ? 'Goal reached! 🎉' : `${formatTime(computed.afterMinutes)} / ${formatTime(computed.target)}`}
-          </Typography>
-        </View>
-
-        {/* Progress bar */}
+      <View style={{ width: '100%' }}>
+        {/* Goal-met banner: name + animated progress bar */}
         <View
           style={{
-            height: BAR_HEIGHT,
-            borderRadius: 999,
-            backgroundColor: TRACK_ON_BANNER,
+            backgroundColor: palette.bg,
+            borderRadius: 22,
+            borderWidth: 1,
+            borderColor: palette.border,
+            paddingHorizontal: 20,
+            paddingVertical: 18,
             overflow: 'hidden',
+            // Lift it off the page so it reads as a distinct banner
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.25,
+            shadowRadius: 12,
+            elevation: 8,
           }}
         >
-          <Animated.View
-            style={[{ height: '100%', borderRadius: 999, backgroundColor: ON_BANNER }, fillStyle]}
-          >
-            {/* Shiny tip riding the leading edge of the fill. Blue while the
-                goal is still in progress, green once it's reached. */}
-            <View
-              style={{
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                right: 0,
-                width: TIP_WIDTH,
-                shadowColor: tipColor,
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.9,
-                shadowRadius: 4,
-              }}
+          <View className="flex-row items-center justify-between mb-3">
+            <Typography
+              variant="subtitle-16"
+              numberOfLines={1}
+              className="font-poppins-semibold"
+              style={{ color: ON_BANNER, flexShrink: 1, marginRight: 8 }}
             >
-              <Svg width={TIP_WIDTH} height={BAR_HEIGHT}>
-                <Defs>
-                  <SvgGradient id="barTip" x1="0" y1="0" x2="1" y2="0">
-                    <Stop offset="0" stopColor={ON_BANNER} stopOpacity={0} />
-                    <Stop offset="1" stopColor={tipColor} stopOpacity={1} />
-                  </SvgGradient>
-                </Defs>
-                <Rect x="0" y="0" width="100%" height="100%" fill="url(#barTip)" />
-              </Svg>
-            </View>
-          </Animated.View>
-        </View>
-      </View>
+              {goalName}
+            </Typography>
+            <Typography variant="subtitle-14-medium" style={{ color: ON_BANNER }}>
+              {reached ? 'Goal reached! 🎉' : `${formatTime(computed.afterMinutes)} / ${formatTime(computed.target)}`}
+            </Typography>
+          </View>
 
-      {/* Goal-hit celebration over the bar. This is a large animation, so we
-          use `contain` and let it overflow the banner bounds (the parent View
-          has no `overflow: hidden`) so it's never cropped. */}
-      {celebrate && (
-        <LottieView
-          ref={celebrationRef}
-          source={celebrationSource}
-          // Skip the first 0.3s (18 frames at 60fps). The clip spans frames
-          // 262–466, so start at 280 instead of using `autoPlay`.
-          onLayout={() => celebrationRef.current?.play(280, 466)}
-          loop={false}
-          speed={1.5}
-          resizeMode="contain"
-          style={{ position: 'absolute', top: -10, left: -40, right: -40, height: 360 }}
-        />
-      )}
+          {/* Progress bar */}
+          <View
+            style={{
+              height: BAR_HEIGHT,
+              borderRadius: 999,
+              backgroundColor: TRACK_ON_BANNER,
+              overflow: 'hidden',
+            }}
+          >
+            <Animated.View
+              style={[{ height: '100%', borderRadius: 999, backgroundColor: ON_BANNER }, fillStyle]}
+            >
+              {/* Shiny tip riding the leading edge of the fill. Blue while the
+                  goal is still in progress, green once it's reached. */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  right: 0,
+                  width: TIP_WIDTH,
+                  shadowColor: tipColor,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.9,
+                  shadowRadius: 4,
+                }}
+              >
+                <Svg width={TIP_WIDTH} height={BAR_HEIGHT}>
+                  <Defs>
+                    <SvgGradient id="barTip" x1="0" y1="0" x2="1" y2="0">
+                      <Stop offset="0" stopColor={ON_BANNER} stopOpacity={0} />
+                      <Stop offset="1" stopColor={tipColor} stopOpacity={1} />
+                    </SvgGradient>
+                  </Defs>
+                  <Rect x="0" y="0" width="100%" height="100%" fill="url(#barTip)" />
+                </Svg>
+              </View>
+            </Animated.View>
+          </View>
+        </View>
+
+        {/* Goal-met animation — a flow block between the banner and the streak,
+            so the three stack vertically. `contain` keeps the full burst from
+            being cropped within its box. */}
+        {celebrate && (
+          <LottieView
+            ref={celebrationRef}
+            source={celebrationSource}
+            // Skip the first 0.3s (18 frames at 60fps). The clip spans frames
+            // 262–466, so start at 280 instead of using `autoPlay`.
+            onLayout={() => celebrationRef.current?.play(280, 466)}
+            loop={false}
+            speed={1.0}
+            resizeMode="contain"
+            style={{ width: '100%', height: 260, marginTop: 4 }}
+          />
+        )}
+
+        {/* Consecutive-period streak — sits at the bottom of the stack. */}
+        {showStreak && (
+          <Animated.View
+            style={[
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                alignSelf: 'center',
+                marginTop: 8,
+              },
+              streakStyle,
+            ]}
+          >
+            <Ionicons name="flame" size={28} color={FLAME} />
+            <Typography
+              variant="headline-18"
+              className="font-poppins-semibold ml-2"
+              style={{ color: ON_BANNER }}
+            >
+              {displayStreak} {periodNoun} streak!
+            </Typography>
+          </Animated.View>
+        )}
+      </View>
     </Animated.View>
   );
 };
