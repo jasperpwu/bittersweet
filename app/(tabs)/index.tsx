@@ -1548,7 +1548,14 @@ export default function FocusScreen() {
     }
 
     const raw = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
-    if (!raw) return;
+    if (!raw) {
+      // No active session, but an idle focus Live Activity may still be on
+      // screen from a previous session that ended before this cold start.
+      // Re-adopt its tracked ID so the next session start reuses it instead of
+      // creating a duplicate (the in-memory ID is lost on process death).
+      await LiveActivityService.restoreIdleActivity();
+      return;
+    }
     try {
       const persisted: PersistedSession = JSON.parse(raw);
       const now = Date.now();

@@ -1,6 +1,14 @@
 import * as LiveActivity from 'expo-live-activity';
 import { Appearance, Platform } from 'react-native';
 import * as Device from 'expo-device';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Persists the idle focus Live Activity's ID + tag info across app process
+// death. The activity ID is otherwise tracked only in the in-memory static
+// `lastFocusActivityId`, which is lost on a cold start while iOS keeps the
+// idle LA on screen for hours — so without this, the next session start can't
+// reuse the on-screen idle LA and creates a duplicate instead.
+const IDLE_ACTIVITY_KEY = 'idle-focus-activity';
 
 // Color palettes for Live Activity based on system appearance
 const LA_COLORS = {
@@ -246,6 +254,7 @@ export class LiveActivityService {
         try {
           LiveActivity.updateActivity(this.lastFocusActivityId, state);
           this.focusEndTimestamp = endTimestamp;
+          this.clearPersistedIdleActivity();
           console.log('♻️ Reused existing Live Activity:', this.lastFocusActivityId);
           return this.lastFocusActivityId;
         } catch (e: any) {
@@ -274,6 +283,7 @@ export class LiveActivityService {
       if (activityId) {
         this.lastFocusActivityId = activityId;
         this.focusEndTimestamp = endTimestamp;
+        this.clearPersistedIdleActivity();
         console.log('✅ Live Activity started with ID:', activityId);
         return activityId;
       } else {
@@ -324,6 +334,7 @@ export class LiveActivityService {
         try {
           LiveActivity.updateActivity(this.lastFocusActivityId, state);
           this.focusEndTimestamp = undefined;
+          this.clearPersistedIdleActivity();
           return this.lastFocusActivityId;
         } catch (e) {
           this.lastFocusActivityId = undefined;
@@ -346,6 +357,7 @@ export class LiveActivityService {
       if (activityId) {
         this.lastFocusActivityId = activityId;
         this.focusEndTimestamp = undefined; // No end time for infinite
+        this.clearPersistedIdleActivity();
         return activityId;
       }
       return undefined;
@@ -388,7 +400,10 @@ export class LiveActivityService {
       LiveActivity.updateActivity(activityId, idleState);
       // Keep lastFocusActivityId so subsequent tag/duration changes can
       // update this activity via showIdleFocusActivity / hasFocusActivity.
+      this.lastFocusActivityId = activityId;
       this.focusEndTimestamp = undefined;
+      // Persist so the idle LA can be re-adopted after a cold start.
+      this.persistIdleActivity();
       console.log('✅ Focus Timer Live Activity transitioned to idle');
     } catch (error: any) {
       const errorCode = error?.code || error?.cause?.code;
@@ -464,6 +479,58 @@ export class LiveActivityService {
   }
 
   /**
+   * Persist the currently-tracked idle focus Live Activity so it can be
+   * re-adopted after the JS process is killed. Only writes when we actually
+   * have an activity ID to track. Call right after transitioning an activity
+   * to its idle state.
+   */
+  private static persistIdleActivity(): void {
+    if (!this.lastFocusActivityId) return;
+    AsyncStorage.setItem(
+      IDLE_ACTIVITY_KEY,
+      JSON.stringify({
+        activityId: this.lastFocusActivityId,
+        tagId: this.lastTagId,
+        tagName: this.lastTagName,
+        durationMinutes: this.lastDurationMinutes,
+      })
+    ).catch((e) => console.warn('📱 [LiveActivity] Failed to persist idle activity:', e));
+  }
+
+  /**
+   * Drop the persisted idle record. Call when the activity is no longer idle
+   * (a session became active) or was fully dismissed.
+   */
+  private static clearPersistedIdleActivity(): void {
+    AsyncStorage.removeItem(IDLE_ACTIVITY_KEY).catch(() => {});
+  }
+
+  /**
+   * Restore idle Live Activity tracking from persisted storage on cold start.
+   * Call from the session-recovery path when there is NO active session, so a
+   * subsequent session start reuses the on-screen idle LA (via updateActivity)
+   * instead of creating a duplicate. If iOS already dismissed the idle LA, the
+   * stale ID is harmless — startFocusTimer's ERR_ACTIVITY_NOT_FOUND fallback
+   * creates a fresh activity.
+   */
+  static async restoreIdleActivity(): Promise<void> {
+    try {
+      const raw = await AsyncStorage.getItem(IDLE_ACTIVITY_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (!data?.activityId) return;
+      this.lastFocusActivityId = data.activityId;
+      this.lastTagId = data.tagId ?? undefined;
+      this.lastTagName = data.tagName ?? undefined;
+      this.lastDurationMinutes = data.durationMinutes ?? undefined;
+      this.focusEndTimestamp = undefined;
+      console.log('📱 [LiveActivity] Restored idle activity:', data.activityId);
+    } catch (e) {
+      console.warn('📱 [LiveActivity] Failed to restore idle activity:', e);
+    }
+  }
+
+  /**
    * Update all active Live Activities with idle state showing the given
    * tag/duration. Uses updateAllActivities so it works regardless of
    * whether we still have the activity ID tracked in memory.
@@ -487,7 +554,13 @@ export class LiveActivityService {
     };
 
     LiveActivity.updateAllActivities(idleState);
+    this.lastTagName = tagName;
+    this.lastTagId = tagId;
+    this.lastDurationMinutes = durationMinutes;
     this.focusEndTimestamp = undefined;
+    // Persist so the idle LA can be re-adopted after a cold start (no-op when
+    // we don't have a tracked activity ID, e.g. the unlock-expiry path).
+    this.persistIdleActivity();
     console.log('✅ Updated all idle focus LAs with tag:', tagName, 'duration:', durationMinutes);
   }
 
@@ -510,6 +583,7 @@ export class LiveActivityService {
         this.lastFocusActivityId = undefined;
       }
       this.focusEndTimestamp = undefined;
+      this.clearPersistedIdleActivity();
       console.log('✅ Ended focus Live Activity:', id);
     } catch (error: any) {
       const errorCode = error?.code || error?.cause?.code;

@@ -1003,7 +1003,7 @@ const GoalPlaceholderExample: FC = () => {
     <View className="mt-6">
       {/* Subtitle introducing the example */}
       <View className="mb-4">
-        <Typography variant="body-12" className="text-light-text-secondary dark:text-gray-200">
+        <Typography variant="body-12" color="secondary">
           Here&apos;s what a goal looks like
         </Typography>
       </View>
@@ -1070,10 +1070,10 @@ const GoalPlaceholderExample: FC = () => {
       {/* Placeholder Weekly Calendar */}
       <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4 mb-4 opacity-60">
         <View className="flex-row items-center justify-between mb-3">
-          <Typography variant="body-12" className="text-gray-200">
+          <Typography variant="body-12" color="secondary">
             Last 12 weeks
           </Typography>
-          <Typography variant="body-12" className="text-primary">
+          <Typography variant="body-12" color="primary">
             8/12 hit
           </Typography>
         </View>
@@ -1085,7 +1085,7 @@ const GoalPlaceholderExample: FC = () => {
           ))}
         </View>
         <View className="mt-3 pt-3 border-t border-light-border dark:border-dark-border items-center">
-          <Typography variant="body-14" className="text-light-text-primary font-poppins-semibold">
+          <Typography variant="body-14" className="text-light-text-primary dark:text-dark-text-primary font-poppins-semibold">
             ⏱️ 116h total
           </Typography>
         </View>
