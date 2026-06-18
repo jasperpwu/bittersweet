@@ -1,27 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FocusGoal, FocusSession } from '../../store/types';
-import { calculateGoalProgress, getGoalPeriodRange, getGoalCurrentTarget } from '../../utils/goalProgress';
+import { calculateGoalProgress } from '../../utils/goalProgress';
 import { calculateUrgency } from '../../utils/goalUrgency';
 
 const GOAL_NUDGE_IDS_KEY = 'goal-nudge-notification-ids';
-
-const formatMinutes = (minutes: number): string => {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h > 0 && m > 0) return `${h}h ${m}m`;
-  if (h > 0) return `${h}h`;
-  return `${m}m`;
-};
-
-const getRemainingDays = (goal: FocusGoal): number => {
-  const now = new Date();
-  const period = (goal as any).activePeriod || (goal as any).period || 'daily';
-  const normalizedPeriod = period === 'yearly' ? 'monthly' : period;
-  const { periodEnd } = getGoalPeriodRange(normalizedPeriod as 'daily' | 'weekly' | 'monthly', now);
-  const msRemaining = periodEnd.getTime() - now.getTime();
-  return Math.max(1, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
-};
 
 const getGoalDisplayName = (goal: FocusGoal): string => {
   return (goal as any).customName || (goal as any).name || 'Goal';
@@ -70,23 +53,16 @@ export const scheduleGoalNudges = async (
 
   if (behindGoals.length === 0) return;
 
-  // Build notification content
-  const mostUrgent = behindGoals[0];
-  const target = getGoalCurrentTarget(mostUrgent.goal);
-  const deficit = target - mostUrgent.currentProgress;
-  const remainingDays = getRemainingDays(mostUrgent.goal);
-  const goalName = getGoalDisplayName(mostUrgent.goal);
+  // Build notification content — list the tags that need attention (sorted by urgency)
+  const tagNames = behindGoals.map(
+    item => tagMap[item.goal.tagId]?.name || getGoalDisplayName(item.goal),
+  );
 
-  let title: string;
-  let body: string;
-
-  if (behindGoals.length === 1) {
-    title = goalName;
-    body = `${formatMinutes(deficit)} left — ${remainingDays} day${remainingDays !== 1 ? 's' : ''} remaining`;
-  } else {
-    title = `${behindGoals.length} goals need attention`;
-    body = `${goalName}: ${formatMinutes(deficit)} left — ${remainingDays} day${remainingDays !== 1 ? 's' : ''} remaining`;
-  }
+  const title =
+    tagNames.length === 1
+      ? 'Goal needs attention'
+      : `${tagNames.length} goals need attention`;
+  const body = tagNames.join(', ');
 
   // Parse reminder time
   const [hours, minutes] = reminderTime.split(':').map(Number);

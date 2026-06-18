@@ -23,6 +23,7 @@ import { useFocus } from '../../../store';
 import { useAppSettings } from '../../../store/unified-store';
 import { calculateGoalProgress, getHistoricalPeriodRanges, getTargetForDate, getSessionMinutesInPeriod, getGoalCurrentTarget } from '../../../utils/goalProgress';
 import { calculateUrgency, UrgencyLevel } from '../../../utils/goalUrgency';
+import { colors } from '../../../config/theme';
 
 interface GoalProgressProps {
   goals: FocusGoal[];
@@ -521,12 +522,20 @@ interface GoalRowItemProps {
   tags: { byId: Record<string, any>; allIds: string[] };
 }
 
-// Excel-style lightest conditional formatting colors for the progress bar track
+// Filled progress bar color once a goal is complete — a softer, less-saturated
+// sage green (a muted take on the brand `success` green) that reads comfortably
+// on the warm cream light-mode bg without the harshness of a vivid green.
+const COMPLETED_FILL = '#79B591';
+
+// Urgency colors for the progress bar's hint-line shimmer. The healthy/low
+// (on-pace) states use the same brand `success` green as COMPLETED_FILL so the
+// animation reads comfortably on the cream light-mode bg; medium/high stay
+// strong amber/red to signal falling behind.
 const TRACK_COLORS: Record<UrgencyLevel | 'healthy', string> = {
-  healthy: '#C6EFCE', // Excel lightest green
-  low: '#C6EFCE',     // Excel lightest green
-  medium: '#FF9536',  // strong amber/orange
-  high: '#D9364B',    // strong urgent red
+  healthy: COMPLETED_FILL, // brand success green
+  low: COMPLETED_FILL,     // brand success green
+  medium: '#FF9536',       // strong amber/orange
+  high: '#D9364B',         // strong urgent red
 };
 
 // Duolingo-style streak cell: a filled green circle with a white checkmark when
@@ -540,8 +549,8 @@ const StreakCell: FC<{ hit: boolean; fillPercent: number; size: number }> = ({
   if (hit) {
     return (
       <View
-        className="items-center justify-center rounded-full bg-success"
-        style={{ width: size, height: size }}
+        className="items-center justify-center rounded-full"
+        style={{ width: size, height: size, backgroundColor: COMPLETED_FILL }}
       >
         <Ionicons name="checkmark-sharp" size={Math.round(size * 0.62)} color="#FFFFFF" />
       </View>
@@ -612,8 +621,9 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
         {/* Compact progress indicator — checkmark once the target is hit */}
         <View
           className={`mr-3 items-center justify-center w-10 h-10 rounded-full ${
-            goal.percentage >= 100 ? 'bg-success' : 'bg-light-border dark:bg-dark-border'
+            goal.percentage >= 100 ? '' : 'bg-light-border dark:bg-dark-border'
           }`}
+          style={goal.percentage >= 100 ? { backgroundColor: COMPLETED_FILL } : undefined}
         >
           {goal.percentage >= 100 ? (
             <Ionicons name="checkmark-sharp" size={22} color="#FFFFFF" />
@@ -646,7 +656,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
         </View>
 
         {/* Period Badge */}
-        <View className="rounded-full px-3 py-1" style={{ backgroundColor: '#3B82F6' }}>
+        <View className="rounded-full px-3 py-1 bg-primary">
           <Typography variant="body-12" className="text-white font-poppins-medium">
             {periodLabel}
           </Typography>
@@ -658,7 +668,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
         <View className="flex-row flex-wrap gap-1.5 mt-2">
           <View
             className="flex-row items-center rounded-full px-2.5 py-1"
-            style={{ backgroundColor: tag.color || '#6592E9' }}
+            style={{ backgroundColor: tag.color || colors.primary }}
           >
             <Typography variant="tiny-10" className="mr-1">
               {tag.icon}
@@ -674,7 +684,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
       <View className="mt-2 h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden relative">
         <View
           className={`h-full ${goal.percentage >= 100 ? '' : 'bg-primary'}`}
-          style={{ width: `${progressWidth}%`, ...(goal.percentage >= 100 && { backgroundColor: TRACK_COLORS.healthy }) }}
+          style={{ width: `${progressWidth}%`, ...(goal.percentage >= 100 && { backgroundColor: COMPLETED_FILL }) }}
         />
         {exceededWidth > 0 && (
           <View
@@ -1018,7 +1028,7 @@ const GoalPlaceholderExample: FC = () => {
               </Typography>
             </View>
           </View>
-          <View className="rounded-full px-3 py-1" style={{ backgroundColor: '#3B82F6' }}>
+          <View className="rounded-full px-3 py-1 bg-primary">
             <Typography variant="body-12" className="text-white font-poppins-medium">
               Weekly
             </Typography>
@@ -1029,7 +1039,7 @@ const GoalPlaceholderExample: FC = () => {
         <View className="flex-row flex-wrap gap-1.5 mt-2">
           <View
             className="flex-row items-center rounded-full px-2.5 py-1"
-            style={{ backgroundColor: '#6592E9' }}
+            style={{ backgroundColor: colors.primary }}
           >
             <Typography variant="tiny-10" className="mr-1">
               📚
@@ -1063,7 +1073,7 @@ const GoalPlaceholderExample: FC = () => {
           <Typography variant="body-12" className="text-gray-200">
             Last 12 weeks
           </Typography>
-          <Typography variant="body-12" className="text-[#6592E9]">
+          <Typography variant="body-12" className="text-primary">
             8/12 hit
           </Typography>
         </View>
