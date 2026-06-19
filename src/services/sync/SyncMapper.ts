@@ -43,7 +43,7 @@ function mapKeysToCamel(obj: Record<string, any>): Record<string, any> {
 // --- Date fields per table (to convert ISO strings back to Date objects) ---
 
 const DATE_FIELDS: Record<string, string[]> = {
-  focus_sessions: ['start_time', 'end_time', 'created_at', 'updated_at', 'paused_at', 'resumed_at', 'deleted_at'],
+  focus_sessions: ['start_time', 'end_time', 'created_at', 'updated_at', 'deleted_at'],
   session_tags: ['created_at', 'updated_at', 'deleted_at'],
   focus_goals: ['created_at', 'updated_at', 'last_reset_date', 'deleted_at'],
 };
@@ -85,7 +85,6 @@ export function rowToSession(row: Record<string, any>): any {
     secondaryTagId: row.secondary_tag_id ?? undefined,
     notes: row.notes,
     photoUrl: row.photo_url ?? undefined,
-    isPaused: false,
     isManualEntry: row.is_manual_entry ?? false,
     accelerateMultiplier: row.accelerate_multiplier ?? 1,
     createdAt: new Date(row.created_at),

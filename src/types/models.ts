@@ -28,10 +28,6 @@ export interface FocusSession {
   actualDuration?: number; // elapsed duration in minutes before user adjustment
   adjustedDuration?: number; // user-adjusted duration in minutes
 
-  isPaused: boolean;
-  pausedAt?: Date;
-  resumedAt?: Date;
-
   tagId: string; // Required single tag ID for each session
   secondaryTagId?: string; // Optional second tag for dual-activity sessions (e.g. workout + audiobook)
 

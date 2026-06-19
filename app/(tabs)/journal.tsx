@@ -668,7 +668,7 @@ export default function JournalScreen() {
               </View>
             )}
 
-            {/* Optional secondary tag (premium ADHD mode) — two activities at once */}
+            {/* Optional secondary tag (premium Multi-Task mode) — two activities at once */}
             {secondaryTagEnabled && (
               <View className="mb-5">
                 <Typography variant="body-12" color="secondary" className="mb-2">
@@ -875,7 +875,7 @@ export default function JournalScreen() {
               />
             </View>
 
-            {/* Optional secondary tag (premium ADHD mode) — two activities at once */}
+            {/* Optional secondary tag (premium Multi-Task mode) — two activities at once */}
             {secondaryTagEnabled && (
               <>
                 <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">

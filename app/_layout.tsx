@@ -30,6 +30,8 @@ import { calculateGoalProgress, getTargetForDate } from '../src/utils/goalProgre
 import { configureCrisp } from '../src/services/crisp';
 import { useDeepLinkHandler } from '../src/hooks/useDeepLinkHandler';
 import { PushNotificationService } from '../src/services/notifications/push';
+import { AnalyticsTracker } from '../src/services/analytics';
+import { getInstalledWidgetFamilies } from '../modules/widget-info';
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
@@ -180,6 +182,9 @@ export default function RootLayout() {
         const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
           if (event === 'SIGNED_OUT') {
             console.log('🚪 SIGNED_OUT — clearing all app data');
+            // Drop the analytics identity so post-logout events don't attribute to
+            // the previous user (privacy — no identity survives for the next person).
+            AnalyticsTracker.reset();
             PushNotificationService.unregisterPushToken();
             resetSyncSnapshot();
             useAppStore.getState().grove.resetGrove();
@@ -279,6 +284,9 @@ export default function RootLayout() {
                 lastSignedInUserId: user.id,
               },
             }));
+
+            // Attribute all subsequent analytics events to this user.
+            AnalyticsTracker.identify(user.id);
 
             // Sync Supabase credentials to UserDefaults for native intent REST calls
             WidgetService.syncSupabaseCredentials(user.id, session.access_token);
@@ -657,6 +665,22 @@ export default function RootLayout() {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => subscription?.remove();
+  }, [fontsLoaded, isHydrated]);
+
+  // Analytics: authoritative widget-adoption check once per launch. iOS gives no
+  // callback when a widget is added, so we ask WidgetCenter which widgets are
+  // currently installed and record widget_active + the has_active_widget cohort.
+  useEffect(() => {
+    if (!(fontsLoaded && isHydrated)) return;
+    getInstalledWidgetFamilies().then((families) => {
+      if (families.length > 0) {
+        AnalyticsTracker.track(
+          'widget_active',
+          { families },
+          { setOnce: { has_active_widget: true } }
+        );
+      }
+    });
   }, [fontsLoaded, isHydrated]);
 
   // Debug logging

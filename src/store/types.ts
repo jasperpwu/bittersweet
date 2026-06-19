@@ -243,10 +243,7 @@ export interface FocusSlice {
   
   // Actions
   startSession: (params: { targetDuration: number; tagId: string; notes?: string }) => void;
-  pauseSession: () => void;
-  resumeSession: () => void;
   completeSession: () => void;
-  cancelSession: () => void;
   
   // Tag Management
   addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => void;

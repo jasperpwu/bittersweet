@@ -41,7 +41,6 @@ export const initializeStoreWithMockData = () => {
         startTime: null,
         elapsedTime: 0,
         remainingTime: 0,
-        isPaused: false,
       },
     };
 

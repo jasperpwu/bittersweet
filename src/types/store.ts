@@ -86,10 +86,7 @@ export interface FocusSlice {
 
     // Actions
     startSession: (params: StartSessionParams) => void;
-    pauseSession: () => void;
-    resumeSession: () => void;
     completeSession: () => void;
-    cancelSession: () => void;
 
     // Settings
     updateFocusSettings: (updates: Partial<FocusSettings>) => void;

@@ -62,3 +62,5 @@ logs
 # Config
 app-env.d.ts
 nativewind-env.d.ts
+# PostHog setup script credentials (scoped personal API key)
+.posthog.env

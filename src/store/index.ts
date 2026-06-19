@@ -20,6 +20,7 @@ import { GroveSlice, createGroveSlice } from './slices/groveSlice';
 import { ReferralSlice, createReferralSlice } from './slices/referralSlice';
 import { SharedTagService } from '../services/sharedTag/SharedTagService';
 import type { SharedTagResolveResult } from '../services/sharedTag/types';
+import { AnalyticsTracker } from '../services/analytics';
 
 interface AppStore {
   // Focus sessions and tags
@@ -75,8 +76,6 @@ interface AppStore {
     adjustSessionDuration: (id: string, adjustedDuration: number) => void;
     deleteSession: (id: string) => void;
     startSession: (id: string) => void;
-    pauseSession: () => void;
-    resumeSession: () => void;
     completeSession: (id?: string) => void;
     createCompletedSession: (params: { id?: string; startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
     importHealthKitWorkouts: (
@@ -323,7 +322,6 @@ export const useAppStore = create<AppStore>()(
             initialSetDuration: duration,
             actualDuration: duration,
             adjustedDuration: duration,
-            isPaused: false,
             tagId: sessionData.tagId,
             notes: sessionData.notes,
             accelerateMultiplier,
@@ -513,48 +511,6 @@ export const useAppStore = create<AppStore>()(
           }
         },
         
-        pauseSession: () => {
-          console.log('⏸️ Pausing session');
-          const { currentSession } = get().focus;
-          if (currentSession.session && currentSession.isRunning) {
-            set((state) => ({
-              focus: {
-                ...state.focus,
-                currentSession: {
-                  ...state.focus.currentSession,
-                  isRunning: false,
-                }
-              }
-            }));
-            
-            get().focus.updateSession(currentSession.session.id, {
-              isPaused: true,
-              pausedAt: new Date(),
-            });
-          }
-        },
-        
-        resumeSession: () => {
-          console.log('▶️ Resuming session');
-          const { currentSession } = get().focus;
-          if (currentSession.session && !currentSession.isRunning) {
-            set((state) => ({
-              focus: {
-                ...state.focus,
-                currentSession: {
-                  ...state.focus.currentSession,
-                  isRunning: true,
-                }
-              }
-            }));
-            
-            get().focus.updateSession(currentSession.session.id, {
-              isPaused: false,
-              resumedAt: new Date(),
-            });
-          }
-        },
-        
         completeSession: (sessionId) => {
           const id = sessionId || get().focus.currentSession.session?.id;
           if (id) {
@@ -617,7 +573,6 @@ export const useAppStore = create<AppStore>()(
             initialSetDuration: params.targetDuration,
             actualDuration: params.duration,
             adjustedDuration: params.duration,
-            isPaused: false,
             tagId: params.tagId,
             secondaryTagId: params.secondaryTagId,
             notes: params.notes,
@@ -701,7 +656,6 @@ export const useAppStore = create<AppStore>()(
               initialSetDuration: w.durationMinutes,
               actualDuration: w.durationMinutes,
               adjustedDuration: w.durationMinutes,
-              isPaused: false,
               tagId,
               accelerateMultiplier: 1,
               createdAt: now,
@@ -809,9 +763,12 @@ export const useAppStore = create<AppStore>()(
             }
           }));
         },
-        
+
         updateGoal: (goalId, updates) => {
           console.log('🎯 Updating goal:', goalId, updates);
+          // Goals are auto-created (one per tag), so creation isn't user intent —
+          // the real "user set a goal" signal is *activating* one (isActive false→true).
+          const wasActive = get().focus.goals.byId[goalId]?.isActive === true;
           set((state) => {
             const existingGoal = state.focus.goals.byId[goalId];
             if (existingGoal) {
@@ -830,6 +787,16 @@ export const useAppStore = create<AppStore>()(
             }
             return state;
           });
+
+          // Analytics: goal adoption + the has_set_goal retention cohort.
+          if (updates.isActive === true && !wasActive) {
+            const goal = get().focus.goals.byId[goalId];
+            AnalyticsTracker.track(
+              'goal_activated',
+              { active_period: goal?.activePeriod, tag_id: goal?.tagId },
+              { setOnce: { has_set_goal: true } }
+            );
+          }
         },
         
         deleteGoal: (goalId) => {
@@ -1513,6 +1480,25 @@ export const useAppStore = create<AppStore>()(
           FamilyControlsModule.updateShieldBalance(newBalance).catch((error) => {
             console.error('Failed to update shield balance after earning fruits:', error);
           });
+
+          // Analytics: a completed focus session is the core-loop / retention signal.
+          // earnFruits('focus_session') is the single choke point for every completion
+          // path (live timer, manual entry, widget/Live Activity stop).
+          if (source === 'focus_session') {
+            const session = metadata?.sessionId
+              ? get().focus.sessions.byId[metadata.sessionId]
+              : undefined;
+            AnalyticsTracker.track(
+              'focus_session_completed',
+              {
+                duration_minutes: metadata?.duration ?? session?.duration,
+                tag_id: session?.tagId,
+                has_blocklist: get().blocklist.currentSelectionId != null,
+                fruits_earned: amount,
+              },
+              { set: { total_focus_sessions: get().focus.sessions.allIds.length } }
+            );
+          }
         },
         spendFruits: (amount, purpose, metadata) => {
           set((state) => ({
@@ -1530,6 +1516,16 @@ export const useAppStore = create<AppStore>()(
           FamilyControlsModule.updateShieldBalance(newBalance).catch((error) => {
             console.error('Failed to update shield balance after spending fruits:', error);
           });
+
+          // Analytics: closing the blocking economy loop (earn fruit → spend to unlock).
+          // Fires when the user spends fruit to unlock app(s) — i.e. the unlock action
+          // itself, not the unlock session expiring (that's endUnlock).
+          if (purpose === 'app_unlock') {
+            AnalyticsTracker.track('app_unlocked', {
+              unlock_duration: metadata?.duration,
+              fruit_cost: amount,
+            });
+          }
         },
         unlockApp: async (appId) => {
           const app = get().rewards.unlockableApps.find(app => app.id === appId);
@@ -1831,6 +1827,18 @@ export const useAppStore = create<AppStore>()(
               if (groveState.isActive && groveState.heartbeatSettings?.isEnabled) {
                 groveState.notifyBlocklistEdit();
               }
+
+              // Analytics: blocking adoption + the blocklist-vs-no-blocklist cohort.
+              // ever_configured_blocklist is sticky; blocklist_app_count tracks the
+              // current count so we can tell active blockers from set-and-emptied.
+              AnalyticsTracker.track(
+                'blocklist_configured',
+                { app_count: metadata?.applicationCount ?? 0 },
+                {
+                  set: { blocklist_app_count: metadata?.applicationCount ?? 0 },
+                  setOnce: { ever_configured_blocklist: true },
+                }
+              );
             } else {
               throw new Error('Failed to apply restrictions via native module');
             }
@@ -2050,8 +2058,6 @@ export const useFocusActions = () => useAppStore((state) => ({
   adjustSessionDuration: state.focus.adjustSessionDuration,
   deleteSession: state.focus.deleteSession,
   startSession: state.focus.startSession,
-  pauseSession: state.focus.pauseSession,
-  resumeSession: state.focus.resumeSession,
   completeSession: state.focus.completeSession,
   createCompletedSession: state.focus.createCompletedSession,
   setSelectedDate: state.focus.setSelectedDate,

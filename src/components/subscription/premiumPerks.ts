@@ -14,6 +14,6 @@ export const PREMIUM_PERKS: PremiumPerk[] = [
   { icon: 'flag-outline', label: 'Unlimited goals' },
   { icon: 'pricetags-outline', label: 'Unlimited tags' },
   { icon: 'heart-outline', label: 'Apple Health workout syncing' },
-  { icon: 'sparkles-outline', label: 'ADHD mode (dual-tag sessions)' },
+  { icon: 'sparkles-outline', label: 'Multi-Task mode (dual-tag sessions)' },
   { icon: 'cloud-outline', label: 'Cloud backup & sync' },
 ];

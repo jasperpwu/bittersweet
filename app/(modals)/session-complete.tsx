@@ -299,7 +299,7 @@ export default function SessionCompleteModal() {
             </Typography>
           </View>
 
-          {/* Optional secondary tag (premium ADHD mode) — two activities at once */}
+          {/* Optional secondary tag (premium Multi-Task mode) — two activities at once */}
           {secondaryTagEnabled && (
             <View className="w-full mb-6">
               <Typography variant="body-14" color="secondary" className="mb-2">

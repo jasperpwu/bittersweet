@@ -132,6 +132,24 @@ export default function DevToolsModal() {
           </Pressable>
         </View>
 
+        {/* Onboarding */}
+        <View>
+          <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
+            Onboarding
+          </Typography>
+          <Pressable
+            onPress={() => router.push('/onboarding')}
+            className="bg-primary rounded-xl py-3 items-center active:opacity-80"
+          >
+            <Typography variant="subtitle-14-semibold" color="white">
+              Replay Onboarding
+            </Typography>
+          </Pressable>
+          <Typography variant="body-12" color="secondary" className="mt-2">
+            Finish the flow to emit the onboarding_completed event.
+          </Typography>
+        </View>
+
         {/* Referral Testing */}
         <View>
           <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">

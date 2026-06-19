@@ -36,7 +36,7 @@ export default function PreferencesScreen() {
       await updatePreferences({ adhdModeEnabled: value });
       triggerHaptic('light');
     } catch (error) {
-      console.error('Failed to update ADHD mode setting:', error);
+      console.error('Failed to update Multi-Task mode setting:', error);
       triggerHaptic('error');
     }
   };
@@ -167,7 +167,7 @@ export default function PreferencesScreen() {
         {/* Focus */}
         <SettingsSection title="Focus">
           <SettingsItem
-            title="ADHD Mode"
+            title="Multi-Task Mode"
             subtitle="Add an optional second tag to a session for two activities at once"
             icon="git-branch-outline"
             premiumBadge
@@ -310,7 +310,7 @@ export default function PreferencesScreen() {
         </View>
       </BottomSheet>
 
-      {/* ADHD Mode premium gate */}
+      {/* Multi-Task Mode premium gate */}
       <UpgradePrompt
         isVisible={showAdhdUpgrade}
         onClose={() => setShowAdhdUpgrade(false)}

@@ -17,6 +17,7 @@ import { FruitCounter } from '../../src/components/rewards';
 import { showToast } from '../../src/components/ui/Toast';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
 import { WidgetService } from '../../src/services/WidgetService';
+import { AnalyticsTracker } from '../../src/services/analytics';
 import { FamilyControlsModule } from '../../src/modules/BitterSweetFamilyControls';
 import { blockSelection, stopMonitoring } from 'react-native-device-activity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -1941,7 +1942,14 @@ export default function FocusScreen() {
           style={{ opacity: isUnlockActive ? 0 : 1 }}
           pointerEvents={isUnlockActive ? 'none' : 'auto'}
         >
-          <FruitCounter fruitCount={rewards.balance} size="small" onPress={() => router.push('/fruit-store')} />
+          <FruitCounter
+            fruitCount={rewards.balance}
+            size="small"
+            onPress={() => {
+              AnalyticsTracker.track('store_opened');
+              router.push('/fruit-store');
+            }}
+          />
         </Animated.View>
       </View>
 

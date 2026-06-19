@@ -15,6 +15,7 @@
       "expo-secure-store",
       "expo-splash-screen",
       "expo-dev-client",
+      "expo-localization",
       [
         "@kingstinct/react-native-healthkit",
         {

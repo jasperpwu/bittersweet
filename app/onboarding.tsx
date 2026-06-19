@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { View, FlatList, ScrollView, useWindowDimensions, useColorScheme, Pressable, ActivityIndicator, TextInput, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { AnalyticsTracker } from '../src/services/analytics';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../src/components/ui/Typography';
 import { Button } from '../src/components/ui/Button';
@@ -105,6 +106,8 @@ export default function OnboardingScreen() {
     if (updatePreferences) {
       await updatePreferences({ hasSeenOnboarding: true });
     }
+    // Analytics: activation-funnel endpoint.
+    AnalyticsTracker.track('onboarding_completed');
     // Navigate to the main tabs
     router.replace('/(tabs)');
   };

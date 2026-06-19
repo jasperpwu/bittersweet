@@ -23,7 +23,7 @@ const LIMIT_COPY: Record<LimitType, { title: string; subtitle: string }> = {
     subtitle: 'Upgrade to Premium to set unlimited focus goals and track your progress across all areas.',
   },
   adhd: {
-    title: 'ADHD mode is a Premium feature',
+    title: 'Multi-Task mode is a Premium feature',
     subtitle: 'Upgrade to Premium to add a second tag to a session — perfect for tracking two things you do at once, like a workout and an audiobook.',
   },
   health: {
