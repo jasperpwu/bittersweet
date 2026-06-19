@@ -83,11 +83,18 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
   const { preferences } = useAppSettings();
   const weekStartDay = 1; // Always Monday — matches GoalProgress
 
-  // Active goal tied to the session's primary tag (goals are 1:1 with a tag).
+  // Active goal tied to the session's primary OR secondary tag — dual-tagged
+  // sessions credit both tags' goals, matching calculateGoalProgress.
   const goal = useMemo(() => {
     const all = goals.allIds.map((id) => goals.byId[id]).filter(Boolean);
-    return all.find((g) => g.isActive && g.tagId === session.tagId) ?? null;
-  }, [goals, session.tagId]);
+    return (
+      all.find(
+        (g) =>
+          g.isActive &&
+          (g.tagId === session.tagId || g.tagId === session.secondaryTagId),
+      ) ?? null
+    );
+  }, [goals, session.tagId, session.secondaryTagId]);
 
   // Before/after progress for this period.
   const computed = useMemo(() => {

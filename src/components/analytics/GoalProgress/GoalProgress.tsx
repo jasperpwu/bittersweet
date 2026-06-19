@@ -798,10 +798,13 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
   // Compute hit/miss for each range
   const results = ranges.map(range => {
-    // Filter by goal's tag (1:1 relationship)
+    // A session counts toward the goal if either its primary OR secondary tag
+    // matches — dual-tagged sessions credit both, matching calculateGoalProgress.
     const goalTagId = (goal as any).tagId;
     const relevant = goalTagId
-      ? sessions.filter(s => (s as any).tagId === goalTagId)
+      ? sessions.filter(
+          s => (s as any).tagId === goalTagId || (s as any).secondaryTagId === goalTagId,
+        )
       : sessions;
 
     // Split session time at period boundaries for cross-day sessions
