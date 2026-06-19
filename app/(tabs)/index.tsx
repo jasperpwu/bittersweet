@@ -1164,6 +1164,7 @@ export default function FocusScreen() {
     const tagInfo = selectedTag ? tags.byId[selectedTag] : null;
     WidgetService.syncSessionState({
       isActive: true,
+      tagId: selectedTag || '',
       tagName: tagInfo?.name || 'Focus',
       tagIcon: tagInfo?.icon || '🎯',
       tagColor: tagInfo?.color || '#8B4513',
@@ -1447,7 +1448,10 @@ export default function FocusScreen() {
           const store = useAppStore.getState();
           const actualEndTime = stopAction.timestamp;
           const durationMs = actualEndTime - sessionInfo.startTime;
-          const durationMinutes = Math.round(durationMs / 60000);
+          // Floor to match the in-app finish path (Math.floor(elapsed/60)) and the
+          // native stop write (Int truncation). All three must agree so the merged
+          // focus_sessions row (same id) is deterministic regardless of write order.
+          const durationMinutes = Math.floor(durationMs / 60000);
 
           if (durationMinutes > 0) {
             // For infinite sessions (targetDuration === 0), set targetDuration
@@ -1459,6 +1463,10 @@ export default function FocusScreen() {
               : sessionInfo.targetDuration;
 
             store.focus.createCompletedSession({
+              // Reuse the id the native stop already recorded under, so this
+              // local write merges with the native Supabase row instead of
+              // duplicating it.
+              id: stopAction.sessionId,
               startTime: new Date(sessionInfo.startTime),
               endTime: new Date(actualEndTime),
               duration: durationMinutes,
@@ -1582,6 +1590,7 @@ export default function FocusScreen() {
         || (recoveredTag ? `${recoveredTag.icon || '🎯'} ${recoveredTag.name}` : 'Focus');
       WidgetService.syncSessionState({
         isActive: true,
+        tagId: persisted.tagId || '',
         tagName: recoveredTag?.name || 'Focus',
         tagIcon: recoveredTag?.icon || '🎯',
         tagColor: recoveredTag?.color || '#8B4513',

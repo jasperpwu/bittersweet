@@ -86,6 +86,7 @@ struct StartSessionIntent: LiveActivityIntent {
     // Update widget display
     WidgetDataManager.shared.writeSessionData(
       isActive: true,
+      tagId: tag.id,
       tagName: tag.name,
       tagIcon: tag.icon,
       tagColor: tag.color,
@@ -147,9 +148,31 @@ struct StopSessionIntent: LiveActivityIntent {
     // record the completed session in adoptAndRecoverSession(). It will be
     // cleared there after being read (index.tsx: adoptAndRecoverSession).
 
+    // Capture the active session BEFORE we overwrite it with idle data below.
+    // This is driven off sessionData, which is always written regardless of
+    // whether the session was started from the app or the widget — unlike
+    // widgetStartedSession, which only exists for widget-started sessions.
+    let active = WidgetDataManager.shared.getSessionData()
+    let stopTimestamp = Date().timeIntervalSince1970 * 1000
+
+    // One id for this completed session, shared by the native Supabase write and
+    // the JS adoption write (passed via the stop marker). focus_sessions upserts
+    // by id, so both writes collapse to a single row instead of duplicating.
+    let sessionId = UUID().uuidString
+
+    // Reflect the finished session in the goal widget immediately. Floor to match
+    // the minutes the session is actually recorded with, so the bump equals what
+    // the JS goal recompute will later attribute to this session. JS recomputes
+    // every goal from scratch on next foreground and corrects any drift.
+    if let active = active, active.isActive {
+      let durationMinutes = Double(Int((stopTimestamp - active.startTime) / 60000))
+      WidgetDataManager.shared.addSessionMinutesToGoal(tagId: active.tagId, minutes: durationMinutes)
+    }
+
     // Write idle session data for widget display
     WidgetDataManager.shared.writeSessionData(
       isActive: false,
+      tagId: "",
       tagName: "",
       tagIcon: "",
       tagColor: "",
@@ -158,9 +181,11 @@ struct StopSessionIntent: LiveActivityIntent {
       isInfinite: false
     )
 
-    // Write stop marker for JS to record the completed session
+    // Write stop marker for JS to record the completed session. Carries the
+    // sessionId so JS adopts the same id the native Supabase write used.
     WidgetDataManager.shared.writeWidgetStopAction(
-      timestamp: Date().timeIntervalSince1970 * 1000
+      timestamp: stopTimestamp,
+      sessionId: sessionId
     )
 
     // Restore shield to non-focus mode so users can unlock apps with fruits.
@@ -172,33 +197,30 @@ struct StopSessionIntent: LiveActivityIntent {
     // Clear focusing status immediately so friends see the user is done
     SupabaseClient.setFocusing(false)
 
-    // Record the completed session and share to feed if applicable
-    if let sessionInfo = WidgetDataManager.shared.getWidgetStartedSession() {
-      let startTime = sessionInfo["startTime"] as? Double ?? 0
-      let stopTimestamp = Date().timeIntervalSince1970 * 1000
-      let durationMinutes = Int((stopTimestamp - startTime) / 60000)
+    // Best-effort record of the completed session straight from native, so it
+    // survives even if the app is never reopened (e.g. user deletes it after
+    // ending from the widget/Live Activity). Driven off sessionData so it covers
+    // BOTH app-started and widget-started sessions. The upsert merges with the
+    // JS adoption write (same sessionId) when the app is reopened normally.
+    if let active = active, active.isActive {
+      let durationMinutes = Int((stopTimestamp - active.startTime) / 60000)
 
-      if durationMinutes > 0, let tagId = sessionInfo["tagId"] as? String {
-        let sessionId = UUID().uuidString
-        let tagName = sessionInfo["tagName"] as? String ?? ""
-        let tagIcon = sessionInfo["tagIcon"] as? String ?? ""
-
-        // Record to focus_sessions (upsert — JS foreground will be a harmless no-op)
+      if durationMinutes > 0, !active.tagId.isEmpty {
         SupabaseClient.recordSession(
           sessionId: sessionId,
-          tagId: tagId,
-          tagName: tagName,
-          tagIcon: tagIcon,
-          tagColor: sessionInfo["tagColor"] as? String ?? "",
+          tagId: active.tagId,
+          tagName: active.tagName,
+          tagIcon: active.tagIcon,
+          tagColor: active.tagColor,
           duration: durationMinutes,
-          startTime: startTime,
+          startTime: active.startTime,
           endTime: stopTimestamp
         )
 
         // Record challenge progress for any active challenge matching this tag
         let activeChallenges = WidgetDataManager.shared.getGroveActiveChallenges()
         for challenge in activeChallenges {
-          if challenge["tagId"] == tagId, let challengeId = challenge["id"] {
+          if challenge["tagId"] == active.tagId, let challengeId = challenge["id"] {
             SupabaseClient.recordChallengeProgress(challengeId: challengeId)
           }
         }

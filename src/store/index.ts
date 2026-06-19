@@ -78,7 +78,7 @@ interface AppStore {
     pauseSession: () => void;
     resumeSession: () => void;
     completeSession: (id?: string) => void;
-    createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
+    createCompletedSession: (params: { id?: string; startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => FocusSession;
     importHealthKitWorkouts: (
       workouts: { uuid: string; startDate: Date; endDate: Date; durationMinutes: number; wasUserEntered: boolean }[],
       tagId: string
@@ -599,9 +599,13 @@ export const useAppStore = create<AppStore>()(
           }
         },
         
-        createCompletedSession: (params: { startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => {
+        createCompletedSession: (params: { id?: string; startTime: Date; endTime: Date; duration: number; targetDuration: number; tagId: string; secondaryTagId?: string; notes?: string; isManualEntry?: boolean }) => {
           console.log('📝 Creating completed session:', params);
-          const sessionId = generateId();
+          // Reuse a caller-supplied id when present (e.g. native widget/Live
+          // Activity stop already pushed this session to Supabase under that id)
+          // so the local row + its sync upsert merge with the native write
+          // instead of creating a duplicate. Falls back to a fresh id otherwise.
+          const sessionId = params.id || generateId();
 
           const createCompletedMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
 

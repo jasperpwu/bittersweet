@@ -23,6 +23,7 @@ const GROVE_ACTIVE_CHALLENGES_KEY = 'groveActiveChallenges';
 
 export interface WidgetSessionData {
   isActive: boolean;
+  tagId: string; // lets native StopSessionIntent match the finished session to its goal
   tagName: string;
   tagIcon: string;
   tagColor: string;
@@ -56,6 +57,7 @@ export interface WidgetStartedSession {
 export interface WidgetStopAction {
   action: 'stop';
   timestamp: number;
+  sessionId?: string; // id the native Supabase write used; JS reuses it so the two collapse to one row
 }
 
 export interface WidgetUnlockStopAction {
@@ -74,6 +76,7 @@ export interface WidgetGoalData {
   targetMinutes: number;
   percentage: number;
   period: string; // "Daily" / "Weekly" / "Monthly"
+  tagId: string; // 1:1 with tag — lets native StopSessionIntent match a finished session to a goal
   tagIcon: string;
   tagColor: string;
 }
@@ -103,6 +106,7 @@ export class WidgetService {
         // Write an idle state rather than removing, so the widget always has data
         ReactNativeDeviceActivity.userDefaultsSet(SESSION_DATA_KEY, {
           isActive: false,
+          tagId: '',
           tagName: '',
           tagIcon: '',
           tagColor: '',

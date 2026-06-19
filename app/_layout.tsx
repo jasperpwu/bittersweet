@@ -518,6 +518,7 @@ export default function RootLayout() {
           targetMinutes: effectiveTarget,
           percentage: Math.round(percentage),
           period: periodLabel,
+          tagId: goal.tagId || '',
           tagIcon: tag?.icon || '',
           tagColor: tag?.color || '#6592E9',
         };

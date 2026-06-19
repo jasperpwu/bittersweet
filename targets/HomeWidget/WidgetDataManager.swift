@@ -43,6 +43,7 @@ private enum ShieldKeys {
 
 struct WidgetSessionData {
   let isActive: Bool
+  let tagId: String
   let tagName: String
   let tagIcon: String
   let tagColor: String
@@ -55,6 +56,7 @@ struct WidgetSessionData {
   init?(dict: [String: Any]) {
     guard let isActive = dict["isActive"] as? Bool else { return nil }
     self.isActive = isActive
+    self.tagId = dict["tagId"] as? String ?? ""
     self.tagName = dict["tagName"] as? String ?? ""
     self.tagIcon = dict["tagIcon"] as? String ?? ""
     self.tagColor = dict["tagColor"] as? String ?? ""
@@ -102,6 +104,7 @@ struct WidgetGoalItem {
   let targetMinutes: Double
   let percentage: Double
   let period: String // "Daily" / "Weekly" / "Monthly"
+  let tagId: String // 1:1 with tag — used to match a finished session to its goal
   let tagIcon: String
   let tagColor: String
 
@@ -112,6 +115,7 @@ struct WidgetGoalItem {
     self.targetMinutes = dict["targetMinutes"] as? Double ?? 0
     self.percentage = dict["percentage"] as? Double ?? 0
     self.period = dict["period"] as? String ?? "Daily"
+    self.tagId = dict["tagId"] as? String ?? ""
     self.tagIcon = dict["tagIcon"] as? String ?? ""
     self.tagColor = dict["tagColor"] as? String ?? ""
   }
@@ -187,10 +191,38 @@ struct WidgetDataManager {
     return array.compactMap { WidgetGoalItem(dict: $0) }
   }
 
+  /// Incrementally adds a just-finished session's minutes to the goal that tracks
+  /// the same tag, so the goal widget reflects the session immediately after an
+  /// End Session tap from a widget / Live Activity (JS isn't running to recompute).
+  ///
+  /// This is an approximation: it only bumps the matching goal's currentMinutes /
+  /// percentage in the stored payload. When the app next foregrounds, JS recomputes
+  /// every goal from scratch (`syncWidgetGoalsData`) and corrects any drift, mirroring
+  /// how the session widget itself reconciles on foreground.
+  func addSessionMinutesToGoal(tagId: String, minutes: Double) {
+    guard minutes > 0, !tagId.isEmpty else { return }
+    guard var array = userDefaults?.array(forKey: WidgetKeys.goalsData) as? [[String: Any]] else { return }
+
+    var didChange = false
+    for index in array.indices {
+      guard (array[index]["tagId"] as? String) == tagId else { continue }
+      let target = array[index]["targetMinutes"] as? Double ?? 0
+      let current = (array[index]["currentMinutes"] as? Double ?? 0) + minutes
+      array[index]["currentMinutes"] = current
+      array[index]["percentage"] = target > 0 ? (current / target * 100).rounded() : 0
+      didChange = true
+    }
+
+    guard didChange else { return }
+    userDefaults?.set(array, forKey: WidgetKeys.goalsData)
+    userDefaults?.synchronize()
+  }
+
   // MARK: - Write Session Data
 
   func writeSessionData(
     isActive: Bool,
+    tagId: String,
     tagName: String,
     tagIcon: String,
     tagColor: String,
@@ -200,6 +232,7 @@ struct WidgetDataManager {
   ) {
     let dict: [String: Any] = [
       "isActive": isActive,
+      "tagId": tagId,
       "tagName": tagName,
       "tagIcon": tagIcon,
       "tagColor": tagColor,
@@ -259,10 +292,11 @@ struct WidgetDataManager {
 
   // MARK: - Widget Stop Action (for JS adoption)
 
-  func writeWidgetStopAction(timestamp: Double) {
+  func writeWidgetStopAction(timestamp: Double, sessionId: String) {
     let dict: [String: Any] = [
       "action": "stop",
       "timestamp": timestamp,
+      "sessionId": sessionId,
     ]
     userDefaults?.set(dict, forKey: WidgetKeys.widgetStopAction)
     userDefaults?.synchronize()
