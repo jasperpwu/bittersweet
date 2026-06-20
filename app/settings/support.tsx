@@ -6,6 +6,7 @@ import { Typography } from '../../src/components/ui/Typography';
 import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsItem';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { openChat } from '../../src/services/crisp';
+import { openFeedbackBoard } from '../../src/services/userjot';
 
 export default function SupportScreen() {
   const colorScheme = useColorScheme();
@@ -26,6 +27,11 @@ export default function SupportScreen() {
   const handleHelpAndFeedback = () => {
     triggerHaptic('light');
     openChat();
+  };
+
+  const handleFeedbackBoard = () => {
+    triggerHaptic('light');
+    openFeedbackBoard();
   };
 
   return (
@@ -56,6 +62,13 @@ export default function SupportScreen() {
             icon="chatbubble-ellipses-outline"
             hasChevron
             onPress={handleHelpAndFeedback}
+          />
+          <SettingsItem
+            title="Feature Requests"
+            subtitle="Suggest & vote on ideas"
+            icon="bulb-outline"
+            hasChevron
+            onPress={handleFeedbackBoard}
             isLast
           />
         </SettingsSection>

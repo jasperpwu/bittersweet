@@ -16,6 +16,7 @@
       "expo-splash-screen",
       "expo-dev-client",
       "expo-localization",
+      "expo-web-browser",
       [
         "@kingstinct/react-native-healthkit",
         {
