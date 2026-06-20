@@ -92,7 +92,8 @@ class WidgetActivityKitLoader: NSObject {
         subtitleColor: subtitleCol,
         progressViewTint: "#FF6347",
         progressViewLabelColor: progressCol,
-        deepLinkUrl: nil,
+        // Empty path → bare scheme "bittersweet-mobile://" → Focus tab (root index).
+        deepLinkUrl: "",
         timerType: .digital,
         sessionType: nil
       )

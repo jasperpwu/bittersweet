@@ -108,8 +108,10 @@ export class LiveActivityService {
         subtitleColor: palette.subtitleColor,
         progressViewTint: '#FF6347',
         progressViewLabelColor: palette.progressViewLabelColor,
-        // No deepLinkUrl — tapping the live activity opens the app via default iOS
-        // behavior without triggering Expo Router navigation to a nonexistent route.
+        // Empty path → bare scheme "bittersweet-mobile://" → Focus tab (root index),
+        // matching the Home Screen widget. A non-root path like "focus" would 404 in
+        // Expo Router since the Focus tab has no named route.
+        deepLinkUrl: '',
         timerType: 'digital',
         sessionType: 'unlock',
       };
@@ -273,8 +275,8 @@ export class LiveActivityService {
         subtitleColor: palette.subtitleColor,
         progressViewTint: '#FF6347',
         progressViewLabelColor: palette.progressViewLabelColor,
-        // No deepLinkUrl — tapping the live activity opens the app via default iOS
-        // behavior without triggering Expo Router navigation to a nonexistent route.
+        // Empty path → bare scheme "bittersweet-mobile://" → Focus tab (root index).
+        deepLinkUrl: '',
         timerType: 'digital',
       };
 
@@ -349,6 +351,8 @@ export class LiveActivityService {
         subtitleColor: palette.subtitleColor,
         progressViewTint: '#FF6347',
         progressViewLabelColor: palette.progressViewLabelColor,
+        // Empty path → bare scheme "bittersweet-mobile://" → Focus tab (root index).
+        deepLinkUrl: '',
         timerType: 'digital',
       };
 
