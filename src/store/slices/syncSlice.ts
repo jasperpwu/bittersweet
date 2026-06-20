@@ -1,4 +1,6 @@
 import { SyncService } from '../../services/sync/SyncService';
+import { settingsToRow } from '../../services/sync/SyncMapper';
+import { supabase } from '../../config/supabase';
 import { syncQueue } from '../../services/sync/SyncQueue';
 import { invalidateSyncSnapshot } from '../middleware/syncMiddleware';
 import { BlocklistSyncService } from '../../services/sync/BlocklistSyncService';
@@ -35,6 +37,15 @@ export interface SyncSlice {
   pullAndApply: () => Promise<void>;
   initialUpload: () => Promise<void>;
   pullFromCloud: () => Promise<any>;
+  /**
+   * Cloud-truth check for whether the signed-in account has completed onboarding.
+   * Returns true/false from the cloud, or null on error. Used by the onboarding
+   * sign-in button to decide whether to enter the app or keep a brand-new account
+   * in onboarding. Lightweight (single column) — not a full pull.
+   */
+  fetchOnboardingCompleted: () => Promise<boolean | null>;
+  /** Push current settings (incl. hasSeenOnboarding) to the cloud immediately. */
+  syncSettings: () => Promise<void>;
   flushOfflineQueue: () => Promise<void>;
   updateQueueSize: () => Promise<void>;
   clearSyncError: () => void;
@@ -391,6 +402,41 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
     } catch (error: any) {
       console.error('Pull from cloud error:', error);
       return null;
+    }
+  },
+
+  fetchOnboardingCompleted: async () => {
+    const userId = get().auth.user?.id;
+    if (!userId) return null;
+    try {
+      // maybeSingle: a brand-new account has no user_settings row yet (the signup
+      // trigger seeds only profiles + rewards), so no row → not onboarded.
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('has_seen_onboarding')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.has_seen_onboarding ?? false;
+    } catch (error: any) {
+      console.error('[Sync] fetchOnboardingCompleted error:', error);
+      return null;
+    }
+  },
+
+  syncSettings: async () => {
+    const state = get();
+    if (!state.auth.isAuthenticated) return;
+    const userId = state.auth.user?.id;
+    if (!userId) return;
+    try {
+      const { useUnifiedStore } = require('../unified-store');
+      const prefs = useUnifiedStore.getState().preferences;
+      const row = settingsToRow(prefs, userId, state.focus?.lastDurationByTagId);
+      await SyncService.enqueue('user_settings', 'upsert', row);
+      await SyncService.flush();
+    } catch (error: any) {
+      console.error('[Sync] syncSettings error:', error);
     }
   },
 

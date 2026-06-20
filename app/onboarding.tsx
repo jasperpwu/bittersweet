@@ -71,11 +71,16 @@ export default function OnboardingScreen() {
   // Shared post-sign-in navigation: mark onboarding seen and enter the app.
   const finishSignIn = useCallback(async () => {
     const { isAuthenticated } = useAppStore.getState().auth;
-    if (isAuthenticated) {
-      const updatePreferences = useUnifiedStore.getState().updatePreferences;
-      if (updatePreferences) {
-        await updatePreferences({ hasSeenOnboarding: true });
-      }
+    if (!isAuthenticated) return;
+
+    // The cloud is the source of truth for whether this account already finished
+    // onboarding. Existing/onboarded account → enter the app. Brand-new account
+    // (no settings row yet, or has_seen_onboarding=false) → keep the user in
+    // onboarding so this "Sign in" button can't let a new account skip it; they'll
+    // mark + upload hasSeenOnboarding via completeOnboarding at the end. On a read
+    // failure (null) default to entering the app so a returning user is never trapped.
+    const onboarded = await useAppStore.getState().sync.fetchOnboardingCompleted();
+    if (onboarded !== false) {
       router.replace('/(tabs)');
     }
   }, []);
@@ -105,6 +110,13 @@ export default function OnboardingScreen() {
     const updatePreferences = useUnifiedStore.getState().updatePreferences;
     if (updatePreferences) {
       await updatePreferences({ hasSeenOnboarding: true });
+    }
+    // If the user signed in during onboarding (via the header button), they're a
+    // brand-new account that stayed to finish — push hasSeenOnboarding to the cloud
+    // now. Otherwise the sync middleware's first-change baseline skip can drop it,
+    // making onboarding reappear on their next device.
+    if (useAppStore.getState().auth.isAuthenticated) {
+      await useAppStore.getState().sync.syncSettings();
     }
     // Analytics: activation-funnel endpoint.
     AnalyticsTracker.track('onboarding_completed');
@@ -290,7 +302,7 @@ export default function OnboardingScreen() {
             <ActivityIndicator size="small" color="#8B7FFF" />
           ) : (
             <Typography variant="body-14" className="text-primary">
-              Already a user? Sign in
+              Continue with Apple
             </Typography>
           )}
         </Pressable>
