@@ -38,6 +38,7 @@
     "expo-live-activity": "github:jasperpwu/expo-live-activity",
     "expo-localization": "~16.1.6",
     "expo-notifications": "^0.31.4",
+    "expo-quick-actions": "^5.0.0",
     "expo-router": "~5.1.6",
     "expo-secure-store": "~14.2.4",
     "expo-splash-screen": "^0.30.10",

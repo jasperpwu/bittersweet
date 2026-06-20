@@ -29,6 +29,7 @@ import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/s
 import { calculateGoalProgress, getTargetForDate } from '../src/utils/goalProgress';
 import { configureCrisp } from '../src/services/crisp';
 import { useDeepLinkHandler } from '../src/hooks/useDeepLinkHandler';
+import { useQuickActionHandler } from '../src/hooks/useQuickActionHandler';
 import { PushNotificationService } from '../src/services/notifications/push';
 import { AnalyticsTracker } from '../src/services/analytics';
 import { getInstalledWidgetFamilies } from '../modules/widget-info';
@@ -692,6 +693,9 @@ export default function RootLayout() {
   const isReady = fontsLoaded && isHydrated;
   const pathname = usePathname();
   const systemColorScheme = useColorScheme();
+
+  // Home Screen quick action (long-press app icon) → Support page + open chat.
+  useQuickActionHandler(isReady);
 
   useEffect(() => {
     if (isReady) {
