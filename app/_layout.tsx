@@ -286,8 +286,14 @@ export default function RootLayout() {
               },
             }));
 
-            // Attribute all subsequent analytics events to this user.
+            // Attribute all subsequent analytics events to this user, and flip
+            // the cohort flag so signed-in vs. anonymous persons are separable in
+            // PostHog. `first_signed_in_at` is set-once for signup-cohort analysis.
             AnalyticsTracker.identify(user.id);
+            AnalyticsTracker.setPersonProperties(
+              { is_signed_in: true },
+              { first_signed_in_at: new Date().toISOString() }
+            );
 
             // Sync Supabase credentials to UserDefaults for native intent REST calls
             WidgetService.syncSupabaseCredentials(user.id, session.access_token);

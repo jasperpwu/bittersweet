@@ -28,6 +28,12 @@ export const posthog = POSTHOG_KEY
   : null;
 
 if (posthog) {
+  // Mark this person as anonymous until an explicit sign-in flips it to true.
+  // `$set_once` so it never clobbers an already-identified user's `is_signed_in:
+  // true` on a returning-session launch — it only fills the gap for never-signed-in
+  // persons, making "anonymous vs signed-in" a clean cohort filter in PostHog.
+  posthog.capture('$set', { $set_once: { is_signed_in: false } });
+
   if (__DEV__) {
     // Verbose console logging of every capture + network request — shows whether
     // events are captured and whether the POST to PostHog succeeds (a 401 here
@@ -80,6 +86,11 @@ export const AnalyticsTracker = {
 
   /** Clear the current identity (call on sign-out — privacy requirement). */
   reset(): void {
-    posthog?.reset();
+    if (!posthog) return;
+    // reset() spawns a fresh anonymous distinct_id with no person properties, so
+    // re-stamp it as anonymous — otherwise post-logout events stay unlabelled
+    // until the next app launch re-runs the init `$set_once`.
+    posthog.reset();
+    posthog.capture('$set', { $set: { is_signed_in: false } });
   },
 };

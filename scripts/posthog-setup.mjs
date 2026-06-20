@@ -158,6 +158,24 @@ const personFlag = (key, isSet) => ({
   },
 });
 
+// Cohorts matched by explicit value (for properties that flip between true/false,
+// like is_signed_in — is_set alone can't tell them apart). `value` is an array of
+// string values; use operator 'exact' to match or 'is_not' to exclude (is_not also
+// catches persons that never had the property, e.g. predating this change).
+const personValue = (key, operator, value) => ({
+  filters: {
+    properties: {
+      type: 'OR',
+      values: [
+        {
+          type: 'AND',
+          values: [{ type: 'person', key, operator, value }],
+        },
+      ],
+    },
+  },
+});
+
 async function main() {
   const pid = await resolveProjectId();
   console.log(`\n📊 Project ${pid} @ ${HOST}\n`);
@@ -181,6 +199,18 @@ async function main() {
     cohorts[name] = c.id;
   }
 
+  // Auth-state cohorts. is_signed_in flips between true/false, so match by value.
+  // "Anonymous" uses is_not 'true' so it also captures legacy persons that predate
+  // the is_signed_in property (they read as never-signed-in, which is correct).
+  const authCohortDefs = [
+    ['Signed-in users', personValue('is_signed_in', 'exact', ['true'])],
+    ['Anonymous (never signed in)', personValue('is_signed_in', 'is_not', ['true'])],
+  ];
+  for (const [name, body] of authCohortDefs) {
+    const c = await ensure('Cohort', `${base}/cohorts/`, name, body, false);
+    cohorts[name] = c.id;
+  }
+
   const insights = [
     ['1 · Feature adoption (unique users, 30d)', trends(M1_EVENTS.map((e) => evt(e, { math: 'dau' })), { trendsFilter: { display: 'ActionsBar' } })],
     ['2 · Retention — core loop (weekly)', retention(null)],
@@ -196,6 +226,12 @@ async function main() {
       evt('Application Opened', { math: 'monthly_active' }),
     ])],
     ['6b · Stickiness (DAU/MAU)', stickiness()],
+    ['7 · DAU split — signed-in vs anonymous', trends(
+      [evt('Application Opened', { math: 'dau' })],
+      { breakdownFilter: { breakdown_type: 'person', breakdown: 'is_signed_in' } },
+    )],
+    ['7a · Retention — Signed-in users', retention(cohorts['Signed-in users'])],
+    ['7b · Retention — Anonymous (never signed in)', retention(cohorts['Anonymous (never signed in)'])],
     ['Bonus · Activation funnel', funnel()],
   ];
   for (const [name, query] of insights) {
