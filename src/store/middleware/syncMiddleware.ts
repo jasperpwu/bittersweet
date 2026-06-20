@@ -64,10 +64,8 @@ export function initSyncMiddleware(store: any): () => void {
         const row = settingsToRow(currentPrefs, userId, mainState.focus?.lastDurationByTagId);
         await SyncService.enqueue('user_settings', 'upsert', row);
         lastSyncedSettings = currentPrefs;
-        console.log('[SyncMW] Settings change enqueued');
 
         const result = await SyncService.flush();
-        console.log(`[SyncMW] Settings flush — flushed:${result.flushed} failed:${result.failed}`);
         store.getState().sync?.updateQueueSize?.();
       } catch (error) {
         console.error('[SyncMW] Settings sync error:', error);
@@ -83,7 +81,6 @@ export function initSyncMiddleware(store: any): () => void {
     // Initialize snapshot on first run
     if (!lastSyncedSnapshot) {
       lastSyncedSnapshot = takeSnapshot(state);
-      console.log(`[SyncMW] Initial snapshot — sessions:${Object.keys(lastSyncedSnapshot.sessions).length} tags:${Object.keys(lastSyncedSnapshot.tags).length} goals:${Object.keys(lastSyncedSnapshot.goals).length} badges:${Object.keys(lastSyncedSnapshot.badges).length}`);
       return;
     }
 
@@ -114,7 +111,6 @@ export function initSyncMiddleware(store: any): () => void {
     if (blocklistChanged) pendingChanges.blocklist = true;
     if (durationByTagChanged) pendingChanges.settings = true;
 
-    console.log(`[SyncMW] Change detected — sessions:${sessionsChanged} tags:${tagsChanged} goals:${goalsChanged} badges:${badgesChanged} rewards:${rewardsChanged} blocklist:${blocklistChanged} durationByTag:${durationByTagChanged} (pending: sessions:${pendingChanges.sessions} tags:${pendingChanges.tags} goals:${pendingChanges.goals} badges:${pendingChanges.badges} rewards:${pendingChanges.rewards} blocklist:${pendingChanges.blocklist} settings:${pendingChanges.settings})`);
 
     // Debounce sync operations
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -124,7 +120,6 @@ export function initSyncMiddleware(store: any): () => void {
       const changes = { ...pendingChanges };
       pendingChanges = { sessions: false, tags: false, goals: false, badges: false, rewards: false, blocklist: false, settings: false };
 
-      console.log(`[SyncMW] Debounce fired — processing: sessions:${changes.sessions} tags:${changes.tags} goals:${changes.goals} badges:${changes.badges} rewards:${changes.rewards}`);
       try {
         // Diff tags before sessions because focus_sessions.tag_id has a DB
         // foreign key to session_tags.id.
@@ -141,7 +136,6 @@ export function initSyncMiddleware(store: any): () => void {
         if (changes.sessions) {
           const oldIds = Object.keys(lastSyncedSnapshot!.sessions);
           const newIds = Object.keys(state.focus.sessions.byId);
-          console.log(`[SyncMW] Sessions diff — old:${oldIds.length} new:${newIds.length}`);
           await diffAndEnqueue(
             'focus_sessions',
             lastSyncedSnapshot!.sessions,
@@ -189,25 +183,21 @@ export function initSyncMiddleware(store: any): () => void {
           const currentPrefs = useUnifiedStore.getState().preferences;
           const row = settingsToRow(currentPrefs, userId, state.focus?.lastDurationByTagId);
           await SyncService.enqueue('user_settings', 'upsert', row);
-          console.log('[SyncMW] Settings (lastDurationByTagId) change enqueued');
         }
 
         // Blocklist — push current blob to cloud (push-only, not full merge)
         if (changes.blocklist) {
           const selectionId = state.blocklist.currentSelectionId;
           if (selectionId) {
-            console.log('[SyncMW] Pushing blocklist change to cloud');
             await BlocklistSyncService.push(userId, selectionId);
           }
         }
 
         // Update snapshot
         lastSyncedSnapshot = takeSnapshot(state);
-        console.log(`[SyncMW] Snapshot updated, flushing...`);
 
         // Attempt to flush immediately
-        const result = await SyncService.flush();
-        console.log(`[SyncMW] Flush result — flushed:${result.flushed} failed:${result.failed}`);
+        await SyncService.flush();
 
         // Update queue size in store
         store.getState().sync?.updateQueueSize?.();
@@ -262,11 +252,6 @@ async function diffAndEnqueue(
   for (const id of Object.keys(newById)) {
     if (!oldById[id] || newById[id] !== oldById[id]) {
       const row = mapFn(newById[id]);
-      const isNew = !oldById[id];
-      console.log(`[SyncMW] ${table} ${isNew ? 'NEW' : 'UPDATED'}: ${id} → row keys: [${Object.keys(row).join(', ')}]`);
-      if (table === 'focus_sessions') {
-        console.log(`[SyncMW]   duration=${row.duration} start_time=${row.start_time} end_time=${row.end_time} tag_id=${row.tag_id}`);
-      }
       await beforeUpsert?.(newById[id]);
       await SyncService.enqueue(table, 'upsert', row);
       upsertCount++;
@@ -276,13 +261,10 @@ async function diffAndEnqueue(
   // Deleted items (present in old, missing in new)
   for (const id of Object.keys(oldById)) {
     if (!newById[id]) {
-      console.log(`[SyncMW] ${table} DELETED: ${id}`);
       await SyncService.enqueue(table, 'soft_delete', { id });
       deleteCount++;
     }
   }
-
-  console.log(`[SyncMW] ${table} diff complete — ${upsertCount} upserts, ${deleteCount} deletes`);
 }
 
 /**

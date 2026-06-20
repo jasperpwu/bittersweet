@@ -288,7 +288,6 @@ export class SyncService {
 
     for (const entry of entries) {
       try {
-        console.log(`[SyncFlush] Processing ${entry.id}: ${entry.operation} → ${entry.table} (record: ${entry.data?.id || entry.data?.user_id || '?'})`);
         if (entry.operation === 'upsert') {
           // rewards and user_settings tables use user_id as primary key, not id
           const conflictCol = (entry.table === 'rewards' || entry.table === 'user_settings') ? 'user_id' : 'id';
@@ -296,14 +295,12 @@ export class SyncService {
             .from(entry.table)
             .upsert(entry.data, { onConflict: conflictCol });
           if (error) throw error;
-          console.log(`[SyncFlush] ✓ ${entry.table} upsert succeeded for ${entry.data?.id || entry.data?.user_id}`);
         } else if (entry.operation === 'soft_delete') {
           const { error } = await supabase
             .from(entry.table)
             .update({ deleted_at: new Date().toISOString() })
             .eq('id', entry.data.id);
           if (error) throw error;
-          console.log(`[SyncFlush] ✓ ${entry.table} soft_delete succeeded for ${entry.data.id}`);
         }
         succeeded.push(entry.id);
       } catch (error: any) {

@@ -26,16 +26,21 @@ const withFmtFix = (config) => {
       let podfile = fs.readFileSync(podfilePath, "utf8");
 
       // --- Clean up ALL old Podfile hooks ---
-      for (const oldTag of ["fmt-cxx17-fix", "fmt-consteval-fix", "fmt-consteval-fix-v2"]) {
+      // Longest tag first: "fmt-consteval-fix" is a prefix of
+      // "fmt-consteval-fix-v2", so processing the short tag first would
+      // prefix-match the v2 markers and remove only through "...fix", leaving a
+      // stray "-v2" token that breaks the Podfile. Remove through the END OF THE
+      // LINE containing the end marker so any suffix (e.g. "-v2") goes too.
+      for (const oldTag of ["fmt-consteval-fix-v2", "fmt-consteval-fix", "fmt-cxx17-fix"]) {
         const oldMarker = `# @generated begin ${oldTag}`;
         const oldEnd = `# @generated end ${oldTag}`;
         while (podfile.includes(oldMarker)) {
           const beginIdx = podfile.indexOf(oldMarker);
-          const endIdx = podfile.indexOf(oldEnd);
-          if (endIdx === -1) break;
-          podfile =
-            podfile.slice(0, beginIdx) +
-            podfile.slice(endIdx + oldEnd.length);
+          const endMarkerIdx = podfile.indexOf(oldEnd);
+          if (endMarkerIdx === -1) break;
+          let endLineEnd = podfile.indexOf("\n", endMarkerIdx);
+          if (endLineEnd === -1) endLineEnd = podfile.length;
+          podfile = podfile.slice(0, beginIdx) + podfile.slice(endLineEnd);
         }
       }
 

@@ -1,4 +1,5 @@
 import AppIntents
+import CoreMotion
 import Foundation
 import UserNotifications
 import WidgetKit
@@ -76,6 +77,15 @@ struct StartSessionIntent: LiveActivityIntent {
     let now = Date().timeIntervalSince1970 * 1000
     let startTimeMs = now
     let endTimeMs = isInfinite ? 0 : now + Double(resolvedDuration) * 60 * 1000
+
+    // Begin recording raw accelerometer for the session so the app can suggest a
+    // focus rating when the session ends. Best-effort; silently no-ops if Motion
+    // access isn't available/authorized. Runs in the main app process (this
+    // intent is a LiveActivityIntent), where CMSensorRecorder is meaningful.
+    if CMSensorRecorder.isAccelerometerRecordingAvailable() {
+      let recordSeconds = isInfinite ? 12.0 * 60 * 60 : Double(resolvedDuration) * 60
+      CMSensorRecorder().recordAccelerometer(forDuration: recordSeconds)
+    }
 
     // Start Live Activity (runs in main app process via LiveActivityIntent)
     let tagLabel = "\(tag.icon.isEmpty ? "🎯" : tag.icon) \(tag.name)"

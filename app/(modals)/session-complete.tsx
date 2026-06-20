@@ -1,5 +1,18 @@
-import { useState, useRef } from 'react';
-import { View, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, ScrollView, Platform, useColorScheme, Image, ActivityIndicator, Alert, Linking } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  SafeAreaView,
+  Pressable,
+  TextInput,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+  useColorScheme,
+  Image,
+  ActivityIndicator,
+  Alert,
+  Linking,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,8 +28,16 @@ import Animated, {
 import { Typography } from '../../src/components/ui';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { GoalProgressBanner } from '../../src/components/focus/GoalProgressBanner';
+import { FocusRatingBlock, FocusRatingInsightsSheet } from '../../src/components/focus';
 import { FruitCounter } from '../../src/components/rewards';
-import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
+import {
+  calculateFruitsEarnedForDuration,
+  useFocus,
+  useFocusActions,
+  useAppStore,
+} from '../../src/store';
+import { suggestRating, shouldAutoRate } from '../../src/utils/focusRating';
+import { getSessionMotionSnapshot } from '../../src/services/motionInsights';
 import { showToast } from '../../src/components/ui/Toast';
 import { saveSessionPhoto, uploadSessionPhoto } from '../../src/services/sessionPhotoService';
 import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
@@ -27,7 +48,7 @@ export default function SessionCompleteModal() {
   const colorScheme = useColorScheme();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { sessions, tags } = useFocus();
-  const { updateSession } = useFocusActions();
+  const { updateSession, applyFocusRating } = useFocusActions();
 
   const session = sessionId ? sessions.byId[sessionId] : null;
 
@@ -42,6 +63,53 @@ export default function SessionCompleteModal() {
   const { preferences, updatePreferences } = useAppSettings();
   const [showFruitCoachMark, setShowFruitCoachMark] = useState(false);
 
+  // Focus rating
+  const [analyzingRating, setAnalyzingRating] = useState(false);
+  const [showRatingInsights, setShowRatingInsights] = useState(false);
+  const ratingComputedRef = useRef(false);
+
+  // Compute the suggested focus rating from motion once per session. If the
+  // session already has a rating (revisited, or user-set), leave it alone.
+  useEffect(() => {
+    if (!session || ratingComputedRef.current) return;
+    ratingComputedRef.current = true;
+    if (session.focusRating != null) return;
+
+    const tagForSession = session.tagId ? tags.byId[session.tagId] : null;
+
+    if (
+      !shouldAutoRate({ durationMinutes: session.duration, isManualEntry: session.isManualEntry })
+    ) {
+      // Too short / manual — give full reward, no penalty.
+      updateSession(session.id, {
+        motionSummary: {
+          signal: 'none',
+          profile: 'unknown',
+          recorder: null,
+          activity: null,
+          steps: null,
+        },
+      });
+      applyFocusRating(session.id, 5, 'suggested');
+      return;
+    }
+
+    setAnalyzingRating(true);
+    const startMs = new Date(session.startTime).getTime();
+    const endMs = new Date(session.endTime).getTime();
+    getSessionMotionSnapshot(startMs, endMs)
+      .then((snapshot) => {
+        updateSession(session.id, { motionSummary: snapshot });
+        applyFocusRating(
+          session.id,
+          suggestRating(tagForSession?.activityType, snapshot),
+          'suggested'
+        );
+      })
+      .catch(() => applyFocusRating(session.id, 5, 'suggested'))
+      .finally(() => setAnalyzingRating(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
 
   // Celebration animations
   const emojiScale = useSharedValue(0);
@@ -59,10 +127,13 @@ export default function SessionCompleteModal() {
     durationTranslateY.value = withDelay(200, withTiming(0, { duration: 400 }));
 
     // Fruit counter pulses once after emoji lands
-    fruitScale.value = withDelay(500, withSequence(
-      withTiming(1.15, { duration: 200 }),
-      withSpring(1, { damping: 10, stiffness: 150 })
-    ));
+    fruitScale.value = withDelay(
+      500,
+      withSequence(
+        withTiming(1.15, { duration: 200 }),
+        withSpring(1, { damping: 10, stiffness: 150 })
+      )
+    );
 
     // Show fruit coach mark after animations settle (if applicable)
     setTimeout(() => {
@@ -83,9 +154,12 @@ export default function SessionCompleteModal() {
     transform: [{ scale: fruitScale.value }],
   }));
 
+  // Read before any early return so hook order stays stable across renders.
+  const accelerateMultiplier = useAppStore((s) => s.rewards.isAccelerateActive()) ? 2 : 1;
+
   if (!session) {
     return (
-      <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg items-center justify-center">
+      <SafeAreaView className="flex-1 items-center justify-center bg-light-bg dark:bg-dark-bg">
         <Typography variant="body-14" color="secondary">
           Session not found
         </Typography>
@@ -94,12 +168,14 @@ export default function SessionCompleteModal() {
   }
 
   const tag = session.tagId ? tags.byId[session.tagId] : null;
-  const accelerateMultiplier = useAppStore((s) => s.rewards.isAccelerateActive()) ? 2 : 1;
   const fruitsEarned = calculateFruitsEarnedForDuration(
     session.duration,
     session.initialSetDuration ?? session.duration,
     accelerateMultiplier
   );
+  // Base = pre-rating reward; displayed = after the focus-rating discount.
+  const baseFruits = session.baseFruits ?? fruitsEarned;
+  const displayFruits = session.awardedFruits ?? baseFruits;
 
   const formatDuration = (minutes: number) => {
     const h = Math.floor(minutes / 60);
@@ -205,7 +281,9 @@ export default function SessionCompleteModal() {
     const grove = useAppStore.getState().grove;
     if (grove.profile && grove.isActive && session.tagId) {
       const activeChallenges = grove.challenges.filter(
-        (c) => c.status === 'active' && (c.tagId === session.tagId || (!!secondaryTag && c.tagId === secondaryTag))
+        (c) =>
+          c.status === 'active' &&
+          (c.tagId === session.tagId || (!!secondaryTag && c.tagId === secondaryTag))
       );
       for (const challenge of activeChallenges) {
         const myHits = challenge.myParticipant?.hits ?? 0;
@@ -221,15 +299,18 @@ export default function SessionCompleteModal() {
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 }}
-          keyboardShouldPersistTaps="handled"
-        >
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: 24,
+            paddingTop: 60,
+            paddingBottom: 40,
+          }}
+          keyboardShouldPersistTaps="handled">
           {/* Tag emoji + name */}
-          <View className="items-center mb-6">
+          <View className="mb-6 items-center">
             <Animated.View style={emojiAnimStyle}>
               <Typography variant="headline-24" color="primary" className="mb-2">
                 {tag?.icon || '🏷️'}
@@ -248,30 +329,39 @@ export default function SessionCompleteModal() {
           </Animated.View>
 
           {/* Start / End time */}
-          <View className="items-center mb-8">
+          <View className="mb-8 items-center">
             <Typography variant="body-14" color="secondary">
               {formatTime(session.startTime)} – {formatTime(session.endTime)}
             </Typography>
           </View>
 
-          {/* Fruits earned */}
-          {fruitsEarned > 0 && (
-            <View className="items-center mb-8">
+          {/* Suggested focus rating — scales the fruit reward */}
+          {baseFruits > 0 && (
+            <FocusRatingBlock
+              rating={session.focusRating ?? null}
+              analyzing={analyzingRating}
+              onChange={(r) => applyFocusRating(session.id, r, 'user')}
+              onWhyPress={() => setShowRatingInsights(true)}
+            />
+          )}
+
+          {/* Fruits earned (after the rating discount) */}
+          {baseFruits > 0 && (
+            <View className="mb-8 items-center">
               <Animated.View
                 ref={fruitRef}
-                className="bg-light-border/30 dark:bg-gray-700 rounded-2xl px-6 py-4 items-center"
-                style={fruitAnimStyle}
-              >
+                className="items-center rounded-2xl bg-light-border/30 px-6 py-4 dark:bg-gray-700"
+                style={fruitAnimStyle}>
                 <Typography variant="body-12" color="secondary" className="mb-1">
                   Earned
                 </Typography>
-                <FruitCounter fruitCount={fruitsEarned} size="large" />
+                <FruitCounter fruitCount={displayFruits} size="large" />
               </Animated.View>
             </View>
           )}
 
           {/* Notes input */}
-          <View className="w-full mb-6">
+          <View className="mb-6 w-full">
             <Typography variant="body-14" color="secondary" className="mb-2">
               Note
             </Typography>
@@ -294,21 +384,27 @@ export default function SessionCompleteModal() {
                 minHeight: 80,
               }}
             />
-            <Typography variant="body-12" color="secondary" className="mt-2" style={{ opacity: 0.6 }}>
+            <Typography
+              variant="body-12"
+              color="secondary"
+              className="mt-2"
+              style={{ opacity: 0.6 }}>
               Your notes help summarize your week and generate tips.
             </Typography>
           </View>
 
           {/* Optional secondary tag (premium Multi-Task mode) — two activities at once */}
           {secondaryTagEnabled && (
-            <View className="w-full mb-6">
+            <View className="mb-6 w-full">
               <Typography variant="body-14" color="secondary" className="mb-2">
                 Secondary tag (optional)
               </Typography>
               <HorizontalTagSelector
-                tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt && t.id !== session.tagId)}
+                tags={tags.allIds
+                  .map((id) => tags.byId[id])
+                  .filter((t) => t && !t.deletedAt && t.id !== session.tagId)}
                 selectedTags={secondaryTag ? [secondaryTag] : []}
-                onTagSelect={(id) => setSecondaryTag(prev => (prev === id ? '' : id))}
+                onTagSelect={(id) => setSecondaryTag((prev) => (prev === id ? '' : id))}
                 maxSelections={1}
               />
             </View>
@@ -316,7 +412,7 @@ export default function SessionCompleteModal() {
 
           {/* Photo section */}
           {!hasExistingPhoto && (
-            <View className="w-full mb-6">
+            <View className="mb-6 w-full">
               <Typography variant="body-14" color="secondary" className="mb-2">
                 Add a photo
               </Typography>
@@ -330,8 +426,7 @@ export default function SessionCompleteModal() {
                   <Pressable
                     onPress={() => setPhotoUri(null)}
                     className="mt-2 flex-row items-center justify-center rounded-xl py-2.5 active:opacity-70"
-                    style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}
-                  >
+                    style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}>
                     <Ionicons name="trash-outline" size={16} color="#DC2626" />
                     <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
                       Remove Photo
@@ -343,10 +438,9 @@ export default function SessionCompleteModal() {
                   <Pressable
                     onPress={() => pickImage('library')}
                     disabled={isSavingPhoto}
-                    className="flex-row items-center bg-primary/20 rounded-xl px-4 py-3 active:opacity-70"
-                  >
+                    className="flex-row items-center rounded-xl bg-primary/20 px-4 py-3 active:opacity-70">
                     <Ionicons name="images-outline" size={18} color="#6592E9" />
-                    <Typography variant="subtitle-14-medium" className="text-primary ml-2">
+                    <Typography variant="subtitle-14-medium" className="ml-2 text-primary">
                       Library
                     </Typography>
                   </Pressable>
@@ -354,10 +448,9 @@ export default function SessionCompleteModal() {
                   <Pressable
                     onPress={() => pickImage('camera')}
                     disabled={isSavingPhoto}
-                    className="flex-row items-center bg-primary/20 rounded-xl px-4 py-3 active:opacity-70"
-                  >
+                    className="flex-row items-center rounded-xl bg-primary/20 px-4 py-3 active:opacity-70">
                     <Ionicons name="camera-outline" size={18} color="#6592E9" />
-                    <Typography variant="subtitle-14-medium" className="text-primary ml-2">
+                    <Typography variant="subtitle-14-medium" className="ml-2 text-primary">
                       Camera
                     </Typography>
                   </Pressable>
@@ -367,7 +460,7 @@ export default function SessionCompleteModal() {
           )}
 
           {hasExistingPhoto && (
-            <View className="w-full mb-6">
+            <View className="mb-6 w-full">
               <Typography variant="body-12" color="secondary" className="mb-2">
                 Photo
               </Typography>
@@ -384,7 +477,7 @@ export default function SessionCompleteModal() {
             <Pressable
               onPress={handleDone}
               disabled={isSavingPhoto}
-              className="bg-white rounded-2xl py-4 items-center active:opacity-80"
+              className="items-center rounded-2xl bg-white py-4 active:opacity-80"
               style={{
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
@@ -392,16 +485,17 @@ export default function SessionCompleteModal() {
                 shadowRadius: 8,
                 elevation: 8,
                 opacity: isSavingPhoto ? 0.6 : 1,
-              }}
-            >
+              }}>
               {isSavingPhoto ? (
                 <View className="flex-row items-center">
-                  <ActivityIndicator size="small" color={colorScheme === 'dark' ? '#1B1C30' : '#5D4E37'} />
+                  <ActivityIndicator
+                    size="small"
+                    color={colorScheme === 'dark' ? '#1B1C30' : '#5D4E37'}
+                  />
                   <Typography
                     variant="subtitle-16"
-                    className="font-semibold ml-2"
-                    style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}
-                  >
+                    className="ml-2 font-semibold"
+                    style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}>
                     Saving...
                   </Typography>
                 </View>
@@ -409,8 +503,7 @@ export default function SessionCompleteModal() {
                 <Typography
                   variant="subtitle-16"
                   className="font-semibold"
-                  style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}
-                >
+                  style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}>
                   Done
                 </Typography>
               )}
@@ -435,6 +528,15 @@ export default function SessionCompleteModal() {
           }}
         />
       )}
+
+      {/* Focus rating insights */}
+      <FocusRatingInsightsSheet
+        visible={showRatingInsights}
+        onClose={() => setShowRatingInsights(false)}
+        snapshot={session.motionSummary ?? null}
+        activityType={tag?.activityType}
+        rating={session.focusRating ?? null}
+      />
     </SafeAreaView>
   );
 }

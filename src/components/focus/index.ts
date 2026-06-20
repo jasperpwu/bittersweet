@@ -5,3 +5,5 @@ export * from './TimeScroller';
 export * from './DurationPicker';
 export * from './TagColorPicker';
 export * from './GoalProgressBanner';
+export * from './ActivityTypePicker/ActivityTypePicker';
+export * from './FocusRatingBlock';

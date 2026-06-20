@@ -3,6 +3,8 @@
  * Addresses Requirements: 2.3, 2.4, 3.1, 3.2, 4.1
  */
 
+import type { ActivityType, RatingSource, MotionSnapshot } from '../utils/focusRating';
+
 // Base Entity Types
 export interface BaseEntity {
   id: string;
@@ -81,8 +83,13 @@ export interface FocusSession extends BaseEntity {
   notes?: string;
   fruitsEarned: number;
   pauseHistory: PauseRecord[];
+  // --- Motion-based focus rating ---
+  focusRating?: number; // 1–5, suggested from motion or set by the user
+  ratingSource?: RatingSource; // who set focusRating
+  baseFruits?: number; // fruits earned before the rating discount
+  awardedFruits?: number; // fruits actually credited after the rating discount
+  motionSummary?: MotionSnapshot; // on-device motion estimate, for the insights sheet
 }
-
 
 export interface Tag extends BaseEntity {
   name: string;
@@ -90,6 +97,8 @@ export interface Tag extends BaseEntity {
   userId: string;
   sortOrder: number;
   deletedAt?: Date;
+  // Optional hint for motion-based focus rating. Unset is treated as 'stationary'.
+  activityType?: ActivityType;
 }
 
 export interface TargetHistoryEntry {
@@ -146,7 +155,6 @@ export interface FocusSettings {
   defaultDuration: number;
   timerPickerStyle?: 'scroller' | 'wheel';
 }
-
 
 export interface UnlockableApp extends BaseEntity {
   name: string;
@@ -229,7 +237,7 @@ export interface FocusSlice {
   sessions: NormalizedState<FocusSession>;
   tags: NormalizedState<Tag>;
   goals: NormalizedState<FocusGoal>;
-  
+
   // Current Session State
   currentSession: {
     session: FocusSession | null;
@@ -237,26 +245,26 @@ export interface FocusSlice {
     remainingTime: number;
     startedAt: Date | null;
   };
-  
+
   // Settings
   settings: FocusSettings;
-  
+
   // Actions
   startSession: (params: { targetDuration: number; tagId: string; notes?: string }) => void;
   completeSession: () => void;
-  
+
   // Tag Management
   addTag: (tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateTag: (id: string, updates: Partial<Tag>) => void;
   deleteTag: (id: string) => void;
-  
+
   // Goal Management
   updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
   deleteGoal: (id: string) => void;
   concludeGoal: (id: string) => void;
   deleteBadge: (id: string) => void;
   updateGoalProgress: (goalId: string, minutesToAdd: number) => void;
-  
+
   // Selectors
   getSessionById: (id: string) => FocusSession | undefined;
   getSessionsForDateRange: (start: Date, end: Date) => FocusSession[];
@@ -264,12 +272,11 @@ export interface FocusSlice {
   getActiveSession: () => FocusSession | null;
   getGoalById: (id: string) => FocusGoal | undefined;
   getActiveGoals: () => FocusGoal[];
-  
+
   // Analytics
   getChartData: (period: TimePeriod) => ChartDataPoint[];
   getProductivityInsights: () => ProductivityInsights;
 }
-
 
 export interface RewardsSlice {
   // State
@@ -292,11 +299,11 @@ export interface RewardsSlice {
 export interface SettingsSlice {
   // State
   settings: AppSettings;
-  
+
   // Actions
   updateSettings: (updates: Partial<AppSettings>) => void;
   resetSettings: () => void;
-  
+
   // Selectors
   getSettings: () => AppSettings;
   getTheme: () => 'light' | 'dark' | 'system';
@@ -308,7 +315,7 @@ export interface UISlice {
   modals: Record<string, ModalState>;
   loading: LoadingState;
   errors: StoreError[];
-  
+
   // Actions
   showModal: (type: string, data?: any) => void;
   hideModal: (type: string) => void;
@@ -316,7 +323,7 @@ export interface UISlice {
   addError: (error: StoreError) => void;
   clearError: (errorId: string) => void;
   clearAllErrors: () => void;
-  
+
   // Selectors
   isModalVisible: (type: string) => boolean;
   getModalData: (type: string) => any;

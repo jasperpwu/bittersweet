@@ -54,7 +54,8 @@ export function sessionToRow(session: any, userId: string): Record<string, any> 
   const row: Record<string, any> = {
     id: session.id,
     user_id: userId,
-    start_time: session.startTime instanceof Date ? session.startTime.toISOString() : session.startTime,
+    start_time:
+      session.startTime instanceof Date ? session.startTime.toISOString() : session.startTime,
     end_time: session.endTime instanceof Date ? session.endTime.toISOString() : session.endTime,
     duration: session.duration,
     initial_set_duration: session.initialSetDuration ?? null,
@@ -66,6 +67,9 @@ export function sessionToRow(session: any, userId: string): Record<string, any> 
     photo_url: session.photoUrl ?? null,
     is_manual_entry: session.isManualEntry ?? false,
     accelerate_multiplier: session.accelerateMultiplier ?? 1,
+    focus_rating: session.focusRating ?? null,
+    rating_source: session.ratingSource ?? null,
+    motion_summary: session.motionSummary ?? null,
   };
   if (session.createdAt instanceof Date) row.created_at = session.createdAt.toISOString();
   if (session.updatedAt instanceof Date) row.updated_at = session.updatedAt.toISOString();
@@ -87,6 +91,9 @@ export function rowToSession(row: Record<string, any>): any {
     photoUrl: row.photo_url ?? undefined,
     isManualEntry: row.is_manual_entry ?? false,
     accelerateMultiplier: row.accelerate_multiplier ?? 1,
+    focusRating: row.focus_rating ?? undefined,
+    ratingSource: row.rating_source ?? undefined,
+    motionSummary: row.motion_summary ?? undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -106,6 +113,7 @@ export function tagToRow(tag: any, userId: string): Record<string, any> {
     shared_from_tag_id: tag.sharedFromTagId ?? null,
     shared_from_user_id: tag.sharedFromUserId ?? null,
     shared_owner_name: tag.sharedOwnerName ?? null,
+    activity_type: tag.activityType ?? null,
   };
   // Only include timestamps if they exist — otherwise let DB defaults apply
   if (tag.createdAt instanceof Date) row.created_at = tag.createdAt.toISOString();
@@ -125,6 +133,7 @@ export function rowToTag(row: Record<string, any>): any {
     ...(row.shared_from_tag_id ? { sharedFromTagId: row.shared_from_tag_id } : {}),
     ...(row.shared_from_user_id ? { sharedFromUserId: row.shared_from_user_id } : {}),
     ...(row.shared_owner_name ? { sharedOwnerName: row.shared_owner_name } : {}),
+    ...(row.activity_type ? { activityType: row.activity_type } : {}),
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
     ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),

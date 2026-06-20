@@ -1,15 +1,52 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, SafeAreaView, Pressable, Animated, Easing, Modal, Text, TextInput, ScrollView, AppState, Keyboard, KeyboardAvoidingView, Platform, Alert, LayoutChangeEvent, useColorScheme } from 'react-native';
+import {
+  View,
+  SafeAreaView,
+  Pressable,
+  Animated,
+  Easing,
+  Modal,
+  Text,
+  TextInput,
+  ScrollView,
+  AppState,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  LayoutChangeEvent,
+  useColorScheme,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerOverlay } from '../../src/components/ui/EmojiPicker/EmojiPicker';
-import { TimeScroller, DurationPicker, TagColorPicker } from '../../src/components/focus';
+import {
+  TimeScroller,
+  DurationPicker,
+  TagColorPicker,
+  ActivityTypePicker,
+} from '../../src/components/focus';
+import type { ActivityType } from '../../src/utils/focusRating';
+import { inferActivityType } from '../../src/utils/inferActivityType';
 import * as Haptics from 'expo-haptics';
 
-import { useFocus, useFocusActions, useRewards, useAppStore, useBlocklist, useBlocklistActions, useBlocklistEditCost } from '../../src/store';
+import {
+  useFocus,
+  useFocusActions,
+  useRewards,
+  useAppStore,
+  useBlocklist,
+  useBlocklistActions,
+  useBlocklistEditCost,
+} from '../../src/store';
 import { useAppSettings } from '../../src/store/unified-store';
 import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
@@ -38,7 +75,15 @@ const ROW_HEIGHT = 84; // row height (72px) + margin-bottom (12px from mb-3)
 const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 0.8 };
 
 type DraggableTagRowProps = {
-  tag: { id: string; name: string; icon?: string; color?: string; isSharing?: boolean; sharedFromTagId?: string; sharedOwnerName?: string };
+  tag: {
+    id: string;
+    name: string;
+    icon?: string;
+    color?: string;
+    isSharing?: boolean;
+    sharedFromTagId?: string;
+    sharedOwnerName?: string;
+  };
   index: number;
   selectedTag: string | null;
   lastDuration: number;
@@ -58,8 +103,23 @@ type DraggableTagRowProps = {
 };
 
 function DraggableTagRow({
-  tag, index, selectedTag, lastDuration, isDragging, dragOriginalIndex, dragTargetIndex,
-  isChallenge, onSelect, onEdit, onDelete, onUnlink, onShare, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
+  tag,
+  index,
+  selectedTag,
+  lastDuration,
+  isDragging,
+  dragOriginalIndex,
+  dragTargetIndex,
+  isChallenge,
+  onSelect,
+  onEdit,
+  onDelete,
+  onUnlink,
+  onShare,
+  onSwipeOpen,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
 }: DraggableTagRowProps) {
   const colorScheme = useColorScheme();
   const isBeingDragged = isDragging && dragOriginalIndex === index;
@@ -156,30 +216,36 @@ function DraggableTagRow({
   };
 
   const renderRightActions = () => (
-    <View className="flex-row items-center ml-2">
+    <View className="ml-2 flex-row items-center">
       <Pressable
         onPress={() => {
           swipeableRef.current?.close();
           onEdit(tag, null);
         }}
-        className="rounded-lg w-16 h-full items-center justify-center mr-2"
-        style={{ backgroundColor: 'rgba(200, 200, 200, 0.3)' }}
-      >
-        <Ionicons name="pencil-outline" size={16} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
-        <Typography variant="tiny-10" color="secondary" className="mt-0.5">Edit</Typography>
+        className="mr-2 h-full w-16 items-center justify-center rounded-lg"
+        style={{ backgroundColor: 'rgba(200, 200, 200, 0.3)' }}>
+        <Ionicons
+          name="pencil-outline"
+          size={16}
+          color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+        />
+        <Typography variant="tiny-10" color="secondary" className="mt-0.5">
+          Edit
+        </Typography>
       </Pressable>
       {onShare && (
-      <Pressable
-        onPress={() => {
-          swipeableRef.current?.close();
-          onShare(tag);
-        }}
-        className="rounded-lg w-16 h-full items-center justify-center mr-2"
-        style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}
-      >
-        <Ionicons name="share-outline" size={16} color="#3B82F6" />
-        <Typography variant="tiny-10" style={{ color: '#3B82F6' }} className="mt-0.5">Share</Typography>
-      </Pressable>
+        <Pressable
+          onPress={() => {
+            swipeableRef.current?.close();
+            onShare(tag);
+          }}
+          className="mr-2 h-full w-16 items-center justify-center rounded-lg"
+          style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
+          <Ionicons name="share-outline" size={16} color="#3B82F6" />
+          <Typography variant="tiny-10" style={{ color: '#3B82F6' }} className="mt-0.5">
+            Share
+          </Typography>
+        </Pressable>
       )}
       {isSharedTag ? (
         // Joined tag: Unlink (non-destructive) keeps the tag + sessions and ends
@@ -189,10 +255,11 @@ function DraggableTagRow({
             swipeableRef.current?.close();
             onUnlink?.(tag);
           }}
-          className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
-        >
+          className="h-full w-16 items-center justify-center rounded-lg bg-red-500">
           <Ionicons name="unlink-outline" size={16} color="#FFFFFF" />
-          <Typography variant="tiny-10" color="white" className="mt-0.5">Unlink</Typography>
+          <Typography variant="tiny-10" color="white" className="mt-0.5">
+            Unlink
+          </Typography>
         </Pressable>
       ) : (
         <Pressable
@@ -200,10 +267,11 @@ function DraggableTagRow({
             swipeableRef.current?.close();
             onDelete(tag, null);
           }}
-          className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
-        >
+          className="h-full w-16 items-center justify-center rounded-lg bg-red-500">
           <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
-          <Typography variant="tiny-10" color="white" className="mt-0.5">Delete</Typography>
+          <Typography variant="tiny-10" color="white" className="mt-0.5">
+            Delete
+          </Typography>
         </Pressable>
       )}
     </View>
@@ -222,8 +290,7 @@ function DraggableTagRow({
             shadowRadius: 12,
             elevation: 12,
           },
-        ]}
-      >
+        ]}>
         <Swipeable
           ref={swipeableRef}
           renderRightActions={isReadOnly ? undefined : renderRightActions}
@@ -233,18 +300,21 @@ function DraggableTagRow({
             onSwipeOpen?.(swipeableRef.current);
           }}
           onSwipeableClose={() => {
-            setTimeout(() => { didSwipe.current = false; }, 100);
-          }}
-        >
+            setTimeout(() => {
+              didSwipe.current = false;
+            }, 100);
+          }}>
           <Pressable onPress={handleRowPress}>
             <View
-              className={`rounded-2xl p-4 flex-row items-center ${isSelected ? 'bg-primary bg-opacity-20 border border-primary' : 'dark:bg-gray-700'}`}
+              className={`flex-row items-center rounded-2xl p-4 ${isSelected ? 'border border-primary bg-primary bg-opacity-20' : 'dark:bg-gray-700'}`}
               style={[
                 {
                   borderLeftWidth: 4,
                   borderLeftColor: tag.color || '#6592E9',
                   // Opaque background so swipe-to-reveal buttons don't bleed through
-                  ...(!isSelected ? { backgroundColor: colorScheme === 'dark' ? '#374151' : '#E8D9C4' } : {}),
+                  ...(!isSelected
+                    ? { backgroundColor: colorScheme === 'dark' ? '#374151' : '#E8D9C4' }
+                    : {}),
                 },
                 isSelected && {
                   shadowColor: tag.color || '#6592E9',
@@ -254,9 +324,8 @@ function DraggableTagRow({
                   elevation: 8,
                   transform: [{ scale: 1.02 }],
                 },
-              ]}
-            >
-              <View className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 border border-gray-500">
+              ]}>
+              <View className="mr-3 h-10 w-10 items-center justify-center rounded-lg border border-gray-500 bg-gray-600">
                 <Text className="text-xl">{tag.icon || '\uD83C\uDFF7\uFE0F'}</Text>
               </View>
               <View className="flex-1">
@@ -264,30 +333,46 @@ function DraggableTagRow({
                   <Typography
                     variant="subtitle-16"
                     color="primary"
-                    className={isSelected ? 'font-semibold' : ''}
-                  >
+                    className={isSelected ? 'font-semibold' : ''}>
                     {tag.name}
                   </Typography>
                   {isChallenge && (
-                    <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(233, 160, 101, 0.2)' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#E9A065' }}>Challenge</Text>
+                    <View
+                      className="ml-2 rounded-full px-2 py-0.5"
+                      style={{ backgroundColor: 'rgba(233, 160, 101, 0.2)' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#E9A065' }}>
+                        Challenge
+                      </Text>
                     </View>
                   )}
                   {tag.isSharing && (
-                    <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#3B82F6' }}>Sharing</Text>
+                    <View
+                      className="ml-2 rounded-full px-2 py-0.5"
+                      style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#3B82F6' }}>
+                        Sharing
+                      </Text>
                     </View>
                   )}
                   {isSharedTag && (
-                    <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(20, 184, 166, 0.2)' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#14B8A6' }}>Shared</Text>
+                    <View
+                      className="ml-2 rounded-full px-2 py-0.5"
+                      style={{ backgroundColor: 'rgba(20, 184, 166, 0.2)' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#14B8A6' }}>
+                        Shared
+                      </Text>
                     </View>
                   )}
                 </View>
-                <Typography variant="body-12" color={isSelected ? 'primary' : 'secondary'} className="mt-1">
+                <Typography
+                  variant="body-12"
+                  color={isSelected ? 'primary' : 'secondary'}
+                  className="mt-1">
                   {isSharedTag && tag.sharedOwnerName
                     ? `from ${tag.sharedOwnerName} \u00B7 ${lastDuration === 0 ? '\u221E' : `${lastDuration} min`}`
-                    : lastDuration === 0 ? '\u221E' : `${lastDuration} min`}
+                    : lastDuration === 0
+                      ? '\u221E'
+                      : `${lastDuration} min`}
                 </Typography>
               </View>
             </View>
@@ -300,7 +385,7 @@ function DraggableTagRow({
 
 type PersistedSession = {
   startTime: number; // Unix ms
-  endTime: number;   // Unix ms
+  endTime: number; // Unix ms
   targetDuration: number; // minutes
   tagId: string;
   tagLabel?: string; // pre-built "icon name" label for Live Activity idle state
@@ -311,7 +396,10 @@ type PersistedSession = {
 
 // --- Share Tag Overlay (rendered inside tag selection modal) ---
 function ShareTagOverlay({
-  tag, onClose, onShareTag, onStopSharing,
+  tag,
+  onClose,
+  onShareTag,
+  onStopSharing,
 }: {
   tag: any;
   onClose: () => void;
@@ -356,7 +444,7 @@ function ShareTagOverlay({
     if (!tag) return;
     Alert.alert(
       'Stop Sharing?',
-      'New users won\'t be able to join. Existing members keep their copies.',
+      "New users won't be able to join. Existing members keep their copies.",
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -376,47 +464,69 @@ function ShareTagOverlay({
   };
 
   return (
-    <View className="absolute inset-0 bg-black/50 justify-center items-center p-4">
-      <View className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-xs overflow-hidden">
+    <View className="absolute inset-0 items-center justify-center bg-black/50 p-4">
+      <View className="w-full max-w-xs overflow-hidden rounded-2xl bg-light-bg dark:bg-dark-bg">
         {/* Header */}
-        <View className="flex-row items-center justify-between p-4 border-b border-light-border dark:border-gray-700">
+        <View className="flex-row items-center justify-between border-b border-light-border p-4 dark:border-gray-700">
           <Typography variant="headline-18" color="primary">
             {tag?.isSharing ? 'Sharing Tag' : 'Share Tag'}
           </Typography>
-          <Pressable onPress={onClose} className="w-8 h-8 rounded-full bg-light-border/50 dark:bg-gray-700 items-center justify-center" hitSlop={8}>
-            <Ionicons name="close" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+          <Pressable
+            onPress={onClose}
+            className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700"
+            hitSlop={8}>
+            <Ionicons
+              name="close"
+              size={20}
+              color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+            />
           </Pressable>
         </View>
 
         <View className="p-4">
           {/* Tag preview */}
-          <View className="flex-row items-center mb-4">
-            <View className="w-10 h-10 items-center justify-center mr-3 rounded-lg bg-gray-600 border border-gray-500">
+          <View className="mb-4 flex-row items-center">
+            <View className="mr-3 h-10 w-10 items-center justify-center rounded-lg border border-gray-500 bg-gray-600">
               <Text className="text-xl">{tag?.icon || '\uD83C\uDFF7\uFE0F'}</Text>
             </View>
-            <Typography variant="subtitle-16" color="primary">{tag?.name}</Typography>
+            <Typography variant="subtitle-16" color="primary">
+              {tag?.name}
+            </Typography>
           </View>
 
           {/* Show code if already sharing or just generated */}
-          {(tag?.isSharing || shareCode) ? (
+          {tag?.isSharing || shareCode ? (
             <View>
               <Typography variant="body-14" color="secondary" className="mb-3">
                 Share this code with others to let them join:
               </Typography>
-              <View className="flex-row items-center justify-center bg-light-border/30 dark:bg-gray-700 rounded-xl py-4 mb-4">
-                <Text style={{ fontSize: 28, fontWeight: '700', letterSpacing: 4, color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37' }}>
+              <View className="mb-4 flex-row items-center justify-center rounded-xl bg-light-border/30 py-4 dark:bg-gray-700">
+                <Text
+                  style={{
+                    fontSize: 28,
+                    fontWeight: '700',
+                    letterSpacing: 4,
+                    color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  }}>
                   {shareCode || '...'}
                 </Text>
               </View>
 
-              <Pressable onPress={handleCopy} className="bg-blue-600 rounded-2xl py-3 items-center active:opacity-80 mb-3">
+              <Pressable
+                onPress={handleCopy}
+                className="mb-3 items-center rounded-2xl bg-blue-600 py-3 active:opacity-80">
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
                   {copied ? 'Copied!' : 'Copy Code'}
                 </Typography>
               </Pressable>
 
-              <Pressable onPress={handleStop} className="rounded-2xl py-3 items-center active:opacity-80 border border-red-500">
-                <Typography variant="subtitle-16" style={{ color: '#EF4444' }} className="font-semibold">
+              <Pressable
+                onPress={handleStop}
+                className="items-center rounded-2xl border border-red-500 py-3 active:opacity-80">
+                <Typography
+                  variant="subtitle-16"
+                  style={{ color: '#EF4444' }}
+                  className="font-semibold">
                   Stop Sharing
                 </Typography>
               </Pressable>
@@ -424,9 +534,13 @@ function ShareTagOverlay({
           ) : (
             <View>
               <Typography variant="body-14" color="secondary" className="mb-4">
-                Generate a share code so others can join this tag and track their focus alongside you.
+                Generate a share code so others can join this tag and track their focus alongside
+                you.
               </Typography>
-              <Pressable onPress={handleGenerate} disabled={loading} className="bg-blue-600 rounded-2xl py-4 items-center active:opacity-80">
+              <Pressable
+                onPress={handleGenerate}
+                disabled={loading}
+                className="items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
                   {loading ? 'Generating...' : 'Share This Tag'}
                 </Typography>
@@ -444,7 +558,10 @@ function ShareTagOverlay({
 // resolved tag info up to the parent, which opens JoinSharedTagSheet (step 2:
 // map onto an existing tag or clone a new one).
 function JoinTagModal({
-  visible, onClose, onResolve, onResolved,
+  visible,
+  onClose,
+  onResolve,
+  onResolved,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -481,16 +598,28 @@ function JoinTagModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-        <View className="flex-1 bg-black/50 justify-center items-center px-4">
-          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={onClose} />
-          <View className="bg-light-bg dark:bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
-            <View className="flex-row items-center justify-between p-6 border-b border-light-border dark:border-gray-700">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1">
+        <View className="flex-1 items-center justify-center bg-black/50 px-4">
+          <Pressable
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={onClose}
+          />
+          <View className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
+            <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
               <Typography variant="headline-20" color="primary">
                 Join Shared Tag
               </Typography>
-              <Pressable onPress={onClose} className="w-8 h-8 rounded-full bg-light-border/50 dark:bg-gray-700 items-center justify-center" hitSlop={8}>
-                <Ionicons name="close" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+              <Pressable
+                onPress={onClose}
+                className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700"
+                hitSlop={8}>
+                <Ionicons
+                  name="close"
+                  size={20}
+                  color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+                />
               </Pressable>
             </View>
 
@@ -501,18 +630,24 @@ function JoinTagModal({
 
               <TextInput
                 value={code}
-                onChangeText={(t) => { setCode(t.toUpperCase()); setError(null); }}
+                onChangeText={(t) => {
+                  setCode(t.toUpperCase());
+                  setError(null);
+                }}
                 placeholder="Enter code"
                 placeholderTextColor={colorScheme === 'dark' ? '#888' : '#AAA'}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 maxLength={6}
-                className="bg-light-border/30 dark:bg-gray-700 rounded-xl px-4 py-4 text-center text-light-text-primary dark:text-dark-text-primary mb-4"
+                className="mb-4 rounded-xl bg-light-border/30 px-4 py-4 text-center text-light-text-primary dark:bg-gray-700 dark:text-dark-text-primary"
                 style={{ fontSize: 24, fontWeight: '700', letterSpacing: 4 }}
               />
 
               {error && (
-                <Typography variant="body-12" style={{ color: '#EF4444' }} className="mb-3 text-center">
+                <Typography
+                  variant="body-12"
+                  style={{ color: '#EF4444' }}
+                  className="mb-3 text-center">
                   {error}
                 </Typography>
               )}
@@ -520,8 +655,7 @@ function JoinTagModal({
               <Pressable
                 onPress={handleJoin}
                 disabled={loading || code.trim().length < 4}
-                className={`rounded-2xl py-4 items-center active:opacity-80 ${code.trim().length >= 4 ? 'bg-blue-600' : 'bg-gray-400'}`}
-              >
+                className={`items-center rounded-2xl py-4 active:opacity-80 ${code.trim().length >= 4 ? 'bg-blue-600' : 'bg-gray-400'}`}>
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
                   {loading ? 'Joining...' : 'Join'}
                 </Typography>
@@ -538,7 +672,21 @@ export default function FocusScreen() {
   const colorScheme = useColorScheme();
   // Get tags from store
   const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals } = useFocus();
-  const { createTag, updateTag, deleteTag, reorderTags, startSession, completeSession, createCompletedSession, setLastSelectedTagId, setLastDurationForTag, shareTag, stopSharingTag, resolveSharedTagCode, leaveSharedTag } = useFocusActions();
+  const {
+    createTag,
+    updateTag,
+    deleteTag,
+    reorderTags,
+    startSession,
+    completeSession,
+    createCompletedSession,
+    setLastSelectedTagId,
+    setLastDurationForTag,
+    shareTag,
+    stopSharingTag,
+    resolveSharedTagCode,
+    leaveSharedTag,
+  } = useFocusActions();
   const rewards = useRewards();
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
@@ -549,21 +697,24 @@ export default function FocusScreen() {
   const timerPickerStyle = preferences.focus.timerPickerStyle ?? 'scroller';
   const { canCreateTag } = useSubscriptionGate();
   const challenges = useAppStore((s) => s.grove.challenges);
-  const availableTags = tags.allIds.map(id => tags.byId[id]).filter(Boolean).filter(t => !t.deletedAt);
+  const availableTags = tags.allIds
+    .map((id) => tags.byId[id])
+    .filter(Boolean)
+    .filter((t) => !t.deletedAt);
 
   // Build challenge-only tags from active challenges (both incoming and outgoing)
   const challengeTags = React.useMemo(() => {
-    const userTagIds = new Set(availableTags.map(t => t.id));
+    const userTagIds = new Set(availableTags.map((t) => t.id));
     const seen = new Set<string>();
     return challenges
-      .filter(c => c.status === 'active' || c.status === 'pending')
-      .filter(c => {
+      .filter((c) => c.status === 'active' || c.status === 'pending')
+      .filter((c) => {
         if (userTagIds.has(c.tagId)) return false; // user already has this tag
         if (seen.has(c.tagId)) return false; // dedup by tagId
         seen.add(c.tagId);
         return true;
       })
-      .map(c => ({
+      .map((c) => ({
         id: c.tagId,
         name: c.tagName,
         icon: c.tagIcon,
@@ -571,7 +722,7 @@ export default function FocusScreen() {
         isChallenge: true as const,
       }));
   }, [challenges, availableTags]);
-  
+
   const [selectedTime, setSelectedTime] = useState(15); // minutes; 0 => ∞
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
@@ -593,12 +744,55 @@ export default function FocusScreen() {
   const [newTagName, setNewTagName] = useState('');
   const [newTagEmoji, setNewTagEmoji] = useState('');
   const [newTagColor, setNewTagColor] = useState('#6592E9');
+  const [newTagActivityType, setNewTagActivityType] = useState<ActivityType | undefined>(undefined);
   const [showEditTagModal, setShowEditTagModal] = useState(false);
-  const [editingTag, setEditingTag] = useState<{ id: string; name: string; icon: string; color: string } | null>(null);
+  const [editingTag, setEditingTag] = useState<{
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+    activityType?: ActivityType;
+  } | null>(null);
   const [editTagName, setEditTagName] = useState('');
   const [editTagEmoji, setEditTagEmoji] = useState('');
   const [editTagColor, setEditTagColor] = useState('#6592E9');
+  const [editTagActivityType, setEditTagActivityType] = useState<ActivityType | undefined>(
+    undefined
+  );
+  // Tracks whether the user has manually picked an activity type this modal
+  // session; once they have, name-based inference stops overriding their choice.
+  const newTagActivityTouched = useRef(false);
+  const editTagActivityTouched = useRef(false);
   const [showEditEmojiGrid, setShowEditEmojiGrid] = useState(false);
+
+  // Debounced inference of the activity type from the tag name (new tag modal).
+  // Only fills the picker until the user makes their own choice.
+  useEffect(() => {
+    if (!showNewTagModal || newTagActivityTouched.current) return;
+    const name = newTagName;
+    const t = setTimeout(() => {
+      if (newTagActivityTouched.current) return;
+      setNewTagActivityType(inferActivityType(name) ?? undefined);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [newTagName, showNewTagModal]);
+
+  // Reset the "touched" flag each time the new tag modal opens.
+  useEffect(() => {
+    if (showNewTagModal) newTagActivityTouched.current = false;
+  }, [showNewTagModal]);
+
+  // Debounced inference for the edit tag modal — only when the tag had no
+  // activity type set (handleEditTag marks existing values as already chosen).
+  useEffect(() => {
+    if (!showEditTagModal || editTagActivityTouched.current) return;
+    const name = editTagName;
+    const t = setTimeout(() => {
+      if (editTagActivityTouched.current) return;
+      setEditTagActivityType(inferActivityType(name) ?? undefined);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [editTagName, showEditTagModal]);
   // Resolved shared tag awaiting the map-or-clone choice (step 2 of joining)
   const [resolvedSharedTag, setResolvedSharedTag] = useState<SharedTagResolveResult | null>(null);
 
@@ -688,7 +882,7 @@ export default function FocusScreen() {
   }, [reorderTags]);
 
   const orderedTags = [
-    ...dragOrderIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt),
+    ...dragOrderIds.map((id) => tags.byId[id]).filter((t) => t && !t.deletedAt),
     ...challengeTags,
   ];
 
@@ -735,20 +929,26 @@ export default function FocusScreen() {
 
   // Blocklist helpers
   const getBlockedCount = () => {
-    const totalApps = blocklistSettings.blockedApps.applicationTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
-    const totalCategories = blocklistSettings.blockedApps.categoryTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
-    const totalDomains = blocklistSettings.blockedApps.webDomainTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
+    const totalApps =
+      blocklistSettings.blockedApps.applicationTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
+    const totalCategories =
+      blocklistSettings.blockedApps.categoryTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
+    const totalDomains =
+      blocklistSettings.blockedApps.webDomainTokens[0]?.displayName?.match(/(\d+)/)?.[0] || 0;
     return Number(totalApps) + Number(totalCategories) + Number(totalDomains);
   };
   const blockedCount = getBlockedCount();
-  const activeUnlockSession = activeSessions.allIds
-    .map(id => activeSessions.byId[id])
-    .filter(session => session?.isActive)
-    .sort((a, b) => {
-      const aEnd = a.endTime instanceof Date ? a.endTime.getTime() : new Date(a.endTime).getTime();
-      const bEnd = b.endTime instanceof Date ? b.endTime.getTime() : new Date(b.endTime).getTime();
-      return bEnd - aEnd;
-    })[0] || null;
+  const activeUnlockSession =
+    activeSessions.allIds
+      .map((id) => activeSessions.byId[id])
+      .filter((session) => session?.isActive)
+      .sort((a, b) => {
+        const aEnd =
+          a.endTime instanceof Date ? a.endTime.getTime() : new Date(a.endTime).getTime();
+        const bEnd =
+          b.endTime instanceof Date ? b.endTime.getTime() : new Date(b.endTime).getTime();
+        return bEnd - aEnd;
+      })[0] || null;
   const activeUnlockEndTimeMs = activeUnlockSession
     ? activeUnlockSession.endTime instanceof Date
       ? activeUnlockSession.endTime.getTime()
@@ -835,7 +1035,7 @@ export default function FocusScreen() {
     setSelectedTime(duration);
     // Update any idle Live Activity with the newly selected tag/duration
     if (!isRunning) {
-      const tag = tags.byId[tagId] || challengeTags.find(ct => ct.id === tagId);
+      const tag = tags.byId[tagId] || challengeTags.find((ct) => ct.id === tagId);
       const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
       LiveActivityService.showIdleFocusActivity(tagLabel, tagId, duration);
     }
@@ -865,6 +1065,7 @@ export default function FocusScreen() {
         name: newTagName.trim(),
         icon: newTagEmoji,
         color: newTagColor,
+        activityType: newTagActivityType,
       });
 
       setSelectedTag(newTag.id);
@@ -874,15 +1075,25 @@ export default function FocusScreen() {
       setNewTagName('');
       setNewTagEmoji('');
       setNewTagColor('#6592E9');
+      setNewTagActivityType(undefined);
     }
   };
-  
+
   const handleEditTag = (tag: any, event: any) => {
     event?.stopPropagation();
-    setEditingTag({ id: tag.id, name: tag.name, icon: tag.icon, color: tag.color });
+    setEditingTag({
+      id: tag.id,
+      name: tag.name,
+      icon: tag.icon,
+      color: tag.color,
+      activityType: tag.activityType,
+    });
     setEditTagName(tag.name);
     setEditTagEmoji(tag.icon || '');
     setEditTagColor(tag.color || '#6592E9');
+    setEditTagActivityType(tag.activityType);
+    // Respect an already-set type; only auto-infer when the tag had none.
+    editTagActivityTouched.current = !!tag.activityType;
     setShowEditTagModal(true);
     // Keep tag modal open - edit appears as overlay within it
   };
@@ -898,6 +1109,8 @@ export default function FocusScreen() {
       if (editTagName.trim() !== editingTag.name) updates.name = editTagName.trim();
       if (editTagEmoji !== editingTag.icon) updates.icon = editTagEmoji;
       if (editTagColor !== editingTag.color) updates.color = editTagColor;
+      if (editTagActivityType !== editingTag.activityType)
+        updates.activityType = editTagActivityType ?? null;
       if (Object.keys(updates).length > 0) {
         updateTag(editingTag.id, updates);
       }
@@ -909,7 +1122,7 @@ export default function FocusScreen() {
   };
 
   const tagHasActiveGoal = (tagId: string) =>
-    goals.allIds.some(gid => {
+    goals.allIds.some((gid) => {
       const goal = goals.byId[gid];
       return goal && goal.tagId === tagId && goal.isActive;
     });
@@ -919,7 +1132,7 @@ export default function FocusScreen() {
   // the current user's own participant tag, so this guards both the challenger and
   // the challengee. Terminal challenges (completed/failed/cancelled/declined) don't block.
   const tagHasOngoingChallenge = (tagId: string) =>
-    challenges.some(c => c.tagId === tagId && (c.status === 'active' || c.status === 'pending'));
+    challenges.some((c) => c.tagId === tagId && (c.status === 'active' || c.status === 'pending'));
 
   // Returns a human-readable reason the tag can't be deleted, or null if it can.
   const tagDeletionBlockReason = (tag: { id: string; name: string } | null): string | null => {
@@ -950,7 +1163,7 @@ export default function FocusScreen() {
       deleteTag(tagToDelete.id);
       // If deleted tag was selected, reset selection
       if (selectedTag === tagToDelete.id) {
-        const remainingTags = availableTags.filter(t => t.id !== tagToDelete.id);
+        const remainingTags = availableTags.filter((t) => t.id !== tagToDelete.id);
         const fallbackId = remainingTags.length > 0 ? remainingTags[0].id : null;
         setSelectedTag(fallbackId);
         setLastSelectedTagId(fallbackId);
@@ -1003,7 +1216,10 @@ export default function FocusScreen() {
     if (!session?.isActive) return;
 
     const nowMs = Date.now();
-    const endTimeMs = session.endTime instanceof Date ? session.endTime.getTime() : new Date(session.endTime).getTime();
+    const endTimeMs =
+      session.endTime instanceof Date
+        ? session.endTime.getTime()
+        : new Date(session.endTime).getTime();
     const remainingMs = Math.max(0, endTimeMs - nowMs);
     const remainingMinutes = Math.floor(remainingMs / (60 * 1000));
     const refundAmount = Math.min(
@@ -1016,12 +1232,18 @@ export default function FocusScreen() {
         sessionId,
         refundedMinutes: remainingMinutes,
       });
-      console.log(`🍎 Refunded ${refundAmount} fruits for ${remainingMinutes} unused unlock minute(s)`);
+      console.log(
+        `🍎 Refunded ${refundAmount} fruits for ${remainingMinutes} unused unlock minute(s)`
+      );
     }
 
     if (store.blocklist.currentSelectionId) {
       blockSelection({ activitySelectionId: store.blocklist.currentSelectionId });
-      try { stopMonitoring([`reblock-${store.blocklist.currentSelectionId}`]); } catch { /* ignore */ }
+      try {
+        stopMonitoring([`reblock-${store.blocklist.currentSelectionId}`]);
+      } catch {
+        /* ignore */
+      }
     }
 
     store.blocklist.endUnlock(sessionId, refundUnusedTime ? 'manual' : 'expired');
@@ -1044,7 +1266,7 @@ export default function FocusScreen() {
     // End any active unlock sessions — re-block apps and refund remaining time
     const store = useAppStore.getState();
     const { activeSessions } = store.blocklist;
-    activeSessions.allIds.forEach(id => {
+    activeSessions.allIds.forEach((id) => {
       const session = activeSessions.byId[id];
       if (!session?.isActive) return;
       stopUnlockSession(id, true);
@@ -1075,17 +1297,22 @@ export default function FocusScreen() {
     let liveActivityId: string | undefined;
 
     // Store tag info for later idle state (when session ends, LA transitions to idle)
-    const selectedTagObj = selectedTag ? (tags.byId[selectedTag] || challengeTags.find(ct => ct.id === selectedTag)) : undefined;
-    const selectedTagLabel = selectedTagObj ? `${selectedTagObj.icon || '🎯'} ${selectedTagObj.name}` : 'Focus';
-    LiveActivityService.setLastTag(selectedTag || undefined, selectedTagLabel, isDevTimer ? devCountsAsMinutes : selectedTime);
+    const selectedTagObj = selectedTag
+      ? tags.byId[selectedTag] || challengeTags.find((ct) => ct.id === selectedTag)
+      : undefined;
+    const selectedTagLabel = selectedTagObj
+      ? `${selectedTagObj.icon || '🎯'} ${selectedTagObj.name}`
+      : 'Focus';
+    LiveActivityService.setLastTag(
+      selectedTag || undefined,
+      selectedTagLabel,
+      isDevTimer ? devCountsAsMinutes : selectedTime
+    );
 
     if (infinite) {
       // Infinite mode: no end time — use a count-up live activity
       sessionEndTimeRef.current = null;
-      const activityId = LiveActivityService.startFocusTimerInfinite(
-        new Date(),
-        selectedTagLabel
-      );
+      const activityId = LiveActivityService.startFocusTimerInfinite(new Date(), selectedTagLabel);
       if (activityId) {
         liveActivityId = activityId;
         liveActivityIdRef.current = activityId;
@@ -1128,12 +1355,12 @@ export default function FocusScreen() {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: timerSeconds,
         },
-      }).then(id => {
+      }).then((id) => {
         scheduledNotificationRef.current = id;
         // Sync to shared UserDefaults so native StopSessionIntent can cancel it
         WidgetService.syncScheduledNotificationId(id);
         // Update persisted session with notification ID so it can be cancelled after app restart
-        AsyncStorage.getItem(ACTIVE_SESSION_KEY).then(raw => {
+        AsyncStorage.getItem(ACTIVE_SESSION_KEY).then((raw) => {
           if (raw) {
             const persisted = JSON.parse(raw);
             persisted.notificationId = id;
@@ -1151,15 +1378,18 @@ export default function FocusScreen() {
 
     // Persist active session so it survives app kills
     const persistNow = Date.now();
-    AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
-      startTime: persistNow,
-      endTime: infinite ? 0 : persistNow + timerSeconds * 1000,
-      targetDuration: isDevTimer ? devCountsAsMinutes : selectedTime,
-      tagId: selectedTag || 'Focus',
-      tagLabel: selectedTagLabel,
-      isInfinite: infinite,
-      liveActivityId,
-    } satisfies PersistedSession));
+    AsyncStorage.setItem(
+      ACTIVE_SESSION_KEY,
+      JSON.stringify({
+        startTime: persistNow,
+        endTime: infinite ? 0 : persistNow + timerSeconds * 1000,
+        targetDuration: isDevTimer ? devCountsAsMinutes : selectedTime,
+        tagId: selectedTag || 'Focus',
+        tagLabel: selectedTagLabel,
+        isInfinite: infinite,
+        liveActivityId,
+      } satisfies PersistedSession)
+    );
 
     // Sync widget with active session state
     const tagInfo = selectedTag ? tags.byId[selectedTag] : null;
@@ -1177,9 +1407,9 @@ export default function FocusScreen() {
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = setInterval(() => {
       if (infinite) {
-        setElapsedSeconds(prev => prev + 1);
+        setElapsedSeconds((prev) => prev + 1);
       } else {
-        setRemainingSeconds(prev => {
+        setRemainingSeconds((prev) => {
           if (prev <= 1) {
             // Timer reached 0 — enter bonus time mode instead of stopping
             if (timerRef.current) clearInterval(timerRef.current as any);
@@ -1191,7 +1421,7 @@ export default function FocusScreen() {
 
             // Start a new interval that counts UP for bonus time
             timerRef.current = setInterval(() => {
-              setBonusSeconds(b => b + 1);
+              setBonusSeconds((b) => b + 1);
             }, 1000);
 
             return 0;
@@ -1287,14 +1517,44 @@ export default function FocusScreen() {
     }
 
     Animated.parallel([
-      Animated.timing(timerOpacity, { toValue: 0, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(timerScale, { toValue: 0.96, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(timerTranslateY, { toValue: 6, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(timerOpacity, {
+        toValue: 0,
+        duration: 160,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(timerScale, {
+        toValue: 0.96,
+        duration: 160,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(timerTranslateY, {
+        toValue: 6,
+        duration: 160,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       Animated.parallel([
-        Animated.timing(scrollerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(tagsOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(headerOpacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scrollerOpacity, {
+          toValue: 1,
+          duration: 180,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(tagsOpacity, {
+          toValue: 1,
+          duration: 180,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(headerOpacity, {
+          toValue: 1,
+          duration: 180,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
       ]).start(() => {
         setIsSessionActive(false);
         // Go straight to session summary
@@ -1323,7 +1583,7 @@ export default function FocusScreen() {
 
             // Start bonus count-up interval
             timerRef.current = setInterval(() => {
-              setBonusSeconds(b => b + 1);
+              setBonusSeconds((b) => b + 1);
             }, 1000);
           } else {
             // Session still running — sync remaining seconds with real clock
@@ -1414,7 +1674,7 @@ export default function FocusScreen() {
         const { activeSessions } = store.blocklist;
 
         // Find and stop any active unlock sessions
-        activeSessions.allIds.forEach(id => {
+        activeSessions.allIds.forEach((id) => {
           const session = activeSessions.byId[id];
           if (session?.isActive) {
             stopUnlockSession(id, true);
@@ -1442,7 +1702,11 @@ export default function FocusScreen() {
         const sessionInfo = activeRaw
           ? JSON.parse(activeRaw)
           : stoppedSession
-            ? { startTime: stoppedSession.startTime, targetDuration: stoppedSession.duration, tagId: stoppedSession.tagId }
+            ? {
+                startTime: stoppedSession.startTime,
+                targetDuration: stoppedSession.duration,
+                tagId: stoppedSession.tagId,
+              }
             : null;
 
         if (sessionInfo) {
@@ -1474,7 +1738,12 @@ export default function FocusScreen() {
               targetDuration: effectiveTargetDuration,
               tagId: sessionInfo.tagId,
             });
-            console.log('📱 [Widget] Recorded completed session:', durationMinutes, 'min', isInfiniteSession ? '(infinite)' : '');
+            console.log(
+              '📱 [Widget] Recorded completed session:',
+              durationMinutes,
+              'min',
+              isInfiniteSession ? '(infinite)' : ''
+            );
           }
 
           await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
@@ -1544,7 +1813,10 @@ export default function FocusScreen() {
           await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(persistedSession));
           // Only clear after successful write so the data survives crashes/races
           WidgetService.clearWidgetStartedSession();
-          console.log('📱 [Widget] Wrote active-focus-session for recovery, liveActivityId:', startedSession.liveActivityId);
+          console.log(
+            '📱 [Widget] Wrote active-focus-session for recovery, liveActivityId:',
+            startedSession.liveActivityId
+          );
         } else {
           console.log('📱 [Widget] Existing active session found, skipping adoption');
           WidgetService.clearWidgetStartedSession();
@@ -1587,8 +1859,9 @@ export default function FocusScreen() {
       // Use persisted tagLabel (saved at session start) to avoid store hydration
       // race — tags.byId may be empty if Zustand hasn't rehydrated yet.
       const recoveredTag = useAppStore.getState().focus.tags.byId[persisted.tagId];
-      const recoveredTagLabel = persisted.tagLabel
-        || (recoveredTag ? `${recoveredTag.icon || '🎯'} ${recoveredTag.name}` : 'Focus');
+      const recoveredTagLabel =
+        persisted.tagLabel ||
+        (recoveredTag ? `${recoveredTag.icon || '🎯'} ${recoveredTag.name}` : 'Focus');
       WidgetService.syncSessionState({
         isActive: true,
         tagId: persisted.tagId || '',
@@ -1602,11 +1875,7 @@ export default function FocusScreen() {
 
       // Restore in-memory tag info so stopFocusTimer can build the correct
       // idle state (these static fields are lost on app termination)
-      LiveActivityService.setLastTag(
-        persisted.tagId,
-        recoveredTagLabel,
-        persisted.targetDuration,
-      );
+      LiveActivityService.setLastTag(persisted.tagId, recoveredTagLabel, persisted.targetDuration);
 
       // Session is being recovered/adopted — signal focusing status
       useAppStore.getState().grove.setFocusing(true);
@@ -1650,7 +1919,7 @@ export default function FocusScreen() {
         // Start elapsed count-up interval
         if (timerRef.current) clearInterval(timerRef.current as any);
         timerRef.current = setInterval(() => {
-          setElapsedSeconds(prev => prev + 1);
+          setElapsedSeconds((prev) => prev + 1);
         }, 1000);
         return;
       }
@@ -1682,7 +1951,7 @@ export default function FocusScreen() {
         // Start bonus count-up interval
         if (timerRef.current) clearInterval(timerRef.current as any);
         timerRef.current = setInterval(() => {
-          setBonusSeconds(b => b + 1);
+          setBonusSeconds((b) => b + 1);
         }, 1000);
       } else {
         // Session still running — resume the timer
@@ -1711,7 +1980,7 @@ export default function FocusScreen() {
         // Start the countdown interval
         if (timerRef.current) clearInterval(timerRef.current as any);
         timerRef.current = setInterval(() => {
-          setRemainingSeconds(prev => {
+          setRemainingSeconds((prev) => {
             if (prev <= 1) {
               // Enter bonus time mode
               if (timerRef.current) clearInterval(timerRef.current as any);
@@ -1720,7 +1989,7 @@ export default function FocusScreen() {
               setBonusSeconds(0);
 
               timerRef.current = setInterval(() => {
-                setBonusSeconds(b => b + 1);
+                setBonusSeconds((b) => b + 1);
               }, 1000);
 
               return 0;
@@ -1733,7 +2002,6 @@ export default function FocusScreen() {
       // Corrupted data — just clear it
       AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
     }
-
   };
 
   // Adopt widget session + recover from AsyncStorage on mount (cold start)
@@ -1752,7 +2020,7 @@ export default function FocusScreen() {
       stopWithAnimation();
       return;
     }
-    
+
     // If no tags exist, show new tag modal (the New Tag overlay lives inside the
     // tag picker Modal, so that Modal must be mounted for the overlay to render)
     if (availableTags.length === 0) {
@@ -1760,7 +2028,7 @@ export default function FocusScreen() {
       setShowNewTagModal(true);
       return;
     }
-    
+
     // If no tag selected (shouldn't happen with default), select first
     if (!selectedTag) {
       if (availableTags.length > 0) {
@@ -1788,17 +2056,49 @@ export default function FocusScreen() {
 
     // Fade out scroller, tags, and the blocklist icon.
     Animated.parallel([
-      Animated.timing(scrollerOpacity, { toValue: 0, duration: 140, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(tagsOpacity, { toValue: 0, duration: 140, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(headerOpacity, { toValue: 0, duration: 140, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(scrollerOpacity, {
+        toValue: 0,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(tagsOpacity, {
+        toValue: 0,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(headerOpacity, {
+        toValue: 0,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       if (transitionCancelledRef.current) return;
       // Start the countdown immediately as the timer fades in, not after the spring settles
       startTimer();
       Animated.parallel([
-        Animated.timing(timerOpacity, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.spring(timerScale, { toValue: 1, stiffness: 220, damping: 20, mass: 0.6, useNativeDriver: true }),
-        Animated.spring(timerTranslateY, { toValue: 0, stiffness: 220, damping: 20, mass: 0.6, useNativeDriver: true }),
+        Animated.timing(timerOpacity, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(timerScale, {
+          toValue: 1,
+          stiffness: 220,
+          damping: 20,
+          mass: 0.6,
+          useNativeDriver: true,
+        }),
+        Animated.spring(timerTranslateY, {
+          toValue: 0,
+          stiffness: 220,
+          damping: 20,
+          mass: 0.6,
+          useNativeDriver: true,
+        }),
       ]).start();
     });
   };
@@ -1814,19 +2114,23 @@ export default function FocusScreen() {
       for (const sid of sessions.allIds) {
         const s = sessions.byId[sid];
         if (!s) continue;
-        const t = s.startTime instanceof Date ? s.startTime.getTime() : new Date(s.startTime).getTime();
+        const t =
+          s.startTime instanceof Date ? s.startTime.getTime() : new Date(s.startTime).getTime();
         if (!lastUsedByTag[s.tagId] || t > lastUsedByTag[s.tagId]) {
           lastUsedByTag[s.tagId] = t;
         }
       }
-      const tagList = tags.allIds.map(id => tags.byId[id]).filter(tag => tag && !tag.deletedAt).map(tag => ({
+      const tagList = tags.allIds
+        .map((id) => tags.byId[id])
+        .filter((tag) => tag && !tag.deletedAt)
+        .map((tag) => ({
           id: tag.id,
           name: tag.name,
           icon: tag.icon || '🎯',
           color: tag.color || '#8B4513',
           lastDuration: updatedDurations[tag.id] ?? 15,
           lastUsedAt: lastUsedByTag[tag.id] ?? 0,
-      }));
+        }));
       WidgetService.syncTagList(tagList);
       // Update any idle Live Activity with the new duration
       if (!isRunning) {
@@ -1847,12 +2151,15 @@ export default function FocusScreen() {
 
   const displayTime = isBonusTime
     ? `+${formatTime(bonusSeconds)}`
-    : isInfinite ? formatTime(elapsedSeconds) : formatTime(remainingSeconds);
+    : isInfinite
+      ? formatTime(elapsedSeconds)
+      : formatTime(remainingSeconds);
   const timerDisplayTime = isUnlockActive ? formatTime(unlockRemainingSeconds) : displayTime;
-  const timerTextColor = isBonusTime && !isUnlockActive ? '#4CAF7C' : (colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37');
+  const timerTextColor =
+    isBonusTime && !isUnlockActive ? '#4CAF7C' : colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37';
 
   const selectedTagObj = selectedTag
-    ? (tags.byId[selectedTag] || challengeTags.find(ct => ct.id === selectedTag) || null)
+    ? tags.byId[selectedTag] || challengeTags.find((ct) => ct.id === selectedTag) || null
     : null;
   const selectedTagName = selectedTagObj?.name || null;
 
@@ -1861,7 +2168,8 @@ export default function FocusScreen() {
     const savedBonusSeconds = stoppedBonusSecondsRef.current;
     const sessionStart = stoppedSessionStartTimeRef.current;
     // Use captured ref for target duration — immune to state overwrites and being cleared early
-    const targetDuration = stoppedSessionTargetDurationRef.current ?? sessionTargetDurationRef.current ?? selectedTime;
+    const targetDuration =
+      stoppedSessionTargetDurationRef.current ?? sessionTargetDurationRef.current ?? selectedTime;
     const isDevTimer = targetDuration === -1;
     const baseMinutes = isDevTimer ? 1 : targetDuration;
     const baseSeconds = isDevTimer ? 5 : targetDuration * 60;
@@ -1884,8 +2192,10 @@ export default function FocusScreen() {
       totalSeconds = totalElapsedSeconds;
     } else {
       // Fallback: derive from state (original logic, for safety)
-      actualDuration = isInfinite ? Math.floor(elapsedSeconds / 60) : Math.floor((baseSeconds - remainingSeconds) / 60);
-      totalSeconds = isInfinite ? elapsedSeconds : (baseSeconds - remainingSeconds);
+      actualDuration = isInfinite
+        ? Math.floor(elapsedSeconds / 60)
+        : Math.floor((baseSeconds - remainingSeconds) / 60);
+      totalSeconds = isInfinite ? elapsedSeconds : baseSeconds - remainingSeconds;
     }
 
     // Only create session if duration is meaningful (1+ minutes or dev timer)
@@ -1912,664 +2222,866 @@ export default function FocusScreen() {
     }
   };
 
-
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
-    <SwipeableTabWrapper currentTab="index">
-      {/* Header: Blocklist Icon (Left) + Fruit Counter (Right) */}
-      <View
-        className="absolute top-4 left-0 right-0 z-50 flex-row items-center justify-between px-8"
-      >
-        <Animated.View
-          style={{ opacity: isUnlockActive ? 0 : headerOpacity }}
-          pointerEvents={isSessionActive || isUnlockActive ? 'none' : 'auto'}
-        >
-          <Pressable
-            onPress={handleBlockList}
-            className="flex-row items-center active:opacity-70"
-            hitSlop={8}
-          >
-            <Ionicons name="ban-outline" size={22} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
-            <Text style={{ color: colorScheme === 'dark' ? '#CACACA' : '#8B7355', fontSize: 13, fontWeight: '500', marginLeft: 6 }}>Block List</Text>
-            {blockedCount > 0 && (
-              <View className="ml-1.5 bg-primary rounded-full px-1.5 py-0.5 min-w-[20px] items-center">
-                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '600' }}>{blockedCount}</Text>
-              </View>
-            )}
-          </Pressable>
-        </Animated.View>
-        <Animated.View
-          style={{ opacity: isUnlockActive ? 0 : 1 }}
-          pointerEvents={isUnlockActive ? 'none' : 'auto'}
-        >
-          <FruitCounter
-            fruitCount={rewards.balance}
-            size="small"
-            onPress={() => {
-              AnalyticsTracker.track('store_opened');
-              router.push('/fruit-store');
-            }}
-          />
-        </Animated.View>
-      </View>
-
-      <View className="flex-1 items-center justify-center px-4">
-        {/* Time Selector or Running Timer - stacked and crossfaded */}
-        <View style={{ height: 300, width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
-          <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 0 : scrollerOpacity, width: '100%', zIndex: 0 }} pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
-            {timerPickerStyle === 'wheel' ? (
-              <DurationPicker
-                selectedTime={selectedTime}
-                onTimeChange={handleTimeChange}
+      <SwipeableTabWrapper currentTab="index">
+        {/* Header: Blocklist Icon (Left) + Fruit Counter (Right) */}
+        <View className="absolute left-0 right-0 top-4 z-50 flex-row items-center justify-between px-8">
+          <Animated.View
+            style={{ opacity: isUnlockActive ? 0 : headerOpacity }}
+            pointerEvents={isSessionActive || isUnlockActive ? 'none' : 'auto'}>
+            <Pressable
+              onPress={handleBlockList}
+              className="flex-row items-center active:opacity-70"
+              hitSlop={8}>
+              <Ionicons
+                name="ban-outline"
+                size={22}
+                color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'}
               />
-            ) : (
-              <TimeScroller
-                selectedTime={selectedTime}
-                onTimeChange={handleTimeChange}
-              />
-            )}
+              <Text
+                style={{
+                  color: colorScheme === 'dark' ? '#CACACA' : '#8B7355',
+                  fontSize: 13,
+                  fontWeight: '500',
+                  marginLeft: 6,
+                }}>
+                Block List
+              </Text>
+              {blockedCount > 0 && (
+                <View className="ml-1.5 min-w-[20px] items-center rounded-full bg-primary px-1.5 py-0.5">
+                  <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '600' }}>
+                    {blockedCount}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
           </Animated.View>
-          <Animated.View style={{ position: 'absolute', opacity: isUnlockActive ? 1 : timerOpacity, transform: [{ scale: isUnlockActive ? 1 : timerScale }, { translateY: isUnlockActive ? 0 : timerTranslateY }], zIndex: 100, alignItems: 'center' }}>
-            {/* Gate on isSessionActive (set synchronously at start) rather than
+          <Animated.View
+            style={{ opacity: isUnlockActive ? 0 : 1 }}
+            pointerEvents={isUnlockActive ? 'none' : 'auto'}>
+            <FruitCounter
+              fruitCount={rewards.balance}
+              size="small"
+              onPress={() => {
+                AnalyticsTracker.track('store_opened');
+                router.push('/fruit-store');
+              }}
+            />
+          </Animated.View>
+        </View>
+
+        <View className="flex-1 items-center justify-center px-4">
+          {/* Time Selector or Running Timer - stacked and crossfaded */}
+          <View
+            style={{
+              height: 300,
+              width: '100%',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'visible',
+            }}>
+            <Animated.View
+              style={{
+                position: 'absolute',
+                opacity: isUnlockActive ? 0 : scrollerOpacity,
+                width: '100%',
+                zIndex: 0,
+              }}
+              pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
+              {timerPickerStyle === 'wheel' ? (
+                <DurationPicker selectedTime={selectedTime} onTimeChange={handleTimeChange} />
+              ) : (
+                <TimeScroller selectedTime={selectedTime} onTimeChange={handleTimeChange} />
+              )}
+            </Animated.View>
+            <Animated.View
+              style={{
+                position: 'absolute',
+                opacity: isUnlockActive ? 1 : timerOpacity,
+                transform: [
+                  { scale: isUnlockActive ? 1 : timerScale },
+                  { translateY: isUnlockActive ? 0 : timerTranslateY },
+                ],
+                zIndex: 100,
+                alignItems: 'center',
+              }}>
+              {/* Gate on isSessionActive (set synchronously at start) rather than
                 isRunning — isRunning's re-render lands behind startTimer()'s heavy
                 synchronous native work, so gating on it makes the tag/hint appear
                 ~1s after the natively-animated countdown number. */}
-            {isSessionActive && !isBonusTime && !isUnlockActive && (
-              <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
-                {selectedTagName && (
-                  <Text style={{ color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37', fontSize: 24, lineHeight: 28, fontFamily: 'Poppins-SemiBold', textAlign: 'center', marginBottom: 4 }}>
-                    {selectedTagObj?.icon ? `${selectedTagObj.icon} ` : ''}{selectedTagName}
+              {isSessionActive && !isBonusTime && !isUnlockActive && (
+                <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
+                  {selectedTagName && (
+                    <Text
+                      style={{
+                        color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                        fontSize: 24,
+                        lineHeight: 28,
+                        fontFamily: 'Poppins-SemiBold',
+                        textAlign: 'center',
+                        marginBottom: 4,
+                      }}>
+                      {selectedTagObj?.icon ? `${selectedTagObj.icon} ` : ''}
+                      {selectedTagName}
+                    </Text>
+                  )}
+                  <Text
+                    style={{
+                      color: colorScheme === 'dark' ? '#CACACA' : '#8B7355',
+                      fontSize: 12,
+                      lineHeight: 18,
+                      fontFamily: 'Poppins-Regular',
+                      textAlign: 'center',
+                    }}>
+                    5 min = 1 🍎. Finish session to get 1 extra bonus 🍎!
                   </Text>
-                )}
-                <Text style={{ color: colorScheme === 'dark' ? '#CACACA' : '#8B7355', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
-                  5 min = 1 🍎. Finish session to get 1 extra bonus 🍎!
-                </Text>
-              </View>
-            )}
-            {isBonusTime && !isUnlockActive && (
-              <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
-                <Text style={{ color: '#4CAF7C', fontSize: 20, lineHeight: 26, fontFamily: 'Poppins-SemiBold', textAlign: 'center' }}>
-                  Session complete!
-                </Text>
-                <Text style={{ color: colorScheme === 'dark' ? '#CACACA' : '#8B7355', fontSize: 12, lineHeight: 18, fontFamily: 'Poppins-Regular', textAlign: 'center' }}>
-                  bonus 🍎 earned
-                </Text>
-              </View>
-            )}
-            <Animated.Text
-              style={{ fontSize: 96, lineHeight: 120, color: timerTextColor, fontFamily: 'Poppins-Bold', textAlign: 'center' }}
-            >
-              {timerDisplayTime}
-            </Animated.Text>
-          </Animated.View>
-        </View>
-
-        {/* Focus Button (kept mounted, fade only) */}
-        <View style={{ width: '100%', marginBottom: 64, minHeight: 96, justifyContent: 'center' }}>
-          <Animated.View style={{ opacity: isUnlockActive ? 0 : tagsOpacity }} pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
-            <Pressable
-              onPress={() => { Haptics.selectionAsync(); setShowTagModal(true); }}
-              className="bg-light-border/30 dark:bg-gray-700 rounded-2xl py-4 px-6 flex-row items-center justify-between active:opacity-80"
-            >
-              <View className="flex-row items-center">
-                <Typography variant="subtitle-16" color="primary">
-                  {availableTags.length === 0 ? 'Create a new tag' : (selectedTagName || 'Select a tag')}
-                </Typography>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
-            </Pressable>
-          </Animated.View>
-        </View>
-      </View>
-
-      {/* Start/Stop Button - Fixed at bottom */}
-      <View className="px-4 pb-8">
-        <Pressable
-          onPress={handleStartFocus}
-          className="bg-white dark:bg-white rounded-2xl py-4 items-center active:opacity-80"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-        >
-          <Typography
-            variant="subtitle-16"
-            className="font-semibold"
-            style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}
-          >
-            {isUnlockActive
-              ? 'Stop Unlocked'
-              : isSessionActive ? 'Stop Focus' : (availableTags.length === 0 ? 'Create Tag First' : 'Start Focus')}
-          </Typography>
-        </Pressable>
-        {isUnlockActive && (
-          <Typography variant="body-12" color="secondary" className="text-center mt-3">
-            unused time will be returned as fruits
-          </Typography>
-        )}
-      </View>
-
-      {/* Tag Selection Modal */}
-      <Modal
-        visible={showTagModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => { if (!showEditTagModal && !showDeleteModal && !showShareModal && !showNewTagModal) setShowTagModal(false); }}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center px-4">
-          <Pressable
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            onPress={() => { if (!showEditTagModal && !showDeleteModal && !showShareModal && !showNewTagModal) setShowTagModal(false); }}
-          />
-          <View className="bg-light-bg dark:bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
-            {/* Modal Header */}
-            <View className="flex-row items-center justify-between p-6 border-b border-light-border dark:border-gray-700">
-              <Typography variant="headline-20" color="primary">
-                Select Focus
-              </Typography>
-              <Pressable
-                onPress={() => setShowTagModal(false)}
-                className="w-8 h-8 rounded-full bg-light-border/50 dark:bg-gray-700 items-center justify-center"
-                hitSlop={8}
-              >
-                <Ionicons name="close" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
-              </Pressable>
-            </View>
-
-            {/* Tags List */}
-            <ScrollView className="p-4" style={{ maxHeight: 400 }} scrollEnabled={!isDragging}>
-              {orderedTags.length === 0 && (
-                <View className="py-6 px-2 items-center">
-                  <Typography variant="body-14" color="secondary" className="text-center leading-5">
-                    Create tags to categorize your focus sessions.{'\n'}
-                    e.g. Work, Reading, Exercise, Project X, Mindfulness Rest
-                  </Typography>
                 </View>
               )}
-              {orderedTags.map((tag, index) => (
-                <View key={tag.id} ref={index === 0 ? firstTagRef : undefined} collapsable={false}>
-                  <DraggableTagRow
-                    tag={tag}
-                    index={index}
-                    selectedTag={selectedTag}
-                    lastDuration={lastDurationByTagId[tag.id] ?? 15}
-                    isDragging={isDragging}
-                    dragOriginalIndex={dragOriginalIdx}
-                    dragTargetIndex={dragTargetIdx}
-                    isChallenge={'isChallenge' in tag && tag.isChallenge === true}
-                    onSelect={handleTagSelect}
-                    onEdit={handleEditTag}
-                    onDelete={handleDeleteTag}
-                    onUnlink={handleUnlinkTag}
-                    onShare={handleShareTag}
-                    onSwipeOpen={handleSwipeOpen}
-                    onDragStart={handleDragStart}
-                    onDragMove={handleDragMove}
-                    onDragEnd={handleDragEnd}
-                  />
+              {isBonusTime && !isUnlockActive && (
+                <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
+                  <Text
+                    style={{
+                      color: '#4CAF7C',
+                      fontSize: 20,
+                      lineHeight: 26,
+                      fontFamily: 'Poppins-SemiBold',
+                      textAlign: 'center',
+                    }}>
+                    Session complete!
+                  </Text>
+                  <Text
+                    style={{
+                      color: colorScheme === 'dark' ? '#CACACA' : '#8B7355',
+                      fontSize: 12,
+                      lineHeight: 18,
+                      fontFamily: 'Poppins-Regular',
+                      textAlign: 'center',
+                    }}>
+                    bonus 🍎 earned
+                  </Text>
                 </View>
-              ))}
-            </ScrollView>
+              )}
+              <Animated.Text
+                style={{
+                  fontSize: 96,
+                  lineHeight: 120,
+                  color: timerTextColor,
+                  fontFamily: 'Poppins-Bold',
+                  textAlign: 'center',
+                }}>
+                {timerDisplayTime}
+              </Animated.Text>
+            </Animated.View>
+          </View>
 
-            {/* New Tag & Join Tag Buttons */}
-            <View className="p-4 border-t border-light-border dark:border-gray-700">
-              <View className="flex-row gap-3">
-                <Pressable
-                  onPress={() => {
-                    setShowTagModal(false);
-                    setShowJoinModal(true);
-                  }}
-                  className="flex-1 rounded-2xl py-4 items-center active:opacity-80 border border-blue-600"
-                >
-                  <Typography variant="subtitle-16" className="font-semibold" style={{ color: '#3B82F6' }}>
-                    Join Tag
+          {/* Focus Button (kept mounted, fade only) */}
+          <View
+            style={{ width: '100%', marginBottom: 64, minHeight: 96, justifyContent: 'center' }}>
+            <Animated.View
+              style={{ opacity: isUnlockActive ? 0 : tagsOpacity }}
+              pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setShowTagModal(true);
+                }}
+                className="flex-row items-center justify-between rounded-2xl bg-light-border/30 px-6 py-4 active:opacity-80 dark:bg-gray-700">
+                <View className="flex-row items-center">
+                  <Typography variant="subtitle-16" color="primary">
+                    {availableTags.length === 0
+                      ? 'Create a new tag'
+                      : selectedTagName || 'Select a tag'}
                   </Typography>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    if (!canCreateTag) {
-                      setShowTagModal(false);
-                      setShowUpgradePrompt(true);
-                      return;
-                    }
-                    setShowNewTagModal(true);
-                  }}
-                  className="flex-1 bg-blue-600 rounded-2xl py-4 items-center active:opacity-80"
-                >
-                  <Typography variant="subtitle-16" color="white" className="font-semibold">
-                    New Tag
-                  </Typography>
-                </Pressable>
-              </View>
-            </View>
-            
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+                />
+              </Pressable>
+            </Animated.View>
           </View>
         </View>
 
-        {/* Tag Swipe Coach Mark */}
-        <CoachMark
-          targetRef={firstTagRef as React.RefObject<View>}
-          title="Manage your tags"
-          message="Hold to reorder, swipe to edit"
-          visible={showTagSwipeCoachMark && !preferences.hasSeenTagSwipeHint}
-          onDismiss={() => {
-            setShowTagSwipeCoachMark(false);
-            updatePreferences({ hasSeenTagSwipeHint: true });
-          }}
-        />
+        {/* Start/Stop Button - Fixed at bottom */}
+        <View className="px-4 pb-8">
+          <Pressable
+            onPress={handleStartFocus}
+            className="items-center rounded-2xl bg-white py-4 active:opacity-80 dark:bg-white"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}>
+            <Typography
+              variant="subtitle-16"
+              className="font-semibold"
+              style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}>
+              {isUnlockActive
+                ? 'Stop Unlocked'
+                : isSessionActive
+                  ? 'Stop Focus'
+                  : availableTags.length === 0
+                    ? 'Create Tag First'
+                    : 'Start Focus'}
+            </Typography>
+          </Pressable>
+          {isUnlockActive && (
+            <Typography variant="body-12" color="secondary" className="mt-3 text-center">
+              unused time will be returned as fruits
+            </Typography>
+          )}
+        </View>
 
-        {/* Edit Tag Overlay - covers entire screen including tag picker */}
-        {showEditTagModal && (
-          <View className="absolute inset-0 bg-black/50 justify-center items-center p-4">
-            <View className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-xs overflow-hidden">
-              {/* Edit Header */}
-              <View className="p-4 border-b border-light-border dark:border-gray-700">
-                <Typography variant="headline-18" color="primary">
-                  Edit Tag
+        {/* Tag Selection Modal */}
+        <Modal
+          visible={showTagModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            if (!showEditTagModal && !showDeleteModal && !showShareModal && !showNewTagModal)
+              setShowTagModal(false);
+          }}>
+          <View className="flex-1 items-center justify-center bg-black/50 px-4">
+            <Pressable
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              onPress={() => {
+                if (!showEditTagModal && !showDeleteModal && !showShareModal && !showNewTagModal)
+                  setShowTagModal(false);
+              }}
+            />
+            <View className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
+              {/* Modal Header */}
+              <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
+                <Typography variant="headline-20" color="primary">
+                  Select Focus
                 </Typography>
-              </View>
-
-              {/* Edit Form */}
-              <View className="p-4">
-                {/* Emoji + Name row */}
-                <View className="mb-4 flex-row items-center" style={{ gap: 12 }}>
-                  <Pressable
-                    onPress={handleEditTagEmojiPress}
-                    className="w-12 h-12 rounded-xl bg-gray-700 items-center justify-center border border-gray-500 active:opacity-80"
-                  >
-                    <Text className="text-2xl">{editTagEmoji || '🏷️'}</Text>
-                  </Pressable>
-                  <TextInput
-                    value={editTagName}
-                    onChangeText={setEditTagName}
-                    placeholder="Tag name"
-                    placeholderTextColor="#666"
-                    className="flex-1"
-                    style={{
-                      backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
-                      borderRadius: 12,
-                      padding: 14,
-                      fontSize: 16,
-                      color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
-                      borderWidth: 1,
-                      borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
-                    }}
+                <Pressable
+                  onPress={() => setShowTagModal(false)}
+                  className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700"
+                  hitSlop={8}>
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
                   />
-                </View>
-
-                {/* Color Selection */}
-                <View>
-                  <Typography variant="body-14" color="primary" className="mb-3">
-                    Color
-                  </Typography>
-                  <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                    <TagColorPicker selectedColor={editTagColor} onSelectColor={setEditTagColor} />
-                  </ScrollView>
-                </View>
+                </Pressable>
               </View>
 
-              {/* Action buttons */}
-              <View className="p-3 border-t border-light-border dark:border-gray-700 flex-row" style={{ gap: 8 }}>
-                <Pressable
-                  onPress={() => { setShowEditTagModal(false); setEditingTag(null); setShowEditEmojiGrid(false); }}
-                  className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
-                >
-                  <Typography variant="body-14" color="white">
-                    Cancel
-                  </Typography>
-                </Pressable>
-                <Pressable
-                  onPress={handleSaveEditTag}
-                  disabled={!editTagName.trim()}
-                  className={`flex-1 rounded-xl py-3 items-center ${editTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}
-                >
-                  <Typography variant="body-14" color="white" className="font-semibold">
-                    Save
-                  </Typography>
-                </Pressable>
+              {/* Tags List */}
+              <ScrollView className="p-4" style={{ maxHeight: 400 }} scrollEnabled={!isDragging}>
+                {orderedTags.length === 0 && (
+                  <View className="items-center px-2 py-6">
+                    <Typography
+                      variant="body-14"
+                      color="secondary"
+                      className="text-center leading-5">
+                      Create tags to categorize your focus sessions.{'\n'}
+                      e.g. Work, Reading, Exercise, Project X, Mindfulness Rest
+                    </Typography>
+                  </View>
+                )}
+                {orderedTags.map((tag, index) => (
+                  <View
+                    key={tag.id}
+                    ref={index === 0 ? firstTagRef : undefined}
+                    collapsable={false}>
+                    <DraggableTagRow
+                      tag={tag}
+                      index={index}
+                      selectedTag={selectedTag}
+                      lastDuration={lastDurationByTagId[tag.id] ?? 15}
+                      isDragging={isDragging}
+                      dragOriginalIndex={dragOriginalIdx}
+                      dragTargetIndex={dragTargetIdx}
+                      isChallenge={'isChallenge' in tag && tag.isChallenge === true}
+                      onSelect={handleTagSelect}
+                      onEdit={handleEditTag}
+                      onDelete={handleDeleteTag}
+                      onUnlink={handleUnlinkTag}
+                      onShare={handleShareTag}
+                      onSwipeOpen={handleSwipeOpen}
+                      onDragStart={handleDragStart}
+                      onDragMove={handleDragMove}
+                      onDragEnd={handleDragEnd}
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* New Tag & Join Tag Buttons */}
+              <View className="border-t border-light-border p-4 dark:border-gray-700">
+                <View className="flex-row gap-3">
+                  <Pressable
+                    onPress={() => {
+                      setShowTagModal(false);
+                      setShowJoinModal(true);
+                    }}
+                    className="flex-1 items-center rounded-2xl border border-blue-600 py-4 active:opacity-80">
+                    <Typography
+                      variant="subtitle-16"
+                      className="font-semibold"
+                      style={{ color: '#3B82F6' }}>
+                      Join Tag
+                    </Typography>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      if (!canCreateTag) {
+                        setShowTagModal(false);
+                        setShowUpgradePrompt(true);
+                        return;
+                      }
+                      setShowNewTagModal(true);
+                    }}
+                    className="flex-1 items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
+                    <Typography variant="subtitle-16" color="white" className="font-semibold">
+                      New Tag
+                    </Typography>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
-        )}
 
-        {/* Edit Tag — Emoji Picker Overlay (on top of the Edit Tag overlay) */}
-        {showEditTagModal && showEditEmojiGrid && (
-          <EmojiPickerOverlay
-            title="Choose Emoji for Tag"
-            onClose={() => setShowEditEmojiGrid(false)}
-            onEmojiSelect={(emoji) => {
-              setEditTagEmoji(emoji);
-              setShowEditEmojiGrid(false);
+          {/* Tag Swipe Coach Mark */}
+          <CoachMark
+            targetRef={firstTagRef as React.RefObject<View>}
+            title="Manage your tags"
+            message="Hold to reorder, swipe to edit"
+            visible={showTagSwipeCoachMark && !preferences.hasSeenTagSwipeHint}
+            onDismiss={() => {
+              setShowTagSwipeCoachMark(false);
+              updatePreferences({ hasSeenTagSwipeHint: true });
             }}
           />
-        )}
 
-        {/* Delete Confirmation Popup - covers entire screen including tag picker */}
-        {showDeleteModal && (
-          <View className="absolute inset-0 bg-black/50 justify-center items-center p-4">
-            <Pressable className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-xs">
-              {tagToDelete && tagDeletionBlockReason(tagToDelete) ? (
-                <>
-                  {/* Cannot Delete Header */}
-                  <View className="p-4 border-b border-light-border dark:border-gray-700">
-                    <Typography variant="headline-18" color="primary" className="text-center">
-                      Cannot Delete Tag
-                    </Typography>
-                  </View>
+          {/* Edit Tag Overlay - covers entire screen including tag picker */}
+          {showEditTagModal && (
+            <View className="absolute inset-0 items-center justify-center bg-black/50 p-4">
+              <View className="w-full max-w-xs overflow-hidden rounded-2xl bg-light-bg dark:bg-dark-bg">
+                {/* Edit Header */}
+                <View className="border-b border-light-border p-4 dark:border-gray-700">
+                  <Typography variant="headline-18" color="primary">
+                    Edit Tag
+                  </Typography>
+                </View>
 
-                  {/* Explanation */}
-                  <View className="p-4">
-                    <Typography variant="body-14" color="primary" className="leading-5">
-                      {tagDeletionBlockReason(tagToDelete)}
-                    </Typography>
-                  </View>
-
-                  {/* OK button */}
-                  <View className="p-3 border-t border-light-border dark:border-gray-700">
+                {/* Edit Form */}
+                <View className="p-4">
+                  {/* Emoji + Name row */}
+                  <View className="mb-4 flex-row items-center" style={{ gap: 12 }}>
                     <Pressable
-                      onPress={handleCancelDelete}
-                      className="w-full bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
-                    >
-                      <Typography variant="body-14" color="white">
-                        OK
+                      onPress={handleEditTagEmojiPress}
+                      className="h-12 w-12 items-center justify-center rounded-xl border border-gray-500 bg-gray-700 active:opacity-80">
+                      <Text className="text-2xl">{editTagEmoji || '🏷️'}</Text>
+                    </Pressable>
+                    <TextInput
+                      value={editTagName}
+                      onChangeText={setEditTagName}
+                      placeholder="Tag name"
+                      placeholderTextColor="#666"
+                      className="flex-1"
+                      style={{
+                        backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                        borderRadius: 12,
+                        padding: 14,
+                        fontSize: 16,
+                        color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                        borderWidth: 1,
+                        borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                      }}
+                    />
+                  </View>
+
+                  {/* Color Selection */}
+                  <View>
+                    <Typography variant="body-14" color="primary" className="mb-3">
+                      Color
+                    </Typography>
+                    <ScrollView
+                      style={{ maxHeight: 240 }}
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator={false}>
+                      <TagColorPicker
+                        selectedColor={editTagColor}
+                        onSelectColor={setEditTagColor}
+                      />
+                    </ScrollView>
+                  </View>
+
+                  {/* Activity type (optional) — improves focus-rating accuracy */}
+                  <View className="mt-4">
+                    <Typography variant="body-14" color="primary" className="mb-1">
+                      Activity type (optional)
+                    </Typography>
+                    <Typography variant="body-12" color="secondary" className="mb-3">
+                      Helps suggest a focus rating from your motion.
+                    </Typography>
+                    <ActivityTypePicker
+                      value={editTagActivityType}
+                      onChange={(v) => {
+                        editTagActivityTouched.current = true;
+                        setEditTagActivityType(v);
+                      }}
+                    />
+                    {editTagActivityType && !editTagActivityTouched.current && (
+                      <Typography variant="body-12" color="secondary" className="mt-2">
+                        ✨ Suggested from name — tap to change
                       </Typography>
+                    )}
+                  </View>
+                </View>
+
+                {/* Action buttons */}
+                <View
+                  className="flex-row border-t border-light-border p-3 dark:border-gray-700"
+                  style={{ gap: 8 }}>
+                  <Pressable
+                    onPress={() => {
+                      setShowEditTagModal(false);
+                      setEditingTag(null);
+                      setShowEditEmojiGrid(false);
+                    }}
+                    className="flex-1 items-center rounded-xl bg-gray-600 py-3 active:opacity-80">
+                    <Typography variant="body-14" color="white">
+                      Cancel
+                    </Typography>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleSaveEditTag}
+                    disabled={!editTagName.trim()}
+                    className={`flex-1 items-center rounded-xl py-3 ${editTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}>
+                    <Typography variant="body-14" color="white" className="font-semibold">
+                      Save
+                    </Typography>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Edit Tag — Emoji Picker Overlay (on top of the Edit Tag overlay) */}
+          {showEditTagModal && showEditEmojiGrid && (
+            <EmojiPickerOverlay
+              title="Choose Emoji for Tag"
+              onClose={() => setShowEditEmojiGrid(false)}
+              onEmojiSelect={(emoji) => {
+                setEditTagEmoji(emoji);
+                setShowEditEmojiGrid(false);
+              }}
+            />
+          )}
+
+          {/* Delete Confirmation Popup - covers entire screen including tag picker */}
+          {showDeleteModal && (
+            <View className="absolute inset-0 items-center justify-center bg-black/50 p-4">
+              <Pressable className="w-full max-w-xs rounded-2xl bg-light-bg dark:bg-dark-bg">
+                {tagToDelete && tagDeletionBlockReason(tagToDelete) ? (
+                  <>
+                    {/* Cannot Delete Header */}
+                    <View className="border-b border-light-border p-4 dark:border-gray-700">
+                      <Typography variant="headline-18" color="primary" className="text-center">
+                        Cannot Delete Tag
+                      </Typography>
+                    </View>
+
+                    {/* Explanation */}
+                    <View className="p-4">
+                      <Typography variant="body-14" color="primary" className="leading-5">
+                        {tagDeletionBlockReason(tagToDelete)}
+                      </Typography>
+                    </View>
+
+                    {/* OK button */}
+                    <View className="border-t border-light-border p-3 dark:border-gray-700">
+                      <Pressable
+                        onPress={handleCancelDelete}
+                        className="w-full items-center rounded-xl bg-gray-600 py-3 active:opacity-80">
+                        <Typography variant="body-14" color="white">
+                          OK
+                        </Typography>
+                      </Pressable>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    {/* Delete Popup Header */}
+                    <View className="border-b border-light-border p-4 dark:border-gray-700">
+                      <Typography variant="headline-18" color="primary" className="text-center">
+                        Delete Tag
+                      </Typography>
+                    </View>
+
+                    {/* Warning content */}
+                    <View className="p-4">
+                      <Typography variant="body-14" color="primary" className="leading-5">
+                        Are you sure you want to delete{' '}
+                        {tagToDelete?.name ? `"${tagToDelete.name}"` : 'this tag'}? Existing focus
+                        sessions will be kept.
+                      </Typography>
+                    </View>
+
+                    {/* Action buttons */}
+                    <View
+                      className="flex-row border-t border-light-border p-3 dark:border-gray-700"
+                      style={{ gap: 8 }}>
+                      <Pressable
+                        onPress={handleCancelDelete}
+                        className="flex-1 items-center rounded-xl bg-gray-600 py-3 active:opacity-80">
+                        <Typography variant="body-14" color="white">
+                          Cancel
+                        </Typography>
+                      </Pressable>
+                      <Pressable
+                        onPress={handleConfirmDelete}
+                        className="flex-1 items-center rounded-xl bg-red-600 py-3 active:opacity-80">
+                        <Typography variant="body-14" color="white" className="font-semibold">
+                          Delete
+                        </Typography>
+                      </Pressable>
+                    </View>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          )}
+
+          {/* Share Tag Overlay - covers entire screen including tag picker */}
+          {showShareModal && sharingTag && (
+            <ShareTagOverlay
+              tag={sharingTag}
+              onClose={() => {
+                setShowShareModal(false);
+                setSharingTag(null);
+              }}
+              onShareTag={shareTag}
+              onStopSharing={stopSharingTag}
+            />
+          )}
+
+          {/* New Tag Creation Overlay - covers entire screen including tag picker */}
+          {showNewTagModal && (
+            <KeyboardAvoidingView
+              className="absolute inset-0"
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+              <Pressable
+                className="flex-1 items-center justify-center bg-black/50 px-4"
+                onPress={() => {
+                  setShowNewTagModal(false);
+                  setNewTagName('');
+                  setNewTagEmoji('');
+                  setNewTagColor('#6592E9');
+                }}>
+                <Pressable
+                  onPress={() => {}}
+                  className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
+                  {/* Modal Header */}
+                  <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
+                    <Typography variant="headline-20" color="primary">
+                      Create New Tag
+                    </Typography>
+                    <Pressable
+                      onPress={() => {
+                        setShowNewTagModal(false);
+                        setNewTagName('');
+                        setNewTagEmoji('');
+                        setNewTagColor('#6592E9');
+                      }}
+                      className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700">
+                      <Ionicons
+                        name="close"
+                        size={20}
+                        color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+                      />
                     </Pressable>
                   </View>
-                </>
-              ) : (
-                <>
-                  {/* Delete Popup Header */}
-                  <View className="p-4 border-b border-light-border dark:border-gray-700">
-                    <Typography variant="headline-18" color="primary" className="text-center">
-                      Delete Tag
-                    </Typography>
+
+                  {/* New Tag Form */}
+                  <View className="p-6">
+                    {/* Emoji + Name row */}
+                    <View className="mb-6 flex-row items-center" style={{ gap: 12 }}>
+                      <Pressable
+                        onPress={handleNewTagEmojiPress}
+                        className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-gray-500 dark:bg-gray-700">
+                        {newTagEmoji ? (
+                          <Text className="text-2xl">{newTagEmoji}</Text>
+                        ) : (
+                          <Ionicons name="happy-outline" size={24} color="#6592E9" />
+                        )}
+                      </Pressable>
+                      <TextInput
+                        value={newTagName}
+                        onChangeText={setNewTagName}
+                        placeholder="Tag name"
+                        placeholderTextColor="#666"
+                        className="flex-1"
+                        style={{
+                          backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                          borderRadius: 12,
+                          padding: 14,
+                          fontSize: 16,
+                          color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                          borderWidth: 1,
+                          borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                        }}
+                        autoFocus={true}
+                      />
+                    </View>
+
+                    {/* Color Selection */}
+                    <View>
+                      <Typography variant="body-14" color="primary" className="mb-3">
+                        Color
+                      </Typography>
+                      <ScrollView
+                        style={{ maxHeight: 240 }}
+                        nestedScrollEnabled
+                        showsVerticalScrollIndicator={false}>
+                        <TagColorPicker
+                          selectedColor={newTagColor}
+                          onSelectColor={setNewTagColor}
+                        />
+                      </ScrollView>
+                    </View>
+
+                    {/* Activity type (optional) — improves focus-rating accuracy */}
+                    <View className="mt-4">
+                      <Typography variant="body-14" color="primary" className="mb-1">
+                        Activity type (optional)
+                      </Typography>
+                      <Typography variant="body-12" color="secondary" className="mb-3">
+                        Helps suggest a focus rating from your motion.
+                      </Typography>
+                      <ActivityTypePicker
+                        value={newTagActivityType}
+                        onChange={(v) => {
+                          newTagActivityTouched.current = true;
+                          setNewTagActivityType(v);
+                        }}
+                      />
+                      {newTagActivityType && !newTagActivityTouched.current && (
+                        <Typography variant="body-12" color="secondary" className="mt-2">
+                          ✨ Suggested from name — tap to change
+                        </Typography>
+                      )}
+                    </View>
                   </View>
 
-                  {/* Warning content */}
-                  <View className="p-4">
-                    <Typography variant="body-14" color="primary" className="leading-5">
-                      Are you sure you want to delete {tagToDelete?.name ? `"${tagToDelete.name}"` : 'this tag'}? Existing focus sessions will be kept.
-                    </Typography>
-                  </View>
-
-                  {/* Action buttons */}
-                  <View className="p-3 border-t border-light-border dark:border-gray-700 flex-row" style={{ gap: 8 }}>
+                  {/* Action Buttons */}
+                  <View
+                    className="flex-row border-t border-light-border p-4 dark:border-gray-700"
+                    style={{ gap: 12 }}>
                     <Pressable
-                      onPress={handleCancelDelete}
-                      className="flex-1 bg-gray-600 rounded-xl py-3 items-center active:opacity-80"
-                    >
-                      <Typography variant="body-14" color="white">
+                      onPress={() => {
+                        setShowNewTagModal(false);
+                        setNewTagName('');
+                        setNewTagEmoji('');
+                        setNewTagColor('#6592E9');
+                      }}
+                      className="flex-1 items-center rounded-2xl bg-gray-600 py-4 active:opacity-80">
+                      <Typography variant="subtitle-16" color="white">
                         Cancel
                       </Typography>
                     </Pressable>
                     <Pressable
-                      onPress={handleConfirmDelete}
-                      className="flex-1 rounded-xl py-3 items-center bg-red-600 active:opacity-80"
-                    >
-                      <Typography variant="body-14" color="white" className="font-semibold">
-                        Delete
+                      onPress={handleCreateNewTag}
+                      disabled={!newTagName.trim() || !newTagEmoji}
+                      className={`flex-1 items-center rounded-2xl py-4 ${
+                        newTagName.trim() && newTagEmoji
+                          ? 'bg-blue-600 active:opacity-80'
+                          : 'bg-gray-500 opacity-50'
+                      }`}>
+                      <Typography variant="subtitle-16" color="white" className="font-semibold">
+                        Create Tag
                       </Typography>
                     </Pressable>
                   </View>
-                </>
-              )}
-            </Pressable>
-          </View>
-        )}
+                </Pressable>
+              </Pressable>
+            </KeyboardAvoidingView>
+          )}
 
-        {/* Share Tag Overlay - covers entire screen including tag picker */}
-        {showShareModal && sharingTag && (
-          <ShareTagOverlay
-            tag={sharingTag}
-            onClose={() => { setShowShareModal(false); setSharingTag(null); }}
-            onShareTag={shareTag}
-            onStopSharing={stopSharingTag}
-          />
-        )}
+          {/* New Tag — Emoji Picker Overlay (on top of the New Tag overlay) */}
+          {showNewTagModal && showEmojiPicker && (
+            <EmojiPickerOverlay
+              title="Choose Emoji for New Tag"
+              onClose={() => setShowEmojiPicker(false)}
+              onEmojiSelect={handleEmojiSelect}
+            />
+          )}
+        </Modal>
 
-        {/* New Tag Creation Overlay - covers entire screen including tag picker */}
-        {showNewTagModal && (
-        <KeyboardAvoidingView
-          className="absolute inset-0"
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+        {/* Blocklist Tip Modal */}
+        <Modal
+          visible={showBlocklistTip}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowBlocklistTip(false)}>
           <Pressable
-            className="flex-1 bg-black/50 justify-center items-center px-4"
-            onPress={() => {
-              setShowNewTagModal(false);
-              setNewTagName('');
-              setNewTagEmoji('');
-              setNewTagColor('#6592E9');
-            }}
-          >
-            <Pressable onPress={() => {}} className="bg-light-bg dark:bg-dark-bg rounded-3xl w-full max-w-sm overflow-hidden">
-              {/* Modal Header */}
-              <View className="flex-row items-center justify-between p-6 border-b border-light-border dark:border-gray-700">
-                <Typography variant="headline-20" color="primary">
-                  Create New Tag
-                </Typography>
+            className="flex-1 items-center justify-center bg-black/50 px-6"
+            onPress={() => setShowBlocklistTip(false)}>
+            <Pressable
+              onPress={() => {}}
+              className="w-full max-w-sm overflow-hidden rounded-2xl bg-light-bg p-6 dark:bg-dark-bg">
+              <Text
+                style={{
+                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  fontSize: 17,
+                  fontWeight: '600',
+                  marginBottom: 12,
+                }}>
+                Block List
+              </Text>
+              <Text
+                style={{
+                  color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355',
+                  fontSize: 14,
+                  lineHeight: 20,
+                  marginBottom: 24,
+                }}>
+                This is where you add apps that are unnecessary for achieving your goals and also
+                distracting.{'\n\n'}Your first setup is free. After that, each edit costs fruits —
+                starting at 1 and doubling each time, resetting weekly.
+              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
                 <Pressable
-                  onPress={() => {
-                    setShowNewTagModal(false);
-                    setNewTagName('');
-                    setNewTagEmoji('');
-                    setNewTagColor('#6592E9');
-                  }}
-                  className="w-8 h-8 rounded-full bg-light-border/50 dark:bg-gray-700 items-center justify-center"
-                >
-                  <Ionicons name="close" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
-                </Pressable>
-              </View>
-
-              {/* New Tag Form */}
-              <View className="p-6">
-                {/* Emoji + Name row */}
-                <View className="mb-6 flex-row items-center" style={{ gap: 12 }}>
-                  <Pressable
-                    onPress={handleNewTagEmojiPress}
-                    className="w-12 h-12 rounded-xl bg-light-border/30 dark:bg-gray-700 items-center justify-center border border-light-border dark:border-gray-500 active:opacity-80"
-                  >
-                    {newTagEmoji ? (
-                      <Text className="text-2xl">{newTagEmoji}</Text>
-                    ) : (
-                      <Ionicons name="happy-outline" size={24} color="#6592E9" />
-                    )}
-                  </Pressable>
-                  <TextInput
-                    value={newTagName}
-                    onChangeText={setNewTagName}
-                    placeholder="Tag name"
-                    placeholderTextColor="#666"
-                    className="flex-1"
+                  onPress={() => setShowBlocklistTip(false)}
+                  style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
+                  <Text
                     style={{
-                      backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
-                      borderRadius: 12,
-                      padding: 14,
-                      fontSize: 16,
-                      color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
-                      borderWidth: 1,
-                      borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
-                    }}
-                    autoFocus={true}
-                  />
-                </View>
-
-                {/* Color Selection */}
-                <View>
-                  <Typography variant="body-14" color="primary" className="mb-3">
-                    Color
-                  </Typography>
-                  <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                    <TagColorPicker selectedColor={newTagColor} onSelectColor={setNewTagColor} />
-                  </ScrollView>
-                </View>
-              </View>
-
-              {/* Action Buttons */}
-              <View className="p-4 border-t border-light-border dark:border-gray-700 flex-row" style={{ gap: 12 }}>
-                <Pressable
-                  onPress={() => {
-                    setShowNewTagModal(false);
-                    setNewTagName('');
-                    setNewTagEmoji('');
-                    setNewTagColor('#6592E9');
-                  }}
-                  className="flex-1 bg-gray-600 rounded-2xl py-4 items-center active:opacity-80"
-                >
-                  <Typography variant="subtitle-16" color="white">
+                      color: colorScheme === 'dark' ? '#888888' : '#8B7355',
+                      fontSize: 15,
+                      fontWeight: '500',
+                    }}>
                     Cancel
-                  </Typography>
+                  </Text>
                 </Pressable>
                 <Pressable
-                  onPress={handleCreateNewTag}
-                  disabled={!newTagName.trim() || !newTagEmoji}
-                  className={`flex-1 rounded-2xl py-4 items-center ${newTagName.trim() && newTagEmoji ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'
-                    }`}
-                >
-                  <Typography variant="subtitle-16" color="white" className="font-semibold">
-                    Create Tag
-                  </Typography>
+                  onPress={handleBlocklistTipUnderstood}
+                  style={{
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    backgroundColor: '#6592E9',
+                  }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
+                    Understood
+                  </Text>
                 </Pressable>
               </View>
             </Pressable>
           </Pressable>
-        </KeyboardAvoidingView>
-        )}
+        </Modal>
 
-        {/* New Tag — Emoji Picker Overlay (on top of the New Tag overlay) */}
-        {showNewTagModal && showEmojiPicker && (
-          <EmojiPickerOverlay
-            title="Choose Emoji for New Tag"
-            onClose={() => setShowEmojiPicker(false)}
-            onEmojiSelect={handleEmojiSelect}
-          />
-        )}
-      </Modal>
-
-      {/* Blocklist Tip Modal */}
-      <Modal
-        visible={showBlocklistTip}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowBlocklistTip(false)}
-      >
-        <Pressable
-          className="flex-1 bg-black/50 justify-center items-center px-6"
-          onPress={() => setShowBlocklistTip(false)}
-        >
-          <Pressable onPress={() => {}} className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-sm overflow-hidden p-6">
-            <Text style={{ color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37', fontSize: 17, fontWeight: '600', marginBottom: 12 }}>
-              Block List
-            </Text>
-            <Text style={{ color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355', fontSize: 14, lineHeight: 20, marginBottom: 24 }}>
-              This is where you add apps that are unnecessary for achieving your goals and also distracting.{'\n\n'}Your first setup is free. After that, each edit costs fruits — starting at 1 and doubling each time, resetting weekly.
-            </Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-              <Pressable
-                onPress={() => setShowBlocklistTip(false)}
-                style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
-              >
-                <Text style={{ color: colorScheme === 'dark' ? '#888888' : '#8B7355', fontSize: 15, fontWeight: '500' }}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleBlocklistTipUnderstood}
-                style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, backgroundColor: '#6592E9' }}
-              >
-                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Understood</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* Edit Cost Confirmation Modal */}
-      <Modal
-        visible={showEditCostModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowEditCostModal(false)}
-      >
-        <Pressable
-          className="flex-1 bg-black/50 justify-center items-center px-6"
-          onPress={() => setShowEditCostModal(false)}
-        >
-          <Pressable onPress={() => {}} className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-sm overflow-hidden p-6">
-            <Text style={{ color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37', fontSize: 17, fontWeight: '600', marginBottom: 12 }}>
-              Edit Block List
-            </Text>
-            <Text style={{ color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355', fontSize: 14, lineHeight: 20, marginBottom: 15 }}>
-              Editing the blocklist is a thoughtful process. The cost starts at 1 fruit and doubles with each edit, resetting weekly.
-            </Text>
-            <Text style={{ color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37', fontSize: 15, fontWeight: '500', marginBottom: 15 }}>
-              This edit will cost {blocklistEditCost.cost} 🍎
-            </Text>
-            {!blocklistEditCost.canAfford && (
-              <Text style={{ color: '#E57373', fontSize: 13, marginBottom: 24 }}>
-                {"You don't have enough fruits. Focus more to earn!"}
-              </Text>
-            )}
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-              <Pressable
-                onPress={() => setShowEditCostModal(false)}
-                style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
-              >
-                <Text style={{ color: colorScheme === 'dark' ? '#888888' : '#8B7355', fontSize: 15, fontWeight: '500' }}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                onPress={async () => {
-                  setShowEditCostModal(false);
-                  await proceedToBlockList();
-                }}
-                disabled={!blocklistEditCost.canAfford}
+        {/* Edit Cost Confirmation Modal */}
+        <Modal
+          visible={showEditCostModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowEditCostModal(false)}>
+          <Pressable
+            className="flex-1 items-center justify-center bg-black/50 px-6"
+            onPress={() => setShowEditCostModal(false)}>
+            <Pressable
+              onPress={() => {}}
+              className="w-full max-w-sm overflow-hidden rounded-2xl bg-light-bg p-6 dark:bg-dark-bg">
+              <Text
                 style={{
-                  paddingHorizontal: 20,
-                  paddingVertical: 10,
-                  borderRadius: 8,
-                  backgroundColor: '#6592E9',
-                  opacity: blocklistEditCost.canAfford ? 1 : 0.5,
-                }}
-              >
-                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Confirm</Text>
-              </Pressable>
-            </View>
+                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  fontSize: 17,
+                  fontWeight: '600',
+                  marginBottom: 12,
+                }}>
+                Edit Block List
+              </Text>
+              <Text
+                style={{
+                  color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355',
+                  fontSize: 14,
+                  lineHeight: 20,
+                  marginBottom: 15,
+                }}>
+                Editing the blocklist is a thoughtful process. The cost starts at 1 fruit and
+                doubles with each edit, resetting weekly.
+              </Text>
+              <Text
+                style={{
+                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  fontSize: 15,
+                  fontWeight: '500',
+                  marginBottom: 15,
+                }}>
+                This edit will cost {blocklistEditCost.cost} 🍎
+              </Text>
+              {!blocklistEditCost.canAfford && (
+                <Text style={{ color: '#E57373', fontSize: 13, marginBottom: 24 }}>
+                  {"You don't have enough fruits. Focus more to earn!"}
+                </Text>
+              )}
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+                <Pressable
+                  onPress={() => setShowEditCostModal(false)}
+                  style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
+                  <Text
+                    style={{
+                      color: colorScheme === 'dark' ? '#888888' : '#8B7355',
+                      fontSize: 15,
+                      fontWeight: '500',
+                    }}>
+                    Cancel
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={async () => {
+                    setShowEditCostModal(false);
+                    await proceedToBlockList();
+                  }}
+                  disabled={!blocklistEditCost.canAfford}
+                  style={{
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    backgroundColor: '#6592E9',
+                    opacity: blocklistEditCost.canAfford ? 1 : 0.5,
+                  }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Confirm</Text>
+                </Pressable>
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
-      </Modal>
+        </Modal>
 
-      <UpgradePrompt
-        isVisible={showUpgradePrompt}
-        onClose={() => setShowUpgradePrompt(false)}
-        onUpgrade={() => setShowUpgradeSheet(true)}
-        limitType="tags"
-      />
+        <UpgradePrompt
+          isVisible={showUpgradePrompt}
+          onClose={() => setShowUpgradePrompt(false)}
+          onUpgrade={() => setShowUpgradeSheet(true)}
+          limitType="tags"
+        />
 
-      <UpgradeSheet
-        isVisible={showUpgradeSheet}
-        onClose={() => setShowUpgradeSheet(false)}
-      />
+        <UpgradeSheet isVisible={showUpgradeSheet} onClose={() => setShowUpgradeSheet(false)} />
 
-      {/* Join Tag — step 1: enter + resolve the share code */}
-      <JoinTagModal
-        visible={showJoinModal}
-        onClose={() => setShowJoinModal(false)}
-        onResolve={resolveSharedTagCode}
-        onResolved={(result) => {
-          setShowJoinModal(false);
-          setResolvedSharedTag(result);
-        }}
-      />
+        {/* Join Tag — step 1: enter + resolve the share code */}
+        <JoinTagModal
+          visible={showJoinModal}
+          onClose={() => setShowJoinModal(false)}
+          onResolve={resolveSharedTagCode}
+          onResolved={(result) => {
+            setShowJoinModal(false);
+            setResolvedSharedTag(result);
+          }}
+        />
 
-      {/* Join Tag — step 2: map onto an existing tag or clone a new one */}
-      <JoinSharedTagSheet
-        resolved={resolvedSharedTag}
-        isVisible={!!resolvedSharedTag}
-        onClose={() => setResolvedSharedTag(null)}
-      />
-
-    </SwipeableTabWrapper>
+        {/* Join Tag — step 2: map onto an existing tag or clone a new one */}
+        <JoinSharedTagSheet
+          resolved={resolvedSharedTag}
+          isVisible={!!resolvedSharedTag}
+          onClose={() => setResolvedSharedTag(null)}
+        />
+      </SwipeableTabWrapper>
     </SafeAreaView>
   );
 }

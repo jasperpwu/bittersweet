@@ -1,3 +1,5 @@
+import type { ActivityType, RatingSource, MotionSnapshot } from '../utils/focusRating';
+
 // App Settings Types
 export interface AppPreferences {
   theme: 'light' | 'dark' | 'system';
@@ -35,6 +37,13 @@ export interface FocusSession {
   isManualEntry?: boolean; // Whether the session was added manually without timer
   accelerateMultiplier?: number; // Multiplier applied when fruits were earned (1 = normal, 2 = accelerate active)
 
+  // Motion-based focus rating
+  focusRating?: number; // 1–5, suggested from motion or set by the user
+  ratingSource?: RatingSource; // who set focusRating
+  baseFruits?: number; // fruits earned before the rating discount
+  awardedFruits?: number; // fruits actually credited after the rating discount
+  motionSummary?: MotionSnapshot; // on-device motion estimate, for the insights sheet
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -56,6 +65,9 @@ export interface SessionTag {
   sharedFromTagId?: string; // Set on joiner's tag, references owner's tag ID
   sharedFromUserId?: string; // Set on joiner's tag, references owner's user ID
   sharedOwnerName?: string; // Cached owner display name on joiner's tag
+
+  // Optional hint for motion-based focus rating. Unset is treated as 'stationary'.
+  activityType?: ActivityType;
 }
 
 // Analytics Types

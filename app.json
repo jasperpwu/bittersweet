@@ -44,22 +44,31 @@
       "expo-iap",
       "./plugins/withFmtFix",
       "./plugins/withHomeWidget",
-      ["expo-build-properties", {
-        "ios": { "deploymentTarget": "18.0" }
-      }],
-      ["crisp-sdk-react-native", {
-        "websiteId": "cd116fcd-5d88-476c-8051-06566eea723a"
-      }],
-      ["expo-quick-actions", {
-        "iosActions": [
-          {
-            "id": "contact-developer",
-            "title": "👋 Contact developer",
-            "subtitle": "We are here to help!",
-            "icon": "symbol:message.fill"
-          }
-        ]
-      }],
+      [
+        "expo-build-properties",
+        {
+          "ios": { "deploymentTarget": "18.0" }
+        }
+      ],
+      [
+        "crisp-sdk-react-native",
+        {
+          "websiteId": "cd116fcd-5d88-476c-8051-06566eea723a"
+        }
+      ],
+      [
+        "expo-quick-actions",
+        {
+          "iosActions": [
+            {
+              "id": "contact-developer",
+              "title": "👋 Contact developer",
+              "subtitle": "We are here to help!",
+              "icon": "symbol:message.fill"
+            }
+          ]
+        }
+      ],
       "./plugins/withDeviceOrientations"
     ],
     "experiments": {
@@ -74,9 +83,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#F5E6D3"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "requireFullScreen": true,
@@ -97,6 +104,7 @@
         "NSFamilyControlsUsageDescription": "This app uses Family Controls to help you manage app usage and focus time by blocking selected apps during work sessions.",
         "NSPhotoLibraryUsageDescription": "Bittersweet uses your photo library to let you attach photos to focus session summaries.",
         "NSCameraUsageDescription": "Bittersweet uses the camera to let you take photos for focus session summaries.",
+        "NSMotionUsageDescription": "Bittersweet reads motion activity to estimate how focused a session was and suggest a rating.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true
       }
