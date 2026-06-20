@@ -5,6 +5,7 @@ import {
   tagToRow,
   goalToRow,
   badgeToRow,
+  mergeSetupTasks,
 } from '../../services/sync/SyncMapper';
 import { supabase } from '../../config/supabase';
 import { syncQueue } from '../../services/sync/SyncQueue';
@@ -97,6 +98,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           balance: state.rewards.balance,
           totalEarned: state.rewards.totalEarned,
           totalSpent: state.rewards.totalSpent,
+          tasks: state.rewards.tasks,
           updatedAt: state.rewards.updatedAt,
         },
         settings: localPrefs ? {
@@ -140,6 +142,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           balance: merged.rewards.balance,
           totalEarned: merged.rewards.totalEarned,
           totalSpent: merged.rewards.totalSpent,
+          tasks: merged.rewards.tasks,
         },
         // Referral: LWW — remote always has authoritative count from DB
         referral: {
@@ -292,6 +295,9 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           balance: remoteData.rewards.balance,
           totalEarned: remoteData.rewards.totalEarned,
           totalSpent: remoteData.rewards.totalSpent,
+          // Cloud-wins on aggregates, but OR-merge tasks so a locally-detected setup
+          // isn't erased by a stale cloud row.
+          tasks: mergeSetupTasks(s.rewards.tasks, remoteData.rewards.tasks),
           updatedAt: remoteData.rewards.updatedAt,
         },
         referral: {

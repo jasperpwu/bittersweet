@@ -18,6 +18,8 @@ import {
   rowToReferral,
   normalizedToRows,
   rowsToNormalized,
+  defaultSetupTasks,
+  mergeSetupTasks,
 } from './SyncMapper';
 
 const BATCH_SIZE = 100;
@@ -163,7 +165,7 @@ export class SyncService {
     const badges = rowsToNormalized(badgesRes.data ?? [], rowToBadge);
     const rewards = rewardsRes.data
       ? rowToRewards(rewardsRes.data)
-      : { balance: 0, totalEarned: 0, totalSpent: 0 };
+      : { balance: 0, totalEarned: 0, totalSpent: 0, tasks: defaultSetupTasks() };
     const settings = settingsRes.data
       ? rowToSettings(settingsRes.data)
       : null;
@@ -238,6 +240,9 @@ export class SyncService {
             ? { balance: local.rewards.balance, totalEarned: local.rewards.totalEarned, totalSpent: local.rewards.totalSpent, updatedAt: local.rewards.updatedAt }
             : { balance: remote.rewards.balance, totalEarned: remote.rewards.totalEarned, totalSpent: remote.rewards.totalSpent, updatedAt: remote.rewards.updatedAt }
         ),
+        // Setup tasks are monotonic — OR-merge so a claim/setup on either side is never
+        // lost to LWW (e.g. local just detected widget setup while remote already claimed).
+        tasks: mergeSetupTasks(local.rewards?.tasks, remote.rewards?.tasks),
       },
       settings: mergedSettings,
     };

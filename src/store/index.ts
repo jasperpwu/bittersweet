@@ -22,7 +22,7 @@ import { SharedTagService } from '../services/sharedTag/SharedTagService';
 import type { SharedTagResolveResult } from '../services/sharedTag/types';
 import { AnalyticsTracker } from '../services/analytics';
 import { SyncService } from '../services/sync/SyncService';
-import { sessionToRow, tagToRow } from '../services/sync/SyncMapper';
+import { sessionToRow, tagToRow, defaultSetupTasks, normalizeSetupTasks, SETUP_TASK_REWARD, type SetupTaskId, type SetupTasks } from '../services/sync/SyncMapper';
 
 interface AppStore {
   // Focus sessions and tags
@@ -172,13 +172,26 @@ interface AppStore {
     balance: number;
     totalEarned: number;
     totalSpent: number;
+    updatedAt: string | null;
     unlockableApps: any[];
     accelerateCard: { activatedAt: string; expiresAt: string } | null;
+    // One-time setup tasks (set up widget / set a goal), each worth SETUP_TASK_REWARD fruits.
+    tasks: SetupTasks;
     earnFruits: (amount: number, source: string, metadata?: any) => void;
     spendFruits: (amount: number, purpose: string, metadata?: any) => void;
     unlockApp: (appId: string) => Promise<boolean>;
     activateAccelerateCard: () => void;
     isAccelerateActive: () => boolean;
+    // Mark a setup task's prerequisite as satisfied (sticky). Does NOT award fruits and
+    // does NOT bump updatedAt (see claimTask / sync notes).
+    markTaskSetup: (taskId: SetupTaskId) => void;
+    // Backfill everSetup from current live state (existing users with an active goal /
+    // installed widget can claim right away). Widget detection is async and lives in the
+    // layout; this covers the goal side from the store.
+    reconcileSetupTasks: () => void;
+    // Award SETUP_TASK_REWARD fruits for a set-up-but-unclaimed task. Returns false if
+    // not eligible (not set up yet, or already claimed).
+    claimTask: (taskId: SetupTaskId) => boolean;
   };
 
   // Auth
@@ -881,6 +894,8 @@ export const useAppStore = create<AppStore>()(
               { active_period: goal?.activePeriod, tag_id: goal?.tagId },
               { setOnce: { has_set_goal: true } }
             );
+            // Activating a goal is the "set up goals" signal — unlock its setup-task claim.
+            get().rewards.markTaskSetup('goal');
           }
         },
         
@@ -1550,6 +1565,7 @@ export const useAppStore = create<AppStore>()(
         updatedAt: null as string | null,
         unlockableApps: [],
         accelerateCard: null,
+        tasks: defaultSetupTasks(),
         earnFruits: (amount, source, metadata) => {
           set((state) => ({
             rewards: {
@@ -1652,6 +1668,54 @@ export const useAppStore = create<AppStore>()(
           const card = get().rewards.accelerateCard;
           if (!card) return false;
           return new Date(card.expiresAt) > new Date();
+        },
+
+        markTaskSetup: (taskId) => {
+          const task = get().rewards.tasks?.[taskId];
+          if (task?.everSetup) return; // already sticky-set, nothing to do
+          set((state) => ({
+            rewards: {
+              ...state.rewards,
+              // Note: intentionally NOT bumping updatedAt. updatedAt governs the
+              // last-write-wins of the balance aggregate; bumping it here (e.g. widget
+              // detection racing a cold-start merge on a fresh reinstall) could let a
+              // stale local balance:0 win and wipe the user's fruits. everSetup is
+              // monotonic and OR-merged in sync, so it rides the next real rewards push.
+              tasks: {
+                ...normalizeSetupTasks(state.rewards.tasks),
+                [taskId]: { ...normalizeSetupTasks(state.rewards.tasks)[taskId], everSetup: true },
+              },
+            },
+          }));
+          console.log('🎁 Setup task available to claim:', taskId);
+        },
+
+        reconcileSetupTasks: () => {
+          // Goal task: existing users with any active goal have "set up goals".
+          const hasActiveGoal = get().focus.goals.allIds.some(
+            (id: string) => get().focus.goals.byId[id]?.isActive === true
+          );
+          if (hasActiveGoal) get().rewards.markTaskSetup('goal');
+        },
+
+        claimTask: (taskId) => {
+          const task = normalizeSetupTasks(get().rewards.tasks)[taskId];
+          if (!task.everSetup || task.claimed) return false;
+          // Mark claimed first so the rewards row pushed by earnFruits already carries it.
+          set((state) => ({
+            rewards: {
+              ...state.rewards,
+              tasks: {
+                ...normalizeSetupTasks(state.rewards.tasks),
+                [taskId]: { everSetup: true, claimed: true },
+              },
+            },
+          }));
+          // earnFruits bumps balance + updatedAt and triggers the rewards sync push, so
+          // both the +fruits and the claimed flag reach the cloud together.
+          get().rewards.earnFruits(SETUP_TASK_REWARD, 'setup_task', { taskId });
+          console.log('🎁 Setup task claimed:', taskId, '+', SETUP_TASK_REWARD, 'fruits');
+          return true;
         },
       },
 
@@ -2399,6 +2463,7 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
       updatedAt: null,
       unlockableApps: [],
       accelerateCard: null,
+      tasks: defaultSetupTasks(),
     },
     blocklist: {
       ...s.blocklist,

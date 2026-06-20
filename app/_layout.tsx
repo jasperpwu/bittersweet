@@ -686,8 +686,12 @@ export default function RootLayout() {
           { families },
           { setOnce: { has_active_widget: true } }
         );
+        // Installing a widget is the "set up widget" signal — unlock its setup-task claim.
+        useAppStore.getState().rewards.markTaskSetup('widget');
       }
     });
+    // Backfill the goal setup-task for existing users with an active goal.
+    useAppStore.getState().rewards.reconcileSetupTasks();
   }, [fontsLoaded, isHydrated]);
 
   // Debug logging

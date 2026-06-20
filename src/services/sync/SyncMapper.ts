@@ -179,12 +179,63 @@ export function rowToGoal(row: Record<string, any>): any {
 
 // --- Rewards mapper ---
 
+// One-time setup tasks that award fruits. `everSetup` becomes sticky-true the first
+// time we detect the user set the thing up (so the claim survives later removing the
+// widget/goal); `claimed` becomes true once the fruits are awarded. Both are monotonic
+// (only false→true), which lets us OR-merge them across devices/reinstalls without LWW.
+export type SetupTaskId = 'widget' | 'goal';
+export const SETUP_TASK_IDS: SetupTaskId[] = ['widget', 'goal'];
+export const SETUP_TASK_REWARD = 20;
+
+export interface SetupTaskState {
+  everSetup: boolean;
+  claimed: boolean;
+}
+export type SetupTasks = Record<SetupTaskId, SetupTaskState>;
+
+export function defaultSetupTasks(): SetupTasks {
+  return {
+    widget: { everSetup: false, claimed: false },
+    goal: { everSetup: false, claimed: false },
+  };
+}
+
+// Normalize a possibly-partial/missing tasks blob (older rows, new task ids) to the
+// full shape, defaulting any missing flag to false.
+export function normalizeSetupTasks(tasks: any): SetupTasks {
+  const base = defaultSetupTasks();
+  if (!tasks || typeof tasks !== 'object') return base;
+  for (const id of SETUP_TASK_IDS) {
+    base[id] = {
+      everSetup: tasks[id]?.everSetup === true,
+      claimed: tasks[id]?.claimed === true,
+    };
+  }
+  return base;
+}
+
+// Monotonic OR-merge: a flag set on either side stays set. Immune to last-write-wins,
+// so applying pulled cloud data can never un-claim or un-setup a task.
+export function mergeSetupTasks(a: any, b: any): SetupTasks {
+  const x = normalizeSetupTasks(a);
+  const y = normalizeSetupTasks(b);
+  const out = defaultSetupTasks();
+  for (const id of SETUP_TASK_IDS) {
+    out[id] = {
+      everSetup: x[id].everSetup || y[id].everSetup,
+      claimed: x[id].claimed || y[id].claimed,
+    };
+  }
+  return out;
+}
+
 export function rewardsToRow(rewards: any, userId: string): Record<string, any> {
   return {
     user_id: userId,
     balance: rewards.balance,
     total_earned: rewards.totalEarned,
     total_spent: rewards.totalSpent,
+    tasks: normalizeSetupTasks(rewards.tasks),
     updated_at: rewards.updatedAt ?? new Date().toISOString(),
   };
 }
@@ -194,6 +245,7 @@ export function rowToRewards(row: Record<string, any>): any {
     balance: row.balance ?? 0,
     totalEarned: row.total_earned ?? 0,
     totalSpent: row.total_spent ?? 0,
+    tasks: normalizeSetupTasks(row.tasks),
     updatedAt: row.updated_at ?? null,
   };
 }
