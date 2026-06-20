@@ -9,7 +9,7 @@ import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
 import { WidgetService } from '../services/WidgetService';
 import { FocusGoal } from './types';
-import { persistenceConfig } from './middleware/persistence';
+import { persistenceConfig, persistStateNow } from './middleware/persistence';
 import { computeBadgeStats } from '../utils/badgeStats';
 import { CLASSIC_TAG_COLORS, DEFAULT_TAG_COLOR } from '../config/tagColors';
 import * as Notifications from 'expo-notifications';
@@ -611,6 +611,15 @@ export const useAppStore = create<AppStore>()(
           if (params.secondaryTagId && params.secondaryTagId !== params.tagId) {
             get().grove.recomputeChallengeHitsForTag(params.secondaryTagId).catch(() => {});
           }
+
+          // Persist immediately, bypassing the debounced write. The summary screen
+          // that renders right after this can do heavy synchronous work and freeze
+          // the JS thread; the normal 100ms debounce timer would be stuck behind
+          // that freeze, so a force-quit would lose this session. Dispatching the
+          // native write synchronously here guarantees the session reaches disk
+          // first. Notes/photos added later on the summary screen still flow through
+          // the normal debounced persist + cloud sync paths.
+          persistStateNow(get());
 
           console.log('✅ Completed focus session created:', completedSession);
           return completedSession;

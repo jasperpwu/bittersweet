@@ -743,6 +743,44 @@ function validateStateIntegrity(state: any) {
   }
 }
 
+/**
+ * Synchronously dispatch an immediate, un-debounced write of the current store
+ * state to disk.
+ *
+ * The normal persist path (`OptimizedStorage.setItem`) debounces writes behind a
+ * `setTimeout` that runs on the JS thread. If a heavy, synchronous task freezes
+ * the JS thread right after a critical mutation (e.g. completing a focus session,
+ * then rendering the session-summary screen), that timer can't fire — so a
+ * force-quit during the freeze loses the just-created data.
+ *
+ * This helper serializes the partialized state and hands it to native
+ * AsyncStorage *synchronously* within the caller's stack frame, before any such
+ * freeze can begin. The native write is dispatched at call time and completes on
+ * the native storage thread even if JS then blocks.
+ *
+ * It deliberately bypasses the async empty-state guard in `OptimizedStorage`:
+ * callers invoke this right after adding real data, so the state is guaranteed
+ * non-empty, and routing through the guard (which awaits an AsyncStorage read)
+ * would reintroduce the very async gap this avoids. The normal debounced write
+ * still runs afterward and remains the source of truth for subsequent edits
+ * (e.g. notes/photos added on the summary screen).
+ */
+export function persistStateNow(fullState: any): void {
+  try {
+    const payload = JSON.stringify({
+      state: persistenceConfig.partialize(fullState),
+      version: persistenceConfig.version,
+    });
+    // Fire-and-forget: the native call is enqueued synchronously here; we don't
+    // await because the whole point is to not yield the JS thread.
+    AsyncStorage.setItem(STORAGE_KEY, payload).catch((error) => {
+      console.error('persistStateNow write failed:', error);
+    });
+  } catch (error) {
+    console.error('persistStateNow serialization failed:', error);
+  }
+}
+
 // Export utilities for testing and debugging
 export const persistenceUtils = {
   validateStateIntegrity,
