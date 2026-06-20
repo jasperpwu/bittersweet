@@ -5,27 +5,55 @@ import { calculateGoalProgress } from '../../utils/goalProgress';
 import { calculateUrgency } from '../../utils/goalUrgency';
 
 const GOAL_NUDGE_IDS_KEY = 'goal-nudge-notification-ids';
+const GOAL_NUDGE_NOTIFICATION_ID = 'goal-nudge-daily-reminder';
+const GOAL_NUDGE_NOTIFICATION_TYPE = 'goal-nudge';
+
+let goalNudgeOperationQueue: Promise<void> = Promise.resolve();
 
 const getGoalDisplayName = (goal: FocusGoal): string => {
   return (goal as any).customName || (goal as any).name || 'Goal';
 };
 
-export const cancelAllGoalNudges = async (): Promise<void> => {
+const enqueueGoalNudgeOperation = (operation: () => Promise<void>): Promise<void> => {
+  const queuedOperation = goalNudgeOperationQueue.then(operation, operation);
+  goalNudgeOperationQueue = queuedOperation.catch(() => undefined);
+  return queuedOperation;
+};
+
+const cancelPendingGoalNudges = async (): Promise<void> => {
   try {
     const raw = await AsyncStorage.getItem(GOAL_NUDGE_IDS_KEY);
+    const storedIds = new Set<string>([GOAL_NUDGE_NOTIFICATION_ID]);
+
     if (raw) {
       const ids: string[] = JSON.parse(raw);
-      await Promise.all(
-        ids.map(id => Notifications.cancelScheduledNotificationAsync(id)),
-      );
+      ids.forEach(id => storedIds.add(id));
     }
+
+    const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+    scheduledNotifications.forEach(notification => {
+      if (
+        notification.content.data?.type === GOAL_NUDGE_NOTIFICATION_TYPE ||
+        storedIds.has(notification.identifier)
+      ) {
+        storedIds.add(notification.identifier);
+      }
+    });
+
+    await Promise.all(
+      Array.from(storedIds).map(id => Notifications.cancelScheduledNotificationAsync(id)),
+    );
     await AsyncStorage.removeItem(GOAL_NUDGE_IDS_KEY);
   } catch (error) {
     console.error('Failed to cancel goal nudges:', error);
   }
 };
 
-export const scheduleGoalNudges = async (
+export const cancelAllGoalNudges = (): Promise<void> => {
+  return enqueueGoalNudgeOperation(cancelPendingGoalNudges);
+};
+
+const scheduleGoalNudgesInternal = async (
   goals: FocusGoal[],
   sessions: FocusSession[],
   tagMap: Record<string, { id: string; name: string }>,
@@ -33,7 +61,7 @@ export const scheduleGoalNudges = async (
   soundEnabled: boolean,
 ): Promise<void> => {
   // Cancel previous nudges first
-  await cancelAllGoalNudges();
+  await cancelPendingGoalNudges();
 
   if (!goals || goals.length === 0) return;
 
@@ -77,11 +105,12 @@ export const scheduleGoalNudges = async (
 
   try {
     const notificationId = await Notifications.scheduleNotificationAsync({
+      identifier: GOAL_NUDGE_NOTIFICATION_ID,
       content: {
         title,
         body,
         sound: soundEnabled,
-        data: { type: 'goal-nudge' },
+        data: { type: GOAL_NUDGE_NOTIFICATION_TYPE },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -96,4 +125,16 @@ export const scheduleGoalNudges = async (
   } catch (error) {
     console.error('Failed to schedule goal nudge:', error);
   }
+};
+
+export const scheduleGoalNudges = (
+  goals: FocusGoal[],
+  sessions: FocusSession[],
+  tagMap: Record<string, { id: string; name: string }>,
+  reminderTime: string,
+  soundEnabled: boolean,
+): Promise<void> => {
+  return enqueueGoalNudgeOperation(() =>
+    scheduleGoalNudgesInternal(goals, sessions, tagMap, reminderTime, soundEnabled),
+  );
 };
