@@ -1,5 +1,11 @@
 import { SyncService } from '../../services/sync/SyncService';
-import { settingsToRow } from '../../services/sync/SyncMapper';
+import {
+  settingsToRow,
+  sessionToRow,
+  tagToRow,
+  goalToRow,
+  badgeToRow,
+} from '../../services/sync/SyncMapper';
 import { supabase } from '../../config/supabase';
 import { syncQueue } from '../../services/sync/SyncQueue';
 import { invalidateSyncSnapshot } from '../middleware/syncMiddleware';
@@ -153,6 +159,15 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
 
       // Enforce 1:1 tag-goal invariant after merge
       reconcileGoals(set, get);
+
+      // Write the merge result back to the cloud. The store apply above relies on
+      // the sync middleware to upload local changes, but the middleware diffs by
+      // object reference against a baseline that already holds these same local
+      // objects, so it never detects local-only / local-newer rows (e.g. a session
+      // created then force-quit before its debounced upload) — they'd live on this
+      // device only and vanish on reinstall. Push them explicitly here so cold-start
+      // merge actually "writes finalized to cloud" as the sync philosophy requires.
+      await pushLocalWinsToCloud(merged, remoteData, userId);
 
       // Apply merged settings to unified store if remote won
       if (merged.settings && merged.settings !== localPrefs) {
@@ -470,6 +485,78 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
     }));
   },
 });
+
+/**
+ * Enqueue every row where the LOCAL side won the cold-start merge, then flush.
+ *
+ * mergeNormalized keeps the local object reference for local-only and local-newer
+ * rows, and the remote object reference when remote wins. So `merged.byId[id] !==
+ * remote.byId[id]` is an exact test for "this row needs to be pushed up" — it's true
+ * only for local-only rows (remote has none) and local-newer rows (local won LWW),
+ * and false for remote-only / remote-won rows that are already in the cloud.
+ *
+ * Tags are enqueued before sessions/goals/badges so the focus_sessions.tag_id FK is
+ * satisfied (flush also priority-orders session_tags first). Idempotent: the queue
+ * dedupes by id and upserts are merge-duplicates.
+ */
+async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string): Promise<void> {
+  const enqueueLocalWins = async (
+    table: string,
+    mergedList: { byId: Record<string, any>; allIds: string[] },
+    remoteById: Record<string, any>,
+    mapFn: (item: any) => Record<string, any>
+  ) => {
+    let count = 0;
+    for (const id of mergedList.allIds) {
+      const item = mergedList.byId[id];
+      if (item && item !== remoteById[id]) {
+        await SyncService.enqueue(table, 'upsert', mapFn(item));
+        count++;
+      }
+    }
+    return count;
+  };
+
+  try {
+    const tagsPushed = await enqueueLocalWins(
+      'session_tags',
+      merged.focus.tags,
+      remoteData.focus.tags.byId,
+      (t) => tagToRow(t, userId)
+    );
+    const sessionsPushed = await enqueueLocalWins(
+      'focus_sessions',
+      merged.focus.sessions,
+      remoteData.focus.sessions.byId,
+      (s) => sessionToRow(s, userId)
+    );
+    const goalsPushed = await enqueueLocalWins(
+      'focus_goals',
+      merged.focus.goals,
+      remoteData.focus.goals.byId,
+      (g) => goalToRow(g, userId)
+    );
+    const badgesPushed = await enqueueLocalWins(
+      'badges',
+      merged.focus.badges ?? { byId: {}, allIds: [] },
+      remoteData.focus.badges?.byId ?? {},
+      (b) => badgeToRow(b, userId)
+    );
+
+    if (tagsPushed + sessionsPushed + goalsPushed + badgesPushed === 0) {
+      console.log('[triggerSync] No local-wins to push to cloud');
+      return;
+    }
+
+    console.log(
+      `[triggerSync] Pushing local-wins — tags:${tagsPushed} sessions:${sessionsPushed} goals:${goalsPushed} badges:${badgesPushed}`
+    );
+    const result = await SyncService.flush();
+    console.log(`[triggerSync] Local-wins flush — flushed:${result.flushed} failed:${result.failed}`);
+  } catch (error) {
+    console.error('[triggerSync] pushLocalWinsToCloud error:', error);
+  }
+}
 
 /**
  * Collapse duplicate goals that share a tagId down to a single winner

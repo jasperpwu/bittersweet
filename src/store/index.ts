@@ -21,6 +21,8 @@ import { ReferralSlice, createReferralSlice } from './slices/referralSlice';
 import { SharedTagService } from '../services/sharedTag/SharedTagService';
 import type { SharedTagResolveResult } from '../services/sharedTag/types';
 import { AnalyticsTracker } from '../services/analytics';
+import { SyncService } from '../services/sync/SyncService';
+import { sessionToRow, tagToRow } from '../services/sync/SyncMapper';
 
 interface AppStore {
   // Focus sessions and tags
@@ -256,6 +258,66 @@ const generateId = () => {
   return `${timestamp}-${randomStr}`;
 };
 
+/**
+ * Push a freshly-created/updated session straight to the sync queue, bypassing the
+ * 2s debounced sync middleware. createCompletedSession is routinely followed by an
+ * immediate force-quit (finish → summary screen → user swipes the app away);
+ * persistStateNow() already saves the session to disk, but without this the cloud
+ * upsert would only be enqueued ~2s later by the middleware, so a quit inside that
+ * window leaves the session local-only — and the cold-start merge can't recover it
+ * (the middleware diffs by reference against a baseline that already holds the row),
+ * so it's lost on reinstall. Enqueue the tag(s) first (focus_sessions.tag_id /
+ * secondary_tag_id FK), then the session, then flush. Idempotent: the queue dedupes
+ * by id and the middleware's later diff is a harmless duplicate upsert. No-ops when
+ * unauthenticated (e.g. widget adoption racing ahead of onAuthStateChange) — the
+ * triggerSync reconcile then pushes it once auth lands.
+ */
+function enqueueSessionNow(state: any, session: FocusSession): void {
+  if (!state.auth?.isAuthenticated || !state.auth?.user?.id) return;
+  const userId = state.auth.user.id;
+  void (async () => {
+    try {
+      const primaryTag = state.focus.tags.byId[session.tagId];
+      if (primaryTag) {
+        await SyncService.enqueue('session_tags', 'upsert', tagToRow(primaryTag, userId));
+      }
+      if (session.secondaryTagId && session.secondaryTagId !== session.tagId) {
+        const secondaryTag = state.focus.tags.byId[session.secondaryTagId];
+        if (secondaryTag) {
+          await SyncService.enqueue('session_tags', 'upsert', tagToRow(secondaryTag, userId));
+        }
+      }
+      await SyncService.enqueue('focus_sessions', 'upsert', sessionToRow(session, userId));
+      const result = await SyncService.flush();
+      console.log(`[enqueueSessionNow] ${session.id} — flushed:${result.flushed} failed:${result.failed}`);
+    } catch (error) {
+      console.error('[enqueueSessionNow] failed:', error);
+    }
+  })();
+}
+
+/**
+ * Soft-delete a session in the cloud immediately, bypassing the 2s debounced sync
+ * middleware — the delete equivalent of enqueueSessionNow. deleteSession only mutates
+ * the store, so the middleware diff is normally what enqueues the soft_delete ~2s later;
+ * a force-quit inside that window leaves the deletion local-only, and the next cold-start
+ * merge then resurrects the row (remote still has it, merge unions remote with local).
+ * Enqueuing + flushing here makes the deletion durable at the moment it happens.
+ * Idempotent (queue dedupes by id); no-ops when unauthenticated.
+ */
+function enqueueSessionDeleteNow(state: any, sessionId: string): void {
+  if (!state.auth?.isAuthenticated || !state.auth?.user?.id) return;
+  void (async () => {
+    try {
+      await SyncService.enqueue('focus_sessions', 'soft_delete', { id: sessionId });
+      const result = await SyncService.flush();
+      console.log(`[enqueueSessionDeleteNow] ${sessionId} — flushed:${result.flushed} failed:${result.failed}`);
+    } catch (error) {
+      console.error('[enqueueSessionDeleteNow] failed:', error);
+    }
+  })();
+}
+
 export const calculateFruitsEarnedForDuration = (duration: number, targetDuration: number = duration, multiplier: number = 1) => {
   const earnedMinutes = Math.max(0, Math.floor(duration));
   // Only count minutes up to the target duration for fruit earning
@@ -478,6 +540,14 @@ export const useAppStore = create<AppStore>()(
           if (sessionToDelete) {
             console.log('🗑️ Session deleted and corresponding rewards removed:', sessionId);
 
+            // Persist the removal locally and push the soft-delete to the cloud right
+            // away. Like createCompletedSession, deleteSession can be followed by an
+            // immediate force-quit; without this the deletion only lives in memory until
+            // the debounced persist/sync (~2s) fires, so a quit strands it and the next
+            // cold-start merge resurrects the row from the cloud. See enqueueSessionDeleteNow.
+            persistStateNow(get());
+            enqueueSessionDeleteNow(get(), sessionId);
+
             // Update shield configuration with new balance after deletion
             const newBalance = get().rewards.balance;
             const focusActive = get().focus.currentSession.isRunning;
@@ -620,6 +690,12 @@ export const useAppStore = create<AppStore>()(
           // first. Notes/photos added later on the summary screen still flow through
           // the normal debounced persist + cloud sync paths.
           persistStateNow(get());
+
+          // Push to the cloud queue immediately too — persistStateNow only saves
+          // locally, and the debounced middleware upload (~2s later) can be beaten
+          // by a force-quit, stranding the session local-only forever. See
+          // enqueueSessionNow.
+          enqueueSessionNow(get(), completedSession);
 
           console.log('✅ Completed focus session created:', completedSession);
           return completedSession;
