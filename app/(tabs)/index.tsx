@@ -36,6 +36,7 @@ import {
 } from '../../src/components/focus';
 import type { ActivityType } from '../../src/utils/focusRating';
 import { inferActivityType } from '../../src/utils/inferActivityType';
+import { useThrottledPress } from '../../src/hooks/common';
 import * as Haptics from 'expo-haptics';
 
 import {
@@ -2103,6 +2104,11 @@ export default function FocusScreen() {
     });
   };
 
+  // Guard the Start/Stop toggle against fast double-taps. Without this, a second
+  // tap lands after the first has flipped `isSessionActive`, so it falls into the
+  // Stop branch and immediately cancels the session it just started.
+  const handleStartFocusGuarded = useThrottledPress(handleStartFocus);
+
   const handleTimeChange = (time: number) => {
     setSelectedTime(time);
     if (selectedTag) {
@@ -2407,7 +2413,7 @@ export default function FocusScreen() {
         {/* Start/Stop Button - Fixed at bottom */}
         <View className="px-4 pb-8">
           <Pressable
-            onPress={handleStartFocus}
+            onPress={handleStartFocusGuarded}
             className="items-center rounded-2xl bg-white py-4 active:opacity-80 dark:bg-white"
             style={{
               shadowColor: '#000',

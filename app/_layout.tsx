@@ -33,6 +33,10 @@ import { useQuickActionHandler } from '../src/hooks/useQuickActionHandler';
 import { PushNotificationService } from '../src/services/notifications/push';
 import { AnalyticsTracker } from '../src/services/analytics';
 import { getInstalledWidgetFamilies } from '../modules/widget-info';
+import { installNavigationGuard } from '../src/utils/navigationGuard';
+
+// Dedupe duplicate navigations from fast double-taps (router.push/navigate/replace).
+installNavigationGuard();
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
