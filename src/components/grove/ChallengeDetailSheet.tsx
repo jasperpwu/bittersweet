@@ -71,6 +71,12 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
     ? Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
 
+  // The challenge is over once today (local) is past its end date — the same rule
+  // the per-individual result derivation uses in GroveChallengeService.
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isOver = !!challenge.endDate && challenge.endDate < todayStr;
+
   // Find current user's period data
   const myPeriodData = details?.participants.find((p) => p.user_id === currentUserId);
 
@@ -174,8 +180,14 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
             {[...details.participants]
               .sort((a, b) => b.hits - a.hits)
               .map((p, index) => {
-                const participant = challenge.participants.find((cp) => cp.userId === p.user_id);
-                const outcome = participant?.outcome;
+                // Outcome is derived from hits — no stored value needed: once the
+                // challenge is over, hitting every period is a win. Mirrors the
+                // per-individual result logic in GroveChallengeService.
+                const outcome: 'completed' | 'failed' | null = isOver
+                  ? p.hits >= details.total_periods
+                    ? 'completed'
+                    : 'failed'
+                  : null;
                 return (
                   <View key={p.user_id} className="flex-row items-center py-2">
                     <Typography variant="body-14" color="secondary" className="w-6">

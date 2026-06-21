@@ -521,6 +521,7 @@ export const persistenceConfig = {
       privacySettings: state.grove?.privacySettings ?? null,
       isActive: state.grove?.isActive ?? false,
       lastGroveVisit: state.grove?.lastGroveVisit ?? null,
+      notificationsLastSeenAt: state.grove?.notificationsLastSeenAt ?? null,
       heartbeatSettings: state.grove?.heartbeatSettings ?? null,
       // Cached server data — shown immediately on launch, refreshed in background
       friends: state.grove?.friends ?? [],

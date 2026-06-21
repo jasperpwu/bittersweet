@@ -4,6 +4,11 @@ import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui';
 import { useRewards, useAppStore, useFocus } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
+import {
+  seedTestChallenge,
+  clearTestChallenges,
+  type SeedChallengeState,
+} from '../../src/services/grove/GroveChallengeDevSeeder';
 
 export default function DevToolsModal() {
   const colorScheme = useColorScheme();
@@ -16,6 +21,37 @@ export default function DevToolsModal() {
   const referralCode = useAppStore((s) => s.referral.referralCode);
   const applyReferralCode = useAppStore((s) => s.referral.applyReferralCode);
   const fetchReferralStatus = useAppStore((s) => s.referral.fetchReferralStatus);
+
+  const fetchChallenges = useAppStore((s) => s.grove.fetchChallenges);
+  const [seeding, setSeeding] = useState(false);
+
+  const handleSeedChallenge = async (state: SeedChallengeState, label: string) => {
+    if (seeding) return;
+    setSeeding(true);
+    try {
+      await seedTestChallenge(state);
+      await fetchChallenges();
+      showToast(`Seeded: ${label}`, 'success');
+    } catch (e: any) {
+      Alert.alert('Seed failed', e?.message ?? 'Unknown error');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleClearChallenges = async () => {
+    if (seeding) return;
+    setSeeding(true);
+    try {
+      await clearTestChallenges();
+      await fetchChallenges();
+      showToast('Cleared test challenges', 'success');
+    } catch (e: any) {
+      Alert.alert('Clear failed', e?.message ?? 'Unknown error');
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const setFruitBalance = (value: number) => {
     useAppStore.setState((state) => ({
@@ -246,6 +282,65 @@ export default function DevToolsModal() {
               </Typography>
             </Pressable>
           </View>
+        </View>
+
+        {/* Challenge Testing */}
+        <View>
+          <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
+            Challenge Testing
+          </Typography>
+          <View style={{ gap: 8 }}>
+            <Pressable
+              onPress={() => handleSeedChallenge('won_unclaimed', 'won, claimable')}
+              disabled={seeding}
+              className={`bg-primary rounded-xl py-3 items-center active:opacity-80 ${seeding ? 'opacity-50' : ''}`}
+            >
+              <Typography variant="subtitle-14-semibold" color="white">
+                Seed: Won (claimable)
+              </Typography>
+            </Pressable>
+            <Pressable
+              onPress={() => handleSeedChallenge('won_claimed', 'won, already claimed')}
+              disabled={seeding}
+              className={`bg-gray-700 rounded-xl py-3 items-center active:opacity-80 ${seeding ? 'opacity-50' : ''}`}
+            >
+              <Typography variant="subtitle-14-semibold" color="white">
+                Seed: Won (already claimed)
+              </Typography>
+            </Pressable>
+            <Pressable
+              onPress={() => handleSeedChallenge('lost', 'lost')}
+              disabled={seeding}
+              className={`bg-gray-700 rounded-xl py-3 items-center active:opacity-80 ${seeding ? 'opacity-50' : ''}`}
+            >
+              <Typography variant="subtitle-14-semibold" color="white">
+                Seed: Lost
+              </Typography>
+            </Pressable>
+            <Pressable
+              onPress={() => handleSeedChallenge('active', 'active, in progress')}
+              disabled={seeding}
+              className={`bg-gray-700 rounded-xl py-3 items-center active:opacity-80 ${seeding ? 'opacity-50' : ''}`}
+            >
+              <Typography variant="subtitle-14-semibold" color="white">
+                Seed: Active (in progress)
+              </Typography>
+            </Pressable>
+            <Pressable
+              onPress={handleClearChallenges}
+              disabled={seeding}
+              className={`bg-red-900 rounded-xl py-3 items-center active:opacity-80 ${seeding ? 'opacity-50' : ''}`}
+            >
+              <Typography variant="subtitle-14-semibold" color="white">
+                Clear Test Challenges
+              </Typography>
+            </Pressable>
+          </View>
+          <Typography variant="body-12" color="secondary" className="mt-2">
+            Seeds a daily challenge (you only) and matching backdated sessions, then
+            refreshes. Finished ones show under the Grove notification bell. For a
+            multi-person Ranking, seed via the Supabase SQL editor.
+          </Typography>
         </View>
 
         {/* Store snapshot */}

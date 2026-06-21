@@ -107,6 +107,7 @@ export interface GroveSlice {
   ) => Promise<{ challenge: ChallengeItem; myHits: number; totalPeriods: number }[]>;
   fetchChallengePeriodDetails: (challengeId: string) => Promise<ChallengePeriodDetailsResult>;
   deleteChallenge: (challengeId: string) => Promise<void>;
+  claimChallengeReward: (challengeId: string) => Promise<{ claimed: boolean; fruitReward: number }>;
 
   // Phase 4 — Heartbeat / Inner Circle
   heartbeatSettings: HeartbeatSettings | null;
@@ -116,6 +117,9 @@ export interface GroveSlice {
   incomingCircleInvites: InnerCircleMember[];
   heartbeatAlerts: HeartbeatAlert[];
   pendingCircleInviteCount: number;
+  // ISO timestamp of when the user last opened the notifications screen. Drives
+  // the unread badge on the Grove tab's notification bell.
+  notificationsLastSeenAt: string | null;
 
   // Phase 4 actions
   fetchHeartbeatSettings: () => Promise<void>;
@@ -132,6 +136,7 @@ export interface GroveSlice {
   markHeartbeatAlertRead: (alertId: string) => Promise<void>;
   recordHeartbeatActivity: () => Promise<void>;
   notifyBlocklistEdit: () => Promise<void>;
+  markNotificationsSeen: () => void;
 
   // Focusing status
   setFocusing: (isFocusing: boolean) => void;
@@ -174,6 +179,7 @@ const initialState = {
   incomingCircleInvites: [],
   heartbeatAlerts: [],
   pendingCircleInviteCount: 0,
+  notificationsLastSeenAt: null,
 };
 
 export const createGroveSlice = (set: any, get: any): GroveSlice => ({
@@ -948,6 +954,21 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }
   },
 
+  claimChallengeReward: async (challengeId: string) => {
+    // The server's reward_claimed_at column is the idempotency guard: it reports a
+    // fresh claim exactly once, so fruits are credited once even across reinstalls.
+    const result = await GroveChallengeService.claimChallengeReward(challengeId);
+
+    if (result.claimed && result.fruitReward > 0) {
+      get().rewards.earnFruits(result.fruitReward, 'challenge', { challengeId });
+    }
+
+    // Refresh so the claimed state (reward_claimed_at) reflects in the UI.
+    await get().grove.fetchChallenges();
+
+    return result;
+  },
+
   // ========== Phase 4 Actions — Heartbeat / Inner Circle ==========
 
   fetchHeartbeatSettings: async () => {
@@ -1169,6 +1190,12 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       // Fire-and-forget: silent fail
       console.error('Failed to notify blocklist edit:', error);
     }
+  },
+
+  markNotificationsSeen: () => {
+    set((state: any) => ({
+      grove: { ...state.grove, notificationsLastSeenAt: new Date().toISOString() },
+    }));
   },
 
   // ========== Focusing Status ==========

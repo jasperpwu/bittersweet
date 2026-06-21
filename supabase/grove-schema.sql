@@ -333,6 +333,9 @@ CREATE TABLE grove_challenge_participants (
   -- Each participant tracks the challenge against their OWN local tag id.
   -- NULL until an invitee accepts and picks/creates a matching tag.
   tag_id TEXT,
+  -- When this participant claimed their (individual) fruit reward; NULL = unclaimed.
+  -- Idempotency guard so fruits are credited exactly once. See claim_challenge_reward.
+  reward_claimed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT unique_challenge_participant UNIQUE (challenge_id, user_id)
@@ -378,13 +381,15 @@ RETURNS TABLE (
   hits INTEGER,
   outcome TEXT,
   tag_id TEXT,
+  reward_claimed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
 BEGIN
   RETURN QUERY
     SELECT cp.id, cp.challenge_id, cp.user_id, cp.role, cp.status,
-           cp.hits, cp.outcome, cp.tag_id, cp.created_at, cp.updated_at
+           cp.hits, cp.outcome, cp.tag_id, cp.reward_claimed_at,
+           cp.created_at, cp.updated_at
     FROM grove_challenge_participants cp
     WHERE cp.challenge_id = ANY(p_challenge_ids)
       AND EXISTS (
@@ -392,6 +397,46 @@ BEGIN
         WHERE cp2.challenge_id = cp.challenge_id
           AND cp2.user_id = auth.uid()
       );
+END;
+$$;
+
+-- RPC: claim_challenge_reward
+-- Records the caller's individual fruit-reward claim for a finished challenge.
+-- Idempotent and race-safe (conditional UPDATE on reward_claimed_at IS NULL), so
+-- fruits are credited exactly once. Eligibility is decided client-side (challenge
+-- over + I hit all periods) and trusted here, like 20260606's trust-client-hits.
+-- Returns { claimed, fruit_reward } — claimed is true only on the first claim.
+CREATE OR REPLACE FUNCTION claim_challenge_reward(p_challenge_id UUID)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_participant_id UUID;
+  v_fruit_reward INTEGER;
+BEGIN
+  SELECT id INTO v_participant_id
+  FROM grove_challenge_participants
+  WHERE challenge_id = p_challenge_id
+    AND user_id = auth.uid();
+
+  IF v_participant_id IS NULL THEN
+    RAISE EXCEPTION 'Not a participant of this challenge';
+  END IF;
+
+  SELECT fruit_reward INTO v_fruit_reward
+  FROM grove_challenges
+  WHERE id = p_challenge_id;
+
+  UPDATE grove_challenge_participants
+  SET reward_claimed_at = now(),
+      outcome = 'completed',
+      updated_at = now()
+  WHERE id = v_participant_id
+    AND reward_claimed_at IS NULL;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('claimed', false, 'fruit_reward', COALESCE(v_fruit_reward, 0));
+  END IF;
+
+  RETURN json_build_object('claimed', true, 'fruit_reward', COALESCE(v_fruit_reward, 0));
 END;
 $$;
 
@@ -455,28 +500,19 @@ END;
 $$;
 
 -- RPC: finalize_expired_challenges
--- Called by daily cron. Auto-cancels pending challenges past start_date with no accepted invitees.
--- Does NOT toggle challenges to 'active' — "active" is derived on the client (a challenge is
--- active for a participant once their own row is accepted; hits count from start_date). Live
--- challenges stay status = 'pending' in the DB until finalized here.
--- Finalizes expired challenges: reads client-computed hits, sets outcome + challenge status.
--- Does NOT recalculate hits server-side — trusts the timezone-aware hits written by clients.
--- Waits 2 days past end_date so the last day has fully elapsed in all timezones (up to UTC+14).
+-- Called by daily cron. Its ONLY job now is to auto-cancel pending challenges past
+-- their start_date that no invitee ever accepted (a shared, time-triggered lifecycle
+-- transition the client reads). It no longer finalizes results: each participant's
+-- completed/failed is derived on the client from their own (timezone-aware) hits,
+-- and the fruit reward is recorded by claim_challenge_reward. See migration 20260621.
+-- 'finalized' is kept in the return shape (always 0) for the edge function's logging.
 CREATE OR REPLACE FUNCTION finalize_expired_challenges()
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   challenge RECORD;
-  participant RECORD;
-  v_total_periods INTEGER;
-  v_all_completed BOOLEAN;
-  v_new_status TEXT;
-  v_finalized INTEGER := 0;
   v_cancelled INTEGER := 0;
   v_accepted_count INTEGER;
 BEGIN
-  -- Phase 1: Auto-cancel pending challenges past start_date with zero accepted invitees.
-  -- (No activation branch: an accepted challenge stays 'pending' in the DB and is treated as
-  --  active on the client until Phase 2 finalizes it.)
   FOR challenge IN
     SELECT * FROM grove_challenges
     WHERE status = 'pending'
@@ -497,55 +533,7 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Phase 2: Finalize expired challenges (past end_date) that have an accepted invitee.
-  -- Selects on "not terminal" rather than status = 'active', since live challenges are no longer
-  -- toggled to 'active'. The accepted-invitee guard avoids vacuously completing a participant-less
-  -- challenge. Wait 2 days past end_date so the last day has fully elapsed in all timezones (UTC+14).
-  FOR challenge IN
-    SELECT * FROM grove_challenges c
-    WHERE c.status NOT IN ('completed', 'failed', 'cancelled')
-      AND c.end_date < CURRENT_DATE - 2
-      AND EXISTS (
-        SELECT 1 FROM grove_challenge_participants cp
-        WHERE cp.challenge_id = c.id
-          AND cp.role = 'invitee'
-          AND cp.status = 'accepted'
-      )
-  LOOP
-    IF challenge.period = 'daily' THEN
-      v_total_periods := (challenge.end_date - challenge.start_date) + 1;
-    ELSE
-      v_total_periods := ((challenge.end_date - challenge.start_date) + 1) / 7;
-    END IF;
-
-    v_all_completed := TRUE;
-
-    FOR participant IN
-      SELECT * FROM grove_challenge_participants
-      WHERE challenge_id = challenge.id
-        AND status = 'accepted'
-    LOOP
-      -- Use client-computed hits (already timezone-aware) instead of recalculating
-      UPDATE grove_challenge_participants
-      SET outcome = CASE WHEN participant.hits >= v_total_periods THEN 'completed' ELSE 'failed' END,
-          updated_at = now()
-      WHERE id = participant.id;
-
-      IF participant.hits < v_total_periods THEN
-        v_all_completed := FALSE;
-      END IF;
-    END LOOP;
-
-    v_new_status := CASE WHEN v_all_completed THEN 'completed' ELSE 'failed' END;
-
-    UPDATE grove_challenges
-    SET status = v_new_status, updated_at = now()
-    WHERE id = challenge.id;
-
-    v_finalized := v_finalized + 1;
-  END LOOP;
-
-  RETURN json_build_object('finalized', v_finalized, 'cancelled', v_cancelled);
+  RETURN json_build_object('finalized', 0, 'cancelled', v_cancelled);
 END;
 $$;
 

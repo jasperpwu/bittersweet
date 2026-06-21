@@ -18,6 +18,8 @@ export interface ChallengeParticipant {
   outcome: 'completed' | 'failed' | null;
   /** This participant's own local tag id for the challenge, or null until they accept. */
   tagId: string | null;
+  /** ISO timestamp of when this participant claimed their fruit reward, or null if unclaimed. */
+  rewardClaimedAt: string | null;
   profile: ChallengeProfile;
 }
 
@@ -276,25 +278,46 @@ export const GroveChallengeService = {
         hits: p.hits,
         outcome: p.outcome,
         tagId: p.tag_id ?? null,
+        rewardClaimedAt: p.reward_claimed_at ?? null,
         profile: profileMap.get(p.user_id) || defaultProfile,
       }));
 
       const myParticipant = participants.find(p => p.userId === user.id) || null;
       const isIncoming = myParticipant?.role === 'invitee' && myParticipant?.status === 'pending';
 
-      // "Active" is derived, not stored: a challenge is active for me the moment
-      // my own participation is accepted (the creator is implicitly accepted at
-      // creation). Counting begins naturally at start_date because the hit math
-      // filters by date range — no server-side activation toggle is needed.
-      // Terminal states finalized by the cron (completed/failed/cancelled) win.
+      // The result is derived per-individual, not shared: each participant's
+      // completed/failed depends only on whether THEY hit all periods, so one
+      // person winning while another loses is fully supported (and each claims
+      // their own reward). "Active" is likewise derived — a challenge is active
+      // for me the moment my own participation is accepted (the creator is
+      // implicitly accepted at creation); counting begins at start_date via the
+      // date-range hit math, no server activation toggle needed.
       const myStatus = myParticipant?.role === 'creator' ? 'accepted' : myParticipant?.status;
       const hasStarted = !!c.start_date && c.start_date <= today;
-      const effectiveStatus: ChallengeItem['status'] =
-        c.status === 'completed' || c.status === 'failed' || c.status === 'cancelled'
-          ? c.status
-          : myStatus === 'accepted'
-            ? 'active'
-            : 'pending';
+
+      // The challenge's last counting day is end_date; once today is past it the
+      // challenge is over for me. We finalize the result locally rather than
+      // waiting on the server cron (which only runs 2 days later, on its own
+      // schedule) — my hits are client-computed and timezone-aware, the same
+      // value the server trusts (migration 20260606).
+      const isExpired = !!c.end_date && c.end_date < today;
+
+      let effectiveStatus: ChallengeItem['status'];
+      if (c.status === 'cancelled') {
+        // Challenge-level cancellation (no invitee ever accepted) is shared.
+        effectiveStatus = 'cancelled';
+      } else if (myStatus !== 'accepted') {
+        effectiveStatus = 'pending';
+      } else if (myParticipant?.outcome) {
+        // Server cron already finalized MY individual outcome — trust it.
+        effectiveStatus = myParticipant.outcome;
+      } else if (isExpired) {
+        // Finalize my own result locally: did I hit every period?
+        const iCompleted = totalPeriods > 0 && (myParticipant?.hits ?? 0) >= totalPeriods;
+        effectiveStatus = iCompleted ? 'completed' : 'failed';
+      } else {
+        effectiveStatus = 'active';
+      }
 
       return {
         id: c.id,
@@ -335,6 +358,28 @@ export const GroveChallengeService = {
       .eq('user_id', user.id);
 
     if (error) throw error;
+  },
+
+  /**
+   * Claim the current user's fruit reward for a finished challenge they completed.
+   * The server row (reward_claimed_at) is the idempotency guard: it only reports a
+   * fresh claim once, so the client credits fruits exactly once even across
+   * devices/reinstalls. Eligibility (challenge over + I hit all periods) is decided
+   * locally — the server trusts the client and just records the claim.
+   *
+   * @returns `{ claimed, fruitReward }` — `claimed` is true only on the FIRST claim
+   *   (credit fruits); false if it was already claimed previously.
+   */
+  async claimChallengeReward(challengeId: string): Promise<{ claimed: boolean; fruitReward: number }> {
+    const { data, error } = await supabase.rpc('claim_challenge_reward', {
+      p_challenge_id: challengeId,
+    });
+
+    if (error) throw error;
+    return {
+      claimed: !!data?.claimed,
+      fruitReward: data?.fruit_reward ?? 0,
+    };
   },
 
   /**

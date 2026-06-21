@@ -1,6 +1,8 @@
 // Supabase Edge Function: challenge-cron
-// Finalizes expired challenges by calling finalize_expired_challenges() RPC.
-// Scans active challenges past their end_date and sets status to completed/failed.
+// Calls finalize_expired_challenges() RPC. Its only job now is to auto-cancel
+// pending challenges past their start_date that no invitee accepted. Results and
+// rewards are handled on the client (per-individual derivation + claim RPC), so
+// 'finalized' is always 0 — kept only for logging compatibility.
 //
 // Intended to be called by a cron schedule (pg_cron or external scheduler).
 // No auth required — uses service role key internally.

@@ -780,6 +780,14 @@ export default function RootLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="(modals)/grove-notifications"
+                  options={{
+                    headerShown: false,
+                    presentation: 'card',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
                   name="(modals)/challenges"
                   options={{
                     headerShown: false,
