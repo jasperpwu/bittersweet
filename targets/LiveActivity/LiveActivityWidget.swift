@@ -101,7 +101,7 @@ struct StaleBonusBannerView: View {
             .font(.title2)
             .fontWeight(.semibold)
             .foregroundStyle(textColor)
-          Text("Bonus Time")
+          Text("Over Time")
             .font(.title3)
             .foregroundStyle(subtitleTextColor.opacity(0.7))
         }

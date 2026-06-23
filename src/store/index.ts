@@ -391,18 +391,48 @@ function enqueueSessionDeleteNow(state: any, sessionId: string): void {
   })();
 }
 
+// Fruit reward curve. Control points are [minutes, fruits]; reward scales
+// smoothly between them by linear interpolation, and past the last point the
+// final segment's slope continues so longer set durations keep earning. Tuned
+// so the per-minute reward rate is steepest in the 30–60 min sweet spot.
+const FRUIT_CURVE_POINTS: readonly (readonly [number, number])[] = [
+  [5, 1],
+  [30, 5],
+  [60, 12],
+  [90, 16],
+];
+
+/**
+ * Whole fruits for N focus minutes via piecewise-linear interpolation of
+ * FRUIT_CURVE_POINTS (rounded; the final segment is extrapolated beyond 90 min).
+ * Reward starts at the first anchor — 5 min → 1 🍎, nothing before — then grows
+ * smoothly, so fruits accrue at irregular minutes rather than on fixed 5-min
+ * marks (no "stop on the 5-minute boundary" pressure).
+ */
+export const fruitsForMinutes = (minutes: number): number => {
+  const pts = FRUIT_CURVE_POINTS;
+  const m = Math.max(0, minutes);
+  if (m < pts[0][0]) return 0; // reward begins at the first anchor (5 min → 1 🍎)
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    if (m <= x1) return Math.round(y0 + ((m - x0) / (x1 - x0)) * (y1 - y0));
+  }
+  const [x0, y0] = pts[pts.length - 2];
+  const [x1, y1] = pts[pts.length - 1];
+  return Math.round(y1 + (m - x1) * ((y1 - y0) / (x1 - x0)));
+};
+
 export const calculateFruitsEarnedForDuration = (
   duration: number,
   targetDuration: number = duration,
   multiplier: number = 1
 ) => {
   const earnedMinutes = Math.max(0, Math.floor(duration));
-  // Only count minutes up to the target duration for fruit earning
+  // "Over time" beyond the set duration is a visual count-up only — cap counted
+  // minutes at the target so it earns no extra fruits.
   const countedMinutes = Math.min(earnedMinutes, Math.max(0, Math.floor(targetDuration)));
-  const baseFruits = Math.floor(countedMinutes / 5);
-  // +1 bonus fruit for completing the full set duration
-  const completionBonus = earnedMinutes >= Math.floor(targetDuration) && targetDuration > 0 ? 1 : 0;
-  return (baseFruits + completionBonus) * multiplier;
+  return fruitsForMinutes(countedMinutes) * multiplier;
 };
 
 export const useAppStore = create<AppStore>()(
@@ -486,7 +516,7 @@ export const useAppStore = create<AppStore>()(
               },
             }));
 
-            // Calculate and award fruits (+1 bonus for completing set duration)
+            // Calculate and award fruits (duration curve, capped at the set duration)
             const fruitsEarned = calculateFruitsEarnedForDuration(
               duration,
               duration,
@@ -775,7 +805,7 @@ export const useAppStore = create<AppStore>()(
                 // Session is already completed, no need to update status
                 // Duration is already set when creating the session
 
-                // Calculate and award fruits (+1 bonus for completing set duration)
+                // Calculate and award fruits (duration curve, capped at the set duration)
                 const completeMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
                 const fruitsEarned = calculateFruitsEarnedForDuration(
                   actualDuration,
@@ -837,8 +867,8 @@ export const useAppStore = create<AppStore>()(
 
             const createCompletedMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
 
-            // Calculate and award fruits (+1 bonus for completing set duration). Capture
-            // baseFruits/awardedFruits on the session so a focus rating can later scale it.
+            // Calculate and award fruits (duration curve, capped at the set duration).
+            // Capture baseFruits/awardedFruits on the session so a focus rating can later scale it.
             const fruitsEarned = params.isManualEntry
               ? 0
               : calculateFruitsEarnedForDuration(

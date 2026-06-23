@@ -2324,7 +2324,7 @@ export default function FocusScreen() {
                       fontFamily: 'Poppins-Regular',
                       textAlign: 'center',
                     }}>
-                    5 min = 1 🍎. Finish session to get 1 extra bonus 🍎!
+                    🍎 grow as you focus — sweet spot 30–60 min
                   </Text>
                 </View>
               )}
@@ -2338,17 +2338,7 @@ export default function FocusScreen() {
                       fontFamily: 'Poppins-SemiBold',
                       textAlign: 'center',
                     }}>
-                    Session complete!
-                  </Text>
-                  <Text
-                    style={{
-                      color: colorScheme === 'dark' ? '#CACACA' : '#8B7355',
-                      fontSize: 12,
-                      lineHeight: 18,
-                      fontFamily: 'Poppins-Regular',
-                      textAlign: 'center',
-                    }}>
-                    bonus 🍎 earned
+                    Over time
                   </Text>
                 </View>
               )}

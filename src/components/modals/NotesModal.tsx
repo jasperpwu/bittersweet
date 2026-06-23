@@ -90,29 +90,6 @@ export const NotesModal: FC<NotesModalProps> = ({
               textAlignVertical="top"
             />
 
-            {/* Bonus Time Toggle - only shown when session had bonus time */}
-            {hadBonusTime && bonusSeconds > 0 && (
-              <View className="mb-6">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Typography variant="subtitle-14-semibold" color="primary">
-                    Include Bonus Time
-                  </Typography>
-                  <Switch
-                    value={includeBonusTime}
-                    onValueChange={setIncludeBonusTime}
-                    trackColor={{ false: '#3A3A3C', true: '#4CAF7C' }}
-                    thumbColor="#FFFFFF"
-                  />
-                </View>
-                <Typography variant="body-12" color="secondary">
-                  Total: {formatDuration(includeBonusTime ? totalWithBonus : totalWithoutBonus)}
-                  {includeBonusTime
-                    ? ` (${formatDuration(targetSeconds)} + ${formatDuration(bonusSeconds)} bonus)`
-                    : ` (bonus time excluded)`}
-                </Typography>
-              </View>
-            )}
-
             {/* Buttons */}
             <View className="flex-row" style={{ gap: 12 }}>
               <Pressable

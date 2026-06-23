@@ -186,7 +186,7 @@ struct HomeScreenWidgetView: View {
             .minimumScaleFactor(0.7)
         }
 
-        Text(isBonusTime(session) ? "Bonus Time" : "Focusing...")
+        Text(isBonusTime(session) ? "Over Time" : "Focusing...")
           .font(.caption)
           .foregroundStyle(secondaryText)
       }
