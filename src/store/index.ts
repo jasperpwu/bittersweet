@@ -305,7 +305,7 @@ interface AppStore {
     ) => Promise<void>;
     updateSettings: (settings: Partial<BlocklistSettings>) => void;
     requestUnlock: (appTokens: any[], duration: number) => Promise<UnlockSession | null>;
-    endUnlock: (sessionId: string, reason?: 'expired' | 'manual') => void;
+    endUnlock: (sessionId: string, reason?: 'expired' | 'manual', endedAtMs?: number) => void;
     checkActiveUnlocks: () => void;
     getBlocklistEditCost: () => number;
   };
@@ -2403,11 +2403,44 @@ export const useAppStore = create<AppStore>()(
             }
           },
 
-          endUnlock: (sessionId: string, reason: 'expired' | 'manual' = 'expired') => {
+          endUnlock: (
+            sessionId: string,
+            reason: 'expired' | 'manual' = 'expired',
+            endedAtMs?: number
+          ) => {
             console.log('🔒 Ending unlock session:', sessionId);
             const session = get().blocklist.activeSessions.byId[sessionId];
 
             if (session && session.isActive) {
+              // Refund the unused minutes based on when the unlock ACTUALLY ended.
+              // endedAtMs is the real end moment: Date.now() for an in-app end, or
+              // the native stop marker's timestamp for a Live Activity end. It
+              // defaults to the session's own endTime, so a natural expiry (or any
+              // caller that omits it) refunds nothing. Computing this here — the
+              // single end funnel — guarantees no path (including the 'expired'
+              // auto-expire) can end a session without the correct refund.
+              const endTimeMs =
+                session.endTime instanceof Date
+                  ? session.endTime.getTime()
+                  : new Date(session.endTime).getTime();
+              const effectiveEndMs = Math.min(endedAtMs ?? endTimeMs, endTimeMs);
+              const remainingMinutes = Math.floor(
+                Math.max(0, endTimeMs - effectiveEndMs) / (60 * 1000)
+              );
+              const refundAmount = Math.min(
+                session.cost,
+                remainingMinutes * get().blocklist.settings.unlockCostPerMinute
+              );
+              if (refundAmount > 0) {
+                get().rewards.earnFruits(refundAmount, 'unlock_refund', {
+                  sessionId,
+                  refundedMinutes: remainingMinutes,
+                });
+                console.log(
+                  `🍎 Refunded ${refundAmount} fruits for ${remainingMinutes} unused unlock minute(s)`
+                );
+              }
+
               // Stop Live Activity if it exists
               if (session.liveActivityId) {
                 console.log('🛑 Stopping Live Activity for session:', sessionId);
@@ -2421,6 +2454,11 @@ export const useAppStore = create<AppStore>()(
                   }
                 );
               }
+
+              // Clear the shared UserDefaults copy too (native StopUnlockIntent may
+              // have already cancelled it). Keeps the key from leaking a stale ID
+              // into a later session. Mirrors the focus-session stop path.
+              WidgetService.syncScheduledNotificationId(null);
 
               set((state) => ({
                 blocklist: {
@@ -2458,10 +2496,23 @@ export const useAppStore = create<AppStore>()(
             const now = new Date();
             const { activeSessions } = get().blocklist;
 
+            // If the unlock was ended natively from the Live Activity while the app
+            // was backgrounded, StopUnlockIntent wrote a stop marker carrying the
+            // real end time. Honor it here so the unused-time refund is based on
+            // when the user actually ended the unlock — NOT on this (possibly much
+            // later) app open. Without this, reopening the app after the unlock
+            // window elapsed force-expires the session with zero refund before the
+            // marker can be processed. Read-and-clears the marker.
+            const stopMarker = WidgetService.checkWidgetUnlockStopAction();
+
             Object.values(activeSessions.byId).forEach((session) => {
-              if (session.isActive && now >= session.endTime) {
+              if (!session.isActive) return;
+              if (stopMarker) {
+                console.log('🔓 Ending unlock from native stop marker:', session.id);
+                get().blocklist.endUnlock(session.id, 'manual', stopMarker.timestamp);
+              } else if (now >= session.endTime) {
                 console.log('⏰ Auto-ending expired unlock session:', session.id);
-                get().blocklist.endUnlock(session.id);
+                get().blocklist.endUnlock(session.id, 'expired');
               }
             });
           },

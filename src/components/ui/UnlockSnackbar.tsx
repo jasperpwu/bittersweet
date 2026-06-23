@@ -185,6 +185,14 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
             return;
           }
 
+          // Expose the notification ID to native via shared UserDefaults so the
+          // native StopUnlockIntent can cancel it when the user ends the unlock
+          // from the Live Activity (banner/Dynamic Island) while the app is
+          // backgrounded. Without this, the stale "Unblock Expired" notification
+          // still fires and its handler ends the session as 'expired' — skipping
+          // the fruit refund. Mirrors the focus-session pattern (StopSessionIntent).
+          WidgetService.syncScheduledNotificationId(notificationId);
+
           useAppStore.setState((state) => ({
             blocklist: {
               ...state.blocklist,
@@ -204,17 +212,16 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
           console.error('Failed to schedule unlock expiration notification:', error);
         });
 
-        // Also schedule JS dismissal for when the app is in foreground
+        // Also schedule JS dismissal for when the app is in foreground. Route
+        // through checkActiveUnlocks (not endUnlock directly) so that if the
+        // unlock was ended early from the Live Activity, the native stop marker
+        // is honored and the unused time is still refunded — endUnlock stops the
+        // Live Activity itself.
         const msUntilExpiry = reblockTime.getTime() - Date.now();
         setTimeout(() => {
           const session = useAppStore.getState().blocklist.activeSessions.byId[unlockSession.id];
           if (!session?.isActive) return;
-
-          console.log('⏰ Unlock expired — dismissing Live Activity:', liveActivityId);
-          if (liveActivityId) {
-            LiveActivityService.stopUnlockCountdown(liveActivityId, 'expired');
-          }
-          useAppStore.getState().blocklist.endUnlock(unlockSession.id);
+          useAppStore.getState().blocklist.checkActiveUnlocks();
         }, msUntilExpiry);
 
         // Stop any existing monitoring first to avoid "excessive activities" error

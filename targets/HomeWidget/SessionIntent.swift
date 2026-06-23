@@ -262,6 +262,15 @@ struct StopUnlockIntent: LiveActivityIntent {
     // Re-block apps immediately via ManagedSettingsStore (main app process only)
     WidgetActivityKit.reblockHandler?()
 
+    // Cancel the JS-scheduled "Unblock Expired" notification immediately so it
+    // doesn't fire after the unlock is ended (JS can't cancel it until the app
+    // foregrounds). Without this, the stale notification still fires and its
+    // handler ends the session as 'expired' — skipping the fruit refund. Mirrors
+    // StopSessionIntent. The ID is written to UserDefaults by UnlockSnackbar.
+    if let notificationId = WidgetDataManager.shared.getAndClearScheduledNotificationId() {
+      UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [notificationId])
+    }
+
     // Clear unlock state so widget immediately shows idle
     WidgetDataManager.shared.clearUnlockSessionData()
 

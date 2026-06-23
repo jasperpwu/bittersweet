@@ -1211,33 +1211,17 @@ export default function FocusScreen() {
     );
   };
 
-  const stopUnlockSession = (sessionId: string, refundUnusedTime: boolean) => {
+  const stopUnlockSession = (
+    sessionId: string,
+    refundUnusedTime: boolean,
+    endedAtMs: number = Date.now()
+  ) => {
     const store = useAppStore.getState();
     const session = store.blocklist.activeSessions.byId[sessionId];
     if (!session?.isActive) return;
 
-    const nowMs = Date.now();
-    const endTimeMs =
-      session.endTime instanceof Date
-        ? session.endTime.getTime()
-        : new Date(session.endTime).getTime();
-    const remainingMs = Math.max(0, endTimeMs - nowMs);
-    const remainingMinutes = Math.floor(remainingMs / (60 * 1000));
-    const refundAmount = Math.min(
-      session.cost,
-      remainingMinutes * store.blocklist.settings.unlockCostPerMinute
-    );
-
-    if (refundUnusedTime && refundAmount > 0) {
-      store.rewards.earnFruits(refundAmount, 'unlock_refund', {
-        sessionId,
-        refundedMinutes: remainingMinutes,
-      });
-      console.log(
-        `🍎 Refunded ${refundAmount} fruits for ${remainingMinutes} unused unlock minute(s)`
-      );
-    }
-
+    // Re-block immediately. (Native StopUnlockIntent already does this for Live
+    // Activity ends; this is idempotent and covers in-app ends.)
     if (store.blocklist.currentSelectionId) {
       blockSelection({ activitySelectionId: store.blocklist.currentSelectionId });
       try {
@@ -1247,7 +1231,15 @@ export default function FocusScreen() {
       }
     }
 
-    store.blocklist.endUnlock(sessionId, refundUnusedTime ? 'manual' : 'expired');
+    // endUnlock refunds the unused minutes based on the actual end time. Pass the
+    // real end moment — Date.now() for an in-app end, or the native stop marker's
+    // timestamp for a Live Activity end — so reopening the app after the unlock
+    // window elapsed doesn't zero out the refund.
+    store.blocklist.endUnlock(
+      sessionId,
+      refundUnusedTime ? 'manual' : 'expired',
+      refundUnusedTime ? endedAtMs : undefined
+    );
 
     // Clear unlock state on home screen widget
     WidgetService.syncUnlockSessionState(null);
@@ -1673,11 +1665,13 @@ export default function FocusScreen() {
         const store = useAppStore.getState();
         const { activeSessions } = store.blocklist;
 
-        // Find and stop any active unlock sessions
+        // Find and stop any active unlock sessions. Pass the marker's timestamp
+        // (when StopUnlockIntent actually ran) so the refund reflects the time
+        // left at end, not at this foreground.
         activeSessions.allIds.forEach((id) => {
           const session = activeSessions.byId[id];
           if (session?.isActive) {
-            stopUnlockSession(id, true);
+            stopUnlockSession(id, true, unlockStopAction.timestamp);
           }
         });
       }
