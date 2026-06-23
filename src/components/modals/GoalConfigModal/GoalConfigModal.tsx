@@ -50,11 +50,12 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
 
   const handleSubmit = (goalData: {
     customName?: string;
-    activePeriod: 'daily' | 'weekly' | 'monthly';
+    activePeriod: 'daily' | 'weekly' | 'monthly' | 'none';
     dailyTargetMinutes: number;
     dailyRestDayTargetMinutes: number;
     weeklyTargetMinutes: number;
     monthlyTargetMinutes: number;
+    totalTargetMinutes: number;
     isRepeating: boolean;
     showTotalHours: boolean;
   }) => {

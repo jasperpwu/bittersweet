@@ -32,8 +32,13 @@ export const calculateUrgency = (
     return { isBehindPace: false, score: 0, level: 'low', deficit: 0 };
   }
 
-  const now = new Date();
   const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+  // No-period (cumulative) goals have no deadline, so there is no pace to fall behind.
+  if (period === 'none') {
+    return { isBehindPace: false, score: 0, level: 'low', deficit: 0 };
+  }
+
+  const now = new Date();
   const normalizedPeriod = period === 'yearly' ? 'monthly' : period;
   const { periodStart, periodEnd } = getGoalPeriodRange(
     normalizedPeriod as 'daily' | 'weekly' | 'monthly',

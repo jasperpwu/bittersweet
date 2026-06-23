@@ -540,7 +540,8 @@ export default function RootLayout() {
         const percentage = effectiveTarget > 0 ? (currentMinutes / effectiveTarget) * 100 : 0;
 
         const period = goal.activePeriod || 'daily';
-        const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
+        // No-period (cumulative) goals surface as "Total" rather than "None".
+        const periodLabel = period === 'none' ? 'Total' : period.charAt(0).toUpperCase() + period.slice(1);
 
         const tag = goal.tagId ? tags.byId[goal.tagId] : null;
         const displayName =

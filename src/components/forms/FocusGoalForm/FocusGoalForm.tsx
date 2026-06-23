@@ -3,21 +3,34 @@ import { View, Pressable, TextInput } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { Slider } from '../../ui/Slider';
 import { Toggle } from '../../ui/Toggle';
+import { TotalTargetPicker } from './TotalTargetPicker';
 import { useAppSettings } from '../../../store/unified-store';
 import { FocusGoal } from '../../../store/types';
 
-type GoalPeriod = 'daily' | 'weekly' | 'monthly';
+type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'none';
 
+// Slider bounds (daily/weekly/monthly). No-period goals use the wheel picker
+// instead of the slider, so their entries here are unused placeholders.
 const MAX_HOURS: Record<GoalPeriod, number> = {
   daily: 12,
   weekly: 84,
   monthly: 360,
+  none: 0,
 };
 
 const STEP_HOURS: Record<GoalPeriod, number> = {
   daily: 0.5,
   weekly: 1,
   monthly: 5,
+  none: 0,
+};
+
+// User-facing label for each period option in the selector.
+const PERIOD_LABELS: Record<GoalPeriod, string> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  none: 'Total',
 };
 
 // Daily goals use non-uniform stops: 15m and 30m at the low end, then 30m
@@ -43,6 +56,7 @@ interface FocusGoalFormProps {
     dailyRestDayTargetMinutes: number;
     weeklyTargetMinutes: number;
     monthlyTargetMinutes: number;
+    totalTargetMinutes: number;
     isRepeating: boolean;
     showTotalHours: boolean;
   }) => void;
@@ -63,6 +77,8 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   const [dailyRestDayTargetHours, setDailyRestDayTargetHours] = useState(0.5);
   const [weeklyTargetHours, setWeeklyTargetHours] = useState(7);
   const [monthlyTargetHours, setMonthlyTargetHours] = useState(30);
+  // No-period (cumulative) target is picked via a wheel, so store raw minutes.
+  const [totalTargetMinutes, setTotalTargetMinutes] = useState(100 * 60);
   const [activePeriod, setActivePeriod] = useState<GoalPeriod>('daily');
   const [customGoalName, setCustomGoalName] = useState('');
   const [showTotalHours, setShowTotalHours] = useState(true);
@@ -87,6 +103,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       const daily = editingGoal.dailyTargetMinutes || 0;
       const weekly = editingGoal.weeklyTargetMinutes || 0;
       const monthly = editingGoal.monthlyTargetMinutes || 0;
+      const total = editingGoal.totalTargetMinutes || 0;
 
       setDailyTargetHours(daily > 0 ? snapDailyHours(daily / 60) : 1);
       setDailyRestDayTargetHours(
@@ -94,6 +111,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       );
       setWeeklyTargetHours(weekly > 0 ? Math.round(weekly / 60) : 7);
       setMonthlyTargetHours(monthly > 0 ? Math.round(monthly / 60 / 5) * 5 : 30);
+      setTotalTargetMinutes(total > 0 ? total : 100 * 60);
 
       setShowTotalHours(editingGoal.showTotalHours ?? true);
       setCustomGoalName(editingGoal.customName || '');
@@ -103,13 +121,15 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       setDailyRestDayTargetHours(0.5);
       setWeeklyTargetHours(7);
       setMonthlyTargetHours(30);
+      setTotalTargetMinutes(100 * 60);
       setActivePeriod('daily');
       setCustomGoalName('');
       setShowTotalHours(true);
     }
   }, [editingGoal]);
 
-  // Get current period's target hours for display
+  // Get current period's target hours for the slider (daily/weekly/monthly).
+  // No-period goals use the wheel picker below, not this slider abstraction.
   const currentTargetHours = activePeriod === 'daily' ? dailyTargetHours
     : activePeriod === 'weekly' ? weeklyTargetHours
     : monthlyTargetHours;
@@ -122,6 +142,8 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
 
   // Clamp when period changes
   useEffect(() => {
+    // No-period goals are set via the wheel picker (raw minutes), not the slider.
+    if (activePeriod === 'none') return;
     const max = MAX_HOURS[activePeriod];
     const step = STEP_HOURS[activePeriod];
     let clamped: number;
@@ -155,12 +177,13 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       dailyRestDayTargetMinutes: dailyRestDayTargetHours * 60,
       weeklyTargetMinutes: weeklyTargetHours * 60,
       monthlyTargetMinutes: monthlyTargetHours * 60,
+      totalTargetMinutes,
       isRepeating: true,
       showTotalHours,
     });
   };
 
-  const isValid = currentTargetHours > 0;
+  const isValid = activePeriod === 'none' ? totalTargetMinutes > 0 : currentTargetHours > 0;
 
   const formatSliderValue = (hours: number): string => {
     if (hours === 0) return '0h';
@@ -193,7 +216,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
           Time Period
         </Typography>
         <View className="flex-row gap-x-2">
-          {(['daily', 'weekly', 'monthly'] as const).map((p) => (
+          {(['daily', 'weekly', 'monthly', 'none'] as const).map((p) => (
             <Pressable
               key={p}
               onPress={() => setActivePeriod(p)}
@@ -202,35 +225,46 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
               }`}
             >
               <Typography
-                variant="body-14"
+                variant="body-12"
                 className={`text-center ${activePeriod === p ? 'text-white' : 'text-light-text-primary dark:text-white'}`}
               >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
+                {PERIOD_LABELS[p]}
               </Typography>
             </Pressable>
           ))}
         </View>
       </View>
 
-      {/* Target Duration — Slider */}
+      {/* Target Duration — slider for periodic goals, wheel picker for no-period */}
       <View>
         <Typography variant="subtitle-16" color="primary" className="mb-2">
-          {activePeriod === 'daily' ? 'Regular Day Target' : 'Target Duration'}
+          {activePeriod === 'daily' ? 'Regular Day Target'
+            : activePeriod === 'none' ? 'Total Target'
+            : 'Target Duration'}
         </Typography>
-        <View className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-3 items-center">
-          <Typography variant="headline-20" color="primary" className="mb-1">
-            {formatSliderValue(currentTargetHours)}
+        {activePeriod === 'none' ? (
+          <TotalTargetPicker value={totalTargetMinutes} onChange={setTotalTargetMinutes} />
+        ) : (
+          <View className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-3 items-center">
+            <Typography variant="headline-20" color="primary" className="mb-1">
+              {formatSliderValue(currentTargetHours)}
+            </Typography>
+            <Slider
+              value={currentTargetHours}
+              minimumValue={activePeriod === 'daily' ? DAILY_VALUES[0] : STEP_HOURS[activePeriod]}
+              maximumValue={MAX_HOURS[activePeriod]}
+              step={STEP_HOURS[activePeriod]}
+              snapPoints={activePeriod === 'daily' ? DAILY_VALUES : undefined}
+              onValueChange={setCurrentTargetHours}
+              unit="h"
+            />
+          </View>
+        )}
+        {activePeriod === 'none' && (
+          <Typography variant="body-12" color="secondary" className="mt-1.5">
+            A cumulative goal that counts all your focus time for this tag. It never resets.
           </Typography>
-          <Slider
-            value={currentTargetHours}
-            minimumValue={activePeriod === 'daily' ? DAILY_VALUES[0] : STEP_HOURS[activePeriod]}
-            maximumValue={MAX_HOURS[activePeriod]}
-            step={STEP_HOURS[activePeriod]}
-            snapPoints={activePeriod === 'daily' ? DAILY_VALUES : undefined}
-            onValueChange={setCurrentTargetHours}
-            unit="h"
-          />
-        </View>
+        )}
       </View>
 
       {/* Rest Day Target — only for daily goals */}

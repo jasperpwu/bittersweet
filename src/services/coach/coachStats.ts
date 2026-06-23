@@ -42,6 +42,8 @@ export function previousWeekRange(ref: Date = new Date()): WeekRange {
  */
 function weeklyEquivalentTarget(goal: FocusGoal, weekStart: Date, restDays: number[]): number {
   const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+  // No-period (cumulative) goals have no weekly pace — exclude from weekly coaching.
+  if (period === 'none') return 0;
   if (period === 'weekly') {
     return getTargetForDate(goal, weekStart, restDays, 'weekly');
   }

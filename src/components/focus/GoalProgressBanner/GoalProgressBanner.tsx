@@ -109,7 +109,24 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
     const afterMinutes =
       calculateGoalProgress([goal as any], safeSessions as any, undefined, weekStartDay)[goal.id] ?? 0;
 
-    const period = (goal.activePeriod ?? 'daily') as 'daily' | 'weekly' | 'monthly';
+    const period = (goal.activePeriod ?? 'daily') as 'daily' | 'weekly' | 'monthly' | 'none';
+
+    // No-period (cumulative) goals have no period window — this session's full
+    // duration is what got added, and there is no per-period streak.
+    if (period === 'none') {
+      const sessionMinutes = (session as any).duration ?? 0;
+      const beforeMinutes = Math.max(0, afterMinutes - sessionMinutes);
+      return {
+        target,
+        afterMinutes,
+        beforePct: Math.min((beforeMinutes / target) * 100, 100),
+        afterPct: Math.min((afterMinutes / target) * 100, 100),
+        reachedNow: beforeMinutes < target && afterMinutes >= target,
+        streak: 0,
+        period: 'none' as const,
+      };
+    }
+
     const normalized = (period === ('yearly' as string) ? 'monthly' : period) as 'daily' | 'weekly' | 'monthly';
     const { periodStart, periodEnd } = getGoalPeriodRange(normalized, new Date(), weekStartDay);
     const sessionMinutes = getSessionMinutesInPeriod(session as any, periodStart, periodEnd);

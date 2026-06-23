@@ -275,7 +275,7 @@ function DraggableGoalRow({
             onPress={handlePress}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            disabled={!goal.isRepeating}
+            disabled={!goal.isRepeating || ((goal as any).activePeriod || (goal as any).period) === 'none'}
           >
             <Reanimated.View style={pressAnimatedStyle}>
               <GoalRowItem goal={goal} tags={tags} />
@@ -367,7 +367,9 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   }), [goals, freshGoalProgress, restDays]);
 
   const handleGoalPress = useCallback((goal: ProcessedGoal) => {
-    if (goal.isRepeating) {
+    // No-period (cumulative) goals have no consistency calendar to expand into.
+    const goalPeriod = (goal as any).activePeriod || (goal as any).period || 'daily';
+    if (goal.isRepeating && goalPeriod !== 'none') {
       setExpandedGoalId(prev => prev === goal.id ? null : goal.id);
     }
   }, []);
@@ -430,7 +432,8 @@ export const GoalProgress: FC<GoalProgressProps> = ({
       {hasActiveGoals && (
         <View className="gap-y-3">
           {processedGoals.map((goal, index) => {
-            const isExpanded = goal.isRepeating && expandedGoalId === goal.id;
+            const goalPeriod = (goal as any).activePeriod || (goal as any).period || 'daily';
+            const isExpanded = goal.isRepeating && goalPeriod !== 'none' && expandedGoalId === goal.id;
             return (
               <View key={goal.id}>
                 {!isExpanded && (
@@ -590,6 +593,8 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   const { progressWidth, exceededWidth } = getGoalBarSegments(goal.currentProgress, effectiveTarget);
 
   const goalPeriod = (goal as any).activePeriod || (goal as any).period || 'daily';
+  // No-period (cumulative) goals don't show a period pill.
+  const showPeriodBadge = goalPeriod !== 'none';
   const periodLabel = goalPeriod.charAt(0).toUpperCase() + goalPeriod.slice(1);
 
   // Goal display name
@@ -655,12 +660,14 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
           </View>
         </View>
 
-        {/* Period Badge */}
-        <View className="rounded-full px-3 py-1 bg-primary">
-          <Typography variant="body-12" className="text-white font-poppins-medium">
-            {periodLabel}
-          </Typography>
-        </View>
+        {/* Period Badge — hidden for no-period (cumulative) goals */}
+        {showPeriodBadge && (
+          <View className="rounded-full px-3 py-1 bg-primary">
+            <Typography variant="body-12" className="text-white font-poppins-medium">
+              {periodLabel}
+            </Typography>
+          </View>
+        )}
       </View>
 
       {/* Tag Pill — only show if customName is set (to clarify which tag) */}

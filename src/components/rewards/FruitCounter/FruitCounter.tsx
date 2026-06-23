@@ -7,6 +7,8 @@ interface FruitCounterProps {
   onPress?: () => void;
   showAnimation?: boolean;
   size?: 'small' | 'medium' | 'large';
+  /** Red dot indicating unclaimed rewards in the store. */
+  showBadge?: boolean;
 }
 
 const sizeConfig = {
@@ -20,6 +22,7 @@ export const FruitCounter: FC<FruitCounterProps> = ({
   onPress,
   showAnimation = false,
   size = 'medium',
+  showBadge = false,
 }) => {
   const formatFruitCount = (count: number) => {
     if (count >= 1000000) {
@@ -38,6 +41,7 @@ export const FruitCounter: FC<FruitCounterProps> = ({
     <Component
       onPress={onPress}
       style={{
+        position: 'relative',
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: config.paddingH,
@@ -61,6 +65,19 @@ export const FruitCounter: FC<FruitCounterProps> = ({
       >
         {formatFruitCount(fruitCount)}
       </Typography>
+      {showBadge && (
+        <View
+          style={{
+            position: 'absolute',
+            top: -2,
+            right: -2,
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: '#FF3B30',
+          }}
+        />
+      )}
     </Component>
   );
 };

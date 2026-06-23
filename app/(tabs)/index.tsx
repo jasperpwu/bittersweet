@@ -56,6 +56,7 @@ import { showToast } from '../../src/components/ui/Toast';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
 import { WidgetService } from '../../src/services/WidgetService';
 import { AnalyticsTracker } from '../../src/services/analytics';
+import { SETUP_TASK_IDS } from '../../src/services/sync/SyncMapper';
 import { FamilyControlsModule } from '../../src/modules/BitterSweetFamilyControls';
 import { blockSelection, stopMonitoring } from 'react-native-device-activity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -689,6 +690,10 @@ export default function FocusScreen() {
     leaveSharedTag,
   } = useFocusActions();
   const rewards = useRewards();
+  // Unclaimed setup-task rewards waiting in the fruit store (same filter as fruit-store.tsx).
+  const hasUnclaimedRewards = SETUP_TASK_IDS.some(
+    (id) => rewards.tasks?.[id]?.everSetup && !rewards.tasks?.[id]?.claimed,
+  );
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
   const { currentSession } = useFocus();
@@ -2253,6 +2258,7 @@ export default function FocusScreen() {
             <FruitCounter
               fruitCount={rewards.balance}
               size="small"
+              showBadge={hasUnclaimedRewards}
               onPress={() => {
                 AnalyticsTracker.track('store_opened');
                 router.push('/fruit-store');

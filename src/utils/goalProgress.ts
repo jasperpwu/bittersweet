@@ -64,8 +64,14 @@ export const calculateGoalProgress = (
   goals.forEach(goal => {
     // Use activePeriod (new model) with fallback to period (legacy)
     const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+
+    // No-period (cumulative) goals count every matching session for all time —
+    // there is no period range and progress never resets.
+    const isNoPeriod = period === 'none';
     const normalizedPeriod = period === 'yearly' ? 'monthly' : period;
-    const { periodStart, periodEnd } = getGoalPeriodRange(normalizedPeriod as 'daily' | 'weekly' | 'monthly', now, weekStartDay);
+    const { periodStart, periodEnd } = isNoPeriod
+      ? { periodStart: new Date(0), periodEnd: new Date(8640000000000000) }
+      : getGoalPeriodRange(normalizedPeriod as 'daily' | 'weekly' | 'monthly', now, weekStartDay);
 
     // Calculate total minutes from sessions that overlap with this period
     const totalMinutes = sessions.reduce((sum, session) => {
@@ -207,6 +213,8 @@ export const calculateGoalStreak = (
   referenceDate: Date = new Date(),
 ): number => {
   const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+  // No-period (cumulative) goals have no concept of a per-period streak.
+  if (period === 'none') return 0;
   const normalized = (period === 'yearly' ? 'monthly' : period) as 'daily' | 'weekly' | 'monthly';
 
   // How far back a streak can stretch before we stop counting.
@@ -254,6 +262,8 @@ export const shouldResetGoalProgress = (
   weekStartDay: number = 1,
 ): boolean => {
   const period = (goal as any).activePeriod || (goal as any).period || 'daily';
+  // No-period (cumulative) goals never reset.
+  if (period === 'none') return false;
   const normalizedPeriod = period === 'yearly' ? 'monthly' : period;
   const { periodStart } = getGoalPeriodRange(normalizedPeriod as 'daily' | 'weekly' | 'monthly', currentDate, weekStartDay);
   return new Date(goal.lastResetDate) < periodStart;
@@ -275,6 +285,7 @@ export const getGoalCurrentTarget = (goal: FocusGoal): number => {
   if (period === 'daily') return goal.dailyTargetMinutes || (goal as any).targetMinutes || 0;
   if (period === 'weekly') return goal.weeklyTargetMinutes || (goal as any).targetMinutes || 0;
   if (period === 'monthly') return goal.monthlyTargetMinutes || (goal as any).targetMinutes || 0;
+  if (period === 'none') return goal.totalTargetMinutes || 0;
   return (goal as any).targetMinutes || 0;
 };
 
@@ -294,6 +305,8 @@ export const getTargetForDate = (
   period?: 'daily' | 'weekly' | 'monthly',
 ): number => {
   const goalPeriod = period || (goal as any).activePeriod || (goal as any).period || 'daily';
+  // No-period (cumulative) goals have a single flat target — no rest days, no history.
+  if (goalPeriod === 'none') return getGoalCurrentTarget(goal);
   const normalizedPeriod = goalPeriod === 'yearly' ? 'monthly' : goalPeriod;
   const history = goal.targetHistory;
   const dateStr = date.toISOString().split('T')[0];

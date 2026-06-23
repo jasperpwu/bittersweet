@@ -113,11 +113,14 @@ export interface FocusGoal extends BaseEntity {
   userId: string;
   customName?: string; // if empty/undefined, derive from tag
   tagId: string; // 1:1 with tag
-  activePeriod: 'daily' | 'weekly' | 'monthly';
+  activePeriod: 'daily' | 'weekly' | 'monthly' | 'none';
   dailyTargetMinutes: number; // 0 = not configured
   dailyRestDayTargetMinutes: number;
   weeklyTargetMinutes: number;
   monthlyTargetMinutes: number;
+  // Cumulative lifetime target for 'none' (no-period) goals — counts all sessions
+  // for the tag, never resets. 0 = not configured.
+  totalTargetMinutes: number;
   targetHistory: TargetHistoryEntry[];
   isActive: boolean;
   isRepeating: boolean;
