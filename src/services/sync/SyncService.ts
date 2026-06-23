@@ -12,6 +12,8 @@ import {
   rowToRewards,
   badgeToRow,
   rowToBadge,
+  coachReportToRow,
+  rowToCoachReport,
   settingsToRow,
   rowToSettings,
   referralToRow,
@@ -28,6 +30,7 @@ const FLUSH_PRIORITY: Record<string, number> = {
   session_tags: 10,
   focus_goals: 20,
   focus_sessions: 30,
+  coach_reports: 40,
 };
 
 function sortEntriesForFlush(entries: SyncQueueEntry[]): SyncQueueEntry[] {
@@ -86,6 +89,12 @@ export class SyncService {
       await SyncService.batchUpsert('badges', badgeRows);
     }
 
+    // Upload coach reports
+    if (localState.focus.coachReports?.allIds?.length > 0) {
+      const coachRows = normalizedToRows(localState.focus.coachReports, coachReportToRow, userId);
+      await SyncService.batchUpsert('coach_reports', coachRows);
+    }
+
     // Upload settings (from unified store preferences + main store lastDurationByTagId)
     if (localState.settings) {
       const settingsRow = settingsToRow(localState.settings, userId, localState.focus?.lastDurationByTagId);
@@ -127,7 +136,7 @@ export class SyncService {
   static async pullAll(userId: string): Promise<any> {
     console.log('☁️ Pulling all data from cloud...');
 
-    const [sessionsRes, tagsRes, goalsRes, rewardsRes, badgesRes, settingsRes, referralRes] =
+    const [sessionsRes, tagsRes, goalsRes, rewardsRes, badgesRes, coachRes, settingsRes, referralRes] =
       await Promise.all([
         supabase
           .from('focus_sessions')
@@ -150,6 +159,11 @@ export class SyncService {
           .select('*')
           .eq('user_id', userId)
           .is('deleted_at', null),
+        supabase
+          .from('coach_reports')
+          .select('*')
+          .eq('user_id', userId)
+          .is('deleted_at', null),
         supabase.from('user_settings').select('*').eq('user_id', userId).single(),
         supabase.from('referral_tracking').select('*').eq('user_id', userId).maybeSingle(),
       ]);
@@ -163,6 +177,7 @@ export class SyncService {
     const goals = rowsToNormalized(goalsRes.data ?? [], rowToGoal);
     goals.allIds.sort((a, b) => (goals.byId[a]?.sortOrder ?? 0) - (goals.byId[b]?.sortOrder ?? 0));
     const badges = rowsToNormalized(badgesRes.data ?? [], rowToBadge);
+    const coachReports = rowsToNormalized(coachRes.data ?? [], rowToCoachReport);
     const rewards = rewardsRes.data
       ? rowToRewards(rewardsRes.data)
       : { balance: 0, totalEarned: 0, totalSpent: 0, tasks: defaultSetupTasks() };
@@ -186,7 +201,7 @@ export class SyncService {
     );
 
     return {
-      focus: { sessions, tags, goals, badges },
+      focus: { sessions, tags, goals, badges, coachReports },
       rewards,
       settings,
       referral,
@@ -229,6 +244,11 @@ export class SyncService {
         badges: SyncService.mergeNormalized(
           local.focus.badges ?? { byId: {}, allIds: [] },
           remote.focus.badges ?? { byId: {}, allIds: [] },
+          'updatedAt'
+        ),
+        coachReports: SyncService.mergeNormalized(
+          local.focus.coachReports ?? { byId: {}, allIds: [] },
+          remote.focus.coachReports ?? { byId: {}, allIds: [] },
           'updatedAt'
         ),
       },

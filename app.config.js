@@ -21,11 +21,9 @@ export default ({ config }) => {
   newConfig.scheme = scheme;
 
   if (IS_DEV) {
+    // Differentiate dev by icon only; the home-screen name stays "Bittersweet"
+    // (CFBundleDisplayName from app.json).
     newConfig.icon = './assets/icon-dev.png';
-    // Set the user-visible name on the home screen without changing the Xcode project name
-    if (newConfig.ios && newConfig.ios.infoPlist) {
-      newConfig.ios.infoPlist.CFBundleDisplayName = `${config.name} (Dev)`;
-    }
   }
 
   if (newConfig.ios) {

@@ -5,6 +5,7 @@ import {
   tagToRow,
   goalToRow,
   badgeToRow,
+  coachReportToRow,
   mergeSetupTasks,
 } from '../../services/sync/SyncMapper';
 import { supabase } from '../../config/supabase';
@@ -93,6 +94,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           tags: state.focus.tags,
           goals: state.focus.goals,
           badges: state.focus.badges ?? { byId: {}, allIds: [] },
+          coachReports: state.focus.coachReports ?? { byId: {}, allIds: [] },
         },
         rewards: {
           balance: state.rewards.balance,
@@ -133,6 +135,11 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
             ...s.focus.badges,
             byId: merged.focus.badges.byId,
             allIds: merged.focus.badges.allIds,
+          },
+          coachReports: {
+            ...s.focus.coachReports,
+            byId: merged.focus.coachReports.byId,
+            allIds: merged.focus.coachReports.allIds,
           },
           // Apply lastDurationByTagId from merged settings if remote won
           ...(merged.settings?.lastDurationByTagId ? { lastDurationByTagId: merged.settings.lastDurationByTagId } : {}),
@@ -286,6 +293,11 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
             ...s.focus.badges,
             byId: remoteData.focus.badges?.byId ?? {},
             allIds: remoteData.focus.badges?.allIds ?? [],
+          },
+          coachReports: {
+            ...s.focus.coachReports,
+            byId: remoteData.focus.coachReports?.byId ?? {},
+            allIds: remoteData.focus.coachReports?.allIds ?? [],
           },
           // Restore per-tag durations from cloud settings
           lastDurationByTagId: remoteData.settings?.lastDurationByTagId ?? {},
@@ -548,14 +560,20 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
       remoteData.focus.badges?.byId ?? {},
       (b) => badgeToRow(b, userId)
     );
+    const coachReportsPushed = await enqueueLocalWins(
+      'coach_reports',
+      merged.focus.coachReports ?? { byId: {}, allIds: [] },
+      remoteData.focus.coachReports?.byId ?? {},
+      (r) => coachReportToRow(r, userId)
+    );
 
-    if (tagsPushed + sessionsPushed + goalsPushed + badgesPushed === 0) {
+    if (tagsPushed + sessionsPushed + goalsPushed + badgesPushed + coachReportsPushed === 0) {
       console.log('[triggerSync] No local-wins to push to cloud');
       return;
     }
 
     console.log(
-      `[triggerSync] Pushing local-wins — tags:${tagsPushed} sessions:${sessionsPushed} goals:${goalsPushed} badges:${badgesPushed}`
+      `[triggerSync] Pushing local-wins — tags:${tagsPushed} sessions:${sessionsPushed} goals:${goalsPushed} badges:${badgesPushed} coachReports:${coachReportsPushed}`
     );
     const result = await SyncService.flush();
     console.log(`[triggerSync] Local-wins flush — flushed:${result.flushed} failed:${result.failed}`);

@@ -29,10 +29,6 @@ export class BlocklistSyncService {
    */
   static async push(userId: string, selectionId: string): Promise<void> {
     const blob = getFamilyActivitySelectionId(selectionId);
-    if (!blob) {
-      console.log('[BlocklistSync] No blob found for selectionId:', selectionId);
-      return;
-    }
 
     const { error } = await supabase
       .from('blocklist_selections')
@@ -48,7 +44,6 @@ export class BlocklistSyncService {
       console.error('[BlocklistSync] Push failed:', error);
       throw error;
     }
-    console.log('[BlocklistSync] Pushed blob to cloud');
   }
 
   /**
@@ -83,7 +78,6 @@ export class BlocklistSyncService {
     currentSelectionId: string | null,
     skipBlocking = false
   ): Promise<string | null> {
-    console.log('[BlocklistSync] Starting sync...');
 
     // Get the current local blob from the named ID
     const currentLocalBlob = currentSelectionId
@@ -98,7 +92,6 @@ export class BlocklistSyncService {
 
     if (!serverBlob || serverBlob === '') {
       // No server data — just push local and record baseline
-      console.log('[BlocklistSync] No server data, pushing local');
       if (currentLocalBlob && currentLocalBlob !== '') {
         await BlocklistSyncService.pushBlob(userId, currentLocalBlob);
       }
@@ -108,7 +101,6 @@ export class BlocklistSyncService {
 
     if (!currentLocalBlob || currentLocalBlob === '') {
       // No local data — accept server blob entirely
-      console.log('[BlocklistSync] No local data, accepting server blob');
       BlocklistSyncService.storeTempBlob(CANONICAL_SELECTION_ID, serverBlob);
       BlocklistSyncService.applyLocally(currentSelectionId, skipBlocking);
       await AsyncStorage.setItem(LAST_SYNCED_BLOB_KEY, serverBlob);
@@ -122,7 +114,6 @@ export class BlocklistSyncService {
 
     if (!lastSyncedBlob) {
       // First sync / baseline cleared — fallback to union (no removals detectable)
-      console.log('[BlocklistSync] No baseline — using union fallback');
       const result = union(
         { activitySelectionId: currentSelectionId! },
         { activitySelectionId: TEMP_SERVER_ID },
@@ -131,7 +122,6 @@ export class BlocklistSyncService {
       mergedBlob = result?.familyActivitySelection || currentLocalBlob;
     } else {
       // Diff-based merge
-      console.log('[BlocklistSync] Diff-based merge');
 
       // Store baseline as temp named selection
       BlocklistSyncService.storeTempBlob(TEMP_BASELINE_ID, lastSyncedBlob);
@@ -157,7 +147,6 @@ export class BlocklistSyncService {
 
       if (!hasAdded && !hasRemoved) {
         // No local changes from baseline — just accept server blob
-        console.log('[BlocklistSync] No local changes, accepting server');
         BlocklistSyncService.storeTempBlob(CANONICAL_SELECTION_ID, serverBlob);
         mergedBlob = serverBlob;
       } else {
@@ -197,7 +186,6 @@ export class BlocklistSyncService {
 
     // 3. Push merged to server if it differs
     if (serverChanged) {
-      console.log('[BlocklistSync] Pushing merged blob to server');
       await BlocklistSyncService.pushBlob(userId, finalMergedBlob);
     }
 
@@ -206,12 +194,10 @@ export class BlocklistSyncService {
 
     // 5. If local changed, apply locally
     if (localChanged) {
-      console.log('[BlocklistSync] Local blocklist changed — applying merged blob');
       BlocklistSyncService.applyLocally(currentSelectionId, skipBlocking);
       return CANONICAL_SELECTION_ID;
     }
 
-    console.log('[BlocklistSync] Sync complete — no local changes needed');
     return null;
   }
 
@@ -220,7 +206,6 @@ export class BlocklistSyncService {
    */
   static async clearBaseline(): Promise<void> {
     await AsyncStorage.removeItem(LAST_SYNCED_BLOB_KEY);
-    console.log('[BlocklistSync] Baseline cleared');
   }
 
   /**
@@ -252,7 +237,6 @@ export class BlocklistSyncService {
     oldSelectionId: string | null,
     skipBlocking = false
   ): Promise<string> {
-    console.log('[BlocklistSync] importAndApply — applying cloud blob');
     BlocklistSyncService.storeTempBlob(CANONICAL_SELECTION_ID, blob);
     BlocklistSyncService.applyLocally(oldSelectionId, skipBlocking);
     await AsyncStorage.setItem(LAST_SYNCED_BLOB_KEY, blob);
@@ -265,10 +249,8 @@ export class BlocklistSyncService {
    */
   static reapplyBlocking(selectionId: string, skipBlocking = false): void {
     if (skipBlocking) {
-      console.log('[BlocklistSync] Skipping reapplyBlocking — active unlock session');
       return;
     }
-    console.log('[BlocklistSync] Re-applying native blocking for:', selectionId);
     blockSelection({ activitySelectionId: selectionId });
   }
 
@@ -313,7 +295,6 @@ export class BlocklistSyncService {
       unblockSelection({ activitySelectionId: oldSelectionId });
     }
     if (skipBlocking) {
-      console.log('[BlocklistSync] Skipping blockSelection — active unlock session');
       return;
     }
     blockSelection({ activitySelectionId: CANONICAL_SELECTION_ID });

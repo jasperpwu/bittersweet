@@ -1670,7 +1670,6 @@ export default function FocusScreen() {
       // 0. Check if widget stopped an unlock session (StopUnlockIntent)
       const unlockStopAction = WidgetService.checkWidgetUnlockStopAction();
       if (unlockStopAction) {
-        console.log('📱 [Widget] Adopting widget unlock stop action');
         const store = useAppStore.getState();
         const { activeSessions } = store.blocklist;
 
@@ -1679,7 +1678,6 @@ export default function FocusScreen() {
           const session = activeSessions.byId[id];
           if (session?.isActive) {
             stopUnlockSession(id, true);
-            console.log('🔒 [Widget] Ended unlock session from live activity:', id);
           }
         });
       }
@@ -1687,7 +1685,6 @@ export default function FocusScreen() {
       // 1. Check if widget stopped a session while app was backgrounded/killed
       const stopAction = WidgetService.checkWidgetStopAction();
       if (stopAction) {
-        console.log('📱 [Widget] Adopting widget stop action');
 
         // Check if a NEWER session was started after this stop action.
         // Flow: start A → stop A → start B → user opens app.
@@ -1739,12 +1736,6 @@ export default function FocusScreen() {
               targetDuration: effectiveTargetDuration,
               tagId: sessionInfo.tagId,
             });
-            console.log(
-              '📱 [Widget] Recorded completed session:',
-              durationMinutes,
-              'min',
-              isInfiniteSession ? '(infinite)' : ''
-            );
           }
 
           await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
@@ -1819,7 +1810,6 @@ export default function FocusScreen() {
             startedSession.liveActivityId
           );
         } else {
-          console.log('📱 [Widget] Existing active session found, skipping adoption');
           WidgetService.clearWidgetStartedSession();
         }
       }

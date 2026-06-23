@@ -254,10 +254,10 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
   if (!visible) return null;
 
   return (
-    <View className="absolute bottom-0 left-0 right-0 z-50">
-      {/* Dismiss overlay - covers entire screen */}
+    <View className="absolute inset-0 z-50 justify-end">
+      {/* Dimmed dismiss overlay - covers entire screen behind the sheet */}
       <Pressable
-        className="absolute inset-0 -top-96"
+        className="absolute inset-0 bg-black/70"
         onPress={onDismiss}
       />
 

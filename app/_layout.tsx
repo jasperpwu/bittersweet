@@ -11,6 +11,7 @@ import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
 import { useAppState, initializeUnifiedStore, clearUnifiedStoreData } from '../src/store/unified-store';
 import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
 import { useGoalNudgeNotifications } from '../src/hooks/useGoalNudgeNotifications';
+import { useWeeklyCoach } from '../src/hooks/useWeeklyCoach';
 import { useEffect, useRef, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -72,6 +73,9 @@ export default function RootLayout() {
 
   // Schedule/cancel goal nudge notifications
   useGoalNudgeNotifications();
+
+  // AI Focus Coach: generate weekly report + schedule the weekly nudge
+  useWeeklyCoach();
 
   // Handle invite deep links
   useDeepLinkHandler();
@@ -158,6 +162,16 @@ export default function RootLayout() {
           }
           // Clear unlock state on home screen widget
           WidgetService.syncUnlockSessionState(null);
+        }
+      }
+    );
+
+    // Route taps on the weekly AI coach nudge to the coach report screen.
+    const coachResponseSubscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data;
+        if (data?.type === 'weekly-coach') {
+          router.push('/(modals)/ai-coach');
         }
       }
     );
@@ -452,6 +466,7 @@ export default function RootLayout() {
     return () => {
       authListenerCancelled = true;
       notificationSubscription.remove();
+      coachResponseSubscription.remove();
       authListener?.subscription.unsubscribe();
       useAppStore.getState().subscription.teardownIAP();
       teardownSync();
@@ -698,12 +713,6 @@ export default function RootLayout() {
     useAppStore.getState().rewards.reconcileSetupTasks();
   }, [fontsLoaded, isHydrated]);
 
-  // Debug logging
-  if (__DEV__) {
-    console.log('RootLayout - fontsLoaded:', fontsLoaded);
-    console.log('RootLayout - isHydrated:', isHydrated);
-  }
-
   const isReady = fontsLoaded && isHydrated;
   const pathname = usePathname();
   const systemColorScheme = useColorScheme();
@@ -748,6 +757,14 @@ export default function RootLayout() {
                   options={{
                     headerShown: false,
                     presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="(modals)/ai-coach"
+                  options={{
+                    headerShown: false,
+                    presentation: 'card',
                     gestureEnabled: true,
                   }}
                 />

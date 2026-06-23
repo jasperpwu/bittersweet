@@ -85,9 +85,6 @@ export const GroveRankingService = {
 
     if (error) throw error;
 
-    console.log(`[GroveRankings] period=${period}, start=${periodStart.toISOString()}, end=${periodEnd.toISOString()}`);
-    console.log('[GroveRankings] raw RPC response:', JSON.stringify(data, null, 2));
-
     const rows: any[] = data || [];
 
     return rows.map((row: any, index: number) => ({

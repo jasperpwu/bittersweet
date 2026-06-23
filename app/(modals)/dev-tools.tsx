@@ -9,6 +9,7 @@ import {
   clearTestChallenges,
   type SeedChallengeState,
 } from '../../src/services/grove/GroveChallengeDevSeeder';
+import { generateWeeklyReport } from '../../src/services/coach';
 
 export default function DevToolsModal() {
   const colorScheme = useColorScheme();
@@ -166,6 +167,48 @@ export default function DevToolsModal() {
               Clear All Sessions
             </Typography>
           </Pressable>
+        </View>
+
+        {/* AI Focus Coach */}
+        <View>
+          <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
+            AI Focus Coach
+          </Typography>
+          <Pressable
+            onPress={async () => {
+              const report = await generateWeeklyReport();
+              Alert.alert(
+                report ? 'Report generated' : 'Not enough data',
+                report
+                  ? `Score ${report.focusScore} · ${report.cards.length} insights · ${report.narrator}`
+                  : 'Need ≥3 sessions or ≥2 active days in the last completed week.',
+              );
+            }}
+            className="bg-primary rounded-xl py-3 items-center active:opacity-80"
+          >
+            <Typography variant="subtitle-14-semibold" color="white">
+              Generate Report — Last Week
+            </Typography>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              const report = await generateWeeklyReport(new Date());
+              Alert.alert(
+                report ? 'Report generated' : 'Not enough data',
+                report
+                  ? `Score ${report.focusScore} · ${report.cards.length} insights · ${report.narrator}`
+                  : 'Need ≥3 sessions or ≥2 active days this week.',
+              );
+            }}
+            className="bg-gray-700 rounded-xl py-3 items-center active:opacity-80 mt-2"
+          >
+            <Typography variant="subtitle-14-semibold" color="white">
+              Generate Report — This Week
+            </Typography>
+          </Pressable>
+          <Typography variant="body-12" color="secondary" className="mt-2">
+            Then open Goals tab → AI Focus Coach card.
+          </Typography>
         </View>
 
         {/* Onboarding */}

@@ -115,7 +115,6 @@ export class WidgetService {
           isInfinite: false,
         });
       }
-      console.log('📱 [Widget] Synced session state:', data ? 'active' : 'idle');
       // Force widget to refresh immediately instead of waiting up to 15 min
       reloadWidgetTimelines();
     } catch (error) {
@@ -130,7 +129,6 @@ export class WidgetService {
   static syncTagList(tags: WidgetTagInfo[]): void {
     try {
       ReactNativeDeviceActivity.userDefaultsSet(TAG_LIST_KEY, tags);
-      console.log('📱 [Widget] Synced tag list:', tags.length, 'tags');
       reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to sync tag list:', error);
@@ -148,7 +146,6 @@ export class WidgetService {
       } else {
         ReactNativeDeviceActivity.userDefaultsRemove(SELECTED_TAG_ID_KEY);
       }
-      console.log('📱 [Widget] Synced selected tag ID:', tagId ?? 'none');
       // Force widget to refresh immediately so the small widget shows the new tag
       reloadWidgetTimelines();
     } catch (error) {
@@ -181,7 +178,6 @@ export class WidgetService {
       } else {
         ReactNativeDeviceActivity.userDefaultsRemove(UNLOCK_SESSION_DATA_KEY);
       }
-      console.log('📱 [Widget] Synced unlock session state:', data ? 'active' : 'cleared');
       reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to sync unlock session state:', error);
@@ -200,7 +196,6 @@ export class WidgetService {
       if (!action.action || !action.timestamp) return null;
 
       ReactNativeDeviceActivity.userDefaultsRemove(PENDING_ACTION_KEY);
-      console.log('📱 [Widget] Found pending action:', action.action);
       return action;
     } catch (error) {
       console.error('📱 [Widget] Failed to check pending action:', error);
@@ -221,7 +216,6 @@ export class WidgetService {
       if (!session.tagId || !session.startTime) return null;
 
       ReactNativeDeviceActivity.userDefaultsRemove(WIDGET_STARTED_SESSION_KEY);
-      console.log('📱 [Widget] Found widget-started session:', session.tagId);
       return session;
     } catch (error) {
       console.error('📱 [Widget] Failed to check widget started session:', error);
@@ -306,7 +300,6 @@ export class WidgetService {
       if (!action.timestamp) return null;
 
       ReactNativeDeviceActivity.userDefaultsRemove(WIDGET_UNLOCK_STOP_ACTION_KEY);
-      console.log('📱 [Widget] Found widget unlock stop action');
       return action;
     } catch (error) {
       console.error('📱 [Widget] Failed to check widget unlock stop action:', error);
@@ -325,7 +318,6 @@ export class WidgetService {
     try {
       ReactNativeDeviceActivity.userDefaultsSet(SUPABASE_USER_ID_KEY, userId);
       ReactNativeDeviceActivity.userDefaultsSet(SUPABASE_ACCESS_TOKEN_KEY, accessToken);
-      console.log('📱 [Widget] Synced Supabase credentials for user:', userId);
     } catch (error) {
       console.error('📱 [Widget] Failed to sync Supabase credentials:', error);
     }
@@ -338,7 +330,6 @@ export class WidgetService {
     try {
       ReactNativeDeviceActivity.userDefaultsRemove(SUPABASE_USER_ID_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(SUPABASE_ACCESS_TOKEN_KEY);
-      console.log('📱 [Widget] Cleared Supabase credentials');
     } catch (error) {
       console.error('📱 [Widget] Failed to clear Supabase credentials:', error);
     }
@@ -360,7 +351,6 @@ export class WidgetService {
       );
       ReactNativeDeviceActivity.userDefaultsSet(GROVE_SHARE_NOTES_KEY, settings.shareNotes);
       ReactNativeDeviceActivity.userDefaultsSet(GROVE_SHOW_LIVE_STATUS_KEY, settings.showLiveStatus);
-      console.log('📱 [Widget] Synced grove privacy settings');
     } catch (error) {
       console.error('📱 [Widget] Failed to sync grove privacy:', error);
     }
@@ -376,7 +366,6 @@ export class WidgetService {
         GROVE_ACTIVE_CHALLENGES_KEY,
         JSON.stringify(challenges)
       );
-      console.log('📱 [Widget] Synced active challenges:', challenges.length);
     } catch (error) {
       console.error('📱 [Widget] Failed to sync active challenges:', error);
     }
@@ -389,7 +378,6 @@ export class WidgetService {
   static syncGoalsData(goals: WidgetGoalData[]): void {
     try {
       ReactNativeDeviceActivity.userDefaultsSet(GOALS_DATA_KEY, goals);
-      console.log('📱 [Widget] Synced goals data:', goals.length, 'goals');
       reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to sync goals data:', error);
@@ -409,7 +397,6 @@ export class WidgetService {
       if (!action.timestamp) return null;
 
       ReactNativeDeviceActivity.userDefaultsRemove(WIDGET_STOP_ACTION_KEY);
-      console.log('📱 [Widget] Found widget stop action');
       return action;
     } catch (error) {
       console.error('📱 [Widget] Failed to check widget stop action:', error);
@@ -436,7 +423,6 @@ export class WidgetService {
       ReactNativeDeviceActivity.userDefaultsRemove(GROVE_SHOW_LIVE_STATUS_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(GOALS_DATA_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(GROVE_ACTIVE_CHALLENGES_KEY);
-      console.log('📱 [Widget] Cleared all widget data from UserDefaults');
       reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to clear all widget data:', error);

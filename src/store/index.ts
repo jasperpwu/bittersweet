@@ -16,7 +16,7 @@ import {
 import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
 import { WidgetService } from '../services/WidgetService';
-import { FocusGoal } from './types';
+import { FocusGoal, WeeklyCoachReport } from './types';
 import { persistenceConfig, persistStateNow } from './middleware/persistence';
 import { computeBadgeStats } from '../utils/badgeStats';
 import { fruitsForRating, type RatingSource } from '../utils/focusRating';
@@ -156,6 +156,17 @@ interface AppStore {
       error: string | null;
       lastUpdated: Date | null;
     };
+
+    // AI Focus Coach — weekly reports (synced like badges)
+    coachReports: {
+      byId: Record<string, WeeklyCoachReport>;
+      allIds: string[];
+      loading: boolean;
+      error: string | null;
+      lastUpdated: Date | null;
+    };
+    upsertCoachReport: (report: WeeklyCoachReport) => void;
+    deleteCoachReport: (id: string) => void;
 
     // Shared tag actions
     shareTag: (tagId: string) => Promise<string>; // returns share code
@@ -416,6 +427,13 @@ export const useAppStore = create<AppStore>()(
             lastUpdated: null,
           },
           badges: {
+            byId: {},
+            allIds: [],
+            loading: false,
+            error: null,
+            lastUpdated: null,
+          },
+          coachReports: {
             byId: {},
             allIds: [],
             loading: false,
@@ -1210,6 +1228,49 @@ export const useAppStore = create<AppStore>()(
                     ...badges,
                     byId: remainingBadges,
                     allIds: badges.allIds.filter((id: string) => id !== badgeId),
+                    lastUpdated: new Date(),
+                  },
+                },
+              };
+            });
+          },
+
+          // --- AI Focus Coach ---
+          upsertCoachReport: (report) => {
+            set((state) => {
+              const reports = state.focus.coachReports || {
+                byId: {},
+                allIds: [],
+                loading: false,
+                error: null,
+                lastUpdated: null,
+              };
+              const exists = !!reports.byId[report.id];
+              return {
+                focus: {
+                  ...state.focus,
+                  coachReports: {
+                    ...reports,
+                    byId: { ...reports.byId, [report.id]: report },
+                    allIds: exists ? reports.allIds : [...reports.allIds, report.id],
+                    lastUpdated: new Date(),
+                  },
+                },
+              };
+            });
+          },
+
+          deleteCoachReport: (reportId) => {
+            set((state) => {
+              const reports = state.focus.coachReports || { byId: {}, allIds: [] };
+              const { [reportId]: removed, ...remaining } = reports.byId;
+              return {
+                focus: {
+                  ...state.focus,
+                  coachReports: {
+                    ...reports,
+                    byId: remaining,
+                    allIds: reports.allIds.filter((id: string) => id !== reportId),
                     lastUpdated: new Date(),
                   },
                 },
@@ -2495,6 +2556,8 @@ export const useFocusActions = () =>
     deleteGoal: state.focus.deleteGoal,
     concludeGoal: state.focus.concludeGoal,
     deleteBadge: state.focus.deleteBadge,
+    upsertCoachReport: state.focus.upsertCoachReport,
+    deleteCoachReport: state.focus.deleteCoachReport,
     reorderGoals: state.focus.reorderGoals,
     getActiveGoals: state.focus.getActiveGoals,
     shareTag: state.focus.shareTag,
@@ -2727,6 +2790,7 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
       tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
       goals: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
       badges: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+      coachReports: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
       currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },
       lastSelectedTagId: null,
       lastDurationByTagId: {},

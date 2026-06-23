@@ -151,6 +151,90 @@ export interface Badge extends BaseEntity {
   endDate: string;
 }
 
+// --- AI Focus Coach ---
+// A weekly, deterministically-scored report. Stats + score are computed in code
+// (always correct/explainable); only the insight `cards` prose is "narrated" — by
+// Apple's on-device model when available, otherwise by a templated fallback.
+
+// The fixed set of in-app actions an insight card can deep-link to. The narrator
+// only ever *picks* from this enum (constrained generation), so it can never invent
+// an action the app can't perform; the engine fills the params.
+// `none` renders the insight as an info bullet (no button). The rest deep-link into
+// a real in-app flow.
+export type CoachActionType =
+  | 'create_goal' // open the goal config sheet, prefilled for a tag
+  | 'adjust_goal' // open the goal config sheet for an existing goal
+  | 'open_goals' // dismiss the coach and go to the Goals tab
+  | 'block_apps' // open the app-selection (Family Controls) modal
+  | 'link_health' // open Apple Health settings to link workout tracking
+  | 'enable_notifications' // request OS notification permission / open iOS Settings
+  | 'enable_goal_reminders' // toggle the in-app goal-reminder preference on
+  | 'none';
+
+export interface CoachAction {
+  type: CoachActionType;
+  label?: string; // button text, e.g. "Set a Reading goal"
+  // Deep-link params (all optional; populated by the engine, never the model).
+  tagId?: string;
+  goalId?: string;
+  period?: 'daily' | 'weekly' | 'monthly';
+  targetMinutes?: number;
+}
+
+export type CoachInsightSeverity = 'positive' | 'neutral' | 'attention';
+
+export interface CoachInsightCard {
+  id: string;
+  headline: string;
+  body: string;
+  severity: CoachInsightSeverity;
+  action: CoachAction;
+}
+
+export interface CoachTagStat {
+  tagId: string;
+  minutes: number;
+  sessions: number;
+  avgRating: number | null; // null when no rated sessions for this tag
+}
+
+// The deterministic "facts" the score is built from and the narrator is handed.
+export interface CoachWeeklyStats {
+  totalMinutes: number;
+  totalSessions: number;
+  activeDays: number; // distinct days with >=1 session
+  avgRating: number | null; // mean focusRating across rated sessions, null if none
+  ratedCount: number;
+  peakHour: number | null; // 0–23, null if no sessions
+  peakDay: string | null; // 'Monday'… null if no sessions
+  trailingAvgMinutes: number; // user's own trailing 4-week average
+  deltaMinutesVsTrailingAvg: number; // thisWeekMinutes − trailingAvgMinutes
+  byTag: CoachTagStat[];
+  goalsTracked: number; // active goals during the week
+  goalsMet: number; // goals whose weekly-equivalent target was met
+}
+
+export interface CoachSubScores {
+  consistency: number; // 0–100
+  quality: number; // 0–100
+  volume: number; // 0–100
+}
+
+export type CoachNarrator = 'apple_fm' | 'template';
+
+export interface WeeklyCoachReport extends BaseEntity {
+  // id = `coach-<weekStartISODate>` — deterministic per week, so re-generation is idempotent.
+  weekStart: Date;
+  weekEnd: Date;
+  focusScore: number; // 0–100
+  subScores: CoachSubScores;
+  stats: CoachWeeklyStats;
+  cards: CoachInsightCard[];
+  narrator: CoachNarrator;
+  generatedAt: Date;
+  deletedAt?: Date;
+}
+
 export interface FocusSettings {
   defaultDuration: number;
   timerPickerStyle?: 'scroller' | 'wheel';

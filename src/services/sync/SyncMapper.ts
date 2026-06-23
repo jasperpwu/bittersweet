@@ -46,6 +46,7 @@ const DATE_FIELDS: Record<string, string[]> = {
   focus_sessions: ['start_time', 'end_time', 'created_at', 'updated_at', 'deleted_at'],
   session_tags: ['created_at', 'updated_at', 'deleted_at'],
   focus_goals: ['created_at', 'updated_at', 'last_reset_date', 'deleted_at'],
+  coach_reports: ['week_start', 'week_end', 'generated_at', 'created_at', 'updated_at', 'deleted_at'],
 };
 
 // --- Session mapper ---
@@ -305,6 +306,47 @@ export function rowToBadge(row: Record<string, any>): any {
     recentNotes: row.recent_notes ?? [],
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? '',
+    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+    updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+    ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
+  };
+}
+
+// --- Coach report mapper ---
+// subScores / stats / cards are stored as JSONB blobs as-is (their inner camelCase keys
+// are preserved on round-trip), exactly like badge's daily_stats/duration_distribution.
+
+export function coachReportToRow(report: any, userId: string): Record<string, any> {
+  const toIso = (v: any) => (v instanceof Date ? v.toISOString() : v);
+  const row: Record<string, any> = {
+    id: report.id,
+    user_id: userId,
+    week_start: toIso(report.weekStart),
+    week_end: toIso(report.weekEnd),
+    focus_score: report.focusScore ?? 0,
+    sub_scores: report.subScores ?? {},
+    stats: report.stats ?? {},
+    cards: report.cards ?? [],
+    narrator: report.narrator ?? 'template',
+  };
+  if (report.generatedAt) row.generated_at = toIso(report.generatedAt);
+  if (report.createdAt instanceof Date) row.created_at = report.createdAt.toISOString();
+  if (report.updatedAt instanceof Date) row.updated_at = report.updatedAt.toISOString();
+  if (report.deletedAt instanceof Date) row.deleted_at = report.deletedAt.toISOString();
+  return row;
+}
+
+export function rowToCoachReport(row: Record<string, any>): any {
+  return {
+    id: row.id,
+    weekStart: row.week_start ? new Date(row.week_start) : new Date(),
+    weekEnd: row.week_end ? new Date(row.week_end) : new Date(),
+    focusScore: row.focus_score ?? 0,
+    subScores: row.sub_scores ?? { consistency: 0, quality: 0, volume: 0 },
+    stats: row.stats ?? {},
+    cards: row.cards ?? [],
+    narrator: row.narrator ?? 'template',
+    generatedAt: row.generated_at ? new Date(row.generated_at) : new Date(),
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
     ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),

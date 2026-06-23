@@ -4,6 +4,7 @@ import { Typography } from '../../src/components/ui/Typography';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
 import { GoalProgress } from '../../src/components/analytics/GoalProgress';
 import { BadgeCollection } from '../../src/components/analytics/BadgeCollection';
+import { CoachSection } from '../../src/components/analytics/CoachCard';
 import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
@@ -31,18 +32,20 @@ export default function InsightsScreen() {
 
   // Get data from focus store
   const { sessions, tags, goals, sharedTagStats } = useFocus();
-  const { deleteGoal, concludeGoal, deleteBadge, reorderGoals, fetchJoinerStats, removeJoiner } = useFocusActions();
+  const { deleteGoal, concludeGoal, deleteBadge, reorderGoals, fetchJoinerStats, removeJoiner } =
+    useFocusActions();
 
   // Extract sessions array from normalized state
-  const safeSessions = (sessions && sessions.allIds && sessions.byId)
-    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean)
-    : [];
+  const safeSessions =
+    sessions && sessions.allIds && sessions.byId
+      ? sessions.allIds.map((id) => sessions.byId[id]).filter(Boolean)
+      : [];
 
   // Get active goals preserving allIds order
   const storeGoals = useMemo(() => {
     if (!goals?.allIds || !goals?.byId) return [];
     return goals.allIds
-      .map(id => goals.byId[id])
+      .map((id) => goals.byId[id])
       .filter((g): g is FocusGoal => !!g && g.isActive);
   }, [goals]);
 
@@ -50,7 +53,7 @@ export default function InsightsScreen() {
   const inactiveGoals = useMemo(() => {
     if (!goals?.allIds || !goals?.byId) return [];
     return goals.allIds
-      .map(id => goals.byId[id])
+      .map((id) => goals.byId[id])
       .filter((g): g is FocusGoal => {
         if (!g || g.isActive) return false;
         const tag = tags?.byId?.[g.tagId];
@@ -61,9 +64,7 @@ export default function InsightsScreen() {
   // Tags the user is actively sharing (for SharedTagStats)
   const sharingTags = useMemo(() => {
     if (!tags?.allIds || !tags?.byId) return [];
-    return tags.allIds
-      .map(id => tags.byId[id])
-      .filter(t => t && !t.deletedAt && t.isSharing);
+    return tags.allIds.map((id) => tags.byId[id]).filter((t) => t && !t.deletedAt && t.isSharing);
   }, [tags]);
 
   // Get badges from store
@@ -74,16 +75,20 @@ export default function InsightsScreen() {
   }, [badgeStore]);
 
   // Create tag map for goal progress calculation
-  const tagMap = useMemo(() =>
-    (tags && tags.allIds && tags.byId ? tags.allIds : []).reduce((map, id) => {
-      if (tags && tags.byId) {
-        const tag = tags.byId[id];
-        if (tag) {
-          map[id] = { id: tag.id, name: tag.name };
-        }
-      }
-      return map;
-    }, {} as Record<string, { id: string; name: string }>),
+  const tagMap = useMemo(
+    () =>
+      (tags && tags.allIds && tags.byId ? tags.allIds : []).reduce(
+        (map, id) => {
+          if (tags && tags.byId) {
+            const tag = tags.byId[id];
+            if (tag) {
+              map[id] = { id: tag.id, name: tag.name };
+            }
+          }
+          return map;
+        },
+        {} as Record<string, { id: string; name: string }>
+      ),
     [tags]
   );
 
@@ -108,7 +113,7 @@ export default function InsightsScreen() {
   // Build segments from sessions in a time range
   const buildSegments = (rangeSessions: typeof safeSessions): ChartSegment[] => {
     const tagTotals: Record<string, number> = {};
-    rangeSessions.forEach(session => {
+    rangeSessions.forEach((session) => {
       const tagId = (session as any).tagId || 'Other';
       tagTotals[tagId] = (tagTotals[tagId] || 0) + session.duration;
     });
@@ -127,7 +132,8 @@ export default function InsightsScreen() {
     if (!safeSessions || !Array.isArray(safeSessions) || !safeSessions.length) return [];
 
     const now = new Date();
-    const chartData: Array<{ date: Date; value: number; label: string; segments: ChartSegment[] }> = [];
+    const chartData: Array<{ date: Date; value: number; label: string; segments: ChartSegment[] }> =
+      [];
 
     if (period === 'weekly') {
       for (let i = 6; i >= 0; i--) {
@@ -138,7 +144,7 @@ export default function InsightsScreen() {
         const nextDay = new Date(date);
         nextDay.setDate(date.getDate() + 1);
 
-        const daySessions = safeSessions.filter(session => {
+        const daySessions = safeSessions.filter((session) => {
           const sessionDate = new Date(session.startTime);
           return sessionDate >= date && sessionDate < nextDay;
         });
@@ -155,13 +161,13 @@ export default function InsightsScreen() {
     } else if (period === 'monthly') {
       for (let i = 3; i >= 0; i--) {
         const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - (i * 7) - now.getDay());
+        weekStart.setDate(now.getDate() - i * 7 - now.getDay());
         weekStart.setHours(0, 0, 0, 0);
 
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
 
-        const weekSessions = safeSessions.filter(session => {
+        const weekSessions = safeSessions.filter((session) => {
           const sessionDate = new Date(session.startTime);
           return sessionDate >= weekStart && sessionDate < weekEnd;
         });
@@ -178,12 +184,12 @@ export default function InsightsScreen() {
     } else {
       for (let i = 5; i >= 0; i--) {
         const chunkStart = new Date(now);
-        chunkStart.setHours(now.getHours() - (i * 4), 0, 0, 0);
+        chunkStart.setHours(now.getHours() - i * 4, 0, 0, 0);
 
         const chunkEnd = new Date(chunkStart);
         chunkEnd.setHours(chunkStart.getHours() + 4);
 
-        const chunkSessions = safeSessions.filter(session => {
+        const chunkSessions = safeSessions.filter((session) => {
           const sessionDate = new Date(session.startTime);
           return sessionDate >= chunkStart && sessionDate < chunkEnd;
         });
@@ -207,8 +213,8 @@ export default function InsightsScreen() {
   const sessionsByDate = useMemo(() => getSessionsByDate(), [safeSessions]);
 
   // Calculate goal progress
-  const goalProgress = useMemo(() =>
-    calculateGoalProgress(storeGoals, safeSessions, tagMap, weekStartDay),
+  const goalProgress = useMemo(
+    () => calculateGoalProgress(storeGoals, safeSessions, tagMap, weekStartDay),
     [storeGoals, safeSessions, tagMap, weekStartDay]
   );
 
@@ -236,150 +242,156 @@ export default function InsightsScreen() {
     setShowGoalModal(true);
   }, []);
 
-  const handleDeleteGoal = useCallback((goalId: string) => {
-    const goal = storeGoals.find(g => g.id === goalId);
-    const goalTagId = goal?.tagId || (goal as any)?.tagIds?.[0];
-    const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
-    const goalName = goal?.customName || (tag ? `${tag.icon} ${tag.name} Goal` : 'this goal');
+  const handleDeleteGoal = useCallback(
+    (goalId: string) => {
+      const goal = storeGoals.find((g) => g.id === goalId);
+      const goalTagId = goal?.tagId || (goal as any)?.tagIds?.[0];
+      const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
+      const goalName = goal?.customName || (tag ? `${tag.icon} ${tag.name} Goal` : 'this goal');
 
-    Alert.alert(
-      'Deactivate goal?',
-      `Deactivate "${goalName}"? You can reactivate it later.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Deactivate',
-          style: 'destructive',
-          onPress: () => deleteGoal(goalId),
-        },
-      ],
-      { cancelable: true }
-    );
-  }, [storeGoals, tags, deleteGoal]);
+      Alert.alert(
+        'Deactivate goal?',
+        `Deactivate "${goalName}"? You can reactivate it later.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Deactivate',
+            style: 'destructive',
+            onPress: () => deleteGoal(goalId),
+          },
+        ],
+        { cancelable: true }
+      );
+    },
+    [storeGoals, tags, deleteGoal]
+  );
 
-  const handleConcludeGoal = useCallback((goalId: string) => {
-    const goal = storeGoals.find(g => g.id === goalId);
-    const goalTagId = goal?.tagId || (goal as any)?.tagIds?.[0];
-    const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
-    const goalName = goal?.customName || (tag ? `${tag.icon} ${tag.name} Goal` : 'this goal');
+  const handleConcludeGoal = useCallback(
+    (goalId: string) => {
+      const goal = storeGoals.find((g) => g.id === goalId);
+      const goalTagId = goal?.tagId || (goal as any)?.tagIds?.[0];
+      const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
+      const goalName = goal?.customName || (tag ? `${tag.icon} ${tag.name} Goal` : 'this goal');
 
-    const hasExistingBadge = badges.some(b => b.goalId === goalId);
-    const message = hasExistingBadge
-      ? `Conclude "${goalName}"? Your existing badge will be updated summarizing your performance, and the goal will be deactivated.`
-      : `Conclude "${goalName}"? A badge will be created summarizing your performance, and the goal will be deactivated.`;
+      const hasExistingBadge = badges.some((b) => b.goalId === goalId);
+      const message = hasExistingBadge
+        ? `Conclude "${goalName}"? Your existing badge will be updated summarizing your performance, and the goal will be deactivated.`
+        : `Conclude "${goalName}"? A badge will be created summarizing your performance, and the goal will be deactivated.`;
 
-    Alert.alert(
-      'Conclude goal?',
-      message,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Conclude',
-          style: 'default',
-          onPress: () => concludeGoal(goalId),
-        },
-      ],
-      { cancelable: true }
-    );
-  }, [storeGoals, tags, badges, concludeGoal]);
+      Alert.alert(
+        'Conclude goal?',
+        message,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Conclude',
+            style: 'default',
+            onPress: () => concludeGoal(goalId),
+          },
+        ],
+        { cancelable: true }
+      );
+    },
+    [storeGoals, tags, badges, concludeGoal]
+  );
 
-  const handleActivateGoal = useCallback((goalId: string) => {
-    if (!canActivateGoal) {
-      setShowUpgradePrompt(true);
-      return;
-    }
-    const goal = goals?.byId?.[goalId];
-    setEditingGoalId(goalId);
-    setActivatingTagId(goal?.tagId);
-    setShowGoalModal(true);
-  }, [canActivateGoal, goals]);
+  const handleActivateGoal = useCallback(
+    (goalId: string) => {
+      if (!canActivateGoal) {
+        setShowUpgradePrompt(true);
+        return;
+      }
+      const goal = goals?.byId?.[goalId];
+      setEditingGoalId(goalId);
+      setActivatingTagId(goal?.tagId);
+      setShowGoalModal(true);
+    },
+    [canActivateGoal, goals]
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
-    <SwipeableTabWrapper currentTab="insights">
-      {/* Header */}
-      <View className="px-4 py-4 flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          {currentView === 'history' && (
-            <View className="mr-3 p-1">
-              <Typography variant="headline-18" color="primary">
-                ←
-              </Typography>
-            </View>
-          )}
-          <Typography variant="headline-24" color="primary">
-            {currentView === 'statistics' ? 'Goals' : 'History'}
-          </Typography>
+      <SwipeableTabWrapper currentTab="insights">
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-4 py-4">
+          <View className="flex-row items-center">
+            {currentView === 'history' && (
+              <View className="mr-3 p-1">
+                <Typography variant="headline-18" color="primary">
+                  ←
+                </Typography>
+              </View>
+            )}
+            <Typography variant="headline-24" color="primary">
+              {currentView === 'statistics' ? 'Goals' : 'History'}
+            </Typography>
+          </View>
         </View>
-      </View>
 
-      {/* Content */}
-      {currentView === 'statistics' ? (
-        <ScrollView className="flex-1">
-          {/* Goal Progress Section */}
-          <GoalProgress
-            goals={storeGoals}
-            inactiveGoals={inactiveGoals}
-            currentPeriodProgress={goalProgress}
-            onEditGoal={handleEditGoal}
-            onDeleteGoal={handleDeleteGoal}
-            onConcludeGoal={handleConcludeGoal}
-            onActivateGoal={handleActivateGoal}
-            onReorderGoals={reorderGoals}
-          />
+        {/* Content */}
+        {currentView === 'statistics' ? (
+          <ScrollView className="flex-1">
+            {/* Goal Progress Section */}
+            <GoalProgress
+              goals={storeGoals}
+              inactiveGoals={inactiveGoals}
+              currentPeriodProgress={goalProgress}
+              onEditGoal={handleEditGoal}
+              onDeleteGoal={handleDeleteGoal}
+              onConcludeGoal={handleConcludeGoal}
+              onActivateGoal={handleActivateGoal}
+              onReorderGoals={reorderGoals}
+            />
 
-          {/* Badge Collection */}
-          <BadgeCollection
-            badges={badges}
-            onDeleteBadge={deleteBadge}
-          />
+            {/* Badge Collection */}
+            <BadgeCollection badges={badges} onDeleteBadge={deleteBadge} />
 
-          {/* Shared Tag Stats */}
-          <SharedTagStats
-            sharingTags={sharingTags}
-            sharedTagStats={sharedTagStats}
-            onFetchStats={fetchJoinerStats}
-            onRemoveJoiner={removeJoiner}
-          />
+            {/* AI Focus Coach — collapsible weekly reports */}
+            <CoachSection />
 
-          {/* Statistics View */}
-          <StatisticsView
-            chartData={chartData}
-            recentSessions={todaysSessions}
-            period={selectedPeriod}
-            onPeriodChange={handlePeriodChange}
-            onViewAllPress={handleViewAllPress}
-          />
-        </ScrollView>
-      ) : (
-        <View className="flex-1">Empty View</View>
-      )}
+            {/* Shared Tag Stats */}
+            <SharedTagStats
+              sharingTags={sharingTags}
+              sharedTagStats={sharedTagStats}
+              onFetchStats={fetchJoinerStats}
+              onRemoveJoiner={removeJoiner}
+            />
 
-      {/* Goal Configuration Modal */}
-      <GoalConfigModal
-        isVisible={showGoalModal}
-        onClose={() => {
-          setShowGoalModal(false);
-          setEditingGoalId(null);
-          setActivatingTagId(undefined);
-        }}
-        editingGoalId={editingGoalId}
-        tagId={activatingTagId}
-        onUpgrade={() => setShowUpgradePrompt(true)}
-      />
+            {/* Statistics View */}
+            <StatisticsView
+              chartData={chartData}
+              recentSessions={todaysSessions}
+              period={selectedPeriod}
+              onPeriodChange={handlePeriodChange}
+              onViewAllPress={handleViewAllPress}
+            />
+          </ScrollView>
+        ) : (
+          <View className="flex-1">Empty View</View>
+        )}
 
-      <UpgradePrompt
-        isVisible={showUpgradePrompt}
-        onClose={() => setShowUpgradePrompt(false)}
-        onUpgrade={() => setShowUpgradeSheet(true)}
-        limitType="goals"
-      />
+        {/* Goal Configuration Modal */}
+        <GoalConfigModal
+          isVisible={showGoalModal}
+          onClose={() => {
+            setShowGoalModal(false);
+            setEditingGoalId(null);
+            setActivatingTagId(undefined);
+          }}
+          editingGoalId={editingGoalId}
+          tagId={activatingTagId}
+          onUpgrade={() => setShowUpgradePrompt(true)}
+        />
 
-      <UpgradeSheet
-        isVisible={showUpgradeSheet}
-        onClose={() => setShowUpgradeSheet(false)}
-      />
-    </SwipeableTabWrapper>
+        <UpgradePrompt
+          isVisible={showUpgradePrompt}
+          onClose={() => setShowUpgradePrompt(false)}
+          onUpgrade={() => setShowUpgradeSheet(true)}
+          limitType="goals"
+        />
+
+        <UpgradeSheet isVisible={showUpgradeSheet} onClose={() => setShowUpgradeSheet(false)} />
+      </SwipeableTabWrapper>
     </SafeAreaView>
   );
 }
