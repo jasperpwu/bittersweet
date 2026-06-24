@@ -22,10 +22,32 @@ async function safe<T>(fn: () => Promise<T | null> | undefined): Promise<T | nul
   }
 }
 
+export type MotionPermissionStatus = 'granted' | 'denied' | 'undetermined';
+
+/**
+ * Read the current Motion & Fitness authorization WITHOUT prompting. Lets the UI
+ * decide whether to show the priming pop-up (undetermined) before triggering the
+ * one-shot system prompt.
+ */
+export async function getMotionPermissionStatus(): Promise<MotionPermissionStatus> {
+  try {
+    const current = await Pedometer.getPermissionsAsync();
+    if (current.granted) return 'granted';
+    if (current.canAskAgain) return 'undetermined';
+    return 'denied';
+  } catch {
+    return 'denied';
+  }
+}
+
 /**
  * Ensure the Motion & Fitness permission is requested (shows the system prompt
  * on first call). CMMotionActivity / CMPedometer / CMSensorRecorder all share
  * this authorization. Safe to call repeatedly. Returns true if granted.
+ *
+ * NOTE: this triggers the one-shot iOS prompt. Always show the in-app priming
+ * pop-up first (or have the user explicitly enable a setting) so the OS prompt is
+ * never the user's first, context-free encounter with the request.
  */
 export async function ensureMotionPermission(): Promise<boolean> {
   try {
@@ -47,9 +69,11 @@ export async function ensureMotionPermission(): Promise<boolean> {
 export async function startSessionMotionRecording(durationSec: number): Promise<void> {
   if (!MotionInsights || durationSec <= 0) return;
   try {
-    // Request up front so the prompt appears at session start and the recorder
-    // has authorization for the whole session window.
-    await ensureMotionPermission();
+    // Never prompt at session start — authorization is obtained ahead of time
+    // (the user enabled the detailed-rating setting). Only record if already
+    // granted; otherwise the CMMotionActivity fallback covers this session.
+    const status = await getMotionPermissionStatus();
+    if (status !== 'granted') return;
     await MotionInsights.startAccelerometerRecording(Math.round(durationSec));
   } catch {
     // Recording is best-effort; the CMMotionActivity fallback covers failures.
@@ -75,7 +99,8 @@ export async function getSessionMotionSnapshot(
   startMs: number,
   endMs: number
 ): Promise<MotionSnapshot> {
-  await ensureMotionPermission();
+  // Permission is the caller's responsibility (priming pop-up / settings toggle).
+  // If it isn't granted the reads below return null and we report signal 'none'.
   const [recorder, activity, steps] = await Promise.all([
     safe<RecordedAccelSummary>(() =>
       MotionInsights?.getRecordedAccelerometerSummary(startMs, endMs)

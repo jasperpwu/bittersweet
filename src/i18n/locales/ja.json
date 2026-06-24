@@ -386,6 +386,10 @@
     "multiTaskSub": "セッションに任意のサブタグを追加して、2つの activity を同時に記録します",
     "timerStyle": "時間選択のスタイル",
     "timerStyleSub": "タイマーの長さの設定方法を選びます",
+    "detailedRating": "詳細な集中度評価",
+    "detailedRatingSub": "セッション中の端末の動きを記録して、集中度をより正確に評価します。オフの場合は一般的なモーションアクティビティのみを使用します。",
+    "motionDeniedTitle": "モーションへのアクセスが必要です",
+    "motionDeniedBody": "動きから集中度を評価するには、「設定」でBittersweetの「モーションとフィットネス」へのアクセスを許可してください。",
     "wheel": "ホイール",
     "scroller": "スクロール",
     "goalReminders": "目標リマインダー",
@@ -481,7 +485,12 @@
     "coachMessage": "アプリのブロック解除やストアでの購入に使えます。",
     "day": "日",
     "week": "週",
-    "challengeToast": "{{period}} {{hits}}/{{total}}"
+    "challengeToast": "{{period}} {{hits}}/{{total}}",
+    "motionPrimerTitle": "集中度を自動で評価",
+    "motionPrimerBody": "Bittersweetは、セッション中のスマートフォンの動きから集中度を推定し、実の報酬を調整できます。",
+    "motionPrimerPrivacy": "モーションデータは端末内にとどまり、この評価の推定にのみ使用されます。",
+    "motionPrimerEnable": "モーション評価を有効にする",
+    "motionPrimerDecline": "あとで"
   },
   "aiCoach": {
     "emptyTitle": "今週のレポートはまだありません",

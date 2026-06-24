@@ -386,6 +386,10 @@
     "multiTaskSub": "Füge einer Sitzung ein optionales zweites Label für zwei Aktivitäten gleichzeitig hinzu",
     "timerStyle": "Stil der Zeitauswahl",
     "timerStyleSub": "Wähle, wie du die Timer-Dauer einstellst",
+    "detailedRating": "Detaillierte Fokusbewertung",
+    "detailedRatingSub": "Zeichnet während der Sitzungen die Gerätebewegung auf, um den Fokus genauer zu bewerten. Ausgeschaltet wird nur die allgemeine Bewegungsaktivität verwendet.",
+    "motionDeniedTitle": "Bewegungszugriff erforderlich",
+    "motionDeniedBody": "Um den Fokus anhand der Bewegung zu bewerten, erlaube „Bewegung & Fitness“ für Bittersweet in den Einstellungen.",
     "wheel": "Rad",
     "scroller": "Schieber",
     "goalReminders": "Ziel-Erinnerungen",
@@ -481,7 +485,12 @@
     "coachMessage": "Gib sie aus, um Apps freizuschalten oder Artikel im Shop zu kaufen.",
     "day": "Tag",
     "week": "Woche",
-    "challengeToast": "{{period}} {{hits}}/{{total}}"
+    "challengeToast": "{{period}} {{hits}}/{{total}}",
+    "motionPrimerTitle": "Bewerte deinen Fokus automatisch",
+    "motionPrimerBody": "Bittersweet kann die Bewegung deines Telefons während einer Sitzung nutzen, um deinen Fokus einzuschätzen und deine Früchte-Belohnung anzupassen.",
+    "motionPrimerPrivacy": "Bewegungsdaten bleiben auf deinem Gerät und werden nur zur Einschätzung dieser Bewertung verwendet.",
+    "motionPrimerEnable": "Bewegungsbewertung aktivieren",
+    "motionPrimerDecline": "Jetzt nicht"
   },
   "aiCoach": {
     "emptyTitle": "Noch kein Wochenbericht",

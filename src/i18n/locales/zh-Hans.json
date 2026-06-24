@@ -386,6 +386,10 @@
     "multiTaskSub": "为会话添加可选的第二个标签，同时记录两项活动",
     "timerStyle": "计时选择器样式",
     "timerStyleSub": "选择设置计时时长的方式",
+    "detailedRating": "详细专注评分",
+    "detailedRatingSub": "在专注期间记录设备的运动，以更准确地评估专注度。关闭后精度较差。",
+    "motionDeniedTitle": "需要运动访问权限",
+    "motionDeniedBody": "若要根据运动评估专注度，请在“设置”中允许 Bittersweet 访问“运动与健身”。",
     "wheel": "滚轮",
     "scroller": "滑动",
     "goalReminders": "目标提醒",
@@ -481,7 +485,12 @@
     "coachMessage": "用它们解锁应用或在商店购买道具。",
     "day": "天",
     "week": "周",
-    "challengeToast": "{{period}} {{hits}}/{{total}}"
+    "challengeToast": "{{period}} {{hits}}/{{total}}",
+    "motionPrimerTitle": "自动评估你的专注度",
+    "motionPrimerBody": "Bittersweet 可以根据会话期间手机的运动来估算你的专注程度，并据此调整果实奖励。",
+    "motionPrimerPrivacy": "运动数据仅保存在你的设备上，且只用于估算此评分。",
+    "motionPrimerEnable": "开启运动评分",
+    "motionPrimerDecline": "暂不"
   },
   "aiCoach": {
     "emptyTitle": "本周还没有报告",

@@ -37,7 +37,12 @@ import {
   useAppStore,
 } from '../../src/store';
 import { suggestRating, shouldAutoRate } from '../../src/utils/focusRating';
-import { getSessionMotionSnapshot } from '../../src/services/motionInsights';
+import {
+  getSessionMotionSnapshot,
+  getMotionPermissionStatus,
+  ensureMotionPermission,
+} from '../../src/services/motionInsights';
+import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { showToast } from '../../src/components/ui/Toast';
 import { saveSessionPhoto, uploadSessionPhoto } from '../../src/services/sessionPhotoService';
 import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
@@ -68,7 +73,37 @@ export default function SessionCompleteModal() {
   // Focus rating
   const [analyzingRating, setAnalyzingRating] = useState(false);
   const [showRatingInsights, setShowRatingInsights] = useState(false);
+  const [showMotionPrimer, setShowMotionPrimer] = useState(false);
   const ratingComputedRef = useRef(false);
+
+  // Give the full reward with no motion penalty (too short/manual, permission
+  // declined, or no signal available).
+  const applyFullRating = () => {
+    if (!session) return;
+    updateSession(session.id, {
+      motionSummary: { signal: 'none', profile: 'unknown', recorder: null, activity: null, steps: null },
+    });
+    applyFocusRating(session.id, 5, 'suggested');
+  };
+
+  // Read motion for the session window and apply the suggested rating. Assumes the
+  // Motion & Fitness permission has already been granted by the caller.
+  const computeRatingFromMotion = async () => {
+    if (!session) return;
+    const tagForSession = session.tagId ? tags.byId[session.tagId] : null;
+    setAnalyzingRating(true);
+    const startMs = new Date(session.startTime).getTime();
+    const endMs = new Date(session.endTime).getTime();
+    try {
+      const snapshot = await getSessionMotionSnapshot(startMs, endMs);
+      updateSession(session.id, { motionSummary: snapshot });
+      applyFocusRating(session.id, suggestRating(tagForSession?.activityType, snapshot), 'suggested');
+    } catch {
+      applyFullRating();
+    } finally {
+      setAnalyzingRating(false);
+    }
+  };
 
   // Compute the suggested focus rating from motion once per session. If the
   // session already has a rating (revisited, or user-set), leave it alone.
@@ -77,41 +112,49 @@ export default function SessionCompleteModal() {
     ratingComputedRef.current = true;
     if (session.focusRating != null) return;
 
-    const tagForSession = session.tagId ? tags.byId[session.tagId] : null;
-
     if (
       !shouldAutoRate({ durationMinutes: session.duration, isManualEntry: session.isManualEntry })
     ) {
       // Too short / manual — give full reward, no penalty.
-      updateSession(session.id, {
-        motionSummary: {
-          signal: 'none',
-          profile: 'unknown',
-          recorder: null,
-          activity: null,
-          steps: null,
-        },
-      });
-      applyFocusRating(session.id, 5, 'suggested');
+      applyFullRating();
       return;
     }
 
-    setAnalyzingRating(true);
-    const startMs = new Date(session.startTime).getTime();
-    const endMs = new Date(session.endTime).getTime();
-    getSessionMotionSnapshot(startMs, endMs)
-      .then((snapshot) => {
-        updateSession(session.id, { motionSummary: snapshot });
-        applyFocusRating(
-          session.id,
-          suggestRating(tagForSession?.activityType, snapshot),
-          'suggested'
-        );
-      })
-      .catch(() => applyFocusRating(session.id, 5, 'suggested'))
-      .finally(() => setAnalyzingRating(false));
+    (async () => {
+      const status = await getMotionPermissionStatus();
+      if (status === 'granted') {
+        await computeRatingFromMotion();
+        return;
+      }
+      if (status === 'denied') {
+        // Can't read motion — full reward, no penalty.
+        applyFullRating();
+        return;
+      }
+      // Undetermined: explain why we need motion before the one-shot OS prompt.
+      // Show the primer only once; after that, default to full reward.
+      if (preferences.hasSeenMotionPrimer) {
+        applyFullRating();
+        return;
+      }
+      setShowMotionPrimer(true);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
+
+  const handleMotionPrimerEnable = async () => {
+    setShowMotionPrimer(false);
+    await updatePreferences({ hasSeenMotionPrimer: true });
+    const granted = await ensureMotionPermission();
+    if (granted) await computeRatingFromMotion();
+    else applyFullRating();
+  };
+
+  const handleMotionPrimerDecline = async () => {
+    setShowMotionPrimer(false);
+    await updatePreferences({ hasSeenMotionPrimer: true });
+    applyFullRating();
+  };
 
   // Celebration animations
   const emojiScale = useSharedValue(0);
@@ -540,6 +583,45 @@ export default function SessionCompleteModal() {
         activityType={tag?.activityType}
         rating={session.focusRating ?? null}
       />
+
+      {/* Motion permission priming — explains why before the one-shot OS prompt */}
+      <BottomSheet
+        isVisible={showMotionPrimer}
+        onClose={handleMotionPrimerDecline}
+        height={400}
+      >
+        <View className="items-center mb-4">
+          <View className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-primary/15">
+            <Ionicons name="walk-outline" size={32} color="#8B7FFF" />
+          </View>
+          <Typography variant="headline-20" color="primary" className="text-center">
+            {t('sessionComplete.motionPrimerTitle')}
+          </Typography>
+          <Typography variant="body-14" color="secondary" className="text-center mt-2">
+            {t('sessionComplete.motionPrimerBody')}
+          </Typography>
+          <Typography variant="body-12" color="secondary" className="text-center mt-3" style={{ opacity: 0.7 }}>
+            {t('sessionComplete.motionPrimerPrivacy')}
+          </Typography>
+        </View>
+
+        <Pressable
+          onPress={handleMotionPrimerEnable}
+          className="items-center rounded-2xl bg-primary py-4 active:opacity-80"
+        >
+          <Typography variant="subtitle-16" className="font-semibold text-white">
+            {t('sessionComplete.motionPrimerEnable')}
+          </Typography>
+        </Pressable>
+        <Pressable
+          onPress={handleMotionPrimerDecline}
+          className="items-center py-3 mt-1 active:opacity-70"
+        >
+          <Typography variant="subtitle-14-medium" color="secondary">
+            {t('sessionComplete.motionPrimerDecline')}
+          </Typography>
+        </Pressable>
+      </BottomSheet>
     </SafeAreaView>
   );
 }

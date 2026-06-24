@@ -386,6 +386,10 @@
     "multiTaskSub": "Adicione uma segunda tag opcional a uma sessão para duas atividades ao mesmo tempo",
     "timerStyle": "Estilo do seletor de tempo",
     "timerStyleSub": "Escolha como definir a duração do timer",
+    "detailedRating": "Avaliação de foco detalhada",
+    "detailedRatingSub": "Registra o movimento do dispositivo durante as sessões para uma avaliação de foco mais precisa. Desativada, usa apenas a atividade de movimento geral.",
+    "motionDeniedTitle": "Acesso ao movimento necessário",
+    "motionDeniedBody": "Para avaliar o foco pelo movimento, permita o acesso a “Movimento e preparo físico” para o Bittersweet em Ajustes.",
     "wheel": "Roda",
     "scroller": "Deslizante",
     "goalReminders": "Lembretes de metas",
@@ -481,7 +485,12 @@
     "coachMessage": "Use-os para desbloquear apps ou comprar itens na Loja.",
     "day": "Dia",
     "week": "Semana",
-    "challengeToast": "{{period}} {{hits}}/{{total}}"
+    "challengeToast": "{{period}} {{hits}}/{{total}}",
+    "motionPrimerTitle": "Avalie seu foco automaticamente",
+    "motionPrimerBody": "O Bittersweet pode usar o movimento do seu telefone durante a sessão para estimar seu nível de foco e ajustar sua recompensa de frutos.",
+    "motionPrimerPrivacy": "Os dados de movimento ficam no seu dispositivo e são usados apenas para estimar esta avaliação.",
+    "motionPrimerEnable": "Ativar avaliação por movimento",
+    "motionPrimerDecline": "Agora não"
   },
   "aiCoach": {
     "emptyTitle": "Ainda não há relatório semanal",

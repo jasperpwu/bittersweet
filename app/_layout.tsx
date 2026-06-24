@@ -19,6 +19,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { AppState, AppStateStatus } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
 import { Toast } from '../src/components/ui/Toast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
@@ -698,6 +699,26 @@ export default function RootLayout() {
 
     return () => subscription?.remove();
   }, [fontsLoaded, isHydrated]);
+
+  // Flush the offline sync queue the instant connectivity is restored. The queue
+  // otherwise only flushes on app-foreground or cold-start, so a session completed
+  // offline sits unsynced while the app stays continuously foregrounded — and a
+  // later wipe (sign-in/out, user switch) before any flush can lose it. Fire only
+  // on a real offline→online transition, not NetInfo's initial state emit (the
+  // foreground/cold-start paths already cover the launch case). flushOfflineQueue
+  // self-guards on auth + an empty queue, so calling it liberally here is safe.
+  useEffect(() => {
+    let wasOffline = false;
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const online = state.isConnected === true && state.isInternetReachable !== false;
+      if (online && wasOffline) {
+        console.log('📶 Connectivity restored — flushing offline sync queue');
+        useAppStore.getState().sync.flushOfflineQueue();
+      }
+      wasOffline = !online;
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Analytics: authoritative widget-adoption check once per launch. iOS gives no
   // callback when a widget is added, so we ask WidgetCenter which widgets are

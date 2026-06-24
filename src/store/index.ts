@@ -21,6 +21,7 @@ import { persistenceConfig, persistStateNow } from './middleware/persistence';
 import { computeBadgeStats } from '../utils/badgeStats';
 import { fruitsForRating, type RatingSource } from '../utils/focusRating';
 import { startSessionMotionRecording } from '../services/motionInsights';
+import { useUnifiedStore } from './unified-store';
 import { CLASSIC_TAG_COLORS, DEFAULT_TAG_COLOR } from '../config/tagColors';
 import * as Notifications from 'expo-notifications';
 import { AuthSlice, createAuthSlice } from './slices/authSlice';
@@ -789,8 +790,12 @@ export const useAppStore = create<AppStore>()(
 
               // Begin recording raw accelerometer for the session window so we can
               // suggest a focus rating at completion. Best-effort, fire-and-forget;
-              // no-ops if motion APIs are unavailable.
-              startSessionMotionRecording(session.duration * 60);
+              // no-ops if motion APIs are unavailable. Gated on the user's explicit
+              // opt-in — when off, the summary falls back to retroactive
+              // CMMotionActivity/pedometer (no continuous recording).
+              if (useUnifiedStore.getState().preferences.rawAccelRatingEnabled) {
+                startSessionMotionRecording(session.duration * 60);
+              }
             }
           },
 

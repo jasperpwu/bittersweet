@@ -386,6 +386,10 @@
     "multiTaskSub": "Add an optional second tag to a session for two activities at once",
     "timerStyle": "Timer Picker Style",
     "timerStyleSub": "Choose how you set the timer duration",
+    "detailedRating": "Detailed Focus Rating",
+    "detailedRatingSub": "Record device motion during sessions for a more accurate focus rating. Off uses general motion activity only.",
+    "motionDeniedTitle": "Motion Access Needed",
+    "motionDeniedBody": "To rate focus from motion, allow Motion & Fitness for Bittersweet in iOS Settings.",
     "wheel": "Wheel",
     "scroller": "Scroller",
     "goalReminders": "Goal Reminders",
@@ -481,7 +485,12 @@
     "coachMessage": "Spend them to unblock apps or purchase items in the Fruit Store.",
     "day": "Day",
     "week": "Week",
-    "challengeToast": "{{period}} {{hits}}/{{total}}"
+    "challengeToast": "{{period}} {{hits}}/{{total}}",
+    "motionPrimerTitle": "Rate your focus automatically",
+    "motionPrimerBody": "Bittersweet can use your phone's motion during a session to suggest how focused you were and scale your fruit reward.",
+    "motionPrimerPrivacy": "Motion data stays on your device and is only used to estimate this rating.",
+    "motionPrimerEnable": "Enable Motion Rating",
+    "motionPrimerDecline": "Not Now"
   },
   "aiCoach": {
     "emptyTitle": "No weekly report yet",

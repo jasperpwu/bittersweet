@@ -3,7 +3,6 @@ import { View, ScrollView, SafeAreaView, Pressable, useColorScheme, Image, Activ
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
-import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
 import { AccountActions } from '../../src/components/auth/AccountSection';
@@ -15,8 +14,6 @@ import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 import { useReferralLink } from '../../src/hooks/useReferralLink';
 import { useTranslation } from 'react-i18next';
-import { LanguageSelectorSheet } from '../../src/components/settings/LanguageSelector';
-import { getLanguageByCode } from '../../src/i18n/languages';
 
 interface CategoryCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -70,10 +67,8 @@ export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { preferences } = useAppSettings();
   const { triggerHaptic, deviceInfo } = useDeviceIntegration();
   const [upgradeSheetVisible, setUpgradeSheetVisible] = useState(false);
-  const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
   const [showHealthUpgrade, setShowHealthUpgrade] = useState(false);
   const { isPremium } = useSubscriptionGate();
 
@@ -232,17 +227,6 @@ export default function SettingsScreen() {
 
         {/* Category Cards */}
         <View className="px-5 mt-6" style={{ gap: 12 }}>
-          <CategoryCard
-            icon="language-outline"
-            iconColor="#8B7FFF"
-            title={t('settings.language.title')}
-            subtitle={getLanguageByCode(preferences.language)?.nativeName ?? t('settings.language.subtitle')}
-            onPress={() => {
-              triggerHaptic('light');
-              setLanguageSheetVisible(true);
-            }}
-          />
-
           <CategoryCard
             icon="options-outline"
             iconColor="#6592E9"

@@ -386,6 +386,10 @@
     "multiTaskSub": "Añade una segunda etiqueta opcional a una sesión para dos actividades a la vez",
     "timerStyle": "Estilo del selector de tiempo",
     "timerStyleSub": "Elige cómo ajustas la duración del temporizador",
+    "detailedRating": "Valoración detallada de concentración",
+    "detailedRatingSub": "Registra el movimiento del dispositivo durante las sesiones para una valoración de concentración más precisa. Si está desactivado, solo se usa la actividad de movimiento general.",
+    "motionDeniedTitle": "Permiso de movimiento necesario",
+    "motionDeniedBody": "Para valorar tu concentración con el movimiento, permite el acceso a «Movimiento y forma física» para Bittersweet en Ajustes.",
     "wheel": "Rueda",
     "scroller": "Deslizador",
     "goalReminders": "Recordatorios de metas",
@@ -481,7 +485,12 @@
     "coachMessage": "Úsala para desbloquear apps o comprar artículos en la Tienda.",
     "day": "Día",
     "week": "Semana",
-    "challengeToast": "{{period}} {{hits}}/{{total}}"
+    "challengeToast": "{{period}} {{hits}}/{{total}}",
+    "motionPrimerTitle": "Valora tu concentración automáticamente",
+    "motionPrimerBody": "Bittersweet puede usar el movimiento de tu teléfono durante la sesión para estimar tu nivel de concentración y ajustar tu recompensa de fruta.",
+    "motionPrimerPrivacy": "Los datos de movimiento se quedan en tu dispositivo y solo se usan para estimar esta valoración.",
+    "motionPrimerEnable": "Activar valoración por movimiento",
+    "motionPrimerDecline": "Ahora no"
   },
   "aiCoach": {
     "emptyTitle": "Aún no hay informe semanal",

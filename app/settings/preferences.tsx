@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, SafeAreaView, Pressable, Alert, useColorScheme } from 'react-native';
+import { View, ScrollView, SafeAreaView, Pressable, Alert, Linking, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
@@ -8,9 +8,15 @@ import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsI
 import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { TimePicker } from '../../src/components/ui/TimePicker';
 import { useAppSettings } from '../../src/store/unified-store';
+import { LanguageSelectorSheet } from '../../src/components/settings/LanguageSelector';
+import { getLanguageByCode } from '../../src/i18n/languages';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
+import {
+  getMotionPermissionStatus,
+  ensureMotionPermission,
+} from '../../src/services/motionInsights';
 import { useTranslation } from 'react-i18next';
 
 export default function PreferencesScreen() {
@@ -25,6 +31,7 @@ export default function PreferencesScreen() {
     requestNotificationPermissions,
   } = useDeviceIntegration();
   const [notificationSheetVisible, setNotificationSheetVisible] = useState(false);
+  const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
   const [showAdhdUpgrade, setShowAdhdUpgrade] = useState(false);
 
   const handleAdhdModeToggle = async (value: boolean) => {
@@ -41,6 +48,46 @@ export default function PreferencesScreen() {
       console.error('Failed to update Multi-Task mode setting:', error);
       triggerHaptic('error');
     }
+  };
+
+  const promptOpenMotionSettings = () => {
+    Alert.alert(
+      t('preferences.motionDeniedTitle'),
+      t('preferences.motionDeniedBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('journal.openSettings'), onPress: () => Linking.openSettings() },
+      ]
+    );
+  };
+
+  // Detailed (raw-accelerometer) focus rating. Off by default — turning it on is
+  // explicit consent to record device motion during sessions. Requires the iOS
+  // Motion & Fitness permission; deep-links to Settings if it was denied.
+  const handleDetailedRatingToggle = async (value: boolean) => {
+    if (!value) {
+      await updatePreferences({ rawAccelRatingEnabled: false });
+      triggerHaptic('light');
+      return;
+    }
+    const status = await getMotionPermissionStatus();
+    if (status === 'granted') {
+      await updatePreferences({ rawAccelRatingEnabled: true });
+      triggerHaptic('light');
+      return;
+    }
+    if (status === 'undetermined') {
+      const granted = await ensureMotionPermission();
+      if (granted) {
+        await updatePreferences({ rawAccelRatingEnabled: true });
+        triggerHaptic('light');
+      } else {
+        promptOpenMotionSettings();
+      }
+      return;
+    }
+    // Denied at the OS level — can't re-prompt, send them to Settings.
+    promptOpenMotionSettings();
   };
 
   const ensureNotificationPermissions = async (): Promise<boolean> => {
@@ -101,6 +148,22 @@ export default function PreferencesScreen() {
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* General */}
+        <SettingsSection title={t('preferences.general')}>
+          <SettingsItem
+            title={t('settings.language.title')}
+            subtitle={t('settings.language.subtitle')}
+            icon="language-outline"
+            hasChevron
+            valueLabel={getLanguageByCode(preferences.language)?.nativeName}
+            onPress={() => {
+              triggerHaptic('light');
+              setLanguageSheetVisible(true);
+            }}
+            isLast
+          />
+        </SettingsSection>
+
         {/* Notifications */}
         <SettingsSection title={t('preferences.notifications')}>
           <SettingsItem
@@ -176,6 +239,14 @@ export default function PreferencesScreen() {
             hasToggle
             toggleValue={isPremium && preferences.adhdModeEnabled}
             onToggleChange={handleAdhdModeToggle}
+          />
+          <SettingsItem
+            title={t('preferences.detailedRating')}
+            subtitle={t('preferences.detailedRatingSub')}
+            icon="walk-outline"
+            hasToggle
+            toggleValue={!!preferences.rawAccelRatingEnabled}
+            onToggleChange={handleDetailedRatingToggle}
           />
           <SettingsItem
             title={t('preferences.timerStyle')}
@@ -311,6 +382,12 @@ export default function PreferencesScreen() {
           </View>
         </View>
       </BottomSheet>
+
+      {/* Language Selector */}
+      <LanguageSelectorSheet
+        visible={languageSheetVisible}
+        onClose={() => setLanguageSheetVisible(false)}
+      />
 
       {/* Multi-Task Mode premium gate */}
       <UpgradePrompt

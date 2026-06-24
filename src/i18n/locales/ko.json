@@ -386,6 +386,10 @@
     "multiTaskSub": "세션에 선택적 보조 태그를 추가해 두 가지 활동을 동시에 기록해요",
     "timerStyle": "시간 선택 스타일",
     "timerStyleSub": "타이머 길이를 설정하는 방식을 선택해요",
+    "detailedRating": "상세 집중도 평가",
+    "detailedRatingSub": "세션 중 기기의 움직임을 기록해 집중도를 더 정확하게 평가해요. 끄면 일반 동작 활동만 사용해요.",
+    "motionDeniedTitle": "동작 접근 권한이 필요해요",
+    "motionDeniedBody": "움직임으로 집중도를 평가하려면 설정에서 Bittersweet의 '동작 및 피트니스' 접근을 허용해 주세요.",
     "wheel": "휠",
     "scroller": "스크롤",
     "goalReminders": "목표 리마인더",
@@ -481,7 +485,12 @@
     "coachMessage": "앱 잠금 해제나 스토어 구매에 사용하세요.",
     "day": "일",
     "week": "주",
-    "challengeToast": "{{period}} {{hits}}/{{total}}"
+    "challengeToast": "{{period}} {{hits}}/{{total}}",
+    "motionPrimerTitle": "집중도를 자동으로 평가하기",
+    "motionPrimerBody": "Bittersweet는 세션 중 휴대폰의 움직임을 활용해 집중한 정도를 추정하고 열매 보상을 조정할 수 있어요.",
+    "motionPrimerPrivacy": "동작 데이터는 기기에만 저장되며 이 평가를 추정하는 데에만 사용돼요.",
+    "motionPrimerEnable": "동작 평가 켜기",
+    "motionPrimerDecline": "나중에"
   },
   "aiCoach": {
     "emptyTitle": "아직 주간 리포트가 없어요",
