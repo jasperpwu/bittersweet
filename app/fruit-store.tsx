@@ -10,13 +10,15 @@ import { useAppStore, useRewards } from '../src/store';
 import { showToast } from '../src/components/ui/Toast';
 import { SETUP_TASK_REWARD, type SetupTaskId } from '../src/services/sync/SyncMapper';
 import { getInstalledWidgetFamilies } from '../modules/widget-info';
+import { useTranslation } from 'react-i18next';
 
-const SETUP_TASK_META: { id: SetupTaskId; icon: string; title: string; description: string }[] = [
-  { id: 'widget', icon: '📱', title: 'Set Up a Widget', description: 'Add a Bittersweet widget to your home screen' },
-  { id: 'goal', icon: '🎯', title: 'Set a Goal', description: 'Create a focus goal for any tag' },
+const SETUP_TASK_META: { id: SetupTaskId; icon: string; titleKey: string; descKey: string }[] = [
+  { id: 'widget', icon: '📱', titleKey: 'store.taskWidgetTitle', descKey: 'store.taskWidgetDesc' },
+  { id: 'goal', icon: '🎯', titleKey: 'store.taskGoalTitle', descKey: 'store.taskGoalDesc' },
 ];
 
 export default function FruitStoreScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const rewards = useRewards();
   const [showTipModal, setShowTipModal] = useState(false);
@@ -45,28 +47,28 @@ export default function FruitStoreScreen() {
       // Pop-up confirmation; the task then disappears from the list (pendingTasks filter).
       setClaimedTitle(title);
     } else {
-      showToast('This reward is no longer available to claim.', 'error');
+      showToast(t('store.rewardUnavailable'), 'error');
     }
   };
 
   const handlePurchaseAccelerate = () => {
     if (rewards.balance < 50) {
-      showToast('Not enough apples! You need 50 apples.', 'error');
+      showToast(t('store.notEnough50'), 'error');
       return;
     }
     Alert.alert(
-      'Purchase Accelerate Card',
-      'This will cost 50 apples and take effect immediately. Double your apple generation speed for 24 hours.',
+      t('store.purchaseAccelTitle'),
+      t('store.purchaseAccelBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Purchase',
+          text: t('store.purchase'),
           onPress: () => {
             try {
               useAppStore.getState().rewards.activateAccelerateCard();
-              showToast('Accelerate card activated! Double apples for 24 hours.', 'success');
+              showToast(t('store.accelActivated'), 'success');
             } catch {
-              showToast('Purchase failed. Please try again.', 'error');
+              showToast(t('store.purchaseFailed'), 'error');
             }
           },
         },
@@ -76,22 +78,22 @@ export default function FruitStoreScreen() {
 
   const handlePurchaseTip = () => {
     if (rewards.balance < 5) {
-      showToast('Not enough apples! You need 5 apples.', 'error');
+      showToast(t('store.notEnough5'), 'error');
       return;
     }
     Alert.alert(
-      'Purchase Usage Tip',
-      'Are you sure you want to spend 5 apples on a pro tip?',
+      t('store.purchaseTipTitle'),
+      t('store.purchaseTipBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Purchase',
+          text: t('store.purchase'),
           onPress: () => {
             try {
               useAppStore.getState().rewards.spendFruits(5, 'product_tip', { product: 'usage_tip' });
               setShowTipModal(true);
             } catch {
-              showToast('Purchase failed. Please try again.', 'error');
+              showToast(t('store.purchaseFailed'), 'error');
             }
           },
         },
@@ -108,7 +110,7 @@ export default function FruitStoreScreen() {
     const diffMs = expiresAt.getTime() - now.getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m remaining`;
+    return t('store.timeRemaining', { hours, minutes });
   };
 
   return (
@@ -133,11 +135,11 @@ export default function FruitStoreScreen() {
               marginLeft: 2,
             }}
           >
-            Back
+            {t('store.back')}
           </Text>
         </Pressable>
 
-        <Typography variant="headline-18">Apple Store</Typography>
+        <Typography variant="headline-18">{t('store.title')}</Typography>
 
         <FruitCounter fruitCount={rewards.balance} size="small" />
       </View>
@@ -148,7 +150,7 @@ export default function FruitStoreScreen() {
           <>
             <View className="mt-4 mb-3">
               <Typography variant="subtitle-14-semibold" color="secondary">
-                Tasks
+                {t('store.tasks')}
               </Typography>
             </View>
 
@@ -161,7 +163,7 @@ export default function FruitStoreScreen() {
         {/* Products Section */}
         <View className="mt-4 mb-3">
           <Typography variant="subtitle-14-semibold" color="secondary">
-            Products
+            {t('store.products')}
           </Typography>
         </View>
 
@@ -182,17 +184,17 @@ export default function FruitStoreScreen() {
                 <Text style={{ fontSize: 28 }}>🚀</Text>
                 <View className="ml-3 flex-1">
                   <Typography variant="subtitle-14-semibold">
-                    Accelerate Card
+                    {t('store.accelerateTitle')}
                   </Typography>
                 </View>
               </View>
               <Typography variant="body-14" color="secondary">
-                Double apple generation speed for 1 day
+                {t('store.accelerateDesc')}
               </Typography>
               {isAccelerateActive && (
                 <View className="mt-2">
                   <Typography variant="body-12" color="success">
-                    Active — {accelerateTimeRemaining()}
+                    {t('store.accelerateActive', { time: accelerateTimeRemaining() })}
                   </Typography>
                 </View>
               )}
@@ -221,12 +223,12 @@ export default function FruitStoreScreen() {
                 <Text style={{ fontSize: 28 }}>💡</Text>
                 <View className="ml-3 flex-1">
                   <Typography variant="subtitle-14-semibold">
-                    Product Usage Tip
+                    {t('store.tipTitle')}
                   </Typography>
                 </View>
               </View>
               <Typography variant="body-14" color="secondary">
-                Get a pro tip for the app
+                {t('store.tipDesc')}
               </Typography>
             </View>
             <View className="bg-primary/15 rounded-xl px-3 py-1.5">
@@ -241,7 +243,7 @@ export default function FruitStoreScreen() {
         <View className="bg-primary/10 rounded-2xl p-5 mt-4 items-center">
           <Text style={{ fontSize: 24, marginBottom: 8 }}>🏪</Text>
           <Typography variant="subtitle-14-semibold" color="primary">
-            Coming Soon
+            {t('store.comingSoon')}
           </Typography>
           <View className="mt-2">
             <Typography
@@ -249,7 +251,7 @@ export default function FruitStoreScreen() {
               color="secondary"
               className="text-center"
             >
-              We are working closely with merchants to bring coupons for you!
+              {t('store.comingSoonDesc')}
             </Typography>
           </View>
         </View>
@@ -262,14 +264,13 @@ export default function FruitStoreScreen() {
         <View className="items-center">
           <Text style={{ fontSize: 40, marginBottom: 16 }}>💡</Text>
           <Typography variant="headline-18" className="text-center mb-3">
-            Pro Tip
+            {t('store.proTip')}
           </Typography>
           <Typography variant="body-14" color="secondary" className="text-center mb-6">
-            Use infinite session when you want to focus as long as you can, to
-            maximize fruit accumulation
+            {t('store.proTipBody')}
           </Typography>
           <Button onPress={() => setShowTipModal(false)} size="medium">
-            Got it!
+            {t('store.gotIt')}
           </Button>
         </View>
       </Modal>
@@ -279,13 +280,13 @@ export default function FruitStoreScreen() {
         <View className="items-center">
           <Text style={{ fontSize: 40, marginBottom: 16 }}>🎉</Text>
           <Typography variant="headline-18" className="text-center mb-3">
-            {`+${SETUP_TASK_REWARD} 🍎 Claimed!`}
+            {t('store.claimedTitle', { count: SETUP_TASK_REWARD })}
           </Typography>
           <Typography variant="body-14" color="secondary" className="text-center mb-6">
-            {`You earned ${SETUP_TASK_REWARD} apples for "${claimedTitle}". Enjoy!`}
+            {t('store.claimedBody', { count: SETUP_TASK_REWARD, title: claimedTitle })}
           </Typography>
           <Button onPress={() => setClaimedTitle(null)} size="medium">
-            Awesome!
+            {t('store.awesome')}
           </Button>
         </View>
       </Modal>
@@ -299,9 +300,11 @@ function SetupTaskCard({
   meta,
   onClaim,
 }: {
-  meta: { id: SetupTaskId; icon: string; title: string; description: string };
+  meta: { id: SetupTaskId; icon: string; titleKey: string; descKey: string };
   onClaim: (taskId: SetupTaskId, title: string) => void;
 }) {
+  const { t } = useTranslation();
+  const title = t(meta.titleKey);
   return (
     <View
       className="
@@ -314,17 +317,17 @@ function SetupTaskCard({
         <View className="flex-row items-center flex-1 mr-4">
           <Text style={{ fontSize: 28 }}>{meta.icon}</Text>
           <View className="ml-3 flex-1">
-            <Typography variant="subtitle-14-semibold">{meta.title}</Typography>
+            <Typography variant="subtitle-14-semibold">{title}</Typography>
             <View className="mt-1">
               <Typography variant="body-12" color="secondary">
-                {`Ready to claim 🍎 ${SETUP_TASK_REWARD}`}
+                {t('store.readyToClaim', { count: SETUP_TASK_REWARD })}
               </Typography>
             </View>
           </View>
         </View>
 
-        <Button size="small" onPress={() => onClaim(meta.id, meta.title)}>
-          {`Claim 🍎 ${SETUP_TASK_REWARD}`}
+        <Button size="small" onPress={() => onClaim(meta.id, title)}>
+          {t('store.claim', { count: SETUP_TASK_REWARD })}
         </Button>
       </View>
     </View>

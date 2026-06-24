@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Typography } from '../ui/Typography';
+import { useTranslation } from 'react-i18next';
 
 type Gender = 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
 
@@ -9,14 +10,15 @@ interface GenderPickerProps {
   onChange: (gender: Gender | null) => void;
 }
 
-const OPTIONS: { label: string; value: Gender }[] = [
-  { label: 'Male', value: 'male' },
-  { label: 'Female', value: 'female' },
-  { label: 'Non-binary', value: 'non-binary' },
-  { label: 'Prefer not to say', value: 'prefer-not-to-say' },
+const OPTIONS: { labelKey: string; value: Gender }[] = [
+  { labelKey: 'gender.male', value: 'male' },
+  { labelKey: 'gender.female', value: 'female' },
+  { labelKey: 'gender.nonBinary', value: 'non-binary' },
+  { labelKey: 'gender.preferNotToSay', value: 'prefer-not-to-say' },
 ];
 
 export const GenderPicker: React.FC<GenderPickerProps> = ({ value, onChange }) => {
+  const { t } = useTranslation();
   return (
     <View className="flex-row flex-wrap gap-2">
       {OPTIONS.map((option) => {
@@ -35,7 +37,7 @@ export const GenderPicker: React.FC<GenderPickerProps> = ({ value, onChange }) =
               variant="body-14"
               color={isSelected ? 'white' : 'primary'}
             >
-              {option.label}
+              {t(option.labelKey)}
             </Typography>
           </Pressable>
         );

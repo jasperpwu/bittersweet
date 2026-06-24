@@ -7,8 +7,10 @@ import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsI
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { openChat } from '../../src/services/crisp';
 import { openFeedbackBoard } from '../../src/services/userjot';
+import { useTranslation } from 'react-i18next';
 
 export default function SupportScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { triggerHaptic } = useDeviceIntegration();
@@ -17,7 +19,7 @@ export default function SupportScreen() {
     triggerHaptic('light');
     try {
       await Share.share({
-        message: 'Check out Bittersweet — a focus timer that helps you stay productive! https://apps.apple.com/app/bittersweet',
+        message: t('support.shareMessage'),
       });
     } catch (error) {
       console.error('Failed to share:', error);
@@ -42,30 +44,30 @@ export default function SupportScreen() {
           <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
-          Support & About
+          {t('settings.tab.support')}
         </Typography>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Support */}
-        <SettingsSection title="Support">
+        <SettingsSection title={t('support.supportSection')}>
           <SettingsItem
-            title="Share with Friends"
-            subtitle="Spread the focus"
+            title={t('support.shareTitle')}
+            subtitle={t('support.shareSub')}
             icon="share-social-outline"
             hasChevron
             onPress={handleShareWithFriends}
           />
           <SettingsItem
-            title="Help & Feedback"
-            subtitle="Chat with us"
+            title={t('support.helpTitle')}
+            subtitle={t('support.helpSub')}
             icon="chatbubble-ellipses-outline"
             hasChevron
             onPress={handleHelpAndFeedback}
           />
           <SettingsItem
-            title="Feature Requests"
-            subtitle="Suggest & vote on ideas"
+            title={t('support.featureTitle')}
+            subtitle={t('support.featureSub')}
             icon="bulb-outline"
             hasChevron
             onPress={handleFeedbackBoard}
@@ -74,9 +76,9 @@ export default function SupportScreen() {
         </SettingsSection>
 
         {/* About */}
-        <SettingsSection title="About">
+        <SettingsSection title={t('support.aboutSection')}>
           <SettingsItem
-            title="Version"
+            title={t('support.version')}
             icon="information-circle-outline"
             valueLabel="1.0.0"
             isLast

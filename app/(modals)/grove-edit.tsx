@@ -20,10 +20,12 @@ import { HandleInput } from '../../src/components/grove/HandleInput';
 import { InterestPicker } from '../../src/components/grove/InterestPicker';
 import { useHandleValidation } from '../../src/hooks/useHandleValidation';
 import { useAppStore } from '../../src/store';
+import { useTranslation } from 'react-i18next';
 
 type Gender = 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
 
 export default function GroveEditModal() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -140,11 +142,11 @@ export default function GroveEditModal() {
     } catch (error: any) {
       if (error.message === 'HANDLE_TAKEN') {
         Alert.alert(
-          'Handle Unavailable',
-          'This handle was just claimed by someone else. Please choose a different one.'
+          t('groveSetup.handleTakenTitle'),
+          t('groveEdit.handleTakenBody')
         );
       } else {
-        Alert.alert('Error', 'Failed to save changes. Please try again.');
+        Alert.alert(t('common.error'), t('groveEdit.failedSave'));
       }
     } finally {
       setIsSaving(false);
@@ -166,7 +168,7 @@ export default function GroveEditModal() {
           </Pressable>
 
           <Typography variant="subtitle-16" color="primary" className="font-poppins-semibold">
-            Edit Profile
+            {t('groveEdit.editProfile')}
           </Typography>
 
           <Pressable
@@ -181,7 +183,7 @@ export default function GroveEditModal() {
                 variant="subtitle-14-medium"
                 className={canSave ? 'text-primary' : 'text-primary/40'}
               >
-                Save
+                {t('common.save')}
               </Typography>
             )}
           </Pressable>
@@ -208,7 +210,7 @@ export default function GroveEditModal() {
                 className="self-center mt-3 active:opacity-70"
               >
                 <Typography variant="body-12" className="text-[#EF786C]">
-                  Remove Photo
+                  {t('journal.removePhoto')}
                 </Typography>
               </Pressable>
             )}
@@ -217,12 +219,12 @@ export default function GroveEditModal() {
           {/* Display Name */}
           <View className="mb-6">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Display Name
+              {t('groveSetup.displayName')}
             </Typography>
             <TextInput
               value={displayName}
               onChangeText={(text) => setDisplayName(text.slice(0, 20))}
-              placeholder="Your name"
+              placeholder={t('groveSetup.yourName')}
               placeholderTextColor={isDark ? '#575757' : '#B8A88A'}
               maxLength={20}
               style={{
@@ -245,7 +247,7 @@ export default function GroveEditModal() {
           {/* Handle */}
           <View className="mb-6">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Handle
+              {t('groveSetup.handle')}
             </Typography>
             <HandleInput
               value={effectiveHandle}
@@ -257,7 +259,7 @@ export default function GroveEditModal() {
           {/* Gender */}
           <View className="mb-6">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Gender
+              {t('groveSetup.gender')}
             </Typography>
             <GenderPicker value={gender} onChange={setGender} />
           </View>
@@ -265,11 +267,11 @@ export default function GroveEditModal() {
           {/* Interests */}
           <View className="mb-8">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Interests
+              {t('groveEdit.interests')}
             </Typography>
             <InterestPicker value={interests} onChange={setInterests} />
             <Typography variant="body-12" color="secondary" className="mt-2 ml-1">
-              Used to match you with themed challenges
+              {t('groveSetup.interestsHint')}
             </Typography>
           </View>
 

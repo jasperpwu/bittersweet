@@ -2,12 +2,14 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
+import { useTranslation } from 'react-i18next';
 
 interface AddFriendCardProps {
   onPress: () => void;
 }
 
 export const AddFriendCard: React.FC<AddFriendCardProps> = ({ onPress }) => {
+  const { t } = useTranslation();
   return (
     <Pressable
       onPress={onPress}
@@ -18,10 +20,10 @@ export const AddFriendCard: React.FC<AddFriendCardProps> = ({ onPress }) => {
         <Ionicons name="person-add-outline" size={24} color="#6592E9" />
       </View>
       <Typography variant="subtitle-14-medium" color="primary">
-        Add Friend
+        {t('groveUI.addFriend')}
       </Typography>
       <Typography variant="body-12" color="secondary" className="mt-1">
-        Share your invite link
+        {t('groveUI.shareInvite')}
       </Typography>
     </Pressable>
   );

@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { View, useColorScheme } from 'react-native';
 import { useAppStore } from '../../src/store';
 import { Typography } from '../../src/components/ui/Typography';
+import { useTranslation } from 'react-i18next';
 
 const ActiveDot = () => (
   <View
@@ -17,6 +18,7 @@ const ActiveDot = () => (
 );
 
 export default function TabLayout() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -53,7 +55,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="journal"
         options={{
-          title: 'Journal',
+          title: t('tabs.journal'),
           tabBarIcon: ({ color }) => (
             <Ionicons name="calendar-outline" size={24} color={color} />
           ),
@@ -63,7 +65,7 @@ export default function TabLayout() {
                 variant="tiny-10"
                 style={{ color, fontFamily: 'Poppins-Medium' }}
               >
-                Journal
+                {t('tabs.journal')}
               </Typography>
               {focused && <ActiveDot />}
             </View>
@@ -73,7 +75,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Focus',
+          title: t('tabs.focus'),
           tabBarIcon: ({ color }) => (
             <Ionicons name="play" size={30} color={color} />
           ),
@@ -83,7 +85,7 @@ export default function TabLayout() {
                 variant="tiny-10"
                 style={{ color, fontFamily: 'Poppins-Medium' }}
               >
-                Focus
+                {t('tabs.focus')}
               </Typography>
               {focused && <ActiveDot />}
             </View>
@@ -93,7 +95,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="insights"
         options={{
-          title: 'Goals',
+          title: t('tabs.goals'),
           tabBarIcon: ({ color }) => (
             <Ionicons name="stats-chart-outline" size={24} color={color} />
           ),
@@ -103,7 +105,7 @@ export default function TabLayout() {
                 variant="tiny-10"
                 style={{ color, fontFamily: 'Poppins-Medium' }}
               >
-                Goals
+                {t('tabs.goals')}
               </Typography>
               {focused && <ActiveDot />}
             </View>
@@ -113,7 +115,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="grove"
         options={{
-          title: 'Grove',
+          title: t('tabs.grove'),
           href: isGroveActive ? '/(tabs)/grove' : null,
           tabBarIcon: ({ color }) => (
             <View>
@@ -139,7 +141,7 @@ export default function TabLayout() {
                 variant="tiny-10"
                 style={{ color, fontFamily: 'Poppins-Medium' }}
               >
-                Grove
+                {t('tabs.grove')}
               </Typography>
               {focused && <ActiveDot />}
             </View>
@@ -149,7 +151,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t('tabs.settings'),
           tabBarIcon: ({ color }) => (
             <Ionicons name="settings-outline" size={24} color={color} />
           ),
@@ -159,7 +161,7 @@ export default function TabLayout() {
                 variant="tiny-10"
                 style={{ color, fontFamily: 'Poppins-Medium' }}
               >
-                Settings
+                {t('tabs.settings')}
               </Typography>
               {focused && <ActiveDot />}
             </View>

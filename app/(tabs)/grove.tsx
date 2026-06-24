@@ -13,8 +13,10 @@ import { EmptyGroveState } from '../../src/components/grove/EmptyGroveState';
 import { useAppStore } from '../../src/store';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 import { buildGroveNotifications, countUnreadGroveNotifications } from '../../src/utils/groveNotifications';
+import { useTranslation } from 'react-i18next';
 
 export default function GroveScreen() {
+  const { t } = useTranslation();
   const profile = useAppStore((s) => s.grove.profile);
   const friends = useAppStore((s) => s.grove.friends);
   const feed = useAppStore((s) => s.grove.feed);
@@ -123,20 +125,20 @@ export default function GroveScreen() {
     const challenge = challenges.find(c => c.id === challengeId);
     const isActive = challenge?.status === 'active';
     const message = isActive
-      ? 'This challenge is currently active. Deleting it will remove it for all participants. Are you sure?'
-      : 'Are you sure you want to delete this challenge?';
+      ? t('grove.deleteChallengeActive')
+      : t('grove.deleteChallengeConfirm');
 
-    Alert.alert('Delete Challenge', message, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('grove.deleteChallengeTitle'), message, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deleteChallengeAction(challengeId);
             setSelectedChallenge(null);
           } catch {
-            Alert.alert('Error', 'Failed to delete challenge.');
+            Alert.alert(t('common.error'), t('grove.failedDeleteChallenge'));
           }
         },
       },
@@ -157,7 +159,7 @@ export default function GroveScreen() {
     return (
       <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg items-center justify-center">
         <Typography variant="body-14" color="secondary">
-          Profile not found
+          {t('grove.profileNotFound')}
         </Typography>
       </SafeAreaView>
     );
@@ -245,7 +247,7 @@ export default function GroveScreen() {
                   </Typography>
                   <Typography variant="body-12" color="secondary">
                     @{profile.handle}
-                    {hasFriends && ` · ${friends.length} ${friends.length === 1 ? 'friend' : 'friends'}`}
+                    {hasFriends && ` · ${t('grove.friendCount', { count: friends.length })}`}
                   </Typography>
                 </View>
               </View>
@@ -262,7 +264,7 @@ export default function GroveScreen() {
             <View className="mt-3">
               <View className="px-5 mb-2">
                 <Typography variant="subtitle-14-medium" color="secondary">
-                  Recent Activity
+                  {t('grove.recentActivity')}
                 </Typography>
               </View>
 
@@ -277,7 +279,7 @@ export default function GroveScreen() {
               ) : (
                 <View className="px-5 py-8 items-center">
                   <Typography variant="body-14" color="secondary" className="text-center">
-                    No recent sessions from friends. Check back later!
+                    {t('grove.noRecentSessions')}
                   </Typography>
                 </View>
               )}
@@ -287,11 +289,11 @@ export default function GroveScreen() {
             <View className="mt-6">
               <View className="px-5 mb-3 flex-row items-center justify-between">
                 <Typography variant="subtitle-16" color="primary">
-                  Challenges
+                  {t('grove.challenges')}
                 </Typography>
                 <Pressable onPress={handleChallenges} className="active:opacity-60" hitSlop={8}>
                   <Typography variant="body-12" style={{ color: '#E9A065' }}>
-                    See All
+                    {t('grove.seeAll')}
                   </Typography>
                 </Pressable>
               </View>
@@ -319,7 +321,7 @@ export default function GroveScreen() {
                       <Ionicons name="add" size={24} color="#E9A065" />
                     </View>
                     <Typography variant="body-12" color="secondary">
-                      New Challenge
+                      {t('grove.newChallenge')}
                     </Typography>
                   </Pressable>
                 </ScrollView>

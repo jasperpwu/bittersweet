@@ -5,6 +5,7 @@ import { BadgeCard } from './BadgeCard';
 import { BadgeSummarySheet } from './BadgeSummarySheet';
 import { Badge } from '../../../store/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 interface BadgeCollectionProps {
   badges: Badge[];
@@ -12,6 +13,7 @@ interface BadgeCollectionProps {
 }
 
 export const BadgeCollection: FC<BadgeCollectionProps> = ({ badges, onDeleteBadge }) => {
+  const { t } = useTranslation();
   const [selectedBadgeId, setSelectedBadgeId] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const colorScheme = useColorScheme();
@@ -22,12 +24,12 @@ export const BadgeCollection: FC<BadgeCollectionProps> = ({ badges, onDeleteBadg
 
   const handleDeleteBadge = (badgeId: string) => {
     Alert.alert(
-      'Delete Badge?',
-      'This badge will be permanently removed.',
+      t('badge.deleteTitle'),
+      t('badge.deleteConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             onDeleteBadge(badgeId);
@@ -48,7 +50,7 @@ export const BadgeCollection: FC<BadgeCollectionProps> = ({ badges, onDeleteBadg
         style={{ paddingVertical: 4 }}
       >
         <Typography variant="subtitle-16" color="primary" className="mr-2">
-          Badges
+          {t('badge.sectionTitle')}
         </Typography>
         {hasBadges && (
           <Typography variant="body-12" color="secondary" className="mr-2">
@@ -78,7 +80,7 @@ export const BadgeCollection: FC<BadgeCollectionProps> = ({ badges, onDeleteBadg
         ) : (
           <View className="py-6 items-center">
             <Typography variant="body-14" color="secondary" className="text-center">
-              No badges yet. Complete a focus goal to generate your first badge!
+              {t('badge.empty')}
             </Typography>
           </View>
         )

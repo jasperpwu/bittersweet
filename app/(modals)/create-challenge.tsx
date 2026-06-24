@@ -8,6 +8,7 @@ import { Slider } from '../../src/components/ui/Slider';
 import { DatePicker } from '../../src/components/ui/DatePicker/DatePicker';
 import { useAppStore } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
+import { useTranslation } from 'react-i18next';
 
 type Period = 'daily' | 'weekly';
 type CreationMode = 'streak' | 'until';
@@ -47,6 +48,7 @@ function toDateStr(date: Date): string {
 }
 
 export default function CreateChallengeModal() {
+  const { t, i18n } = useTranslation();
   const friends = useAppStore((s) => s.grove.friends);
   const allTags = useAppStore((s) => s.focus.tags);
   const createChallenge = useAppStore((s) => s.grove.createChallenge);
@@ -148,28 +150,28 @@ export default function CreateChallengeModal() {
         startDate: toDateStr(effectiveStartDate),
         endDate: toDateStr(endDate),
       });
-      showToast('Challenge sent!', 'success');
+      showToast(t('createChallenge.sent'), 'success');
       router.back();
     } catch (error: any) {
-      showToast('Failed to send challenge', 'error');
+      showToast(t('createChallenge.failedSend'), 'error');
     } finally {
       setIsSubmitting(false);
     }
   }, [selectedFriendIds, selectedTag, period, targetHours, effectiveStartDate, endDate, createChallenge]);
 
-  const stepTitle = step === 'friend' ? 'Pick Friends' : step === 'tag' ? 'Pick a Tag' : 'Configure Challenge';
+  const stepTitle = step === 'friend' ? t('createChallenge.titleFriends') : step === 'tag' ? t('createChallenge.titleTag') : t('createChallenge.titleConfig');
 
   const sliderConfig = SLIDER_CONFIG[period];
 
-  const periodLabel = period === 'daily' ? 'days' : 'weeks';
+  const periodLabel = period === 'daily' ? t('challenge.daysUnit') : t('challenge.weeksUnit');
 
   /** Format selected friend names for summary display */
   const friendNamesSummary = useMemo(() => {
     if (selectedFriends.length === 0) return '';
     const names = selectedFriends.map(f => f.profile.display_name);
     if (names.length <= 3) return names.join(', ');
-    return `${names.slice(0, 2).join(', ')}, and ${names.length - 2} other${names.length - 2 > 1 ? 's' : ''}`;
-  }, [selectedFriends]);
+    return t('createChallenge.andOthers', { names: names.slice(0, 2).join(', '), count: names.length - 2 });
+  }, [selectedFriends, t]);
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
@@ -187,7 +189,7 @@ export default function CreateChallengeModal() {
         </Typography>
         {step === 'friend' && selectedFriendIds.length > 0 && (
           <Typography variant="body-12" color="secondary">
-            {selectedFriendIds.length} selected
+            {t('createChallenge.selectedCount', { count: selectedFriendIds.length })}
           </Typography>
         )}
       </View>
@@ -199,7 +201,7 @@ export default function CreateChallengeModal() {
             {friends.length === 0 ? (
               <View className="py-12 items-center">
                 <Typography variant="body-14" color="secondary" className="text-center">
-                  Add friends first to send challenges.
+                  {t('createChallenge.addFriendsFirst')}
                 </Typography>
               </View>
             ) : (
@@ -256,7 +258,7 @@ export default function CreateChallengeModal() {
                   style={{ opacity: selectedFriendIds.length === 0 ? 0.4 : 1 }}
                 >
                   <Typography variant="subtitle-16" style={{ color: '#FFFFFF' }}>
-                    Next
+                    {t('common.next')}
                   </Typography>
                 </Pressable>
               </>
@@ -269,7 +271,7 @@ export default function CreateChallengeModal() {
           <View>
             <View className="mb-4">
               <Typography variant="body-12" color="secondary">
-                Pick the tag everyone needs to focus on.
+                {t('createChallenge.pickTagDesc')}
               </Typography>
             </View>
             {activeTags.map((tag) => (
@@ -297,7 +299,7 @@ export default function CreateChallengeModal() {
             <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mb-6">
               <View className="flex-row items-center mb-2">
                 <Typography variant="body-12" color="secondary" className="mr-1">
-                  Challenging
+                  {t('createChallenge.challenging')}
                 </Typography>
                 <Typography variant="subtitle-14-medium" color="primary" className="flex-1" numberOfLines={2}>
                   {friendNamesSummary}
@@ -305,7 +307,7 @@ export default function CreateChallengeModal() {
               </View>
               <View className="flex-row items-center">
                 <Typography variant="body-12" color="secondary" className="mr-1">
-                  Tag:
+                  {t('createChallenge.tagColon')}
                 </Typography>
                 <Typography variant="body-14" className="mr-1">
                   {selectedTag?.icon}
@@ -318,7 +320,7 @@ export default function CreateChallengeModal() {
 
             {/* Period Selector */}
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Time Period
+              {t('createChallenge.timePeriod')}
             </Typography>
             <View className="flex-row gap-x-2 mb-6">
               {(['daily', 'weekly'] as const).map((p) => (
@@ -333,7 +335,7 @@ export default function CreateChallengeModal() {
                     variant="body-14"
                     className={`text-center ${period === p ? 'text-white' : 'text-light-text-primary dark:text-white'}`}
                   >
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {p === 'daily' ? t('createChallenge.daily') : t('createChallenge.weekly')}
                   </Typography>
                 </Pressable>
               ))}
@@ -341,11 +343,11 @@ export default function CreateChallengeModal() {
 
             {/* Target Duration Slider */}
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Target Duration
+              {t('createChallenge.targetDuration')}
             </Typography>
             <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl px-4 py-3 items-center mb-6">
               <Typography variant="headline-20" color="primary" className="mb-1">
-                {formatDuration(targetHours)}/{period === 'daily' ? 'day' : 'week'}
+                {formatDuration(targetHours)}/{period === 'daily' ? t('createChallenge.perDay') : t('createChallenge.perWeek')}
               </Typography>
               <Slider
                 value={targetHours}
@@ -362,19 +364,19 @@ export default function CreateChallengeModal() {
               <DatePicker
                 value={startDate}
                 onChange={setStartDate}
-                label={period === 'weekly' ? 'Starting Week' : 'Start Date'}
+                label={period === 'weekly' ? t('createChallenge.startingWeek') : t('createChallenge.startDate')}
                 minimumDate={today}
               />
               {period === 'weekly' && startDate.getDay() !== 1 && (
                 <Typography variant="body-12" color="secondary" className="mt-1">
-                  Will start on Monday {effectiveStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {t('createChallenge.startMonday', { date: effectiveStartDate.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' }) })}
                 </Typography>
               )}
             </View>
 
             {/* Creation Mode Selector */}
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Challenge Length
+              {t('createChallenge.challengeLength')}
             </Typography>
             <View className="flex-row gap-x-2 mb-4">
               {(['streak', 'until'] as const).map((mode) => (
@@ -389,7 +391,7 @@ export default function CreateChallengeModal() {
                     variant="body-14"
                     className={`text-center ${creationMode === mode ? 'text-white' : 'text-light-text-primary dark:text-white'}`}
                   >
-                    {mode === 'streak' ? 'Streak' : 'Until Date'}
+                    {mode === 'streak' ? t('createChallenge.streak') : t('createChallenge.untilDate')}
                   </Typography>
                 </Pressable>
               ))}
@@ -400,7 +402,7 @@ export default function CreateChallengeModal() {
               <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl px-4 py-3 items-center mb-6">
                 <Typography variant="headline-20" color="primary" className="mb-1">
                   {streakCount} {periodLabel}
-                </Typography>
+                </Typography>{/* periodLabel is localized days/weeks */}
                 <Slider
                   value={streakCount}
                   minimumValue={period === 'daily' ? 2 : 1}
@@ -415,12 +417,12 @@ export default function CreateChallengeModal() {
                 <DatePicker
                   value={untilDate}
                   onChange={setUntilDate}
-                  label={period === 'weekly' ? 'Ending Week' : 'End Date'}
+                  label={period === 'weekly' ? t('createChallenge.endingWeek') : t('createChallenge.endDate')}
                   minimumDate={effectiveStartDate}
                 />
                 {period === 'weekly' && untilDate.getDay() !== 0 && (
                   <Typography variant="body-12" color="secondary" className="mt-1">
-                    Will end on Sunday {snapToSunday(untilDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {t('createChallenge.endSunday', { date: snapToSunday(untilDate).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' }) })}
                   </Typography>
                 )}
               </View>
@@ -429,8 +431,12 @@ export default function CreateChallengeModal() {
             {/* Computed End Date Info */}
             <View className="bg-[#E9A065]/10 rounded-xl px-4 py-3 mb-6">
               <Typography variant="body-12" color="secondary">
-                All participants must focus with the &quot;{selectedTag?.name}&quot; tag for {formatDuration(targetHours)} per {period === 'daily' ? 'day' : 'week'}.
-                {' '}Ends {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
+                {t('createChallenge.summary', {
+                  tag: selectedTag?.name,
+                  duration: formatDuration(targetHours),
+                  period: period === 'daily' ? t('createChallenge.perDay') : t('createChallenge.perWeek'),
+                  date: endDate.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', year: 'numeric' }),
+                })}
               </Typography>
             </View>
 
@@ -445,7 +451,7 @@ export default function CreateChallengeModal() {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Typography variant="subtitle-16" style={{ color: '#FFFFFF' }}>
-                  Send Challenge
+                  {t('createChallenge.sendChallenge')}
                 </Typography>
               )}
             </Pressable>

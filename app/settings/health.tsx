@@ -15,11 +15,13 @@ import {
   requestWorkoutAuthorization,
 } from '../../src/services/health/HealthKitService';
 import { syncHealthKitWorkouts } from '../../src/services/health/syncHealthKitWorkouts';
+import { useTranslation } from 'react-i18next';
 
 // Workout-oriented emoji suggestions for the inline tag creator.
 const WORKOUT_EMOJIS = ['🏋️', '💪', '🏃', '🧘', '🚴', '🏊', '⚽', '🤸'];
 
 export default function HealthScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { preferences, updatePreferences } = useAppSettings();
@@ -33,7 +35,7 @@ export default function HealthScreen() {
 
   // Inline tag-creation state (within the tag picker sheet).
   const [creatingTag, setCreatingTag] = useState(false);
-  const [newTagName, setNewTagName] = useState('Workout');
+  const [newTagName, setNewTagName] = useState(t('health.defaultWorkoutName'));
   const [newTagEmoji, setNewTagEmoji] = useState('🏋️');
   const [newTagColor, setNewTagColor] = useState(DEFAULT_TAG_COLOR);
 
@@ -53,8 +55,8 @@ export default function HealthScreen() {
     }
 
     if (!isHealthKitAvailable()) {
-      Alert.alert('Apple Health Unavailable', 'Apple Health is not available on this device.', [
-        { text: 'OK' },
+      Alert.alert(t('health.unavailableTitle'), t('health.unavailableBody'), [
+        { text: t('common.ok') },
       ]);
       return;
     }
@@ -68,7 +70,7 @@ export default function HealthScreen() {
       if (hk.linkedTagId) runSync();
     } catch (e) {
       console.error('[HealthKit] authorization failed', e);
-      Alert.alert('Connection Failed', 'Could not connect to Apple Health.', [{ text: 'OK' }]);
+      Alert.alert(t('health.connFailedTitle'), t('health.connFailedBody'), [{ text: t('common.ok') }]);
     }
   };
 
@@ -87,7 +89,7 @@ export default function HealthScreen() {
   const openCreateTagForm = () => {
     triggerHaptic('light');
     // Reset to workout defaults each time the form is opened.
-    setNewTagName('Workout');
+    setNewTagName(t('health.defaultWorkoutName'));
     setNewTagEmoji('🏋️');
     setNewTagColor(DEFAULT_TAG_COLOR);
     setCreatingTag(true);
@@ -110,11 +112,11 @@ export default function HealthScreen() {
       triggerHaptic('light');
       if (result) {
         Alert.alert(
-          'Sync Complete',
+          t('health.syncCompleteTitle'),
           result.imported > 0
-            ? `Imported ${result.imported} workout${result.imported === 1 ? '' : 's'}.`
-            : 'No new workouts to import.',
-          [{ text: 'OK' }]
+            ? t('health.syncImported', { count: result.imported })
+            : t('health.syncNone'),
+          [{ text: t('common.ok') }]
         );
       }
     } finally {
@@ -130,24 +132,21 @@ export default function HealthScreen() {
           <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
-          Apple Health
+          {t('settings.tab.health')}
         </Typography>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="px-5 pb-4 pt-2">
           <Typography variant="body-12" color="secondary">
-            Connect Apple Health to turn finished workouts into focus sessions. Workouts logged by
-            popular fitness apps such as SmartGym and Peloton are supported too. Imported workouts
-            appear under the tag you choose and earn fruit like a focus session. Workouts you log by
-            hand in the Health app are skipped.
+            {t('health.intro')}
           </Typography>
         </View>
 
-        <SettingsSection title="Connection">
+        <SettingsSection title={t('health.connection')}>
           <SettingsItem
-            title="Connect Apple Health"
-            subtitle="Sync Apple Fitness workouts as sessions"
+            title={t('health.connect')}
+            subtitle={t('health.connectSub')}
             hasToggle
             toggleValue={hk.enabled}
             onToggleChange={handleConnectToggle}
@@ -157,12 +156,12 @@ export default function HealthScreen() {
 
         {hk.enabled && (
           <>
-            <SettingsSection title="Linked tag">
+            <SettingsSection title={t('health.linkedTag')}>
               <SettingsItem
-                title="Tag"
-                subtitle="Workouts are filed under this tag"
+                title={t('health.tag')}
+                subtitle={t('health.tagSub')}
                 hasChevron
-                valueLabel={linkedTag ? `${linkedTag.icon || '🎯'} ${linkedTag.name}` : 'Choose'}
+                valueLabel={linkedTag ? `${linkedTag.icon || '🎯'} ${linkedTag.name}` : t('health.choose')}
                 onPress={() => {
                   triggerHaptic('light');
                   setTagSheetVisible(true);
@@ -171,10 +170,10 @@ export default function HealthScreen() {
               />
             </SettingsSection>
 
-            <SettingsSection title="Options">
+            <SettingsSection title={t('health.options')}>
               <SettingsItem
-                title={isSyncing ? 'Syncing…' : 'Sync now'}
-                subtitle="Check Apple Health for new workouts"
+                title={isSyncing ? t('health.syncing') : t('health.syncNow')}
+                subtitle={t('health.syncSub')}
                 onPress={isSyncing || !hk.linkedTagId ? undefined : runSync}
                 isLast
               />
@@ -193,13 +192,13 @@ export default function HealthScreen() {
                 <Ionicons name="chevron-back" size={22} color={isDark ? '#FFFFFF' : '#5D4E37'} />
               </Pressable>
               <Typography variant="headline-20" color="primary">
-                New workout tag
+                {t('health.newWorkoutTag')}
               </Typography>
             </View>
 
             {/* Emoji selector */}
             <Typography variant="body-12" color="secondary" className="mb-2">
-              Pick an emoji
+              {t('health.pickEmoji')}
             </Typography>
             <View className="mb-5 flex-row flex-wrap" style={{ gap: 10 }}>
               {WORKOUT_EMOJIS.map((emoji) => (
@@ -226,12 +225,12 @@ export default function HealthScreen() {
 
             {/* Tag name */}
             <Typography variant="body-12" color="secondary" className="mb-2">
-              Tag name
+              {t('health.tagName')}
             </Typography>
             <TextInput
               value={newTagName}
               onChangeText={setNewTagName}
-              placeholder="e.g. Workout"
+              placeholder={t('health.tagNamePlaceholder')}
               placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
               maxLength={30}
               className="mb-5"
@@ -248,7 +247,7 @@ export default function HealthScreen() {
 
             {/* Color selector */}
             <Typography variant="body-12" color="secondary" className="mb-2">
-              Color
+              {t('health.color')}
             </Typography>
             <ScrollView
               style={{ maxHeight: 180 }}
@@ -263,14 +262,14 @@ export default function HealthScreen() {
               disabled={!newTagName.trim()}
               className={`items-center rounded-2xl py-4 ${newTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}>
               <Typography variant="subtitle-16" color="white" className="font-semibold">
-                Create & link tag
+                {t('health.createLink')}
               </Typography>
             </Pressable>
           </View>
         ) : (
           <View className="px-5 pb-6">
             <Typography variant="headline-20" color="primary" className="mb-4">
-              Choose a tag
+              {t('health.chooseTag')}
             </Typography>
             {activeTags.map((tag) => (
               <Pressable
@@ -292,7 +291,7 @@ export default function HealthScreen() {
               className="flex-row items-center py-3 active:opacity-70">
               <Ionicons name="add-circle-outline" size={20} color="#6592E9" />
               <Typography variant="subtitle-14-medium" className="ml-2" style={{ color: '#6592E9' }}>
-                Create new tag
+                {t('health.createNewTag')}
               </Typography>
             </Pressable>
           </View>

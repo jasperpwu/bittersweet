@@ -7,6 +7,7 @@
  * by a model — the on-device narrator only picks/rewrites the prose.
  */
 import type { CoachWeeklyStats, CoachInsightCard, CoachAction } from '../../store/types';
+import i18n from '../../i18n';
 
 export interface NarratorContext {
   tagName: (tagId: string) => string;
@@ -33,10 +34,21 @@ const LOW_ACTIVE_TAG_MINUTES = 60; // < 1h logged on a sports tag → likely unt
 const LOW_QUALITY_RATING = 3.5; // mean focus rating below this reads as scattered
 const VOLUME_DELTA_MINUTES = 30; // |Δ vs trailing avg| worth calling out
 
+// Locale-aware hour label (e.g. "9 AM" / "9時" / "9 h") from a 0–23 hour.
 const fmtHour = (h: number): string => {
-  const am = h < 12;
-  const hr = h % 12 === 0 ? 12 : h % 12;
-  return `${hr}${am ? 'am' : 'pm'}`;
+  const d = new Date();
+  d.setHours(h, 0, 0, 0);
+  return d.toLocaleTimeString(i18n.language, { hour: 'numeric' });
+};
+
+// English weekday name (as stored in stats) → localized weekday name.
+const EN_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const fmtDay = (enName: string): string => {
+  const idx = EN_DAYS.indexOf(enName);
+  if (idx < 0) return enName;
+  const d = new Date(2023, 0, 1); // Sunday
+  d.setDate(d.getDate() + idx);
+  return d.toLocaleDateString(i18n.language, { weekday: 'long' });
 };
 
 const fmtMins = (m: number): string => {
@@ -71,21 +83,21 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   if (stats.goalsTracked > 0 && stats.goalsMet < stats.goalsTracked) {
     cards.push(
       card(
-        `${stats.goalsMet} of ${stats.goalsTracked} goals met`,
-        `You came close. A quick look at your goals can help you adjust a target that's set too high.`,
+        i18n.t('coachTpl.goalsMetPartialH', { met: stats.goalsMet, tracked: stats.goalsTracked }),
+        i18n.t('coachTpl.goalsMetPartialB'),
         'attention',
-        { type: 'open_goals', label: 'Open goals' }
+        { type: 'open_goals', label: i18n.t('aiCoach.actOpenGoals') }
       )
     );
   } else if (stats.goalsTracked === 0 && topTag) {
     cards.push(
       card(
-        `${fmtMins(topTag.minutes)} on ${ctx.tagName(topTag.tagId)}`,
-        `Your most-focused activity this week. A goal would help you keep the momentum.`,
+        i18n.t('coachTpl.topTagH', { mins: fmtMins(topTag.minutes), tag: ctx.tagName(topTag.tagId) }),
+        i18n.t('coachTpl.topTagB'),
         'neutral',
         {
           type: 'create_goal',
-          label: `Set a ${ctx.tagName(topTag.tagId)} goal`,
+          label: i18n.t('coachTpl.setTagGoal', { tag: ctx.tagName(topTag.tagId) }),
           tagId: topTag.tagId,
           period: 'weekly',
           targetMinutes: roundTo(topTag.minutes, 30),
@@ -95,8 +107,8 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   } else if (stats.goalsTracked > 0 && stats.goalsMet === stats.goalsTracked) {
     cards.push(
       tip(
-        `All ${stats.goalsTracked} goals met`,
-        `Every goal hit this week — excellent consistency. Keep the bar where it challenges you.`,
+        i18n.t('coachTpl.allGoalsH', { tracked: stats.goalsTracked }),
+        i18n.t('coachTpl.allGoalsB'),
         'positive'
       )
     );
@@ -106,10 +118,10 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   if (stats.avgRating != null && stats.avgRating < LOW_QUALITY_RATING && stats.ratedCount >= 2) {
     cards.push(
       card(
-        `Focus felt scattered`,
-        `Your sessions averaged ${stats.avgRating.toFixed(1)}★. Blocking distracting apps during focus can help you stay in.`,
+        i18n.t('coachTpl.scatteredH'),
+        i18n.t('coachTpl.scatteredB', { rating: stats.avgRating.toFixed(1) }),
         'attention',
-        { type: 'block_apps', label: 'Choose apps to block' }
+        { type: 'block_apps', label: i18n.t('aiCoach.actBlockApps') }
       )
     );
   }
@@ -118,19 +130,19 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   if (!ctx.osNotificationsEnabled) {
     cards.push(
       card(
-        `Turn on notifications`,
-        `Notifications are off, so your weekly check-in and goal nudges can't reach you. Turning them on keeps you on track.`,
+        i18n.t('aiCoach.actEnableNotifs'),
+        i18n.t('coachTpl.notifsB'),
         'attention',
-        { type: 'enable_notifications', label: 'Turn on notifications' }
+        { type: 'enable_notifications', label: i18n.t('aiCoach.actEnableNotifs') }
       )
     );
   } else if (!ctx.goalRemindersEnabled && stats.goalsTracked > 0) {
     cards.push(
       card(
-        `Get a nudge before you slip`,
-        `Goal reminders are off. A daily reminder helps you hit your targets without having to think about it.`,
+        i18n.t('coachTpl.remindersH'),
+        i18n.t('coachTpl.remindersB'),
         'neutral',
-        { type: 'enable_goal_reminders', label: 'Turn on goal reminders' }
+        { type: 'enable_goal_reminders', label: i18n.t('aiCoach.actEnableReminders') }
       )
     );
   }
@@ -140,10 +152,10 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   if (lowActive && !ctx.healthLinked) {
     cards.push(
       card(
-        `Track ${ctx.tagName(lowActive.tagId)} automatically`,
-        `Only ${fmtMins(lowActive.minutes)} logged this week. Link Apple Health to auto-capture the workouts you do outside the app.`,
+        i18n.t('coachTpl.trackActiveH', { tag: ctx.tagName(lowActive.tagId) }),
+        i18n.t('coachTpl.trackActiveB', { mins: fmtMins(lowActive.minutes) }),
         'neutral',
-        { type: 'link_health', label: 'Link Apple Health', tagId: lowActive.tagId }
+        { type: 'link_health', label: i18n.t('aiCoach.actLinkHealth'), tagId: lowActive.tagId }
       )
     );
   }
@@ -152,8 +164,8 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   if (stats.peakDay && stats.peakHour != null) {
     cards.push(
       tip(
-        `You focus best around ${fmtHour(stats.peakHour)}`,
-        `${stats.peakDay} near ${fmtHour(stats.peakHour)} was your strongest window — worth protecting for deep work.`,
+        i18n.t('coachTpl.peakH', { time: fmtHour(stats.peakHour) }),
+        i18n.t('coachTpl.peakB', { day: fmtDay(stats.peakDay), time: fmtHour(stats.peakHour) }),
         'positive'
       )
     );
@@ -165,16 +177,16 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
     if (delta >= VOLUME_DELTA_MINUTES) {
       cards.push(
         tip(
-          `Up ${fmtMins(Math.abs(delta))} vs your average`,
-          `You focused more than your recent norm this week. Nice momentum.`,
+          i18n.t('coachTpl.volumeUpH', { mins: fmtMins(Math.abs(delta)) }),
+          i18n.t('coachTpl.volumeUpB'),
           'positive'
         )
       );
     } else if (delta <= -VOLUME_DELTA_MINUTES) {
       cards.push(
         tip(
-          `Down ${fmtMins(Math.abs(delta))} vs your average`,
-          `A lighter week than usual — a normal dip. A small session tomorrow gets you rolling again.`,
+          i18n.t('coachTpl.volumeDownH', { mins: fmtMins(Math.abs(delta)) }),
+          i18n.t('coachTpl.volumeDownB'),
           'neutral'
         )
       );
@@ -185,8 +197,8 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   if (!ctx.hasFocusWidget && stats.totalMinutes < LOW_VOLUME_MINUTES) {
     cards.push(
       tip(
-        `Keep focus in view`,
-        `Add the Bittersweet focus widget to your home screen — a glanceable nudge makes it easier to start.`,
+        i18n.t('coachTpl.focusWidgetH'),
+        i18n.t('coachTpl.focusWidgetB'),
         'neutral'
       )
     );
@@ -194,8 +206,8 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   if (!ctx.hasGoalsWidget && stats.goalsTracked > 0 && stats.goalsMet < stats.goalsTracked) {
     cards.push(
       tip(
-        `See your goals at a glance`,
-        `Add the Goals widget to your home screen to track progress without opening the app.`,
+        i18n.t('coachTpl.goalsWidgetH'),
+        i18n.t('coachTpl.goalsWidgetB'),
         'neutral'
       )
     );
@@ -205,13 +217,11 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   if (cards.length === 0) {
     cards.push(
       card(
-        `${fmtMins(stats.totalMinutes)} focused across ${stats.activeDays} day${
-          stats.activeDays === 1 ? '' : 's'
-        }`,
-        `A steady week. Setting a goal unlocks sharper, more personal insights.`,
+        i18n.t('coachTpl.fallbackH', { mins: fmtMins(stats.totalMinutes), count: stats.activeDays }),
+        i18n.t('coachTpl.fallbackB'),
         'neutral',
         topTag
-          ? { type: 'create_goal', label: 'Set a goal', tagId: topTag.tagId, period: 'weekly' }
+          ? { type: 'create_goal', label: i18n.t('aiCoach.actSetGoal'), tagId: topTag.tagId, period: 'weekly' }
           : { type: 'none' }
       )
     );

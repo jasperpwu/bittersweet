@@ -3,6 +3,7 @@ import { View, TextInput, ActivityIndicator, useColorScheme } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { HandleStatus } from '../../hooks/useHandleValidation';
+import { useTranslation } from 'react-i18next';
 
 interface HandleInputProps {
   value: string;
@@ -11,15 +12,15 @@ interface HandleInputProps {
 }
 
 const statusConfig: Record<HandleStatus, {
-  message: string;
+  messageKey?: string;
   color: string;
   icon?: keyof typeof Ionicons.glyphMap;
 }> = {
-  idle: { message: '', color: '' },
-  checking: { message: 'Checking availability...', color: '#8A8A8A' },
-  available: { message: 'Available', color: '#51BC6F', icon: 'checkmark-circle' },
-  taken: { message: 'Already taken', color: '#EF786C', icon: 'close-circle' },
-  invalid: { message: '3-20 chars: lowercase letters, numbers, underscores', color: '#EF786C', icon: 'alert-circle' },
+  idle: { color: '' },
+  checking: { messageKey: 'handle.checking', color: '#8A8A8A' },
+  available: { messageKey: 'handle.available', color: '#51BC6F', icon: 'checkmark-circle' },
+  taken: { messageKey: 'handle.taken', color: '#EF786C', icon: 'close-circle' },
+  invalid: { messageKey: 'handle.invalid', color: '#EF786C', icon: 'alert-circle' },
 };
 
 export const HandleInput: React.FC<HandleInputProps> = ({
@@ -27,9 +28,11 @@ export const HandleInput: React.FC<HandleInputProps> = ({
   onChangeText,
   status,
 }) => {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const config = statusConfig[status];
+  const message = config.messageKey ? t(config.messageKey) : '';
 
   return (
     <View>
@@ -51,7 +54,7 @@ export const HandleInput: React.FC<HandleInputProps> = ({
         <TextInput
           value={value}
           onChangeText={onChangeText}
-          placeholder="your_handle"
+          placeholder={t('handle.placeholder')}
           placeholderTextColor={isDark ? '#575757' : '#B8A88A'}
           autoCapitalize="none"
           autoCorrect={false}
@@ -72,12 +75,12 @@ export const HandleInput: React.FC<HandleInputProps> = ({
         )}
       </View>
 
-      {config.message ? (
+      {message ? (
         <Typography
           variant="body-12"
           style={{ color: config.color, marginTop: 4, marginLeft: 4 }}
         >
-          {config.message}
+          {message}
         </Typography>
       ) : null}
     </View>

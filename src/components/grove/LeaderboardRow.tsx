@@ -4,6 +4,7 @@ import { Typography } from '../ui/Typography';
 import { DefaultAvatar } from './DefaultAvatar';
 import { FocusingBadge } from './FocusingBadge';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
+import { useTranslation } from 'react-i18next';
 
 interface LeaderboardRowProps {
   item: RankingItem;
@@ -20,6 +21,7 @@ function formatDuration(minutes: number): string {
 }
 
 export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({ item, maxMinutes, onPress }) => {
+  const { t } = useTranslation();
   const progressWidth = maxMinutes > 0 ? (item.totalMinutes / maxMinutes) * 100 : 0;
 
   const Wrapper = onPress ? Pressable : View;
@@ -65,7 +67,7 @@ export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({ item, maxMinutes
           color="primary"
           numberOfLines={1}
         >
-          {item.isCurrentUser ? 'You' : item.displayName}
+          {item.isCurrentUser ? t('common.you') : item.displayName}
         </Typography>
         <View className="h-1.5 bg-light-border/50 dark:bg-[#2A2B45] rounded-full mt-1">
           <View

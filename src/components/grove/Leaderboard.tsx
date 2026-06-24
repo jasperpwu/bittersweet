@@ -4,6 +4,7 @@ import { Typography } from '../ui/Typography';
 import { PeriodToggle } from './PeriodToggle';
 import { LeaderboardRow } from './LeaderboardRow';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
+import { useTranslation } from 'react-i18next';
 
 interface LeaderboardProps {
   rankings: RankingItem[];
@@ -18,6 +19,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   onPeriodChange,
   onFriendPress,
 }) => {
+  const { t } = useTranslation();
   const maxMinutes = rankings.length > 0 ? Math.max(...rankings.map(r => r.totalMinutes)) : 0;
   const currentUserRank = rankings.find(r => r.isCurrentUser);
 
@@ -27,7 +29,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       <View className="px-5 mb-3">
         <View className="flex-row items-center justify-between mb-3">
           <Typography variant="subtitle-16" color="primary">
-            Leaderboard
+            {t('groveUI.leaderboard')}
           </Typography>
         </View>
         <PeriodToggle period={period} onPeriodChange={onPeriodChange} />
@@ -37,7 +39,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       {rankings.length === 0 ? (
         <View className="py-8 items-center px-5">
           <Typography variant="body-14" color="secondary" className="text-center">
-            No focus sessions shared this {period}. Start a session to appear on the leaderboard!
+            {period === 'week' ? t('groveUI.noSessionsWeek') : t('groveUI.noSessionsMonth')}
           </Typography>
         </View>
       ) : (
@@ -61,7 +63,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       {currentUserRank && rankings.length > 5 && currentUserRank.rank > 5 && (
         <View className="mx-5 mt-2 bg-primary/10 rounded-xl px-4 py-3">
           <Typography variant="body-12" color="secondary">
-            Your rank: #{currentUserRank.rank}
+            {t('groveUI.yourRank', { rank: currentUserRank.rank })}
           </Typography>
         </View>
       )}

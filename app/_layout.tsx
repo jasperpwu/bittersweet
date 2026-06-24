@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import '../global.css';
+import '../src/i18n';
 
 import { Stack, router, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,6 +13,7 @@ import { useAppState, initializeUnifiedStore, clearUnifiedStoreData } from '../s
 import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
 import { useGoalNudgeNotifications } from '../src/hooks/useGoalNudgeNotifications';
 import { useWeeklyCoach } from '../src/hooks/useWeeklyCoach';
+import { useApplyLanguage } from '../src/hooks/useApplyLanguage';
 import { useEffect, useRef, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -67,6 +69,9 @@ export default function RootLayout() {
   const mainStoreHydrated = useAppStore((s) => s.ui.isHydrated);
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const [showUnlockSheet, setShowUnlockSheet] = useState(false);
+
+  // Apply the persisted/synced language preference to i18next
+  useApplyLanguage();
 
   // Initialize Device Activity Listener
   const { isListening } = useDeviceActivityListener();

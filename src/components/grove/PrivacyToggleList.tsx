@@ -3,6 +3,7 @@ import { View, Pressable, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { Toggle } from '../ui/Toggle';
+import { useTranslation } from 'react-i18next';
 
 interface TagOption {
   id: string;
@@ -29,6 +30,7 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
   onToggleShareNotes,
   onToggleShowLiveStatus,
 }) => {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const iconColor = isDark ? '#CACACA' : '#8B7355';
@@ -37,10 +39,10 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
     <View>
       {/* Shared Tags */}
       <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-        Shared Tags
+        {t('privacy.sharedTags')}
       </Typography>
       <Typography variant="body-12" color="secondary" className="mb-3">
-        Choose which tags are visible on your profile
+        {t('privacy.sharedTagsSub')}
       </Typography>
 
       <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 mb-4">
@@ -65,7 +67,7 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
                 value={isShared}
                 onValueChange={() => onToggleTag(tag.id)}
                 size="medium"
-                accessibilityLabel={`Share ${tag.name}`}
+                accessibilityLabel={t('privacy.a11yShareTag', { name: tag.name })}
               />
             </View>
           );
@@ -74,7 +76,7 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
         {tags.length === 0 && (
           <View className="py-3">
             <Typography variant="body-12" color="secondary">
-              No tags created yet
+              {t('privacy.noTags')}
             </Typography>
           </View>
         )}
@@ -82,7 +84,7 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
 
       {/* Other privacy toggles */}
       <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-        Sharing
+        {t('privacy.sharing')}
       </Typography>
 
       <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
@@ -93,10 +95,10 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
             </View>
             <View className="flex-1">
               <Typography variant="subtitle-14-medium" color="primary">
-                Share Notes & Photos
+                {t('privacy.shareNotes')}
               </Typography>
               <Typography variant="body-12" color="secondary">
-                Let friends see your session notes and photos
+                {t('privacy.shareNotesSub')}
               </Typography>
             </View>
           </View>
@@ -104,7 +106,7 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
             value={shareNotes}
             onValueChange={onToggleShareNotes}
             size="medium"
-            accessibilityLabel="Share notes"
+            accessibilityLabel={t('privacy.a11yShareNotes')}
           />
         </View>
 
@@ -115,10 +117,10 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
             </View>
             <View className="flex-1">
               <Typography variant="subtitle-14-medium" color="primary">
-                Live Status
+                {t('privacy.liveStatus')}
               </Typography>
               <Typography variant="body-12" color="secondary">
-                Show when you're in a focus session
+                {t('privacy.liveStatusSub')}
               </Typography>
             </View>
           </View>
@@ -126,7 +128,7 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
             value={showLiveStatus}
             onValueChange={onToggleShowLiveStatus}
             size="medium"
-            accessibilityLabel="Show live status"
+            accessibilityLabel={t('privacy.a11yLiveStatus')}
           />
         </View>
       </View>

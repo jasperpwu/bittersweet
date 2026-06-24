@@ -43,8 +43,10 @@ import { saveSessionPhoto, uploadSessionPhoto } from '../../src/services/session
 import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
+import { useTranslation } from 'react-i18next';
 
 export default function SessionCompleteModal() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { sessions, tags } = useFocus();
@@ -161,7 +163,7 @@ export default function SessionCompleteModal() {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-light-bg dark:bg-dark-bg">
         <Typography variant="body-14" color="secondary">
-          Session not found
+          {t('sessionComplete.notFound')}
         </Typography>
       </SafeAreaView>
     );
@@ -201,13 +203,14 @@ export default function SessionCompleteModal() {
           : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permissionResult.granted) {
-        const target = source === 'camera' ? 'camera' : 'photo library';
         Alert.alert(
-          'Permission Required',
-          `Please allow access to your ${target} in Settings to add photos.`,
+          t('journal.permissionTitle'),
+          source === 'camera'
+            ? t('journal.permissionBodyCamera')
+            : t('journal.permissionBodyLibrary'),
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('journal.openSettings'), onPress: () => Linking.openSettings() },
           ]
         );
         return;
@@ -269,7 +272,7 @@ export default function SessionCompleteModal() {
         }
       } catch (error) {
         console.error('Failed to save session photo:', error);
-        showToast('Failed to save photo', 'error');
+        showToast(t('journal.failedSavePhoto'), 'error');
         setIsUploadingPhoto(false);
         return;
       }
@@ -287,8 +290,8 @@ export default function SessionCompleteModal() {
       );
       for (const challenge of activeChallenges) {
         const myHits = challenge.myParticipant?.hits ?? 0;
-        const periodLabel = challenge.period === 'daily' ? 'Day' : 'Week';
-        showToast(`${periodLabel} ${myHits}/${challenge.totalPeriods}`, 'success');
+        const periodLabel = challenge.period === 'daily' ? t('sessionComplete.day') : t('sessionComplete.week');
+        showToast(t('sessionComplete.challengeToast', { period: periodLabel, hits: myHits, total: challenge.totalPeriods }), 'success');
       }
     }
 
@@ -317,7 +320,7 @@ export default function SessionCompleteModal() {
               </Typography>
             </Animated.View>
             <Typography variant="headline-20" color="primary">
-              {tag?.name || 'Focus Session'}
+              {tag?.name || t('journal.focusSession')}
             </Typography>
           </View>
 
@@ -353,7 +356,7 @@ export default function SessionCompleteModal() {
                 className="items-center rounded-2xl bg-light-border/30 px-6 py-4 dark:bg-gray-700"
                 style={fruitAnimStyle}>
                 <Typography variant="body-12" color="secondary" className="mb-1">
-                  Earned
+                  {t('sessionComplete.earned')}
                 </Typography>
                 <FruitCounter fruitCount={displayFruits} size="large" />
               </Animated.View>
@@ -363,12 +366,12 @@ export default function SessionCompleteModal() {
           {/* Notes input */}
           <View className="mb-6 w-full">
             <Typography variant="body-14" color="secondary" className="mb-2">
-              Note
+              {t('journal.note')}
             </Typography>
             <TextInput
               value={notes}
               onChangeText={setNotes}
-              placeholder="How did this session go?"
+              placeholder={t('journal.notePlaceholder')}
               placeholderTextColor="#666"
               multiline
               numberOfLines={3}
@@ -389,7 +392,7 @@ export default function SessionCompleteModal() {
               color="secondary"
               className="mt-2"
               style={{ opacity: 0.6 }}>
-              Your notes help summarize your week and generate tips.
+              {t('sessionComplete.notesHelp')}
             </Typography>
           </View>
 
@@ -397,7 +400,7 @@ export default function SessionCompleteModal() {
           {secondaryTagEnabled && (
             <View className="mb-6 w-full">
               <Typography variant="body-14" color="secondary" className="mb-2">
-                Secondary tag (optional)
+                {t('journal.secondaryTag')}
               </Typography>
               <HorizontalTagSelector
                 tags={tags.allIds
@@ -414,7 +417,7 @@ export default function SessionCompleteModal() {
           {!hasExistingPhoto && (
             <View className="mb-6 w-full">
               <Typography variant="body-14" color="secondary" className="mb-2">
-                Add a photo
+                {t('journal.addPhoto')}
               </Typography>
               {photoUri ? (
                 <View>
@@ -429,7 +432,7 @@ export default function SessionCompleteModal() {
                     style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}>
                     <Ionicons name="trash-outline" size={16} color="#DC2626" />
                     <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
-                      Remove Photo
+                      {t('journal.removePhoto')}
                     </Typography>
                   </Pressable>
                 </View>
@@ -441,7 +444,7 @@ export default function SessionCompleteModal() {
                     className="flex-row items-center rounded-xl bg-primary/20 px-4 py-3 active:opacity-70">
                     <Ionicons name="images-outline" size={18} color="#6592E9" />
                     <Typography variant="subtitle-14-medium" className="ml-2 text-primary">
-                      Library
+                      {t('journal.library')}
                     </Typography>
                   </Pressable>
 
@@ -451,7 +454,7 @@ export default function SessionCompleteModal() {
                     className="flex-row items-center rounded-xl bg-primary/20 px-4 py-3 active:opacity-70">
                     <Ionicons name="camera-outline" size={18} color="#6592E9" />
                     <Typography variant="subtitle-14-medium" className="ml-2 text-primary">
-                      Camera
+                      {t('journal.camera')}
                     </Typography>
                   </Pressable>
                 </View>
@@ -462,7 +465,7 @@ export default function SessionCompleteModal() {
           {hasExistingPhoto && (
             <View className="mb-6 w-full">
               <Typography variant="body-12" color="secondary" className="mb-2">
-                Photo
+                {t('journal.photo')}
               </Typography>
               <Image
                 source={{ uri: session.photoUrl }}
@@ -496,7 +499,7 @@ export default function SessionCompleteModal() {
                     variant="subtitle-16"
                     className="ml-2 font-semibold"
                     style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}>
-                    Saving...
+                    {t('journal.saving')}
                   </Typography>
                 </View>
               ) : (
@@ -504,7 +507,7 @@ export default function SessionCompleteModal() {
                   variant="subtitle-16"
                   className="font-semibold"
                   style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}>
-                  Done
+                  {t('common.done')}
                 </Typography>
               )}
             </Pressable>
@@ -519,8 +522,8 @@ export default function SessionCompleteModal() {
       {fruitsEarned > 0 && (
         <CoachMark
           targetRef={fruitRef as React.RefObject<View>}
-          title="You earned fruits!"
-          message="Spend them to unblock apps or purchase items in the Fruit Store."
+          title={t('sessionComplete.coachTitle')}
+          message={t('sessionComplete.coachMessage')}
           visible={showFruitCoachMark && !preferences.hasSeenFruitCoachMark}
           onDismiss={() => {
             setShowFruitCoachMark(false);

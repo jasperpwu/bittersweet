@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Typography } from '../ui/Typography';
+import { useTranslation } from 'react-i18next';
 
 interface PeriodToggleProps {
   period: 'week' | 'month';
@@ -8,6 +9,7 @@ interface PeriodToggleProps {
 }
 
 export const PeriodToggle: React.FC<PeriodToggleProps> = ({ period, onPeriodChange }) => {
+  const { t } = useTranslation();
   return (
     <View className="flex-row bg-light-border/30 dark:bg-[#242540] rounded-xl p-1">
       <Pressable
@@ -20,7 +22,7 @@ export const PeriodToggle: React.FC<PeriodToggleProps> = ({ period, onPeriodChan
           variant="subtitle-14-medium"
           color={period === 'week' ? 'white' : 'secondary'}
         >
-          Week
+          {t('groveUI.week')}
         </Typography>
       </Pressable>
       <Pressable
@@ -33,7 +35,7 @@ export const PeriodToggle: React.FC<PeriodToggleProps> = ({ period, onPeriodChan
           variant="subtitle-14-medium"
           color={period === 'month' ? 'white' : 'secondary'}
         >
-          Month
+          {t('groveUI.month')}
         </Typography>
       </Pressable>
     </View>

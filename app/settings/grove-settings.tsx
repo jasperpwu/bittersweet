@@ -8,8 +8,10 @@ import { PrivacyToggleList } from '../../src/components/grove/PrivacyToggleList'
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
+import { useTranslation } from 'react-i18next';
 
 export default function GroveSettingsScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const iconColor = isDark ? '#CACACA' : '#8B7355';
@@ -67,7 +69,7 @@ export default function GroveSettingsScreen() {
       });
       triggerHaptic('success');
     } catch {
-      Alert.alert('Error', 'Failed to save privacy settings. Please try again.');
+      Alert.alert(t('common.error'), t('groveSettings.failedPrivacy'));
     } finally {
       setIsSavingPrivacy(false);
     }
@@ -77,7 +79,7 @@ export default function GroveSettingsScreen() {
     try {
       await toggleGroveActive(!isActive);
     } catch {
-      Alert.alert('Error', 'Failed to update Grove status. Please try again.');
+      Alert.alert(t('common.error'), t('groveSettings.failedStatus'));
     }
   };
 
@@ -89,7 +91,7 @@ export default function GroveSettingsScreen() {
           <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
-          Grove
+          {t('settings.tab.grove')}
         </Typography>
       </View>
 
@@ -99,10 +101,10 @@ export default function GroveSettingsScreen() {
           // otherwise it flashes after sign-in (profile reset to null) before
           // the cloud fetch confirms the user actually has no profile.
           profileLoaded ? (
-            <SettingsSection title="Profile">
+            <SettingsSection title={t('groveSettings.profile')}>
               <SettingsItem
-                title="Set Up Grove Profile"
-                subtitle="Share your focus journey with friends"
+                title={t('groveSettings.setupTitle')}
+                subtitle={t('groveSettings.setupSub')}
                 icon="people-outline"
                 hasChevron
                 onPress={() => router.push('/(modals)/grove-setup')}
@@ -114,17 +116,17 @@ export default function GroveSettingsScreen() {
           <>
             {/* Friends */}
             {isActive && (
-              <SettingsSection title="Social">
+              <SettingsSection title={t('groveSettings.social')}>
                 <SettingsItem
-                  title={`${friendCount} ${friendCount === 1 ? 'Friend' : 'Friends'}`}
-                  subtitle="Invite friends via link"
+                  title={t('groveSettings.friendCount', { count: friendCount })}
+                  subtitle={t('groveSettings.inviteSub')}
                   icon="people-outline"
                   hasChevron
                   onPress={() => router.push('/(modals)/add-friends')}
                 />
                 <SettingsItem
-                  title="Inner Circle"
-                  subtitle="Your safety net friends"
+                  title={t('groveSettings.innerCircle')}
+                  subtitle={t('groveSettings.innerCircleSub')}
                   icon="heart-outline"
                   hasChevron
                   onPress={() => router.push('/(modals)/inner-circle')}
@@ -134,7 +136,7 @@ export default function GroveSettingsScreen() {
             )}
 
             {/* Profile Status */}
-            <SettingsSection title="Visibility">
+            <SettingsSection title={t('groveSettings.visibility')}>
               <Pressable
                 onPress={handleToggleActive}
                 disabled={isGroveLoading}
@@ -150,12 +152,12 @@ export default function GroveSettingsScreen() {
                   </View>
                   <View className="flex-1">
                     <Typography variant="subtitle-14-medium" color="primary">
-                      {isActive ? 'Profile Active' : 'Profile Paused'}
+                      {isActive ? t('groveSettings.profileActive') : t('groveSettings.profilePaused')}
                     </Typography>
                     <Typography variant="body-12" color="secondary">
                       {isActive
-                        ? 'Your profile is visible and Grove tab is shown'
-                        : 'Your profile is hidden and sharing is paused'}
+                        ? t('groveSettings.activeDesc')
+                        : t('groveSettings.pausedDesc')}
                     </Typography>
                   </View>
                 </View>
@@ -184,7 +186,7 @@ export default function GroveSettingsScreen() {
           <View className="px-5 mt-6">
             <View className="flex-row items-center justify-between mb-3">
               <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary">
-                Privacy & Sharing
+                {t('groveSettings.privacySharing')}
               </Typography>
               {privacyChanged && (
                 <Pressable
@@ -196,7 +198,7 @@ export default function GroveSettingsScreen() {
                     <ActivityIndicator size="small" color="#6592E9" />
                   ) : (
                     <Typography variant="subtitle-14-medium" className="text-primary">
-                      Save
+                      {t('common.save')}
                     </Typography>
                   )}
                 </Pressable>
@@ -217,21 +219,21 @@ export default function GroveSettingsScreen() {
         )}
 
         {/* Storage */}
-        <SettingsSection title="Storage">
+        <SettingsSection title={t('groveSettings.storage')}>
           <SettingsItem
-            title="Clear Cache"
-            subtitle="Remove cached Grove data (friends, feed, rankings)"
+            title={t('groveSettings.clearCache')}
+            subtitle={t('groveSettings.clearCacheSub')}
             icon="trash-outline"
             hasChevron
             onPress={() => {
               triggerHaptic('light');
               Alert.alert(
-                'Clear Cache',
-                'This will remove cached Grove data. It will be re-fetched from the server next time you open the Grove tab.',
+                t('groveSettings.clearCache'),
+                t('groveSettings.clearCacheBody'),
                 [
-                  { text: 'Cancel', style: 'cancel' },
+                  { text: t('common.cancel'), style: 'cancel' },
                   {
-                    text: 'Clear',
+                    text: t('groveSettings.clear'),
                     style: 'destructive',
                     onPress: () => {
                       clearGroveCache();

@@ -7,6 +7,7 @@ import { UserGrid } from './ChallengeDetailGrid';
 import { formatTarget, formatStartDate } from './ChallengeCard';
 import { useAppStore } from '../../store';
 import type { ChallengeItem, ChallengePeriodDetailsResult } from '../../services/grove/GroveChallengeService';
+import { useTranslation } from 'react-i18next';
 
 const OUTCOME_COLORS = {
   completed: '#22C55E',
@@ -26,6 +27,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
   onClose,
   onDelete,
 }) => {
+  const { t } = useTranslation();
   const { height: screenHeight } = useWindowDimensions();
   const currentUserId = useAppStore((s) => s.auth.user?.id ?? '');
   const fetchChallengePeriodDetails = useAppStore((s) => s.grove.fetchChallengePeriodDetails);
@@ -94,21 +96,21 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
           {isCompleted && (
             <View className="bg-green-500/20 rounded-full px-2.5 py-1">
               <Typography variant="body-12" style={{ color: '#22C55E' }}>
-                Done
+                {t('challenge.done')}
               </Typography>
             </View>
           )}
           {isFailed && (
             <View className="bg-red-500/20 rounded-full px-2.5 py-1">
               <Typography variant="body-12" style={{ color: '#EF4444' }}>
-                Failed
+                {t('challenge.failed')}
               </Typography>
             </View>
           )}
           {isCancelled && (
             <View className="bg-yellow-500/20 rounded-full px-2.5 py-1">
               <Typography variant="body-12" style={{ color: '#EAB308' }}>
-                Cancelled
+                {t('challenge.cancelled')}
               </Typography>
             </View>
           )}
@@ -126,12 +128,12 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
           })()}
           {challenge.status === 'active' && challenge.hasStarted && daysLeft !== null && daysLeft > 0 && (
             <Typography variant="body-12" color="secondary">
-              {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
+              {t('challenge.daysLeft', { count: daysLeft })}
             </Typography>
           )}
           {challenge.status === 'active' && challenge.hasStarted && !challenge.endDate && (
             <Typography variant="body-12" color="secondary">
-              Ongoing
+              {t('challenge.ongoing')}
             </Typography>
           )}
         </View>
@@ -144,7 +146,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
             </Typography>
           </View>
           <Typography variant="body-12" color="secondary">
-            +{challenge.fruitReward} fruits
+            {t('challenge.fruitsReward', { count: challenge.fruitReward })}
           </Typography>
         </View>
 
@@ -159,10 +161,10 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
         {details && myPeriodData && challenge.startDate && (
           <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl p-4 mb-3">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Your Progress
+              {t('challenge.yourProgress')}
             </Typography>
             <UserGrid
-              label="You"
+              label={t('common.you')}
               minutesPerPeriod={myPeriodData.minutes}
               target={challenge.targetMinutes}
               periodType={challenge.period}
@@ -175,7 +177,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
         {details && (
           <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl p-4 mb-3">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-3">
-              Ranking
+              {t('challenge.ranking')}
             </Typography>
             {[...details.participants]
               .sort((a, b) => b.hits - a.hits)
@@ -194,7 +196,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
                       {index + 1}.
                     </Typography>
                     <Typography variant="subtitle-14-medium" color="primary" className="flex-1">
-                      {p.user_id === currentUserId ? 'You' : p.display_name}
+                      {p.user_id === currentUserId ? t('common.you') : p.display_name}
                     </Typography>
                     <Typography variant="body-12" color="primary" className="mr-2">
                       {p.hits}/{details.total_periods}
@@ -210,7 +212,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
                           variant="tiny-10"
                           style={{ color: OUTCOME_COLORS[outcome] }}
                         >
-                          {outcome === 'completed' ? 'Done' : 'Failed'}
+                          {outcome === 'completed' ? t('challenge.done') : t('challenge.failed')}
                         </Typography>
                       </View>
                     )}
@@ -228,7 +230,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
           >
             <Ionicons name="trash-outline" size={16} color="#EF4444" />
             <Typography variant="subtitle-14-medium" style={{ color: '#EF4444' }} className="ml-2">
-              Delete Challenge
+              {t('grove.deleteChallengeTitle')}
             </Typography>
           </Pressable>
         )}

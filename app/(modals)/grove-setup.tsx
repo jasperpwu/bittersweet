@@ -21,6 +21,7 @@ import { PrivacyToggleList } from '../../src/components/grove/PrivacyToggleList'
 import { InterestPicker } from '../../src/components/grove/InterestPicker';
 import { useHandleValidation } from '../../src/hooks/useHandleValidation';
 import { useAppStore } from '../../src/store';
+import { useTranslation } from 'react-i18next';
 
 const TOTAL_STEPS = 4;
 
@@ -32,6 +33,7 @@ const AVATAR_COLORS = [
 type Gender = 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
 
 export default function GroveSetupModal() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -116,12 +118,12 @@ export default function GroveSetupModal() {
     } catch (error: any) {
       if (error.message === 'HANDLE_TAKEN') {
         Alert.alert(
-          'Handle Unavailable',
-          'This handle was just claimed by someone else. Please go back and choose a different one.',
-          [{ text: 'OK', onPress: () => setStep(0) }]
+          t('groveSetup.handleTakenTitle'),
+          t('groveSetup.handleTakenBody'),
+          [{ text: t('common.ok'), onPress: () => setStep(0) }]
         );
       } else {
-        Alert.alert('Error', 'Failed to create profile. Please check your connection and try again.');
+        Alert.alert(t('common.error'), t('groveSetup.failedCreate'));
       }
     }
   };
@@ -140,20 +142,20 @@ export default function GroveSetupModal() {
         return (
           <View>
             <Typography variant="headline-20" color="primary" className="mb-2">
-              What should we call you?
+              {t('groveSetup.step0Title')}
             </Typography>
             <Typography variant="body-14" color="secondary" className="mb-6">
-              Choose a display name and a unique handle for your Grove profile.
+              {t('groveSetup.step0Sub')}
             </Typography>
 
             {/* Display Name */}
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Display Name
+              {t('groveSetup.displayName')}
             </Typography>
             <TextInput
               value={displayName}
               onChangeText={(text) => setDisplayName(text.slice(0, 20))}
-              placeholder="Your name"
+              placeholder={t('groveSetup.yourName')}
               placeholderTextColor={isDark ? '#575757' : '#B8A88A'}
               autoCapitalize="words"
               maxLength={20}
@@ -175,7 +177,7 @@ export default function GroveSetupModal() {
 
             {/* Handle */}
             <Typography variant="subtitle-14-medium" color="primary" className="mt-4 mb-2">
-              Handle
+              {t('groveSetup.handle')}
             </Typography>
             <HandleInput
               value={handle}
@@ -189,10 +191,10 @@ export default function GroveSetupModal() {
         return (
           <View>
             <Typography variant="headline-20" color="primary" className="mb-2">
-              Add a profile photo
+              {t('groveSetup.step1Title')}
             </Typography>
             <Typography variant="body-14" color="secondary" className="mb-8">
-              This is optional — you can always add one later.
+              {t('groveSetup.step1Sub')}
             </Typography>
 
             <AvatarPicker
@@ -209,25 +211,25 @@ export default function GroveSetupModal() {
         return (
           <View>
             <Typography variant="headline-20" color="primary" className="mb-2">
-              Tell us about yourself
+              {t('groveSetup.step2Title')}
             </Typography>
             <Typography variant="body-14" color="secondary" className="mb-6">
-              Both fields are optional.
+              {t('groveSetup.step2Sub')}
             </Typography>
 
             {/* Gender */}
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Gender
+              {t('groveSetup.gender')}
             </Typography>
             <GenderPicker value={gender} onChange={setGender} />
 
             {/* Interests */}
             <Typography variant="subtitle-14-medium" color="primary" className="mt-6 mb-2">
-              What are you interested in?
+              {t('groveSetup.interestsQ')}
             </Typography>
             <InterestPicker value={interests} onChange={setInterests} />
             <Typography variant="body-12" color="secondary" className="mt-2 ml-1">
-              Used to match you with themed challenges
+              {t('groveSetup.interestsHint')}
             </Typography>
           </View>
         );
@@ -236,10 +238,10 @@ export default function GroveSetupModal() {
         return (
           <View>
             <Typography variant="headline-20" color="primary" className="mb-2">
-              Privacy settings
+              {t('groveSetup.step3Title')}
             </Typography>
             <Typography variant="body-14" color="secondary" className="mb-6">
-              Control what friends can see. You can change these anytime.
+              {t('groveSetup.step3Sub')}
             </Typography>
 
             <PrivacyToggleList
@@ -277,7 +279,7 @@ export default function GroveSetupModal() {
           {step > 0 ? (
             <Pressable onPress={handleBack} className="active:opacity-70">
               <Typography variant="subtitle-14-medium" className="text-primary">
-                Back
+                {t('groveSetup.back')}
               </Typography>
             </Pressable>
           ) : (
@@ -288,7 +290,7 @@ export default function GroveSetupModal() {
 
           <Pressable onPress={() => router.back()} className="active:opacity-70">
             <Typography variant="subtitle-14-medium" color="secondary">
-              Cancel
+              {t('common.cancel')}
             </Typography>
           </Pressable>
         </View>
@@ -316,7 +318,7 @@ export default function GroveSetupModal() {
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <Typography variant="subtitle-16" color="white" className="font-poppins-semibold">
-                {isLastStep ? 'Create Profile' : 'Continue'}
+                {isLastStep ? t('groveSetup.createProfile') : t('groveSetup.continue')}
               </Typography>
             )}
           </Pressable>

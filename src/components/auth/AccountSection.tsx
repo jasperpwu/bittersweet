@@ -8,8 +8,10 @@ import { Typography } from '../ui/Typography';
 import { DefaultAvatar } from '../grove/DefaultAvatar';
 import { useAppStore } from '../../store';
 import { PENDING_REFERRAL_KEY } from '../../hooks/useDeepLinkHandler';
+import { useTranslation } from 'react-i18next';
 
 export const AccountActions: React.FC = () => {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { isAuthenticated, isLoading } = useAppStore((state) => state.auth);
   const signOut = useAppStore((state) => state.auth.signOut);
@@ -18,10 +20,10 @@ export const AccountActions: React.FC = () => {
   if (!isAuthenticated) return null;
 
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('account.signOut'), t('account.signOutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Sign Out',
+        text: t('account.signOut'),
         style: 'destructive',
         onPress: signOut,
       },
@@ -30,21 +32,20 @@ export const AccountActions: React.FC = () => {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and erase all of your data, both in the cloud and on this device. This cannot be undone.',
+      t('account.deleteAccount'),
+      t('account.deleteAccountConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete Account',
+          text: t('account.deleteAccount'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteAccount();
             } catch (error: any) {
               Alert.alert(
-                'Deletion Failed',
-                error?.message ||
-                  'We could not delete your account. Please try again.'
+                t('account.deletionFailed'),
+                error?.message || t('account.deletionFailedBody')
               );
             }
           },
@@ -56,7 +57,7 @@ export const AccountActions: React.FC = () => {
   return (
     <View className="px-5 mt-6">
       <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
-        Other
+        {t('account.other')}
       </Typography>
       <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
         <Pressable
@@ -69,7 +70,7 @@ export const AccountActions: React.FC = () => {
               <Ionicons name="log-out-outline" size={20} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
             </View>
             <Typography variant="subtitle-14-medium" color="primary">
-              Sign Out
+              {t('account.signOut')}
             </Typography>
             {isLoading && (
               <ActivityIndicator size="small" color="#8B7FFF" className="ml-auto" />
@@ -87,7 +88,7 @@ export const AccountActions: React.FC = () => {
               <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
             </View>
             <Typography variant="subtitle-14-medium" className="text-[#FF6B6B]">
-              Delete Account
+              {t('account.deleteAccount')}
             </Typography>
           </View>
         </Pressable>
@@ -97,6 +98,7 @@ export const AccountActions: React.FC = () => {
 };
 
 export const AccountSection: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const iconColor = isDark ? '#CACACA' : '#8B7355';
@@ -111,7 +113,7 @@ export const AccountSection: React.FC = () => {
   const [referralCode, setReferralCode] = useState('');
   const [referralSaved, setReferralSaved] = useState(false);
   const userSinceLabel = user?.createdAt
-    ? `User since ${new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+    ? t('account.userSince', { date: new Date(user.createdAt).toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' }) })
     : null;
 
   const profile = useAppStore((s) => s.grove.profile);
@@ -128,7 +130,7 @@ export const AccountSection: React.FC = () => {
     try {
       await toggleGroveActive(!isActive);
     } catch {
-      Alert.alert('Error', 'Failed to update Grove status. Please try again.');
+      Alert.alert(t('common.error'), t('groveSettings.failedStatus'));
     }
   };
 
@@ -137,7 +139,7 @@ export const AccountSection: React.FC = () => {
     return (
       <View className="px-5 mt-6">
         <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
-          Account
+          {t('account.account')}
         </Typography>
         <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
           {/* Profile identity */}
@@ -188,7 +190,7 @@ export const AccountSection: React.FC = () => {
                   </View>
                   <View className="flex-1">
                     <Typography variant="subtitle-14-medium" color="primary">
-                      {user.fullName || 'Apple User'}
+                      {user.fullName || t('account.appleUser')}
                     </Typography>
                     {userSinceLabel && (
                       <Typography variant="body-12" color="secondary" className="mt-0.5">
@@ -208,10 +210,10 @@ export const AccountSection: React.FC = () => {
                 </View>
                 <View className="flex-1">
                   <Typography variant="subtitle-14-medium" color="primary">
-                    Set Up Grove Profile
+                    {t('account.setupGroveProfile')}
                   </Typography>
                   <Typography variant="body-12" color="secondary" className="mt-0.5">
-                    Share your focus journey with friends
+                    {t('account.shareJourney')}
                   </Typography>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
@@ -231,10 +233,10 @@ export const AccountSection: React.FC = () => {
                 </View>
                 <View className="flex-1">
                   <Typography variant="subtitle-14-medium" color="primary">
-                    {friendCount} {friendCount === 1 ? 'Friend' : 'Friends'}
+                    {t('groveSettings.friendCount', { count: friendCount })}
                   </Typography>
                   <Typography variant="body-12" color="secondary">
-                    Invite friends via link
+                    {t('account.inviteViaLink')}
                   </Typography>
                 </View>
               </View>
@@ -254,10 +256,10 @@ export const AccountSection: React.FC = () => {
                 </View>
                 <View className="flex-1">
                   <Typography variant="subtitle-14-medium" color="primary">
-                    Inner Circle
+                    {t('groveSettings.innerCircle')}
                   </Typography>
                   <Typography variant="body-12" color="secondary">
-                    Your safety net friends
+                    {t('groveSettings.innerCircleSub')}
                   </Typography>
                 </View>
               </View>
@@ -282,12 +284,12 @@ export const AccountSection: React.FC = () => {
                 </View>
                 <View className="flex-1">
                   <Typography variant="subtitle-14-medium" color="primary">
-                    {isActive ? 'Profile Active' : 'Profile Paused'}
+                    {isActive ? t('groveSettings.profileActive') : t('groveSettings.profilePaused')}
                   </Typography>
                   <Typography variant="body-12" color="secondary">
                     {isActive
-                      ? 'Your profile is visible and Grove tab is shown'
-                      : 'Your profile is hidden and sharing is paused'}
+                      ? t('groveSettings.activeDesc')
+                      : t('groveSettings.pausedDesc')}
                   </Typography>
                 </View>
               </View>
@@ -323,11 +325,11 @@ export const AccountSection: React.FC = () => {
   return (
     <View className="px-5 mt-6">
       <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
-        Account
+        {t('account.account')}
       </Typography>
       <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-4">
         <Typography variant="body-14" color="secondary" className="mb-4">
-          Sign in to sync your data across devices and back up your progress.
+          {t('account.signInPrompt')}
         </Typography>
 
         {isLoading ? (
@@ -383,11 +385,11 @@ export const AccountSection: React.FC = () => {
         {/* Referral code input */}
         <View className="mt-4 pt-4 border-t border-light-border dark:border-dark-border">
           <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
-            Have a referral code?
+            {t('account.referralCodeQ')}
           </Typography>
           <View className="flex-row items-center" style={{ gap: 8 }}>
             <TextInput
-              placeholder="Enter code"
+              placeholder={t('account.enterCode')}
               placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
               value={referralCode}
               onChangeText={(text) => {
@@ -409,14 +411,14 @@ export const AccountSection: React.FC = () => {
               style={{ opacity: !referralCode.trim() || referralSaved ? 0.5 : 1 }}
             >
               <Typography variant="subtitle-14-medium" className="text-white">
-                {referralSaved ? 'Saved' : 'Apply'}
+                {referralSaved ? t('account.saved') : t('account.apply')}
               </Typography>
             </Pressable>
           </View>
           <Typography variant="body-12" color="secondary" className="mt-1.5">
             {referralSaved
-              ? 'Code saved — it will be applied after you sign in.'
-              : 'Enter a friend\'s referral code before signing in.'}
+              ? t('account.codeSaved')
+              : t('account.enterCodeHint')}
           </Typography>
         </View>
 
@@ -429,7 +431,7 @@ export const AccountSection: React.FC = () => {
         <View className="flex-row justify-center items-center mt-3">
           <Pressable onPress={() => Linking.openURL('https://example.com/terms')}>
             <Typography variant="body-12" color="secondary" className="underline">
-              Terms of Service
+              {t('account.terms')}
             </Typography>
           </Pressable>
           <Typography variant="body-12" color="secondary" className="mx-2">
@@ -437,7 +439,7 @@ export const AccountSection: React.FC = () => {
           </Typography>
           <Pressable onPress={() => Linking.openURL('https://example.com/privacy')}>
             <Typography variant="body-12" color="secondary" className="underline">
-              Privacy Policy
+              {t('account.privacyPolicy')}
             </Typography>
           </Pressable>
         </View>

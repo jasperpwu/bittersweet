@@ -38,6 +38,7 @@ import type { ActivityType } from '../../src/utils/focusRating';
 import { inferActivityType } from '../../src/utils/inferActivityType';
 import { useThrottledPress } from '../../src/hooks/common';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 
 import {
   useFocus,
@@ -123,6 +124,7 @@ function DraggableTagRow({
   onDragMove,
   onDragEnd,
 }: DraggableTagRowProps) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isBeingDragged = isDragging && dragOriginalIndex === index;
   const translateY = useSharedValue(0);
@@ -232,7 +234,7 @@ function DraggableTagRow({
           color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
         />
         <Typography variant="tiny-10" color="secondary" className="mt-0.5">
-          Edit
+          {t('common.edit')}
         </Typography>
       </Pressable>
       {onShare && (
@@ -245,7 +247,7 @@ function DraggableTagRow({
           style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
           <Ionicons name="share-outline" size={16} color="#3B82F6" />
           <Typography variant="tiny-10" style={{ color: '#3B82F6' }} className="mt-0.5">
-            Share
+            {t('common.share')}
           </Typography>
         </Pressable>
       )}
@@ -260,7 +262,7 @@ function DraggableTagRow({
           className="h-full w-16 items-center justify-center rounded-lg bg-red-500">
           <Ionicons name="unlink-outline" size={16} color="#FFFFFF" />
           <Typography variant="tiny-10" color="white" className="mt-0.5">
-            Unlink
+            {t('home.unlink')}
           </Typography>
         </Pressable>
       ) : (
@@ -272,7 +274,7 @@ function DraggableTagRow({
           className="h-full w-16 items-center justify-center rounded-lg bg-red-500">
           <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
           <Typography variant="tiny-10" color="white" className="mt-0.5">
-            Delete
+            {t('common.delete')}
           </Typography>
         </Pressable>
       )}
@@ -343,7 +345,7 @@ function DraggableTagRow({
                       className="ml-2 rounded-full px-2 py-0.5"
                       style={{ backgroundColor: 'rgba(233, 160, 101, 0.2)' }}>
                       <Text style={{ fontSize: 10, fontWeight: '600', color: '#E9A065' }}>
-                        Challenge
+                        {t('home.badgeChallenge')}
                       </Text>
                     </View>
                   )}
@@ -352,7 +354,7 @@ function DraggableTagRow({
                       className="ml-2 rounded-full px-2 py-0.5"
                       style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
                       <Text style={{ fontSize: 10, fontWeight: '600', color: '#3B82F6' }}>
-                        Sharing
+                        {t('home.badgeSharing')}
                       </Text>
                     </View>
                   )}
@@ -361,7 +363,7 @@ function DraggableTagRow({
                       className="ml-2 rounded-full px-2 py-0.5"
                       style={{ backgroundColor: 'rgba(20, 184, 166, 0.2)' }}>
                       <Text style={{ fontSize: 10, fontWeight: '600', color: '#14B8A6' }}>
-                        Shared
+                        {t('home.badgeShared')}
                       </Text>
                     </View>
                   )}
@@ -371,10 +373,10 @@ function DraggableTagRow({
                   color={isSelected ? 'primary' : 'secondary'}
                   className="mt-1">
                   {isSharedTag && tag.sharedOwnerName
-                    ? `from ${tag.sharedOwnerName} \u00B7 ${lastDuration === 0 ? '\u221E' : `${lastDuration} min`}`
+                    ? `${t('home.fromOwner', { owner: tag.sharedOwnerName })} \u00B7 ${lastDuration === 0 ? '\u221E' : t('home.minutesShort', { count: lastDuration })}`
                     : lastDuration === 0
                       ? '\u221E'
-                      : `${lastDuration} min`}
+                      : t('home.minutesShort', { count: lastDuration })}
                 </Typography>
               </View>
             </View>
@@ -408,6 +410,7 @@ function ShareTagOverlay({
   onShareTag: (tagId: string) => Promise<string>;
   onStopSharing: (tagId: string) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const [shareCode, setShareCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -429,7 +432,7 @@ function ShareTagOverlay({
       const code = await onShareTag(tag.id);
       setShareCode(code);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to generate share code');
+      Alert.alert(t('common.error'), e.message || t('home.failedGenerateCode'));
     } finally {
       setLoading(false);
     }
@@ -445,19 +448,19 @@ function ShareTagOverlay({
   const handleStop = async () => {
     if (!tag) return;
     Alert.alert(
-      'Stop Sharing?',
-      "New users won't be able to join. Existing members keep their copies.",
+      t('home.stopSharingTitle'),
+      t('home.stopSharingBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Stop Sharing',
+          text: t('home.stopSharing'),
           style: 'destructive',
           onPress: async () => {
             try {
               await onStopSharing(tag.id);
               onClose();
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'Failed to stop sharing');
+              Alert.alert(t('common.error'), e.message || t('home.failedStopSharing'));
             }
           },
         },
@@ -471,7 +474,7 @@ function ShareTagOverlay({
         {/* Header */}
         <View className="flex-row items-center justify-between border-b border-light-border p-4 dark:border-gray-700">
           <Typography variant="headline-18" color="primary">
-            {tag?.isSharing ? 'Sharing Tag' : 'Share Tag'}
+            {tag?.isSharing ? t('home.sharingTagTitle') : t('home.shareTagTitle')}
           </Typography>
           <Pressable
             onPress={onClose}
@@ -500,7 +503,7 @@ function ShareTagOverlay({
           {tag?.isSharing || shareCode ? (
             <View>
               <Typography variant="body-14" color="secondary" className="mb-3">
-                Share this code with others to let them join:
+                {t('home.shareCodePrompt')}
               </Typography>
               <View className="mb-4 flex-row items-center justify-center rounded-xl bg-light-border/30 py-4 dark:bg-gray-700">
                 <Text
@@ -518,7 +521,7 @@ function ShareTagOverlay({
                 onPress={handleCopy}
                 className="mb-3 items-center rounded-2xl bg-blue-600 py-3 active:opacity-80">
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  {copied ? 'Copied!' : 'Copy Code'}
+                  {copied ? t('home.copied') : t('home.copyCode')}
                 </Typography>
               </Pressable>
 
@@ -529,22 +532,21 @@ function ShareTagOverlay({
                   variant="subtitle-16"
                   style={{ color: '#EF4444' }}
                   className="font-semibold">
-                  Stop Sharing
+                  {t('home.stopSharing')}
                 </Typography>
               </Pressable>
             </View>
           ) : (
             <View>
               <Typography variant="body-14" color="secondary" className="mb-4">
-                Generate a share code so others can join this tag and track their focus alongside
-                you.
+                {t('home.shareGeneratePrompt')}
               </Typography>
               <Pressable
                 onPress={handleGenerate}
                 disabled={loading}
                 className="items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  {loading ? 'Generating...' : 'Share This Tag'}
+                  {loading ? t('home.generating') : t('home.shareThisTag')}
                 </Typography>
               </Pressable>
             </View>
@@ -570,6 +572,7 @@ function JoinTagModal({
   onResolve: (code: string) => Promise<SharedTagResolveResult>;
   onResolved: (result: SharedTagResolveResult) => void;
 }) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -590,7 +593,7 @@ function JoinTagModal({
       const result = await onResolve(code.trim());
       onResolved(result);
     } catch (e: any) {
-      setError(e.message || 'Failed to join');
+      setError(e.message || t('home.failedJoin'));
     } finally {
       setLoading(false);
     }
@@ -611,7 +614,7 @@ function JoinTagModal({
           <View className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
             <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
               <Typography variant="headline-20" color="primary">
-                Join Shared Tag
+                {t('home.joinSharedTag')}
               </Typography>
               <Pressable
                 onPress={onClose}
@@ -627,7 +630,7 @@ function JoinTagModal({
 
             <View className="p-6">
               <Typography variant="body-14" color="secondary" className="mb-4">
-                Enter the share code to join a tag from another user.
+                {t('home.joinPrompt')}
               </Typography>
 
               <TextInput
@@ -636,7 +639,7 @@ function JoinTagModal({
                   setCode(t.toUpperCase());
                   setError(null);
                 }}
-                placeholder="Enter code"
+                placeholder={t('home.enterCode')}
                 placeholderTextColor={colorScheme === 'dark' ? '#888' : '#AAA'}
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -659,7 +662,7 @@ function JoinTagModal({
                 disabled={loading || code.trim().length < 4}
                 className={`items-center rounded-2xl py-4 active:opacity-80 ${code.trim().length >= 4 ? 'bg-blue-600' : 'bg-gray-400'}`}>
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  {loading ? 'Joining...' : 'Join'}
+                  {loading ? t('home.joining') : t('home.join')}
                 </Typography>
               </Pressable>
             </View>
@@ -671,6 +674,7 @@ function JoinTagModal({
 }
 
 export default function FocusScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   // Get tags from store
   const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals } = useFocus();
@@ -971,9 +975,9 @@ export default function FocusScreen() {
         router.push('/(modals)/app-selection');
       } else {
         Alert.alert(
-          'Authorization Required',
-          'Family Controls permission is required to use app blocking features. Please enable it in Settings.',
-          [{ text: 'OK' }]
+          t('home.authRequiredTitle'),
+          t('home.authRequiredBody'),
+          [{ text: t('common.ok') }]
         );
       }
     } else {
@@ -986,9 +990,9 @@ export default function FocusScreen() {
 
     if (currentSession.session !== null) {
       Alert.alert(
-        'Blocklist Locked',
-        'You cannot edit the blocklist during a focus session. Complete your session first.',
-        [{ text: 'OK' }]
+        t('home.blocklistLockedTitle'),
+        t('home.blocklistLockedBody'),
+        [{ text: t('common.ok') }]
       );
       return;
     }
@@ -1146,13 +1150,13 @@ export default function FocusScreen() {
     const hasGoal = tagHasActiveGoal(tag.id);
     const hasChallenge = tagHasOngoingChallenge(tag.id);
     if (hasGoal && hasChallenge) {
-      return `"${tag.name}" has an active goal and is part of an ongoing or upcoming challenge. Conclude or deactivate the goal and wait for the challenge to finish before deleting.`;
+      return t('home.deleteBlockBoth', { name: tag.name });
     }
     if (hasGoal) {
-      return `"${tag.name}" has an active goal. Please conclude or deactivate the goal first before deleting.`;
+      return t('home.deleteBlockGoal', { name: tag.name });
     }
     if (hasChallenge) {
-      return `"${tag.name}" is part of an ongoing or upcoming challenge. The challenge must finish before you can delete this tag.`;
+      return t('home.deleteBlockChallenge', { name: tag.name });
     }
     return null;
   };
@@ -1196,19 +1200,22 @@ export default function FocusScreen() {
   // its sessions. After unlinking it becomes a plain tag (Delete returns).
   const handleUnlinkTag = (tag: any) => {
     Alert.alert(
-      'Unlink shared tag?',
-      `You'll stop sharing progress with ${tag.sharedOwnerName ?? 'the owner'}. Your "${tag.name}" tag and its sessions stay.`,
+      t('home.unlinkTitle'),
+      t('home.unlinkBody', {
+        owner: tag.sharedOwnerName ?? t('home.unlinkOwnerFallback'),
+        name: tag.name,
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Unlink',
+          text: t('home.unlink'),
           style: 'destructive',
           onPress: async () => {
             try {
               await leaveSharedTag(tag.id);
-              showToast('Unlinked from shared tag', 'success');
+              showToast(t('home.unlinkedToast'), 'success');
             } catch (e: any) {
-              showToast(e?.message || 'Failed to unlink', 'error');
+              showToast(e?.message || t('home.failedUnlink'), 'error');
             }
           },
         },
@@ -1254,7 +1261,7 @@ export default function FocusScreen() {
     if (!activeUnlockSession) return;
     triggerHaptic('light');
     stopUnlockSession(activeUnlockSession.id, true);
-    showToast('Unlock stopped', 'neutral');
+    showToast(t('home.unlockStopped'), 'neutral');
   };
 
   const startTimer = () => {
@@ -1343,10 +1350,13 @@ export default function FocusScreen() {
       }
       Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Focus Session Complete',
+          title: t('home.sessionCompleteTitle'),
           body: isDevTimer
             ? `Your ${devSeconds}s dev test session is done!`
-            : `Your ${selectedTime}m ${selectedTag ? tags.byId[selectedTag]?.name || 'focus' : 'focus'} session is done!`,
+            : t('home.sessionCompleteBody', {
+                minutes: selectedTime,
+                tag: selectedTag ? tags.byId[selectedTag]?.name || 'focus' : 'focus',
+              }),
           sound: true,
         },
         trigger: {
@@ -2213,7 +2223,7 @@ export default function FocusScreen() {
       // Navigate to session complete modal
       router.push({ pathname: '/(modals)/session-complete', params: { sessionId: session.id } });
     } else {
-      showToast('Session cancelled', 'neutral');
+      showToast(t('home.sessionCancelled'), 'neutral');
     }
   };
 
@@ -2241,7 +2251,7 @@ export default function FocusScreen() {
                   fontWeight: '500',
                   marginLeft: 6,
                 }}>
-                Block List
+                {t('home.blockList')}
               </Text>
               {blockedCount > 0 && (
                 <View className="ml-1.5 min-w-[20px] items-center rounded-full bg-primary px-1.5 py-0.5">
@@ -2330,7 +2340,7 @@ export default function FocusScreen() {
                       fontFamily: 'Poppins-Regular',
                       textAlign: 'center',
                     }}>
-                    🍎 grow as you focus — sweet spot 30–60 min
+                    {t('home.growHint')}
                   </Text>
                 </View>
               )}
@@ -2344,7 +2354,7 @@ export default function FocusScreen() {
                       fontFamily: 'Poppins-SemiBold',
                       textAlign: 'center',
                     }}>
-                    Over time
+                    {t('home.overTime')}
                   </Text>
                 </View>
               )}
@@ -2376,8 +2386,8 @@ export default function FocusScreen() {
                 <View className="flex-row items-center">
                   <Typography variant="subtitle-16" color="primary">
                     {availableTags.length === 0
-                      ? 'Create a new tag'
-                      : selectedTagName || 'Select a tag'}
+                      ? t('home.createNewTag')
+                      : selectedTagName || t('home.selectTag')}
                   </Typography>
                 </View>
                 <Ionicons
@@ -2407,17 +2417,17 @@ export default function FocusScreen() {
               className="font-semibold"
               style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}>
               {isUnlockActive
-                ? 'Stop Unlocked'
+                ? t('home.stopUnlocked')
                 : isSessionActive
-                  ? 'Stop Focus'
+                  ? t('home.stopFocus')
                   : availableTags.length === 0
-                    ? 'Create Tag First'
-                    : 'Start Focus'}
+                    ? t('home.createTagFirst')
+                    : t('home.startFocus')}
             </Typography>
           </Pressable>
           {isUnlockActive && (
             <Typography variant="body-12" color="secondary" className="mt-3 text-center">
-              unused time will be returned as fruits
+              {t('home.unusedTimeReturned')}
             </Typography>
           )}
         </View>
@@ -2443,7 +2453,7 @@ export default function FocusScreen() {
               {/* Modal Header */}
               <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
                 <Typography variant="headline-20" color="primary">
-                  Select Focus
+                  {t('home.selectFocus')}
                 </Typography>
                 <Pressable
                   onPress={() => setShowTagModal(false)}
@@ -2465,8 +2475,7 @@ export default function FocusScreen() {
                       variant="body-14"
                       color="secondary"
                       className="text-center leading-5">
-                      Create tags to categorize your focus sessions.{'\n'}
-                      e.g. Work, Reading, Exercise, Project X, Mindfulness Rest
+                      {t('home.emptyTagsHint')}
                     </Typography>
                   </View>
                 )}
@@ -2511,7 +2520,7 @@ export default function FocusScreen() {
                       variant="subtitle-16"
                       className="font-semibold"
                       style={{ color: '#3B82F6' }}>
-                      Join Tag
+                      {t('home.joinTag')}
                     </Typography>
                   </Pressable>
                   <Pressable
@@ -2525,7 +2534,7 @@ export default function FocusScreen() {
                     }}
                     className="flex-1 items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
                     <Typography variant="subtitle-16" color="white" className="font-semibold">
-                      New Tag
+                      {t('home.newTag')}
                     </Typography>
                   </Pressable>
                 </View>
@@ -2536,8 +2545,8 @@ export default function FocusScreen() {
           {/* Tag Swipe Coach Mark */}
           <CoachMark
             targetRef={firstTagRef as React.RefObject<View>}
-            title="Manage your tags"
-            message="Hold to reorder, swipe to edit"
+            title={t('home.coachTitle')}
+            message={t('home.coachMessage')}
             visible={showTagSwipeCoachMark && !preferences.hasSeenTagSwipeHint}
             onDismiss={() => {
               setShowTagSwipeCoachMark(false);
@@ -2552,7 +2561,7 @@ export default function FocusScreen() {
                 {/* Edit Header */}
                 <View className="border-b border-light-border p-4 dark:border-gray-700">
                   <Typography variant="headline-18" color="primary">
-                    Edit Tag
+                    {t('home.editTag')}
                   </Typography>
                 </View>
 
@@ -2568,7 +2577,7 @@ export default function FocusScreen() {
                     <TextInput
                       value={editTagName}
                       onChangeText={setEditTagName}
-                      placeholder="Tag name"
+                      placeholder={t('home.tagNamePlaceholder')}
                       placeholderTextColor="#666"
                       className="flex-1"
                       style={{
@@ -2586,7 +2595,7 @@ export default function FocusScreen() {
                   {/* Color Selection */}
                   <View>
                     <Typography variant="body-14" color="primary" className="mb-3">
-                      Color
+                      {t('home.color')}
                     </Typography>
                     <ScrollView
                       style={{ maxHeight: 240 }}
@@ -2602,10 +2611,10 @@ export default function FocusScreen() {
                   {/* Activity type (optional) — improves focus-rating accuracy */}
                   <View className="mt-4">
                     <Typography variant="body-14" color="primary" className="mb-1">
-                      Activity type (optional)
+                      {t('home.activityType')}
                     </Typography>
                     <Typography variant="body-12" color="secondary" className="mb-3">
-                      Helps suggest a focus rating from your motion.
+                      {t('home.activityTypeHint')}
                     </Typography>
                     <ActivityTypePicker
                       value={editTagActivityType}
@@ -2616,7 +2625,7 @@ export default function FocusScreen() {
                     />
                     {editTagActivityType && !editTagActivityTouched.current && (
                       <Typography variant="body-12" color="secondary" className="mt-2">
-                        ✨ Suggested from name — tap to change
+                        {t('home.suggestedFromName')}
                       </Typography>
                     )}
                   </View>
@@ -2634,7 +2643,7 @@ export default function FocusScreen() {
                     }}
                     className="flex-1 items-center rounded-xl bg-gray-600 py-3 active:opacity-80">
                     <Typography variant="body-14" color="white">
-                      Cancel
+                      {t('common.cancel')}
                     </Typography>
                   </Pressable>
                   <Pressable
@@ -2642,7 +2651,7 @@ export default function FocusScreen() {
                     disabled={!editTagName.trim()}
                     className={`flex-1 items-center rounded-xl py-3 ${editTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}>
                     <Typography variant="body-14" color="white" className="font-semibold">
-                      Save
+                      {t('common.save')}
                     </Typography>
                   </Pressable>
                 </View>
@@ -2653,7 +2662,7 @@ export default function FocusScreen() {
           {/* Edit Tag — Emoji Picker Overlay (on top of the Edit Tag overlay) */}
           {showEditTagModal && showEditEmojiGrid && (
             <EmojiPickerOverlay
-              title="Choose Emoji for Tag"
+              title={t('home.chooseEmojiTag')}
               onClose={() => setShowEditEmojiGrid(false)}
               onEmojiSelect={(emoji) => {
                 setEditTagEmoji(emoji);
@@ -2671,7 +2680,7 @@ export default function FocusScreen() {
                     {/* Cannot Delete Header */}
                     <View className="border-b border-light-border p-4 dark:border-gray-700">
                       <Typography variant="headline-18" color="primary" className="text-center">
-                        Cannot Delete Tag
+                        {t('home.cannotDeleteTag')}
                       </Typography>
                     </View>
 
@@ -2688,7 +2697,7 @@ export default function FocusScreen() {
                         onPress={handleCancelDelete}
                         className="w-full items-center rounded-xl bg-gray-600 py-3 active:opacity-80">
                         <Typography variant="body-14" color="white">
-                          OK
+                          {t('common.ok')}
                         </Typography>
                       </Pressable>
                     </View>
@@ -2698,16 +2707,18 @@ export default function FocusScreen() {
                     {/* Delete Popup Header */}
                     <View className="border-b border-light-border p-4 dark:border-gray-700">
                       <Typography variant="headline-18" color="primary" className="text-center">
-                        Delete Tag
+                        {t('home.deleteTag')}
                       </Typography>
                     </View>
 
                     {/* Warning content */}
                     <View className="p-4">
                       <Typography variant="body-14" color="primary" className="leading-5">
-                        Are you sure you want to delete{' '}
-                        {tagToDelete?.name ? `"${tagToDelete.name}"` : 'this tag'}? Existing focus
-                        sessions will be kept.
+                        {t('home.deleteConfirm', {
+                          name: tagToDelete?.name
+                            ? `"${tagToDelete.name}"`
+                            : t('home.deleteThisTag'),
+                        })}
                       </Typography>
                     </View>
 
@@ -2719,14 +2730,14 @@ export default function FocusScreen() {
                         onPress={handleCancelDelete}
                         className="flex-1 items-center rounded-xl bg-gray-600 py-3 active:opacity-80">
                         <Typography variant="body-14" color="white">
-                          Cancel
+                          {t('common.cancel')}
                         </Typography>
                       </Pressable>
                       <Pressable
                         onPress={handleConfirmDelete}
                         className="flex-1 items-center rounded-xl bg-red-600 py-3 active:opacity-80">
                         <Typography variant="body-14" color="white" className="font-semibold">
-                          Delete
+                          {t('common.delete')}
                         </Typography>
                       </Pressable>
                     </View>
@@ -2768,7 +2779,7 @@ export default function FocusScreen() {
                   {/* Modal Header */}
                   <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
                     <Typography variant="headline-20" color="primary">
-                      Create New Tag
+                      {t('home.createNewTagTitle')}
                     </Typography>
                     <Pressable
                       onPress={() => {
@@ -2802,7 +2813,7 @@ export default function FocusScreen() {
                       <TextInput
                         value={newTagName}
                         onChangeText={setNewTagName}
-                        placeholder="Tag name"
+                        placeholder={t('home.tagNamePlaceholder')}
                         placeholderTextColor="#666"
                         className="flex-1"
                         style={{
@@ -2870,7 +2881,7 @@ export default function FocusScreen() {
                       }}
                       className="flex-1 items-center rounded-2xl bg-gray-600 py-4 active:opacity-80">
                       <Typography variant="subtitle-16" color="white">
-                        Cancel
+                        {t('common.cancel')}
                       </Typography>
                     </Pressable>
                     <Pressable
@@ -2882,7 +2893,7 @@ export default function FocusScreen() {
                           : 'bg-gray-500 opacity-50'
                       }`}>
                       <Typography variant="subtitle-16" color="white" className="font-semibold">
-                        Create Tag
+                        {t('home.createTag')}
                       </Typography>
                     </Pressable>
                   </View>
@@ -2894,7 +2905,7 @@ export default function FocusScreen() {
           {/* New Tag — Emoji Picker Overlay (on top of the New Tag overlay) */}
           {showNewTagModal && showEmojiPicker && (
             <EmojiPickerOverlay
-              title="Choose Emoji for New Tag"
+              title={t('home.chooseEmojiNewTag')}
               onClose={() => setShowEmojiPicker(false)}
               onEmojiSelect={handleEmojiSelect}
             />
@@ -2920,7 +2931,7 @@ export default function FocusScreen() {
                   fontWeight: '600',
                   marginBottom: 12,
                 }}>
-                Block List
+                {t('home.blockList')}
               </Text>
               <Text
                 style={{
@@ -2929,9 +2940,7 @@ export default function FocusScreen() {
                   lineHeight: 20,
                   marginBottom: 24,
                 }}>
-                This is where you add apps that are unnecessary for achieving your goals and also
-                distracting.{'\n\n'}Your first setup is free. After that, each edit costs fruits —
-                starting at 1 and doubling each time, resetting weekly.
+                {t('home.blocklistTipBody')}
               </Text>
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
                 <Pressable
@@ -2943,7 +2952,7 @@ export default function FocusScreen() {
                       fontSize: 15,
                       fontWeight: '500',
                     }}>
-                    Cancel
+                    {t('common.cancel')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -2955,7 +2964,7 @@ export default function FocusScreen() {
                     backgroundColor: '#6592E9',
                   }}>
                   <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
-                    Understood
+                    {t('home.understood')}
                   </Text>
                 </Pressable>
               </View>
@@ -2982,7 +2991,7 @@ export default function FocusScreen() {
                   fontWeight: '600',
                   marginBottom: 12,
                 }}>
-                Edit Block List
+                {t('home.editBlockList')}
               </Text>
               <Text
                 style={{
@@ -2991,8 +3000,7 @@ export default function FocusScreen() {
                   lineHeight: 20,
                   marginBottom: 15,
                 }}>
-                Editing the blocklist is a thoughtful process. The cost starts at 1 fruit and
-                doubles with each edit, resetting weekly.
+                {t('home.editCostBody')}
               </Text>
               <Text
                 style={{
@@ -3001,11 +3009,11 @@ export default function FocusScreen() {
                   fontWeight: '500',
                   marginBottom: 15,
                 }}>
-                This edit will cost {blocklistEditCost.cost} 🍎
+                {t('home.editCostAmount', { cost: blocklistEditCost.cost })}
               </Text>
               {!blocklistEditCost.canAfford && (
                 <Text style={{ color: '#E57373', fontSize: 13, marginBottom: 24 }}>
-                  {"You don't have enough fruits. Focus more to earn!"}
+                  {t('home.notEnoughFruits')}
                 </Text>
               )}
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
@@ -3018,7 +3026,7 @@ export default function FocusScreen() {
                       fontSize: 15,
                       fontWeight: '500',
                     }}>
-                    Cancel
+                    {t('common.cancel')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -3034,7 +3042,7 @@ export default function FocusScreen() {
                     backgroundColor: '#6592E9',
                     opacity: blocklistEditCost.canAfford ? 1 : 0.5,
                   }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Confirm</Text>
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>{t('common.confirm')}</Text>
                 </Pressable>
               </View>
             </Pressable>

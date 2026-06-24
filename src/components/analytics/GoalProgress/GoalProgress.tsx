@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { captureRef } from 'react-native-view-shot';
 import { Typography } from '../../ui/Typography';
+import { useTranslation } from 'react-i18next';
 import { FocusGoal } from '../../../store/types';
 import { useFocus } from '../../../store';
 import { useAppSettings } from '../../../store/unified-store';
@@ -98,6 +99,7 @@ function DraggableGoalRow({
   onPress, onEdit, onDelete, onConclude, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
   shouldNudge,
 }: DraggableGoalRowProps) {
+  const { t } = useTranslation();
   const isBeingDragged = isDragging && dragOriginalIndex === index;
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -193,7 +195,7 @@ function DraggableGoalRow({
         className="bg-primary rounded-lg w-16 h-full items-center justify-center mr-2"
       >
         <Typography variant="body-14" color="white">
-          Edit
+          {t('common.edit')}
         </Typography>
       </Pressable>
       <Pressable
@@ -205,7 +207,7 @@ function DraggableGoalRow({
         style={{ backgroundColor: '#F59E0B' }}
       >
         <Typography variant="body-14" color="white">
-          Badge
+          {t('goalProgress.badge')}
         </Typography>
       </Pressable>
       <Pressable
@@ -216,7 +218,7 @@ function DraggableGoalRow({
         className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
       >
         <Typography variant="body-14" color="white">
-          Pause
+          {t('goalProgress.pause')}
         </Typography>
       </Pressable>
     </View>
@@ -299,6 +301,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   onActivateGoal,
   onReorderGoals,
 }) => {
+  const { t } = useTranslation();
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
 
   // Swipe nudge hint — use unified preferences
@@ -479,7 +482,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
             <View className="flex-row items-center mb-3">
               <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
               <Typography variant="body-12" color="secondary" className="mx-3">
-                Not Activated
+                {t('goalProgress.notActivated')}
               </Typography>
               <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
             </View>
@@ -502,7 +505,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
                     className="bg-primary rounded-lg px-4 py-2 active:opacity-70"
                   >
                     <Typography variant="body-12" color="white">
-                      Activate
+                      {t('goalProgress.activate')}
                     </Typography>
                   </Pressable>
                 </View>
@@ -573,6 +576,7 @@ const StreakCell: FC<{ hit: boolean; fillPercent: number; size: number }> = ({
 };
 
 const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
+  const { t } = useTranslation();
   const effectiveTarget = goal._effectiveTarget ?? getGoalCurrentTarget(goal);
   const urgency = useMemo(
     () => calculateUrgency(goal, goal.currentProgress, effectiveTarget),
@@ -595,11 +599,20 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   const goalPeriod = (goal as any).activePeriod || (goal as any).period || 'daily';
   // No-period (cumulative) goals don't show a period pill.
   const showPeriodBadge = goalPeriod !== 'none';
-  const periodLabel = goalPeriod.charAt(0).toUpperCase() + goalPeriod.slice(1);
+  const periodLabelMap: Record<string, string> = {
+    daily: t('goalProgress.periodDaily'),
+    weekly: t('goalProgress.periodWeekly'),
+    monthly: t('goalProgress.periodMonthly'),
+  };
+  const periodLabel = periodLabelMap[goalPeriod] ?? goalPeriod;
 
   // Goal display name
   const tag = goalTagId ? tags.byId[goalTagId] : null;
-  const displayName = (goal as any).customName || (tag ? `${tag.icon} ${tag.name} Goal` : (goal as any).name || 'Goal');
+  const displayName =
+    (goal as any).customName ||
+    (tag
+      ? t('insights.goalSuffix', { icon: tag.icon, name: tag.name })
+      : (goal as any).name || t('goalProgress.goalFallback'));
 
   // Urgency-driven track color for the unfilled portion of the progress bar
   const isHealthy = !urgency.isBehindPace || urgency.level === 'low';
@@ -775,11 +788,16 @@ interface GoalConsistencyCalendarProps {
 }
 
 const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessions, tagMap: _tagMap, onCollapse, restDays, weekStartDay }) => {
+  const { t } = useTranslation();
   const captureAreaRef = useRef<View>(null);
   const colorScheme = useColorScheme();
   const { tags: calendarTags } = useFocus();
   const calendarTag = (goal as any).tagId ? calendarTags.byId[(goal as any).tagId] : null;
-  const calendarGoalName = (goal as any).customName || (calendarTag ? `${calendarTag.icon} ${calendarTag.name} Goal` : (goal as any).name || 'Goal');
+  const calendarGoalName =
+    (goal as any).customName ||
+    (calendarTag
+      ? t('insights.goalSuffix', { icon: calendarTag.icon, name: calendarTag.name })
+      : (goal as any).name || t('goalProgress.goalFallback'));
 
   const handleShare = async () => {
     try {
@@ -791,7 +809,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
       await Share.share(
         Platform.OS === 'ios'
           ? { url: uri }
-          : { message: `Check out my focus streak for "${(goal as any).customName || (goal as any).name || 'my goal'}"!`, url: uri }
+          : { message: t('goalProgress.shareMessage', { name: (goal as any).customName || (goal as any).name || t('goalProgress.shareGoalFallback') }), url: uri }
       );
     } catch (_e) {
       // User cancelled or share failed silently
@@ -854,7 +872,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
       <View className="flex-1">
         {(goal as any).showTotalHours && (
           <Typography variant="body-14" className="text-light-text-primary dark:text-dark-text-primary font-poppins-semibold">
-            ⏱️ {formatTotalHours(totalMinutesAll)} total
+            {t('goalProgress.totalTime', { time: formatTotalHours(totalMinutesAll) })}
           </Typography>
         )}
       </View>
@@ -874,10 +892,10 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
           {goalHeader}
           <View className="flex-row items-center justify-between mb-3">
             <Typography variant="body-12" color="secondary">
-              Last 30 days
+              {t('goalProgress.last30days')}
             </Typography>
             <Typography variant="body-12" color="primary">
-              {hitCount}/{count} hit
+              {t('goalProgress.hitCount', { hit: hitCount, count })}
             </Typography>
           </View>
           {/* Day headers */}
@@ -922,10 +940,10 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
           {goalHeader}
           <View className="flex-row items-center justify-between mb-3">
             <Typography variant="body-12" color="secondary">
-              Last 12 months
+              {t('goalProgress.last12months')}
             </Typography>
             <Typography variant="body-12" color="primary">
-              {hitCount}/{count} hit
+              {t('goalProgress.hitCount', { hit: hitCount, count })}
             </Typography>
           </View>
           {[topRow, bottomRow].map((row, rowIdx) => (
@@ -958,10 +976,10 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
         {goalHeader}
         <View className="flex-row items-center justify-between mb-3">
           <Typography variant="body-12" color="secondary">
-            Last {count} weeks
+            {t('goalProgress.lastWeeks', { count })}
           </Typography>
           <Typography variant="body-12" color="primary">
-            {hitCount}/{count} hit
+            {t('goalProgress.hitCount', { hit: hitCount, count })}
           </Typography>
         </View>
         <View className="flex-row justify-between">
@@ -984,15 +1002,19 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 
 // ---------- Empty State Placeholder ----------
 
-const GoalCTAHeader: FC = () => (
-  <View className="items-center mb-4">
-    <Typography variant="headline-18" className="text-light-text-primary dark:text-white text-center">
-      Activate goals!
-    </Typography>
-  </View>
-);
+const GoalCTAHeader: FC = () => {
+  const { t } = useTranslation();
+  return (
+    <View className="items-center mb-4">
+      <Typography variant="headline-18" className="text-light-text-primary dark:text-white text-center">
+        {t('goalProgress.activateGoals')}
+      </Typography>
+    </View>
+  );
+};
 
 const GoalPlaceholderExample: FC = () => {
+  const { t } = useTranslation();
   const targetHours = 10;
   const placeholderWeeks = [
     { hours: 11, hit: true },
@@ -1014,7 +1036,7 @@ const GoalPlaceholderExample: FC = () => {
       {/* Subtitle introducing the example */}
       <View className="mb-4">
         <Typography variant="body-12" color="secondary">
-          Here&apos;s what a goal looks like
+          {t('goalProgress.whatGoalLooksLike')}
         </Typography>
       </View>
 
@@ -1029,7 +1051,7 @@ const GoalPlaceholderExample: FC = () => {
           <View className="flex-1">
             <View className="flex-row items-center">
               <Typography variant="body-14" className="text-light-text-primary dark:text-white font-poppins-semibold">
-                Study Goal
+                {t('goalProgress.exampleGoalName')}
               </Typography>
             </View>
             <View className="flex-row items-center mt-0.5">
@@ -1040,7 +1062,7 @@ const GoalPlaceholderExample: FC = () => {
           </View>
           <View className="rounded-full px-3 py-1 bg-primary">
             <Typography variant="body-12" className="text-white font-poppins-medium">
-              Weekly
+              {t('goalProgress.periodWeekly')}
             </Typography>
           </View>
         </View>
@@ -1055,7 +1077,7 @@ const GoalPlaceholderExample: FC = () => {
               📚
             </Typography>
             <Typography variant="tiny-10" className="text-white font-poppins-medium">
-              Study
+              {t('goalProgress.exampleTag')}
             </Typography>
           </View>
         </View>
@@ -1081,10 +1103,10 @@ const GoalPlaceholderExample: FC = () => {
       <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4 mb-4 opacity-60">
         <View className="flex-row items-center justify-between mb-3">
           <Typography variant="body-12" color="secondary">
-            Last 12 weeks
+            {t('goalProgress.lastWeeks', { count: 12 })}
           </Typography>
           <Typography variant="body-12" color="primary">
-            8/12 hit
+            {t('goalProgress.hitCount', { hit: 8, count: 12 })}
           </Typography>
         </View>
         <View className="flex-row justify-between">
@@ -1096,7 +1118,7 @@ const GoalPlaceholderExample: FC = () => {
         </View>
         <View className="mt-3 pt-3 border-t border-light-border dark:border-dark-border items-center">
           <Typography variant="body-14" className="text-light-text-primary dark:text-dark-text-primary font-poppins-semibold">
-            ⏱️ 116h total
+            {t('goalProgress.totalTime', { time: '116h' })}
           </Typography>
         </View>
       </View>

@@ -5,6 +5,7 @@ import { DefaultAvatar } from './DefaultAvatar';
 import { FocusingBadge } from './FocusingBadge';
 import { ReactionButton } from './ReactionButton';
 import type { FeedItem } from '../../services/grove/GroveFeedService';
+import i18n from '../../i18n';
 
 interface FriendActivityCardProps {
   item: FeedItem;
@@ -19,10 +20,10 @@ function timeAgo(dateString: string): string {
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMins / 60);
 
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return 'yesterday';
+  if (diffMins < 1) return i18n.t('groveUI.justNow');
+  if (diffMins < 60) return i18n.t('groveUI.minutesAgo', { count: diffMins });
+  if (diffHours < 24) return i18n.t('groveUI.hoursAgo', { count: diffHours });
+  return i18n.t('groveUI.yesterday');
 }
 
 function formatDuration(minutes: number): string {

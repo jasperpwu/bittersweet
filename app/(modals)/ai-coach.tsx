@@ -10,6 +10,8 @@ import { useAppStore } from '../../src/store';
 import { useAppSettings } from '../../src/store/unified-store';
 import { showToast } from '../../src/components/ui/Toast';
 import { colors } from '../../src/config/theme';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../src/i18n';
 import type {
   CoachAction,
   CoachInsightCard,
@@ -18,7 +20,7 @@ import type {
 } from '../../src/store/types';
 
 const fmtDay = (d: Date | string) =>
-  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  new Date(d).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' });
 
 const fmtMins = (m: number) => {
   const h = Math.floor(m / 60);
@@ -31,15 +33,17 @@ const fmtMins = (m: number) => {
 const severityColor = (s: CoachInsightSeverity): string =>
   s === 'positive' ? colors.success : s === 'attention' ? colors.error : colors.primary;
 
-const ACTION_FALLBACK_LABEL: Record<CoachAction['type'], string> = {
-  create_goal: 'Set a goal',
-  adjust_goal: 'Review goal',
-  open_goals: 'Open goals',
-  block_apps: 'Choose apps to block',
-  link_health: 'Link Apple Health',
-  enable_notifications: 'Turn on notifications',
-  enable_goal_reminders: 'Turn on goal reminders',
-  none: '',
+const actionFallbackLabel = (type: CoachAction['type']): string => {
+  switch (type) {
+    case 'create_goal': return i18n.t('aiCoach.actSetGoal');
+    case 'adjust_goal': return i18n.t('aiCoach.actReviewGoal');
+    case 'open_goals': return i18n.t('aiCoach.actOpenGoals');
+    case 'block_apps': return i18n.t('aiCoach.actBlockApps');
+    case 'link_health': return i18n.t('aiCoach.actLinkHealth');
+    case 'enable_notifications': return i18n.t('aiCoach.actEnableNotifs');
+    case 'enable_goal_reminders': return i18n.t('aiCoach.actEnableReminders');
+    default: return '';
+  }
 };
 
 const SubScoreBar: FC<{ label: string; value: number; show: boolean }> = ({
@@ -81,6 +85,7 @@ const QuickStat: FC<{ label: string; value: string }> = ({ label, value }) => (
 );
 
 export default function AiCoachScreen() {
+  const { t } = useTranslation();
   const coachReports = useAppStore((s) => s.focus.coachReports);
   const focus = useAppStore((s) => s.focus);
   const { preferences, updatePreferences } = useAppSettings();
@@ -135,7 +140,7 @@ export default function AiCoachScreen() {
         // change it from Settings.
         const { status } = await Notifications.requestPermissionsAsync();
         if (status === 'granted') {
-          showToast('Notifications are on', 'success');
+          showToast(t('aiCoach.notifsOn'), 'success');
         } else {
           Linking.openSettings();
         }
@@ -145,7 +150,7 @@ export default function AiCoachScreen() {
         await updatePreferences({
           notifications: { ...preferences.notifications, goalReminderEnabled: true },
         });
-        showToast('Goal reminders on', 'success');
+        showToast(t('aiCoach.remindersOn'), 'success');
         break;
       }
       case 'open_goals': {
@@ -171,7 +176,7 @@ export default function AiCoachScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 py-4">
         <Typography variant="headline-24" color="primary">
-          AI Focus Coach
+          {t('coach.title')}
         </Typography>
         <Pressable onPress={() => router.back()} className="p-2 active:opacity-70">
           <Typography variant="headline-18" color="secondary">
@@ -186,11 +191,10 @@ export default function AiCoachScreen() {
             🧭
           </Typography>
           <Typography variant="subtitle-16" color="primary" className="mb-2 text-center">
-            No weekly report yet
+            {t('aiCoach.emptyTitle')}
           </Typography>
           <Typography variant="body-14" color="secondary" className="text-center">
-            Log a few focus sessions and rate them. Your coach reviews each completed week and
-            shares a read on your focus here.
+            {t('aiCoach.emptyBody')}
           </Typography>
         </View>
       ) : (
@@ -248,40 +252,40 @@ export default function AiCoachScreen() {
                       variant="body-12"
                       color={delta > 0 ? 'success' : delta < 0 ? 'error' : 'secondary'}
                       className="mt-1">
-                      {delta > 0 ? '▲' : delta < 0 ? '▼' : '–'} {Math.abs(delta)} vs previous week
+                      {delta > 0 ? '▲' : delta < 0 ? '▼' : '–'} {Math.abs(delta)} {t('aiCoach.vsPrev')}
                     </Typography>
                   )}
                   <Typography variant="tiny-10" color="secondary" className="mt-2">
-                    {selected.narrator === 'apple_fm' ? 'On-device AI' : 'Auto summary'}
+                    {selected.narrator === 'apple_fm' ? t('aiCoach.onDeviceAI') : t('aiCoach.autoSummary')}
                   </Typography>
                 </View>
               </View>
 
               {/* Quick stats */}
               <View className="mt-5 flex-row">
-                <QuickStat label="Focused" value={fmtMins(selected.stats.totalMinutes)} />
-                <QuickStat label="Sessions" value={String(selected.stats.totalSessions)} />
-                <QuickStat label="Active days" value={`${selected.stats.activeDays}/7`} />
+                <QuickStat label={t('aiCoach.focused')} value={fmtMins(selected.stats.totalMinutes)} />
+                <QuickStat label={t('aiCoach.sessions')} value={String(selected.stats.totalSessions)} />
+                <QuickStat label={t('aiCoach.activeDays')} value={`${selected.stats.activeDays}/7`} />
               </View>
             </Card>
 
             {/* Sub-score breakdown */}
             <Card variant="default" padding="medium" className="mb-5">
               <Typography variant="subtitle-14-semibold" color="primary" className="mb-3">
-                Score breakdown
+                {t('aiCoach.scoreBreakdown')}
               </Typography>
-              <SubScoreBar label="Consistency" value={selected.subScores.consistency} show />
+              <SubScoreBar label={t('aiCoach.consistency')} value={selected.subScores.consistency} show />
               <SubScoreBar
-                label="Focus quality"
+                label={t('aiCoach.focusQuality')}
                 value={selected.subScores.quality}
                 show={selected.stats.ratedCount > 0}
               />
-              <SubScoreBar label="Volume" value={selected.subScores.volume} show />
+              <SubScoreBar label={t('aiCoach.volume')} value={selected.subScores.volume} show />
             </Card>
 
             {/* Insight cards */}
             <Typography variant="subtitle-14-semibold" color="primary" className="mb-3">
-              Insights this week
+              {t('aiCoach.insightsThisWeek')}
             </Typography>
             {selected.cards.map((card: CoachInsightCard) => {
               // Info tips (no action) render as a light bullet; actionable insights as a card.
@@ -331,7 +335,7 @@ export default function AiCoachScreen() {
                         onPress={() => handleAction(card.action)}
                         className="self-start rounded-lg bg-primary px-3 py-2 active:opacity-80">
                         <Typography variant="body-12" color="white">
-                          {card.action.label || ACTION_FALLBACK_LABEL[card.action.type]}
+                          {card.action.label || actionFallbackLabel(card.action.type)}
                         </Typography>
                       </Pressable>
                     </View>

@@ -10,12 +10,14 @@ import { colors } from '../../../config/theme';
 import { weekProgress, MIN_SESSIONS, MIN_ACTIVE_DAYS } from '../../../services/coach';
 import type { WeeklyCoachReport } from '../../../store/types';
 import { ScoreRing } from './CoachVisuals';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../../i18n';
 
 const SEEN_KEY = 'bittersweet-coach-last-seen';
 
 const weekStartISO = (r: WeeklyCoachReport) => new Date(r.weekStart).toISOString().slice(0, 10);
 const fmtDay = (d: Date | string) =>
-  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  new Date(d).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' });
 
 /** A square score tile for one weekly report. */
 const ReportTile: FC<{ report: WeeklyCoachReport }> = ({ report }) => (
@@ -39,18 +41,19 @@ const ReportTile: FC<{ report: WeeklyCoachReport }> = ({ report }) => (
 
 /** Progress-aware empty state (no report yet, but the user has some activity). */
 const Teaser: FC = () => {
+  const { t } = useTranslation();
   const progress = weekProgress();
   const remainingSessions = Math.max(0, MIN_SESSIONS - progress.sessions);
   const remainingDays = Math.max(0, MIN_ACTIVE_DAYS - progress.activeDays);
   const closerByDays = remainingDays <= remainingSessions;
   const line = progress.meetsGate
-    ? 'Nice — your first report unlocks when this week wraps up.'
+    ? t('coach.teaserReady')
     : closerByDays
-      ? `Focus on ${remainingDays} more day${remainingDays === 1 ? '' : 's'} this week to unlock your report.`
-      : `Log ${remainingSessions} more session${remainingSessions === 1 ? '' : 's'} this week to unlock your report.`;
+      ? t('coach.teaserDays', { count: remainingDays })
+      : t('coach.teaserSessions', { count: remainingSessions });
   const chip = closerByDays
-    ? `${progress.activeDays}/${MIN_ACTIVE_DAYS} active days this week`
-    : `${progress.sessions}/${MIN_SESSIONS} sessions this week`;
+    ? t('coach.chipDays', { current: progress.activeDays, total: MIN_ACTIVE_DAYS })
+    : t('coach.chipSessions', { current: progress.sessions, total: MIN_SESSIONS });
 
   return (
     <View className="mb-6 px-5">
@@ -58,7 +61,7 @@ const Teaser: FC = () => {
         <View className="flex-row items-center justify-between">
           <View className="flex-1 pr-3">
             <Typography variant="subtitle-16" color="primary" className="mb-1">
-              AI Focus Coach
+              {t('coach.title')}
             </Typography>
             <Typography variant="body-12" color="secondary">
               {line}
@@ -84,6 +87,7 @@ const Teaser: FC = () => {
  * new report the user hasn't opened the section for is available.
  */
 export const CoachSection: FC = () => {
+  const { t } = useTranslation();
   const coachReports = useAppStore((s) => s.focus.coachReports);
   const sessionCount = useAppStore((s) => s.focus.sessions.allIds.length);
   const colorScheme = useColorScheme();
@@ -142,7 +146,7 @@ export const CoachSection: FC = () => {
         onPress={toggle}
         style={{ paddingVertical: 4 }}>
         <Typography variant="subtitle-16" color="primary" className="mr-2">
-          AI Focus Coach
+          {t('coach.title')}
         </Typography>
         {hasUnseen && (
           <View

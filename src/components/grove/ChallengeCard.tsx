@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Typography } from '../ui/Typography';
 import type { ChallengeItem, ChallengeParticipant } from '../../services/grove/GroveChallengeService';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 
 interface ChallengeCardProps {
   challenge: ChallengeItem;
@@ -14,12 +16,12 @@ function formatStartDate(startDate: string | null): { label: string; dateStr: st
   const date = new Date(startDate + 'T00:00:00');
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const month = date.toLocaleString('en-US', { month: 'short' });
+  const month = date.toLocaleString(i18n.language, { month: 'short' });
   const day = date.getDate();
   const dateStr = date.getFullYear() !== now.getFullYear()
     ? `${month} ${day}, ${date.getFullYear()}`
     : `${month} ${day}`;
-  const label = date < today ? 'Started on' : 'Start on';
+  const label = date < today ? i18n.t('challenge.startedOn') : i18n.t('challenge.startOn');
   return { label, dateStr };
 }
 
@@ -35,21 +37,26 @@ export { formatStartDate };
 
 export function formatTarget(targetMinutes: number, period: 'daily' | 'weekly'): string {
   const hours = targetMinutes / 60;
-  if (hours < 1) return `${targetMinutes}min/${period === 'daily' ? 'day' : 'week'}`;
-  if (hours === Math.floor(hours)) return `${hours}h/${period === 'daily' ? 'day' : 'week'}`;
-  return `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}min/${period === 'daily' ? 'day' : 'week'}`;
+  let value: string;
+  if (hours < 1) value = `${targetMinutes}min`;
+  else if (hours === Math.floor(hours)) value = `${hours}h`;
+  else value = `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}min`;
+  return period === 'daily'
+    ? i18n.t('challenge.targetDaily', { value })
+    : i18n.t('challenge.targetWeekly', { value });
 }
 
 const BAR_COLORS = ['#6592E9', '#E9A065', '#8B5CF6'];
 
 export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, currentUserId, onPress }) => {
+  const { t } = useTranslation();
   const remaining = daysRemaining(challenge.endDate);
   const isCompleted = challenge.status === 'completed';
   const isFailed = challenge.status === 'failed';
   const isCancelled = challenge.status === 'cancelled';
 
   const targetLabel = formatTarget(challenge.targetMinutes, challenge.period);
-  const periodUnit = challenge.period === 'daily' ? 'days' : 'weeks';
+  const periodUnit = challenge.period === 'daily' ? t('challenge.daysUnit') : t('challenge.weeksUnit');
   const totalPeriods = challenge.totalPeriods;
 
   // Sort accepted participants: current user first, then by hits descending
@@ -71,10 +78,10 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
     <View className={isMe ? 'mb-2' : 'mb-2'} key={participant.userId}>
       <View className="flex-row items-center justify-between mb-1">
         <Typography variant="body-12" color="secondary" numberOfLines={1} className="flex-1 mr-2">
-          {isMe ? 'You' : participant.profile.display_name}
+          {isMe ? t('common.you') : participant.profile.display_name}
         </Typography>
         <Typography variant="body-12" color="primary">
-          {participant.hits}/{totalPeriods} {periodUnit}
+          {t('challenge.progress', { hits: participant.hits, total: totalPeriods, unit: periodUnit })}
         </Typography>
       </View>
       <View className="h-2 bg-light-border/50 dark:bg-[#2A2B45] rounded-full">
@@ -106,21 +113,21 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
         {isCompleted && (
           <View className="bg-green-500/20 rounded-full px-2 py-0.5">
             <Typography variant="body-12" style={{ color: '#22C55E' }}>
-              Done
+              {t('challenge.done')}
             </Typography>
           </View>
         )}
         {isFailed && (
           <View className="bg-red-500/20 rounded-full px-2 py-0.5">
             <Typography variant="body-12" style={{ color: '#EF4444' }}>
-              Failed
+              {t('challenge.failed')}
             </Typography>
           </View>
         )}
         {isCancelled && (
           <View className="bg-yellow-500/20 rounded-full px-2 py-0.5">
             <Typography variant="body-12" style={{ color: '#EAB308' }}>
-              Cancelled
+              {t('challenge.cancelled')}
             </Typography>
           </View>
         )}
@@ -138,12 +145,12 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
         })()}
         {challenge.status === 'active' && challenge.hasStarted && remaining > 0 && (
           <Typography variant="body-12" color="secondary">
-            {remaining} {remaining === 1 ? 'day' : 'days'} left
+            {t('challenge.daysLeft', { count: remaining })}
           </Typography>
         )}
         {challenge.status === 'active' && challenge.hasStarted && !challenge.endDate && (
           <Typography variant="body-12" color="secondary">
-            Ongoing
+            {t('challenge.ongoing')}
           </Typography>
         )}
       </View>
@@ -156,7 +163,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
 
       {remainingCount > 0 && (
         <Typography variant="body-12" color="secondary" className="mb-2">
-          ...and {remainingCount} more
+          {t('challenge.andMore', { count: remainingCount })}
         </Typography>
       )}
 
@@ -168,7 +175,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
           </Typography>
         </View>
         <Typography variant="body-12" color="secondary">
-          +{challenge.fruitReward} fruits
+          {t('challenge.fruitsReward', { count: challenge.fruitReward })}
         </Typography>
       </View>
     </View>

@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../ui/Typography';
 import { SessionTag } from '../../../types/models';
 import type { JoinerStats, JoinerDailyStat } from '../../../services/sharedTag/types';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../../i18n';
 
 type Props = {
   sharingTags: SessionTag[];
@@ -34,13 +36,13 @@ function getWeekRange(offset: number = 0): { start: string; end: string; label: 
   return {
     start: fmt(monday),
     end: fmt(sunday),
-    label: offset === 0 ? 'This Week' : `${shortFmt(monday)} - ${shortFmt(sunday)}`,
+    label: offset === 0 ? i18n.t('sharedStats.thisWeek') : `${shortFmt(monday)} - ${shortFmt(sunday)}`,
   };
 }
 
 function DailyBar({ stat, maxMinutes }: { stat: JoinerDailyStat; maxMinutes: number }) {
   const pct = maxMinutes > 0 ? Math.min(1, stat.total_minutes / maxMinutes) : 0;
-  const dayLabel = new Date(stat.day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+  const dayLabel = new Date(stat.day + 'T00:00:00').toLocaleDateString(i18n.language, { weekday: 'short' });
 
   return (
     <View className="items-center flex-1">
@@ -70,6 +72,7 @@ function JoinerCard({
   joiner: JoinerStats;
   onRemove: (membershipId: string) => void;
 }) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const [expanded, setExpanded] = useState(false);
 
@@ -79,12 +82,12 @@ function JoinerCard({
 
   const handleRemove = () => {
     Alert.alert(
-      'Remove member?',
-      `Remove ${joiner.display_name} from this shared tag? They keep their local copy.`,
+      t('sharedStats.removeTitle'),
+      t('sharedStats.removeBody', { name: joiner.display_name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('sharedStats.remove'),
           style: 'destructive',
           onPress: () => onRemove(joiner.membership_id),
         },
@@ -114,7 +117,7 @@ function JoinerCard({
             {joiner.display_name}
           </Typography>
           <Typography variant="body-12" color="secondary">
-            {totalMinutes}m total &middot; {totalSessions} sessions
+            {t('sharedStats.totalSessions', { minutes: totalMinutes, count: totalSessions })}
           </Typography>
         </View>
 
@@ -142,7 +145,7 @@ function JoinerCard({
             style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
           >
             <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>
-              Remove Member
+              {t('sharedStats.removeMember')}
             </Text>
           </Pressable>
         </View>
@@ -152,6 +155,7 @@ function JoinerCard({
 }
 
 export function SharedTagStats({ sharingTags, sharedTagStats, onFetchStats, onRemoveJoiner }: Props) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -178,7 +182,7 @@ export function SharedTagStats({ sharingTags, sharedTagStats, onFetchStats, onRe
     try {
       await onRemoveJoiner(membershipId);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to remove member');
+      Alert.alert(t('common.error'), e.message || t('sharedStats.failedRemove'));
     }
   }, [onRemoveJoiner]);
 
@@ -198,7 +202,7 @@ export function SharedTagStats({ sharingTags, sharedTagStats, onFetchStats, onRe
         style={{ paddingVertical: 4 }}
       >
         <Typography variant="subtitle-16" color="primary" className="mr-2">
-          Shared Tag Members
+          {t('sharedStats.title')}
         </Typography>
         <Ionicons
           name={isCollapsed ? 'chevron-down' : 'chevron-up'}
@@ -264,7 +268,7 @@ export function SharedTagStats({ sharingTags, sharedTagStats, onFetchStats, onRe
       ) : joinerStats.length === 0 ? (
         <View className="py-6 items-center">
           <Typography variant="body-14" color="secondary" className="text-center">
-            No members yet. Share your tag code to invite others.
+            {t('sharedStats.empty')}
           </Typography>
         </View>
       ) : (

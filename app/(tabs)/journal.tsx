@@ -27,9 +27,11 @@ import { FocusSession } from '../../src/types/models';
 import { saveSessionPhoto, deleteSessionPhoto } from '../../src/services/sessionPhotoService';
 import { EmptyState } from '../../src/components/ui/EmptyState/EmptyState';
 import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
+import { useTranslation } from 'react-i18next';
 
 
 export default function JournalScreen() {
+  const { t, i18n } = useTranslation();
   const params = useLocalSearchParams();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [scrollToSessionId, setScrollToSessionId] = useState<string | null>(null);
@@ -115,7 +117,7 @@ export default function JournalScreen() {
 
   const handleManualEntrySave = async () => {
     if (!manualTag) {
-      setManualEntryError('Please select a tag');
+      setManualEntryError(t('journal.errSelectTag'));
       return;
     }
 
@@ -126,7 +128,7 @@ export default function JournalScreen() {
     finalEnd.setHours(manualEndTime.getHours(), manualEndTime.getMinutes(), 0, 0);
 
     if (finalEnd <= finalStart) {
-      setManualEntryError('Start time must be before end time');
+      setManualEntryError(t('journal.errStartBeforeEnd'));
       triggerManualEntryShake();
       return;
     }
@@ -134,7 +136,7 @@ export default function JournalScreen() {
     // Check if end time is in the future
     const now = new Date();
     if (finalEnd > now) {
-      setManualEntryError('Cannot create manual session for future time');
+      setManualEntryError(t('journal.errFuture'));
       triggerManualEntryShake();
       return;
     }
@@ -151,7 +153,7 @@ export default function JournalScreen() {
     });
 
     if (hasOverlap) {
-      setManualEntryError('Time overlaps with another focus session');
+      setManualEntryError(t('journal.errOverlap'));
       triggerManualEntryShake();
       return;
     }
@@ -178,7 +180,7 @@ export default function JournalScreen() {
         updateSession(createdSession.id, { photoUrl });
       } catch (error) {
         console.error('Failed to save session photo:', error);
-        showToast('Failed to save photo', 'error');
+        showToast(t('journal.failedSavePhoto'), 'error');
       }
     }
 
@@ -285,13 +287,14 @@ export default function JournalScreen() {
           : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permissionResult.granted) {
-        const target = source === 'camera' ? 'camera' : 'photo library';
         Alert.alert(
-          'Permission Required',
-          `Please allow access to your ${target} in Settings to add photos.`,
+          t('journal.permissionTitle'),
+          source === 'camera'
+            ? t('journal.permissionBodyCamera')
+            : t('journal.permissionBodyLibrary'),
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('journal.openSettings'), onPress: () => Linking.openSettings() },
           ]
         );
         return;
@@ -366,7 +369,7 @@ export default function JournalScreen() {
         updateSession(selectedSession.id, { photoUrl });
       } catch (error) {
         console.error('Failed to save session photo:', error);
-        showToast('Failed to save photo', 'error');
+        showToast(t('journal.failedSavePhoto'), 'error');
       }
     }
 
@@ -398,12 +401,13 @@ export default function JournalScreen() {
 
   // Format header date like "May 05, Today"
   const headerDateString = useMemo(() => {
-    const month = selectedDate.toLocaleDateString('en-US', { month: 'long' });
-    const day = String(selectedDate.getDate()).padStart(2, '0');
-    const todayDate = new Date();
-    const suffix = isToday(selectedDate) ? ', Today' : '';
-    return `${month} ${day}${suffix}`;
-  }, [selectedDate]);
+    const dateStr = selectedDate.toLocaleDateString(i18n.language, {
+      month: 'long',
+      day: 'numeric',
+    });
+    const suffix = isToday(selectedDate) ? t('journal.todaySuffix') : '';
+    return `${dateStr}${suffix}`;
+  }, [selectedDate, i18n.language, t]);
 
   const selectedActualDuration = selectedSession?.actualDuration ?? selectedSession?.duration ?? 0;
   const selectedInitialDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
@@ -486,9 +490,9 @@ export default function JournalScreen() {
           <EmptyState
             icon="leaf-outline"
             iconColor="#51BC6F"
-            title="Your journal is empty"
-            description="Complete your first focus session to start tracking your progress here."
-            buttonLabel="Start a Focus Session"
+            title={t('journal.emptyTitle')}
+            description={t('journal.emptyDesc')}
+            buttonLabel={t('journal.emptyButton')}
             onButtonPress={() => router.push('/(tabs)')}
           />
         </View>
@@ -508,7 +512,7 @@ export default function JournalScreen() {
                 <Pressable
                   onPress={openManualEntryModal}
                   className="w-9 h-9 items-center justify-center rounded-lg active:opacity-80 bg-black/10 dark:bg-white/10"
-                  accessibilityLabel="Add manual focus session"
+                  accessibilityLabel={t('journal.addManualA11y')}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
                 </Pressable>
@@ -560,7 +564,7 @@ export default function JournalScreen() {
                 >
                   <Ionicons name="today-outline" size={18} color="#fff" />
                   <Typography variant="subtitle-14-semibold" color="white" className="ml-1.5">
-                    Back to Today
+                    {t('journal.backToToday')}
                   </Typography>
                 </Pressable>
               </Animated.View>
@@ -617,8 +621,8 @@ export default function JournalScreen() {
           <Pressable onPress={Keyboard.dismiss} accessible={false}>
             <Typography variant="headline-20" color="primary" className="mb-1">
               {selectedSessionTagName
-                ? (isManual ? `${selectedSessionTagName} (Manual)` : selectedSessionTagName)
-                : (isManual ? 'Focus Session (Manual)' : 'Focus Session')}
+                ? (isManual ? `${selectedSessionTagName} ${t('journal.manualSuffix')}` : selectedSessionTagName)
+                : (isManual ? `${t('journal.focusSession')} ${t('journal.manualSuffix')}` : t('journal.focusSession'))}
             </Typography>
 
             <Typography variant="body-14" color="secondary" className="mb-5">
@@ -636,7 +640,7 @@ export default function JournalScreen() {
               />
               <View className="items-center mt-2">
                 <Typography variant="body-14" color="secondary">
-                  Adjusted duration: {formatDuration(adjustedDuration)}
+                  {t('journal.adjustedDuration', { duration: formatDuration(adjustedDuration) })}
                 </Typography>
               </View>
             </View>
@@ -645,7 +649,7 @@ export default function JournalScreen() {
               <View className="bg-light-border/30 dark:bg-gray-700 rounded-xl p-4 mb-5">
                 <View className="flex-row items-center justify-between">
                   <Typography variant="body-12" color="secondary">
-                    Fruits after adjustment
+                    {t('journal.fruitsAfterAdjustment')}
                   </Typography>
                   <FruitCounter fruitCount={adjustedFruits} size="small" />
                 </View>
@@ -655,7 +659,7 @@ export default function JournalScreen() {
                     color={fruitDelta > 0 ? 'success' : 'error'}
                     className="mt-2"
                   >
-                    {fruitDelta > 0 ? '+' : ''}{fruitDelta} fruit change
+                    {t('journal.fruitChange', { delta: `${fruitDelta > 0 ? '+' : ''}${fruitDelta}` })}
                   </Typography>
                 )}
               </View>
@@ -663,7 +667,7 @@ export default function JournalScreen() {
               <View className="bg-light-border/30 dark:bg-[#2A2B42] rounded-xl p-4 mb-5 flex-row items-start">
                 <Ionicons name="information-circle-outline" size={20} color="#6592E9" className="mr-2" />
                 <Typography variant="body-12" color="secondary" className="flex-1 ml-2">
-                  No fruits are associated with Manual Focus sessions.
+                  {t('journal.noFruitsManual')}
                 </Typography>
               </View>
             )}
@@ -672,7 +676,7 @@ export default function JournalScreen() {
             {secondaryTagEnabled && (
               <View className="mb-5">
                 <Typography variant="body-12" color="secondary" className="mb-2">
-                  Secondary tag (optional)
+                  {t('journal.secondaryTag')}
                 </Typography>
                 <HorizontalTagSelector
                   tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt && t.id !== selectedSession.tagId)}
@@ -686,12 +690,12 @@ export default function JournalScreen() {
             {/* Notes section */}
             <View className="mb-5">
               <Typography variant="body-12" color="secondary" className="mb-2">
-                Note
+                {t('journal.note')}
               </Typography>
               <TextInput
                 value={editNotes}
                 onChangeText={setEditNotes}
-                placeholder="How did this session go?"
+                placeholder={t('journal.notePlaceholder')}
                 placeholderTextColor="#666"
                 multiline
                 numberOfLines={2}
@@ -713,7 +717,7 @@ export default function JournalScreen() {
             {selectedSession.photoUrl ? (
               <View className="mb-5">
                 <Typography variant="body-12" color="secondary" className="mb-2">
-                  Photo
+                  {t('journal.photo')}
                 </Typography>
                 <Image
                   source={{ uri: selectedSession.photoUrl }}
@@ -735,14 +739,14 @@ export default function JournalScreen() {
                 >
                   <Ionicons name="trash-outline" size={16} color="#DC2626" />
                   <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
-                    Remove Photo
+                    {t('journal.removePhoto')}
                   </Typography>
                 </Pressable>
               </View>
             ) : (
               <View className="mb-5">
                 <Typography variant="body-12" color="secondary" className="mb-2">
-                  Add a photo
+                  {t('journal.addPhoto')}
                 </Typography>
                 {editPhotoUri ? (
                   <View>
@@ -758,7 +762,7 @@ export default function JournalScreen() {
                     >
                       <Ionicons name="trash-outline" size={16} color="#DC2626" />
                       <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
-                        Remove Photo
+                        {t('journal.removePhoto')}
                       </Typography>
                     </Pressable>
                   </View>
@@ -770,7 +774,7 @@ export default function JournalScreen() {
                     >
                       <Ionicons name="images-outline" size={16} color="#6592E9" />
                       <Typography variant="body-12" className="text-primary ml-1.5">
-                        Library
+                        {t('journal.library')}
                       </Typography>
                     </Pressable>
                     <Pressable
@@ -779,7 +783,7 @@ export default function JournalScreen() {
                     >
                       <Ionicons name="camera-outline" size={16} color="#6592E9" />
                       <Typography variant="body-12" className="text-primary ml-1.5">
-                        Camera
+                        {t('journal.camera')}
                       </Typography>
                     </Pressable>
                   </View>
@@ -794,7 +798,7 @@ export default function JournalScreen() {
                 className="flex-1 rounded-xl py-3 items-center justify-center active:opacity-80"
               >
                 <Typography variant="subtitle-14-semibold" style={{ color: '#EF4444' }}>
-                  Delete
+                  {t('common.delete')}
                 </Typography>
               </Pressable>
               <Pressable
@@ -807,12 +811,12 @@ export default function JournalScreen() {
                   <View className="flex-row items-center">
                     <ActivityIndicator size="small" color="#1B1C30" />
                     <Typography variant="subtitle-14-semibold" style={{ color: '#1B1C30' }} className="ml-2">
-                      Saving...
+                      {t('journal.saving')}
                     </Typography>
                   </View>
                 ) : (
                   <Typography variant="subtitle-14-semibold" style={{ color: '#1B1C30' }}>
-                    Done
+                    {t('common.done')}
                   </Typography>
                 )}
               </Pressable>
@@ -826,7 +830,7 @@ export default function JournalScreen() {
         <Pressable onPress={Keyboard.dismiss} accessible={false}>
         <Animated.View style={manualEntryShakeStyle}>
           <Typography variant="headline-20" color="primary" className="mb-4">
-            Add Focus Session
+            {t('journal.addFocusSession')}
           </Typography>
 
           <View className="mb-5">
@@ -834,33 +838,33 @@ export default function JournalScreen() {
               <DatePicker
                 value={manualDate}
                 onChange={setManualDate}
-                label="Date"
+                label={t('journal.dateLabel')}
                 maximumDate={new Date()}
               />
             </View>
 
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Time Range
+              {t('journal.timeRange')}
             </Typography>
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-1 mr-2">
                 <TimePicker
                   value={manualStartTime}
                   onChange={setManualStartTime}
-                  label="Start Time"
+                  label={t('journal.startTime')}
                 />
               </View>
               <View className="flex-1 ml-2">
                 <TimePicker
                   value={manualEndTime}
                   onChange={setManualEndTime}
-                  label="End Time"
+                  label={t('journal.endTime')}
                 />
               </View>
             </View>
             
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
-              Tag
+              {t('journal.tagLabel')}
             </Typography>
             <View className="mb-4">
               <HorizontalTagSelector
@@ -879,7 +883,7 @@ export default function JournalScreen() {
             {secondaryTagEnabled && (
               <>
                 <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
-                  Secondary tag (optional)
+                  {t('journal.secondaryTag')}
                 </Typography>
                 <View className="mb-4">
                   <HorizontalTagSelector
@@ -894,12 +898,12 @@ export default function JournalScreen() {
 
             {/* Notes input */}
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
-              Note (optional)
+              {t('journal.noteOptional')}
             </Typography>
             <TextInput
               value={manualNotes}
               onChangeText={setManualNotes}
-              placeholder="How did this session go?"
+              placeholder={t('journal.notePlaceholder')}
               placeholderTextColor="#666"
               multiline
               numberOfLines={2}
@@ -919,7 +923,7 @@ export default function JournalScreen() {
 
             {/* Photo picker */}
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              Photo (optional)
+              {t('journal.photoOptional')}
             </Typography>
             {manualPhotoUri ? (
               <View className="mb-4">
@@ -935,7 +939,7 @@ export default function JournalScreen() {
                 >
                   <Ionicons name="trash-outline" size={16} color="#DC2626" />
                   <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
-                    Remove Photo
+                    {t('journal.removePhoto')}
                   </Typography>
                 </Pressable>
               </View>
@@ -972,7 +976,7 @@ export default function JournalScreen() {
               <View className="flex-row items-start">
                 <Ionicons name="information-circle-outline" size={20} color="#6592E9" className="mr-2" />
                 <Typography variant="body-12" color="secondary" className="flex-1 ml-2">
-                  Sessions added manually do not grant fruit bonuses and are for tracking purposes only.
+                  {t('journal.manualInfo')}
                 </Typography>
               </View>
             </View>
@@ -984,7 +988,7 @@ export default function JournalScreen() {
                 className="flex-1 bg-light-border/30 dark:bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80"
               >
                 <Typography variant="subtitle-14-semibold" color="primary">
-                  Cancel
+                  {t('common.cancel')}
                 </Typography>
               </Pressable>
               <Pressable
@@ -997,12 +1001,12 @@ export default function JournalScreen() {
                   <View className="flex-row items-center">
                     <ActivityIndicator size="small" color="#FFFFFF" />
                     <Typography variant="subtitle-14-semibold" color="white" className="ml-2">
-                      Saving...
+                      {t('journal.saving')}
                     </Typography>
                   </View>
                 ) : (
                   <Typography variant="subtitle-14-semibold" color="white">
-                    Save Session
+                    {t('journal.saveSession')}
                   </Typography>
                 )}
               </Pressable>

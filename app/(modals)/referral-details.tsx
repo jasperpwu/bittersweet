@@ -8,8 +8,10 @@ import { useAppStore } from '../../src/store';
 import { useReferralLink } from '../../src/hooks/useReferralLink';
 import { REFERRAL_TIERS } from '../../src/store/slices/referralSlice';
 import { showToast } from '../../src/components/ui/Toast';
+import { useTranslation } from 'react-i18next';
 
 export default function ReferralDetailsModal() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const referralCount = useAppStore((s) => s.referral.referralCount);
@@ -30,18 +32,18 @@ export default function ReferralDetailsModal() {
       await claimReward(tierIndex);
       const tier = REFERRAL_TIERS[tierIndex - 1];
       if (tier.type === 'apples') {
-        showToast(`+${tier.reward} apples earned!`, 'success');
+        showToast(t('referral.applesEarned', { count: tier.reward }), 'success');
       } else {
-        showToast('Lifetime Premium unlocked!', 'success');
+        showToast(t('referral.premiumUnlocked'), 'success');
       }
     } catch (error: any) {
       const msg = error.message;
       if (msg === 'ALREADY_CLAIMED') {
-        Alert.alert('Already Claimed', 'You have already claimed this reward.');
+        Alert.alert(t('referral.alreadyClaimedTitle'), t('referral.alreadyClaimedBody'));
       } else if (msg === 'NOT_ENOUGH_REFERRALS') {
-        Alert.alert('Not Enough Referrals', 'You need more referrals to claim this reward.');
+        Alert.alert(t('referral.notEnoughTitle'), t('referral.notEnoughBody'));
       } else {
-        Alert.alert('Error', 'Failed to claim reward. Please try again.');
+        Alert.alert(t('common.error'), t('referral.failedClaim'));
       }
     } finally {
       setClaimingTier(null);
@@ -50,7 +52,7 @@ export default function ReferralDetailsModal() {
 
   const handleCopy = async () => {
     await copyToClipboard();
-    showToast('Link copied!', 'success');
+    showToast(t('referral.linkCopied'), 'success');
   };
 
   return (
@@ -61,7 +63,7 @@ export default function ReferralDetailsModal() {
           <Ionicons name="chevron-back" size={24} color={isDark ? '#CACACA' : '#333'} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
-          Refer Friends
+          {t('referral.title')}
         </Typography>
       </View>
 
@@ -72,13 +74,13 @@ export default function ReferralDetailsModal() {
             {referralCount}
           </Typography>
           <Typography variant="body-14" color="secondary" className="text-center mt-1">
-            {referralCount === 1 ? 'friend referred' : 'friends referred'}
+            {t('referral.referredLabel', { count: referralCount })}
           </Typography>
         </View>
 
         {/* Reward tiers */}
         <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mt-6 mb-3">
-          Reward Tiers
+          {t('referral.rewardTiers')}
         </Typography>
 
         <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl overflow-hidden">
@@ -90,8 +92,8 @@ export default function ReferralDetailsModal() {
             const isClaiming = claimingTier === tierIndex;
 
             const rewardLabel = tier.type === 'apples'
-              ? `${tier.reward} apples`
-              : 'Lifetime Premium';
+              ? t('referral.apples', { count: tier.reward })
+              : t('referral.lifetimePremium');
 
             return (
               <View
@@ -124,7 +126,7 @@ export default function ReferralDetailsModal() {
                 {/* Tier info */}
                 <View className="flex-1">
                   <Typography variant="subtitle-14-medium" color="primary">
-                    {tier.referrals} {tier.referrals === 1 ? 'Referral' : 'Referrals'}
+                    {t('referral.referralsLabel', { count: tier.referrals })}
                   </Typography>
                   <Typography variant="body-12" color="secondary">
                     {rewardLabel}
@@ -134,7 +136,7 @@ export default function ReferralDetailsModal() {
                 {/* Action */}
                 {isClaimed ? (
                   <Typography variant="body-12" style={{ color: '#22C55E' }} className="font-poppins-medium">
-                    Claimed
+                    {t('referral.claimed')}
                   </Typography>
                 ) : isEligible ? (
                   <Pressable
@@ -146,7 +148,7 @@ export default function ReferralDetailsModal() {
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                       <Typography variant="body-12" className="text-white font-poppins-medium">
-                        Claim
+                        {t('referral.claim')}
                       </Typography>
                     )}
                   </Pressable>
@@ -162,7 +164,7 @@ export default function ReferralDetailsModal() {
 
         {/* Share section */}
         <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mt-6 mb-3">
-          Share Your Link
+          {t('referral.shareLink')}
         </Typography>
 
         <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4">
@@ -174,7 +176,7 @@ export default function ReferralDetailsModal() {
             </Pressable>
           ) : (
             <Typography variant="body-12" color="secondary" className="text-center">
-              Tap share to generate your link
+              {t('referral.tapShare')}
             </Typography>
           )}
         </View>
@@ -188,7 +190,7 @@ export default function ReferralDetailsModal() {
               onPress={handleCopy}
               disabled={isGenerating}
             >
-              Copy Link
+              {t('referral.copyLink')}
             </Button>
           </View>
           <View className="flex-1">
@@ -198,7 +200,7 @@ export default function ReferralDetailsModal() {
               onPress={shareLink}
               disabled={isGenerating}
             >
-              Share
+              {t('common.share')}
             </Button>
           </View>
         </View>

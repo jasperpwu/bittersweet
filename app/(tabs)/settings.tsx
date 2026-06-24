@@ -14,6 +14,9 @@ import { useAppStore } from '../../src/store';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 import { useReferralLink } from '../../src/hooks/useReferralLink';
+import { useTranslation } from 'react-i18next';
+import { LanguageSelectorSheet } from '../../src/components/settings/LanguageSelector';
+import { getLanguageByCode } from '../../src/i18n/languages';
 
 interface CategoryCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -64,11 +67,13 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ icon, iconColor, title, sub
 };
 
 export default function SettingsScreen() {
+  const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { preferences } = useAppSettings();
   const { triggerHaptic, deviceInfo } = useDeviceIntegration();
   const [upgradeSheetVisible, setUpgradeSheetVisible] = useState(false);
+  const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
   const [showHealthUpgrade, setShowHealthUpgrade] = useState(false);
   const { isPremium } = useSubscriptionGate();
 
@@ -87,7 +92,12 @@ export default function SettingsScreen() {
   }, [isAuthenticated]);
 
   const userSinceLabel = user?.createdAt
-    ? `User since ${new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+    ? t('settings.tab.userSince', {
+        date: new Date(user.createdAt).toLocaleDateString(i18n.language, {
+          month: 'long',
+          year: 'numeric',
+        }),
+      })
     : null;
 
   return (
@@ -96,7 +106,7 @@ export default function SettingsScreen() {
       {/* Header */}
       <View className="h-[56px] px-5 flex-row items-center">
         <Typography variant="headline-24" color="primary">
-          Settings
+          {t('settings.tab.header')}
         </Typography>
       </View>
 
@@ -104,10 +114,10 @@ export default function SettingsScreen() {
         {/* Motivational Quote */}
         <View className="px-5 pt-2 pb-2">
           <Typography variant="headline-20" color="primary">
-            Make today count.
+            {t('settings.tab.quoteTitle')}
           </Typography>
           <Typography variant="body-14" color="secondary" className="mt-1">
-            Every focused minute is an investment in yourself.
+            {t('settings.tab.quoteSubtitle')}
           </Typography>
         </View>
 
@@ -116,7 +126,7 @@ export default function SettingsScreen() {
           <View className="px-5 mt-4">
             <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-4">
               <Typography variant="body-14" color="secondary" className="mb-4">
-                Sign in to sync your data across devices and back up your progress.
+                {t('settings.tab.signInPrompt')}
               </Typography>
               {authLoading ? (
                 <View className="items-center py-3">
@@ -139,7 +149,7 @@ export default function SettingsScreen() {
               <View className="flex-row justify-center items-center mt-3">
                 <Pressable onPress={() => Linking.openURL('https://example.com/terms')}>
                   <Typography variant="body-12" color="secondary" className="underline">
-                    Terms of Service
+                    {t('settings.tab.terms')}
                   </Typography>
                 </Pressable>
                 <Typography variant="body-12" color="secondary" className="mx-2">
@@ -147,7 +157,7 @@ export default function SettingsScreen() {
                 </Typography>
                 <Pressable onPress={() => Linking.openURL('https://example.com/privacy')}>
                   <Typography variant="body-12" color="secondary" className="underline">
-                    Privacy Policy
+                    {t('settings.tab.privacy')}
                   </Typography>
                 </Pressable>
               </View>
@@ -180,7 +190,7 @@ export default function SettingsScreen() {
                 )}
                 <View className="flex-1">
                   <Typography variant="subtitle-16" color="primary" className="font-semibold">
-                    {profile?.display_name || user.fullName || 'Apple User'}
+                    {profile?.display_name || user.fullName || t('settings.tab.appleUser')}
                   </Typography>
                   {profile?.handle && (
                     <Typography variant="body-12" color="secondary">
@@ -202,7 +212,7 @@ export default function SettingsScreen() {
                   className="mt-3 border border-light-border dark:border-dark-border rounded-xl py-2 items-center active:opacity-70"
                 >
                   <Typography variant="subtitle-14-medium" color="primary">
-                    Edit Profile
+                    {t('settings.tab.editProfile')}
                   </Typography>
                 </Pressable>
               )}
@@ -212,7 +222,7 @@ export default function SettingsScreen() {
                   className="mt-3 bg-primary/10 rounded-xl py-2.5 items-center active:opacity-70"
                 >
                   <Typography variant="subtitle-14-medium" className="text-primary">
-                    Set Up Grove Profile
+                    {t('settings.tab.setupGrove')}
                   </Typography>
                 </Pressable>
               )}
@@ -223,10 +233,21 @@ export default function SettingsScreen() {
         {/* Category Cards */}
         <View className="px-5 mt-6" style={{ gap: 12 }}>
           <CategoryCard
+            icon="language-outline"
+            iconColor="#8B7FFF"
+            title={t('settings.language.title')}
+            subtitle={getLanguageByCode(preferences.language)?.nativeName ?? t('settings.language.subtitle')}
+            onPress={() => {
+              triggerHaptic('light');
+              setLanguageSheetVisible(true);
+            }}
+          />
+
+          <CategoryCard
             icon="options-outline"
             iconColor="#6592E9"
-            title="Preferences"
-            subtitle="Notifications, goals, focus settings"
+            title={t('settings.tab.preferences')}
+            subtitle={t('settings.tab.preferencesSub')}
             onPress={() => {
               triggerHaptic('light');
               router.push('/settings/preferences' as any);
@@ -236,8 +257,8 @@ export default function SettingsScreen() {
           <CategoryCard
             icon="diamond-outline"
             iconColor="#9C27B0"
-            title="Subscription"
-            subtitle="Manage your plan"
+            title={t('settings.tab.subscription')}
+            subtitle={t('settings.tab.subscriptionSub')}
             onPress={() => {
               triggerHaptic('light');
               router.push('/settings/subscription' as any);
@@ -247,8 +268,8 @@ export default function SettingsScreen() {
           <CategoryCard
             icon="people-outline"
             iconColor="#51BC6F"
-            title="Grove"
-            subtitle="Friends, profile visibility, cache"
+            title={t('settings.tab.grove')}
+            subtitle={t('settings.tab.groveSub')}
             onPress={() => {
               triggerHaptic('light');
               router.push('/settings/grove-settings' as any);
@@ -258,8 +279,8 @@ export default function SettingsScreen() {
           <CategoryCard
             icon="heart-outline"
             iconColor="#FF6B6B"
-            title="Apple Health"
-            subtitle="Sync Apple Fitness workouts as sessions"
+            title={t('settings.tab.health')}
+            subtitle={t('settings.tab.healthSub')}
             premiumBadge
             onPress={() => {
               triggerHaptic('light');
@@ -275,8 +296,8 @@ export default function SettingsScreen() {
           <CategoryCard
             icon="help-circle-outline"
             iconColor="#F5A623"
-            title="Support & About"
-            subtitle="Share, feedback, version"
+            title={t('settings.tab.support')}
+            subtitle={t('settings.tab.supportSub')}
             onPress={() => {
               triggerHaptic('light');
               router.push('/settings/support' as any);
@@ -316,15 +337,15 @@ export default function SettingsScreen() {
                   </View>
                   <View className="flex-1">
                     <Typography variant="subtitle-16" color="primary" className="font-poppins-semibold">
-                      Refer Friends, Earn Rewards
+                      {t('settings.tab.referralTitle')}
                     </Typography>
                   </View>
                 </View>
 
                 <Typography variant="body-14" color="secondary" className="mb-4">
                   {referralCount > 0
-                    ? `You've referred ${referralCount} friend${referralCount === 1 ? '' : 's'}. Keep sharing to unlock more rewards!`
-                    : 'Share your link with friends and earn apple rewards and membership.'}
+                    ? t('settings.tab.referralCount', { count: referralCount })
+                    : t('settings.tab.referralEmpty')}
                 </Typography>
 
                 <View className="flex-row items-center" style={{ gap: 10 }}>
@@ -346,13 +367,13 @@ export default function SettingsScreen() {
                   >
                     <Ionicons name="share-outline" size={16} color="#FFFFFF" />
                     <Typography variant="subtitle-14-medium" className="ml-1.5 text-white">
-                      Share Link
+                      {t('settings.tab.shareLink')}
                     </Typography>
                   </Pressable>
 
                   <View className="flex-row items-center">
                     <Typography variant="body-12" color="secondary">
-                      See rewards
+                      {t('settings.tab.seeRewards')}
                     </Typography>
                     <Ionicons
                       name="chevron-forward"
@@ -410,6 +431,12 @@ export default function SettingsScreen() {
         {/* Bottom spacing for tab bar */}
         <View className="h-20" />
       </ScrollView>
+
+      {/* Language Selector */}
+      <LanguageSelectorSheet
+        visible={languageSheetVisible}
+        onClose={() => setLanguageSheetVisible(false)}
+      />
 
       {/* Upgrade Sheet */}
       <UpgradeSheet

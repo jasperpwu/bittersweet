@@ -9,8 +9,10 @@ import { ChallengeAcceptSheet } from '../../src/components/grove/ChallengeAccept
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
 import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
+import { useTranslation } from 'react-i18next';
 
 export default function ChallengesModal() {
+  const { t } = useTranslation();
   const challenges = useAppStore((s) => s.grove.challenges);
   const currentUserId = useAppStore((s) => s.auth.user?.id ?? '');
   const fetchChallenges = useAppStore((s) => s.grove.fetchChallenges);
@@ -28,7 +30,7 @@ export default function ChallengesModal() {
     try {
       await declineChallenge(challengeId);
     } catch {
-      Alert.alert('Error', 'Failed to decline challenge. Please try again.');
+      Alert.alert(t('common.error'), t('challengesList.failedDecline'));
     }
   }, [declineChallenge]);
 
@@ -36,23 +38,23 @@ export default function ChallengesModal() {
     const challenge = challenges.find(c => c.id === challengeId);
     const isActive = challenge?.status === 'active';
     const message = isActive
-      ? 'This challenge is currently active. Deleting it will remove it for all participants. Are you sure?'
-      : 'Are you sure you want to delete this challenge?';
+      ? t('grove.deleteChallengeActive')
+      : t('grove.deleteChallengeConfirm');
 
     Alert.alert(
-      'Delete Challenge',
+      t('grove.deleteChallengeTitle'),
       message,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteChallengeAction(challengeId);
               setSelectedChallenge(null);
             } catch {
-              Alert.alert('Error', 'Failed to delete challenge.');
+              Alert.alert(t('common.error'), t('grove.failedDeleteChallenge'));
             }
           },
         },
@@ -67,15 +69,15 @@ export default function ChallengesModal() {
   const cancelled = challenges.filter(c => c.status === 'cancelled');
 
   const sections = [
-    ...(pendingIncoming.length > 0 ? [{ title: 'Incoming Challenges', data: pendingIncoming }] : []),
-    ...(active.length > 0 ? [{ title: 'Active', data: active }] : []),
-    ...(completed.length > 0 ? [{ title: 'Completed', data: completed }] : []),
-    ...(cancelled.length > 0 ? [{ title: 'Cancelled', data: cancelled }] : []),
+    ...(pendingIncoming.length > 0 ? [{ key: 'incoming', title: t('challengesList.secIncoming'), data: pendingIncoming }] : []),
+    ...(active.length > 0 ? [{ key: 'active', title: t('challengesList.secActive'), data: active }] : []),
+    ...(completed.length > 0 ? [{ key: 'completed', title: t('challengesList.secCompleted'), data: completed }] : []),
+    ...(cancelled.length > 0 ? [{ key: 'cancelled', title: t('challengesList.secCancelled'), data: cancelled }] : []),
   ];
 
   const renderPendingIncoming = (challenge: ChallengeItem) => {
     const creatorParticipant = challenge.participants.find(p => p.role === 'creator');
-    const creatorProfile = creatorParticipant?.profile || { display_name: 'Unknown', avatar_color: '#6592E9', avatar_url: null, handle: 'unknown' };
+    const creatorProfile = creatorParticipant?.profile || { display_name: t('challengesList.unknown'), avatar_color: '#6592E9', avatar_url: null, handle: 'unknown' };
     const otherInvitees = challenge.participants.filter(p => p.role === 'invitee' && p.userId !== currentUserId);
 
     return (
@@ -93,7 +95,7 @@ export default function ChallengesModal() {
           </Typography>
           <Typography variant="body-12" color="secondary">
             {challenge.tagIcon} {challenge.tagName} · {formatTarget(challenge.targetMinutes, challenge.period)}
-            {otherInvitees.length > 0 && ` · +${otherInvitees.length} other${otherInvitees.length > 1 ? 's' : ''}`}
+            {otherInvitees.length > 0 && ` · ${t('challengesList.otherInvitees', { count: otherInvitees.length })}`}
           </Typography>
         </View>
         <View className="flex-row gap-2">
@@ -123,7 +125,7 @@ export default function ChallengesModal() {
             {item.tagIcon} {item.tagName}
           </Typography>
           <Typography variant="body-12" color="secondary">
-            {formatTarget(item.targetMinutes, item.period)} · No one accepted
+            {formatTarget(item.targetMinutes, item.period)} · {t('challengesList.noOneAccepted')}
           </Typography>
         </View>
         {isCreator && (
@@ -140,12 +142,12 @@ export default function ChallengesModal() {
     );
   };
 
-  const renderItem = ({ item, section }: { item: ChallengeItem; section: { title: string } }) => {
-    if (section.title === 'Incoming Challenges') {
+  const renderItem = ({ item, section }: { item: ChallengeItem; section: { key?: string } }) => {
+    if (section.key === 'incoming') {
       return renderPendingIncoming(item);
     }
 
-    if (section.title === 'Cancelled') {
+    if (section.key === 'cancelled') {
       return renderCancelled(item);
     }
 
@@ -176,7 +178,7 @@ export default function ChallengesModal() {
             <Ionicons name="arrow-back" size={24} color="#6592E9" />
           </Pressable>
           <Typography variant="headline-18" color="primary" className="ml-2">
-            Challenges
+            {t('grove.challenges')}
           </Typography>
         </View>
         <Pressable
@@ -192,14 +194,14 @@ export default function ChallengesModal() {
         <View className="flex-1 items-center justify-center">
           <Ionicons name="flame-outline" size={48} color="#8A8A8A" />
           <Typography variant="body-14" color="secondary" className="mt-4 text-center px-8">
-            No challenges yet. Start one with a friend!
+            {t('challengesList.emptyText')}
           </Typography>
           <Pressable
             onPress={() => router.push('/(modals)/create-challenge')}
             className="mt-4 bg-[#E9A065] rounded-xl px-5 py-2.5 active:opacity-80"
           >
             <Typography variant="subtitle-14-medium" style={{ color: '#FFFFFF' }}>
-              Start a Challenge
+              {t('groveUI.startChallenge')}
             </Typography>
           </Pressable>
         </View>

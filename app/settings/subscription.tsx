@@ -7,8 +7,10 @@ import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsI
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { useAppStore } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
+import { useTranslation } from 'react-i18next';
 
 export default function SubscriptionScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { triggerHaptic } = useDeviceIntegration();
@@ -23,23 +25,23 @@ export default function SubscriptionScreen() {
           <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
-          Subscription
+          {t('settings.tab.subscription')}
         </Typography>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <SettingsSection title="Plan">
+        <SettingsSection title={t('subscription.plan')}>
           {subscriptionTier === 'premium' ? (
             <>
               <SettingsItem
-                title="Premium"
-                subtitle="All features unlocked"
+                title={t('subscription.premium')}
+                subtitle={t('subscription.premiumSub')}
                 icon="diamond-outline"
-                valueLabel="Active"
+                valueLabel={t('subscription.active')}
               />
               <SettingsItem
-                title="Manage Subscription"
-                subtitle="Change or cancel in iOS Settings"
+                title={t('subscription.manage')}
+                subtitle={t('subscription.manageSub')}
                 icon="settings-outline"
                 hasChevron
                 onPress={() => {
@@ -51,11 +53,11 @@ export default function SubscriptionScreen() {
             </>
           ) : (
             <SettingsItem
-              title="Free Plan"
-              subtitle="Upgrade for unlimited tags & goals"
+              title={t('subscription.freePlan')}
+              subtitle={t('subscription.freeSub')}
               icon="diamond-outline"
               hasChevron
-              valueLabel="Upgrade"
+              valueLabel={t('subscription.upgrade')}
               onPress={() => {
                 triggerHaptic('light');
                 setUpgradeSheetVisible(true);

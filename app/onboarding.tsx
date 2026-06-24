@@ -9,46 +9,22 @@ import { Button } from '../src/components/ui/Button';
 import { TagColorPicker } from '../src/components/focus';
 import { useUnifiedStore } from '../src/store/unified-store';
 import { useAppStore } from '../src/store';
+import { useTranslation } from 'react-i18next';
+import { LanguageTrigger } from '../src/components/settings/LanguageSelector';
 
 const SUGGESTED_EMOJIS = ['📚', '💼', '🏋️', '🎨', '🧘', '💻', '📖', '🎵'];
 
-const ONBOARDING_DATA = [
-  {
-    id: '1',
-    title: 'Focus and Plant',
-    description: 'Stay focused to grow your tree and later enjoy the fruits of your hard work.',
-    iconName: 'leaf-outline',
-    iconColor: '#51BC6F',
-    interactive: false,
-  },
-  {
-    id: '2',
-    title: 'Create Your First Tag',
-    description: 'Tags help you categorize your focus sessions. Create one to get started!',
-    iconName: 'timer-outline',
-    iconColor: '#6592E9',
-    interactive: true,
-  },
-  {
-    id: '3',
-    title: 'Earn Fruits & Unlock Apps',
-    description: 'Use the fruits earned from focus sessions to unlock apps in your blocklist.',
-    iconName: 'shield-checkmark-outline',
-    iconColor: '#EF786C',
-    interactive: false,
-  },
-  {
-    id: '4',
-    title: 'Welcome to Bittersweet',
-    description:
-      'We are actively developing this app and would love your feedback to shape its future.',
-    iconName: 'megaphone-outline',
-    iconColor: '#F5A623',
-    interactive: false,
-  },
-];
+// Slide content is keyed by translation namespace; the title/description strings
+// are resolved with t() at render time (see renderItem below).
+const ONBOARDING_SLIDES = [
+  { id: '1', key: 'slide1', iconName: 'leaf-outline', iconColor: '#51BC6F', interactive: false },
+  { id: '2', key: 'slide2', iconName: 'timer-outline', iconColor: '#6592E9', interactive: true },
+  { id: '3', key: 'slide3', iconName: 'shield-checkmark-outline', iconColor: '#EF786C', interactive: false },
+  { id: '4', key: 'slide4', iconName: 'megaphone-outline', iconColor: '#F5A623', interactive: false },
+] as const;
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { width } = useWindowDimensions();
@@ -135,7 +111,7 @@ export default function OnboardingScreen() {
   };
 
   const handleNext = () => {
-    if (currentIndex < ONBOARDING_DATA.length - 1) {
+    if (currentIndex < ONBOARDING_SLIDES.length - 1) {
       flatListRef.current?.scrollToIndex({
         index: currentIndex + 1,
         animated: true,
@@ -158,12 +134,14 @@ export default function OnboardingScreen() {
   const onScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
     const index = Math.round(scrollPosition / width);
-    if (index !== currentIndex && index >= 0 && index < ONBOARDING_DATA.length) {
+    if (index !== currentIndex && index >= 0 && index < ONBOARDING_SLIDES.length) {
       setCurrentIndex(index);
     }
   };
 
-  const renderItem = ({ item }: { item: (typeof ONBOARDING_DATA)[0] }) => {
+  const renderItem = ({ item }: { item: (typeof ONBOARDING_SLIDES)[number] }) => {
+    const title = t(`onboarding.${item.key}.title`);
+    const description = t(`onboarding.${item.key}.description`);
     // Interactive tag creation slide
     if (item.interactive) {
       return (
@@ -174,10 +152,10 @@ export default function OnboardingScreen() {
               <Ionicons name={item.iconName as any} size={56} color={item.iconColor} />
             </View>
             <Typography variant="headline-24" color="primary" className="mb-2 text-center">
-              {item.title}
+              {title}
             </Typography>
             <Typography variant="body-14" color="secondary" className="text-center">
-              {item.description}
+              {description}
             </Typography>
           </View>
 
@@ -196,7 +174,7 @@ export default function OnboardingScreen() {
               <View className="flex-row items-center mt-2">
                 <Ionicons name="checkmark-circle" size={20} color="#51BC6F" />
                 <Typography variant="body-14" className="ml-1.5" style={{ color: '#51BC6F' }}>
-                  Tag created!
+                  {t('onboarding.tagCreated')}
                 </Typography>
               </View>
             </View>
@@ -205,7 +183,7 @@ export default function OnboardingScreen() {
             <View className="w-full self-center" style={{ maxWidth: 320 }}>
               {/* Emoji selector */}
               <Typography variant="body-12" color="secondary" className="mb-2">
-                Pick an emoji
+                {t('onboarding.pickEmoji')}
               </Typography>
               <View className="flex-row flex-wrap mb-6" style={{ gap: 10 }}>
                 {SUGGESTED_EMOJIS.map((emoji) => (
@@ -228,12 +206,12 @@ export default function OnboardingScreen() {
 
               {/* Tag name */}
               <Typography variant="body-12" color="secondary" className="mb-2">
-                Tag name
+                {t('onboarding.tagName')}
               </Typography>
               <TextInput
                 value={tagName}
                 onChangeText={setTagName}
-                placeholder="e.g. Study, Work, Exercise"
+                placeholder={t('onboarding.tagNamePlaceholder')}
                 placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
                 maxLength={30}
                 className="mb-6"
@@ -250,7 +228,7 @@ export default function OnboardingScreen() {
 
               {/* Color selector */}
               <Typography variant="body-12" color="secondary" className="mb-2">
-                Color
+                {t('onboarding.color')}
               </Typography>
               <ScrollView style={{ maxHeight: 220 }} className="mb-8" nestedScrollEnabled showsVerticalScrollIndicator={false}>
                 <TagColorPicker selectedColor={tagColor} onSelectColor={setTagColor} swatchSize={32} />
@@ -264,7 +242,7 @@ export default function OnboardingScreen() {
                 style={{ opacity: !tagName.trim() ? 0.5 : 1 }}
               >
                 <Typography variant="subtitle-14-semibold" className="text-white">
-                  Create Tag
+                  {t('onboarding.createTag')}
                 </Typography>
               </Pressable>
             </View>
@@ -280,10 +258,10 @@ export default function OnboardingScreen() {
           <Ionicons name={item.iconName as any} size={100} color={item.iconColor} />
         </View>
         <Typography variant="headline-24" color="primary" className="mb-4 text-center">
-          {item.title}
+          {title}
         </Typography>
         <Typography variant="body-16" color="primary" className="text-center opacity-80">
-          {item.description}
+          {description}
         </Typography>
       </View>
     );
@@ -291,34 +269,38 @@ export default function OnboardingScreen() {
 
   return (
     <View className="flex-1 bg-light-bg dark:bg-dark-bg">
-      {/* Sign-in button */}
-      <View style={{ paddingTop: insets.top + 8 }} className="flex-row justify-end items-center px-5">
-        <Pressable
-          onPress={handleSignIn}
-          disabled={isSigningIn}
-          className="flex-row items-center py-2 px-3 active:opacity-70"
-        >
-          {isSigningIn ? (
-            <ActivityIndicator size="small" color="#8B7FFF" />
-          ) : (
-            <Typography variant="body-14" className="text-primary">
-              Continue with Apple
-            </Typography>
-          )}
-        </Pressable>
+      {/* Header: language selector (left) + sign-in (right) */}
+      <View style={{ paddingTop: insets.top + 8 }} className="flex-row justify-between items-center px-5">
+        <LanguageTrigger />
 
-        {/* Dev-only email login (bypasses Apple Sign-In for sandbox testing) */}
-        {__DEV__ && (
+        <View className="flex-row items-center">
           <Pressable
-            onPress={handleTestLogin}
+            onPress={handleSignIn}
             disabled={isSigningIn}
             className="flex-row items-center py-2 px-3 active:opacity-70"
           >
-            <Typography variant="body-14" className="text-primary opacity-60">
-              Test Login
-            </Typography>
+            {isSigningIn ? (
+              <ActivityIndicator size="small" color="#8B7FFF" />
+            ) : (
+              <Typography variant="body-14" className="text-primary">
+                {t('common.continueWithApple')}
+              </Typography>
+            )}
           </Pressable>
-        )}
+
+          {/* Dev-only email login (bypasses Apple Sign-In for sandbox testing) */}
+          {__DEV__ && (
+            <Pressable
+              onPress={handleTestLogin}
+              disabled={isSigningIn}
+              className="flex-row items-center py-2 px-3 active:opacity-70"
+            >
+              <Typography variant="body-14" className="text-primary opacity-60">
+                Test Login
+              </Typography>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {signInError && (
@@ -331,7 +313,7 @@ export default function OnboardingScreen() {
 
       <FlatList
         ref={flatListRef}
-        data={ONBOARDING_DATA}
+        data={ONBOARDING_SLIDES}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         horizontal
@@ -345,7 +327,7 @@ export default function OnboardingScreen() {
       <View className="px-8 pb-12 pt-4">
         {/* Pagination Dots */}
         <View className="mb-8 flex-row items-center justify-center">
-          {ONBOARDING_DATA.map((_, index) => (
+          {ONBOARDING_SLIDES.map((_, index) => (
             <View
               key={index}
               className={`mx-1 h-2 rounded-full ${
@@ -357,18 +339,18 @@ export default function OnboardingScreen() {
 
         {/* Action Button — tag creation is optional: show "Skip" until the user
             fills in a tag, then "Next" (which creates the tag and advances). */}
-        {ONBOARDING_DATA[currentIndex]?.interactive ? (
+        {ONBOARDING_SLIDES[currentIndex]?.interactive ? (
           <Button
             onPress={handleInteractiveNext}
             variant={tagCreated || tagFormReady ? 'primary' : 'secondary'}
             size="large"
             className="w-full"
           >
-            {tagCreated || tagFormReady ? 'Next' : 'Skip'}
+            {tagCreated || tagFormReady ? t('common.next') : t('common.skip')}
           </Button>
         ) : (
           <Button onPress={handleNext} variant="primary" size="large" className="w-full">
-            {currentIndex === ONBOARDING_DATA.length - 1 ? 'Get Started' : 'Next'}
+            {currentIndex === ONBOARDING_SLIDES.length - 1 ? t('common.getStarted') : t('common.next')}
           </Button>
         )}
       </View>

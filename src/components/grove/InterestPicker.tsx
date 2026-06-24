@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
 import { INTERESTS } from '../../constants/interests';
+import { useTranslation } from 'react-i18next';
 
 const MAX_INTERESTS = 5;
 
@@ -13,6 +14,7 @@ interface InterestPickerProps {
 }
 
 export const InterestPicker: React.FC<InterestPickerProps> = ({ value, onChange }) => {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -68,7 +70,7 @@ export const InterestPicker: React.FC<InterestPickerProps> = ({ value, onChange 
           }}
           numberOfLines={1}
         >
-          {displayText || 'Select your interests'}
+          {displayText || t('interests.placeholder')}
         </Typography>
         <Ionicons
           name="chevron-down"
@@ -81,7 +83,7 @@ export const InterestPicker: React.FC<InterestPickerProps> = ({ value, onChange 
       <BottomSheet isVisible={isVisible} onClose={() => setIsVisible(false)} height={500}>
         <View className="flex-1">
           <Typography variant="headline-18" color="primary" className="mb-4">
-            Select interests ({draft.length}/{MAX_INTERESTS})
+            {t('interests.selectTitle', { current: draft.length, max: MAX_INTERESTS })}
           </Typography>
 
           <ScrollView
@@ -141,7 +143,7 @@ export const InterestPicker: React.FC<InterestPickerProps> = ({ value, onChange 
               className="bg-primary rounded-xl py-3 items-center active:opacity-80"
             >
               <Typography variant="subtitle-14-medium" color="white">
-                Done
+                {t('common.done')}
               </Typography>
             </Pressable>
           </View>

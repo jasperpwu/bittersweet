@@ -11,8 +11,10 @@ import { useAppSettings } from '../../src/store/unified-store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
+import { useTranslation } from 'react-i18next';
 
 export default function PreferencesScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { preferences, updatePreferences } = useAppSettings();
@@ -46,9 +48,9 @@ export default function PreferencesScreen() {
     const granted = await requestNotificationPermissions();
     if (!granted) {
       Alert.alert(
-        'Notifications Disabled',
-        'Please enable notifications in your device settings to receive reminders.',
-        [{ text: 'OK' }]
+        t('preferences.notifDisabledTitle'),
+        t('preferences.notifDisabledBody'),
+        [{ text: t('common.ok') }]
       );
     }
     return granted;
@@ -94,26 +96,26 @@ export default function PreferencesScreen() {
           <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
-          Preferences
+          {t('settings.tab.preferences')}
         </Typography>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Notifications */}
-        <SettingsSection title="Notifications">
+        <SettingsSection title={t('preferences.notifications')}>
           <SettingsItem
-            title="Notifications"
-            subtitle="Sound & vibration settings"
+            title={t('preferences.notifications')}
+            subtitle={t('preferences.notificationsSub')}
             icon="notifications-outline"
             hasChevron
             valueLabel={
               preferences.notifications.sound && preferences.notifications.vibration
-                ? 'Sound & Vibrate'
+                ? t('preferences.soundVibrate')
                 : preferences.notifications.sound
-                ? 'Sound'
+                ? t('preferences.sound')
                 : preferences.notifications.vibration
-                ? 'Vibrate'
-                : 'Off'
+                ? t('preferences.vibrate')
+                : t('preferences.off')
             }
             onPress={() => {
               triggerHaptic('light');
@@ -124,16 +126,16 @@ export default function PreferencesScreen() {
         </SettingsSection>
 
         {/* Goals */}
-        <SettingsSection title="Goals">
+        <SettingsSection title={t('preferences.goals')}>
           <View className="py-3">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-1">
-              Rest Days
+              {t('preferences.restDays')}
             </Typography>
             <Typography variant="body-12" color="secondary" className="mb-2">
-              Daily goals use a separate target on these days
+              {t('preferences.restDaysSub')}
             </Typography>
             <View className="flex-row gap-x-2">
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label, dayIndex) => {
+              {t('preferences.dayInitials').split(',').map((label, dayIndex) => {
                 const isSelected = (preferences.restDays ?? [0, 6]).includes(dayIndex);
                 return (
                   <Pressable
@@ -165,10 +167,10 @@ export default function PreferencesScreen() {
         </SettingsSection>
 
         {/* Focus */}
-        <SettingsSection title="Focus">
+        <SettingsSection title={t('preferences.focusSection')}>
           <SettingsItem
-            title="Multi-Task Mode"
-            subtitle="Add an optional second tag to a session for two activities at once"
+            title={t('preferences.multiTask')}
+            subtitle={t('preferences.multiTaskSub')}
             icon="git-branch-outline"
             premiumBadge
             hasToggle
@@ -176,11 +178,11 @@ export default function PreferencesScreen() {
             onToggleChange={handleAdhdModeToggle}
           />
           <SettingsItem
-            title="Timer Picker Style"
-            subtitle="Choose how you set the timer duration"
+            title={t('preferences.timerStyle')}
+            subtitle={t('preferences.timerStyleSub')}
             icon="timer-outline"
             hasChevron
-            valueLabel={preferences.focus.timerPickerStyle === 'wheel' ? 'Wheel' : 'Scroller'}
+            valueLabel={preferences.focus.timerPickerStyle === 'wheel' ? t('preferences.wheel') : t('preferences.scroller')}
             onPress={async () => {
               const current = preferences.focus.timerPickerStyle ?? 'scroller';
               const next = current === 'scroller' ? 'wheel' : 'scroller';
@@ -207,7 +209,7 @@ export default function PreferencesScreen() {
         height={340}
       >
         <Typography variant="headline-20" color="primary" className="mb-4">
-          Notifications
+          {t('preferences.notifications')}
         </Typography>
 
         <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
@@ -217,14 +219,14 @@ export default function PreferencesScreen() {
                 <Ionicons name="volume-high-outline" size={20} color={isDark ? '#CACACA' : '#8B7355'} />
               </View>
               <Typography variant="subtitle-14-medium" color="primary">
-                Sound
+                {t('preferences.sound')}
               </Typography>
             </View>
             <Toggle
               value={preferences.notifications.sound}
               onValueChange={handleNotificationSoundToggle}
               size="medium"
-              accessibilityLabel="Toggle notification sound"
+              accessibilityLabel={t('preferences.a11ySound')}
             />
           </View>
 
@@ -234,14 +236,14 @@ export default function PreferencesScreen() {
                 <Ionicons name="phone-portrait-outline" size={20} color={isDark ? '#CACACA' : '#8B7355'} />
               </View>
               <Typography variant="subtitle-14-medium" color="primary">
-                Vibrate
+                {t('preferences.vibrate')}
               </Typography>
             </View>
             <Toggle
               value={preferences.notifications.vibration}
               onValueChange={handleNotificationVibrationToggle}
               size="medium"
-              accessibilityLabel="Toggle notification vibration"
+              accessibilityLabel={t('preferences.a11yVibration')}
             />
           </View>
 
@@ -253,10 +255,10 @@ export default function PreferencesScreen() {
                 </View>
                 <View className="flex-1">
                   <Typography variant="subtitle-14-medium" color="primary">
-                    Goal Reminders
+                    {t('preferences.goalReminders')}
                   </Typography>
                   <Typography variant="body-12" color="secondary" className="mt-0.5">
-                    Daily nudge when behind pace
+                    {t('preferences.goalRemindersSub')}
                   </Typography>
                 </View>
               </View>
@@ -278,7 +280,7 @@ export default function PreferencesScreen() {
                   }
                 }}
                 size="medium"
-                accessibilityLabel="Toggle goal reminders"
+                accessibilityLabel={t('preferences.a11yGoalReminders')}
               />
             </View>
 
@@ -302,7 +304,7 @@ export default function PreferencesScreen() {
                       console.error('Failed to update goal reminder time:', error);
                     }
                   }}
-                  label="Reminder Time"
+                  label={t('preferences.reminderTime')}
                 />
               </View>
             )}

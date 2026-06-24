@@ -15,10 +15,12 @@ import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { TimePeriod, FocusGoal, Badge, ChartSegment } from '../../src/store/types';
 import { calculateGoalProgress } from '../../src/utils/goalProgress';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
+import { useTranslation } from 'react-i18next';
 
 type ViewMode = 'statistics' | 'history';
 
 export default function InsightsScreen() {
+  const { t, i18n } = useTranslation();
   const [currentView, setCurrentView] = useState<ViewMode>('statistics');
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('weekly');
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -154,7 +156,7 @@ export default function InsightsScreen() {
         chartData.push({
           date,
           value: totalMinutes,
-          label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          label: date.toLocaleDateString(i18n.language, { weekday: 'short' }),
           segments: buildSegments(daySessions),
         });
       }
@@ -247,15 +249,17 @@ export default function InsightsScreen() {
       const goal = storeGoals.find((g) => g.id === goalId);
       const goalTagId = goal?.tagId || (goal as any)?.tagIds?.[0];
       const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
-      const goalName = goal?.customName || (tag ? `${tag.icon} ${tag.name} Goal` : 'this goal');
+      const goalName =
+        goal?.customName ||
+        (tag ? t('insights.goalSuffix', { icon: tag.icon, name: tag.name }) : t('insights.thisGoal'));
 
       Alert.alert(
-        'Deactivate goal?',
-        `Deactivate "${goalName}"? You can reactivate it later.`,
+        t('insights.deactivateTitle'),
+        t('insights.deactivateBody', { name: `"${goalName}"` }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Deactivate',
+            text: t('insights.deactivate'),
             style: 'destructive',
             onPress: () => deleteGoal(goalId),
           },
@@ -271,20 +275,22 @@ export default function InsightsScreen() {
       const goal = storeGoals.find((g) => g.id === goalId);
       const goalTagId = goal?.tagId || (goal as any)?.tagIds?.[0];
       const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
-      const goalName = goal?.customName || (tag ? `${tag.icon} ${tag.name} Goal` : 'this goal');
+      const goalName =
+        goal?.customName ||
+        (tag ? t('insights.goalSuffix', { icon: tag.icon, name: tag.name }) : t('insights.thisGoal'));
 
       const hasExistingBadge = badges.some((b) => b.goalId === goalId);
       const message = hasExistingBadge
-        ? `Conclude "${goalName}"? Your existing badge will be updated summarizing your performance, and the goal will be deactivated.`
-        : `Conclude "${goalName}"? A badge will be created summarizing your performance, and the goal will be deactivated.`;
+        ? t('insights.concludeBodyExisting', { name: `"${goalName}"` })
+        : t('insights.concludeBodyNew', { name: `"${goalName}"` });
 
       Alert.alert(
-        'Conclude goal?',
+        t('insights.concludeTitle'),
         message,
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Conclude',
+            text: t('insights.conclude'),
             style: 'default',
             onPress: () => concludeGoal(goalId),
           },
@@ -323,7 +329,7 @@ export default function InsightsScreen() {
               </View>
             )}
             <Typography variant="headline-24" color="primary">
-              {currentView === 'statistics' ? 'Goals' : 'History'}
+              {currentView === 'statistics' ? t('insights.goalsTitle') : t('insights.historyTitle')}
             </Typography>
           </View>
         </View>
