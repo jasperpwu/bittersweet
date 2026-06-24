@@ -119,6 +119,8 @@
     "shareGeneratePrompt": "Erstelle einen Code, damit andere diesem Label beitreten und ihren Fokus mit dir verfolgen können.",
     "generating": "Wird erstellt...",
     "shareThisTag": "Dieses Label teilen",
+    "shareSignInTitle": "Zum Teilen anmelden",
+    "shareSignInBody": "Wenn du ein Label teilst, können andere mitmachen und sich mit dir fokussieren. Melde dich an, um mit dem Teilen zu beginnen.",
     "failedGenerateCode": "Code konnte nicht erstellt werden",
     "stopSharingTitle": "Teilen beenden?",
     "stopSharingBody": "Neue Personen können nicht mehr beitreten. Bestehende Mitglieder behalten ihre Kopie.",
@@ -369,6 +371,7 @@
     "ranking": "Rangliste"
   },
   "preferences": {
+    "general": "Allgemein",
     "notifications": "Benachrichtigungen",
     "notificationsSub": "Ton- und Vibrationseinstellungen",
     "soundVibrate": "Ton & Vibration",

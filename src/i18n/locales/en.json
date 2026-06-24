@@ -119,6 +119,8 @@
     "shareGeneratePrompt": "Generate a share code so others can join this tag and track their focus alongside you.",
     "generating": "Generating...",
     "shareThisTag": "Share This Tag",
+    "shareSignInTitle": "Sign In to Share",
+    "shareSignInBody": "Sharing a tag lets others join and focus alongside you. Sign in to start sharing.",
     "failedGenerateCode": "Failed to generate share code",
     "stopSharingTitle": "Stop Sharing?",
     "stopSharingBody": "New users won't be able to join. Existing members keep their copies.",
@@ -369,6 +371,7 @@
     "ranking": "Ranking"
   },
   "preferences": {
+    "general": "General",
     "notifications": "Notifications",
     "notificationsSub": "Sound & vibration settings",
     "soundVibrate": "Sound & Vibrate",

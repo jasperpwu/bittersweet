@@ -119,6 +119,8 @@
     "shareGeneratePrompt": "生成一个代码，别人就能加入这个标签，和你一起记录专注。",
     "generating": "生成中...",
     "shareThisTag": "分享此标签",
+    "shareSignInTitle": "登录后即可分享",
+    "shareSignInBody": "分享标签后，好友就能加入，和你一起专注。登录即可开始分享。",
     "failedGenerateCode": "无法生成代码",
     "stopSharingTitle": "停止分享？",
     "stopSharingBody": "新用户将无法加入。现有成员会保留各自的副本。",
@@ -369,6 +371,7 @@
     "ranking": "排行榜"
   },
   "preferences": {
+    "general": "通用",
     "notifications": "通知",
     "notificationsSub": "声音和振动设置",
     "soundVibrate": "声音和振动",

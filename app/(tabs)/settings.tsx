@@ -416,12 +416,6 @@ export default function SettingsScreen() {
         <View className="h-20" />
       </ScrollView>
 
-      {/* Language Selector */}
-      <LanguageSelectorSheet
-        visible={languageSheetVisible}
-        onClose={() => setLanguageSheetVisible(false)}
-      />
-
       {/* Upgrade Sheet */}
       <UpgradeSheet
         isVisible={upgradeSheetVisible}

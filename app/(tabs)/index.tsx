@@ -1192,6 +1192,29 @@ export default function FocusScreen() {
   };
 
   const handleShareTag = (tag: any) => {
+    const { isAuthenticated, signInWithApple } = useAppStore.getState().auth;
+    if (!isAuthenticated) {
+      Alert.alert(
+        t('home.shareSignInTitle'),
+        t('home.shareSignInBody'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('common.continueWithApple'),
+            onPress: async () => {
+              await signInWithApple();
+              // Proceed to share only if sign-in actually completed
+              // (signInWithApple swallows user-cancellation without throwing).
+              if (useAppStore.getState().auth.isAuthenticated) {
+                setSharingTag(tag);
+                setShowShareModal(true);
+              }
+            },
+          },
+        ],
+      );
+      return;
+    }
     setSharingTag(tag);
     setShowShareModal(true);
   };

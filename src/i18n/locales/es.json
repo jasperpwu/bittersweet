@@ -119,6 +119,8 @@
     "shareGeneratePrompt": "Genera un código para que otros se unan a esta etiqueta y registren su concentración junto a ti.",
     "generating": "Generando...",
     "shareThisTag": "Compartir esta etiqueta",
+    "shareSignInTitle": "Inicia sesión para compartir",
+    "shareSignInBody": "Al compartir una etiqueta, otras personas pueden unirse y concentrarse contigo. Inicia sesión para empezar a compartir.",
     "failedGenerateCode": "No se pudo generar el código",
     "stopSharingTitle": "¿Dejar de compartir?",
     "stopSharingBody": "Nadie nuevo podrá unirse. Los miembros actuales conservan su copia.",
@@ -369,6 +371,7 @@
     "ranking": "Clasificación"
   },
   "preferences": {
+    "general": "General",
     "notifications": "Notificaciones",
     "notificationsSub": "Ajustes de sonido y vibración",
     "soundVibrate": "Sonido y vibración",

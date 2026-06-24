@@ -119,6 +119,8 @@
     "shareGeneratePrompt": "코드를 만들면 다른 사람이 이 태그에 참여해 함께 집중을 기록할 수 있어요.",
     "generating": "생성 중...",
     "shareThisTag": "이 태그 공유",
+    "shareSignInTitle": "공유하려면 로그인하세요",
+    "shareSignInBody": "태그를 공유하면 다른 사람도 함께 집중할 수 있어요. 로그인하고 공유를 시작하세요.",
     "failedGenerateCode": "코드를 생성하지 못했어요",
     "stopSharingTitle": "공유를 중지할까요?",
     "stopSharingBody": "새로운 사람은 참여할 수 없어요. 기존 멤버는 사본을 유지해요.",
@@ -369,6 +371,7 @@
     "ranking": "랭킹"
   },
   "preferences": {
+    "general": "일반",
     "notifications": "알림",
     "notificationsSub": "소리 및 진동 설정",
     "soundVibrate": "소리 및 진동",

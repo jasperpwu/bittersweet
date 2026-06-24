@@ -119,6 +119,8 @@
     "shareGeneratePrompt": "Gere um código para que outros entrem nesta tag e acompanhem o foco junto com você.",
     "generating": "Gerando...",
     "shareThisTag": "Compartilhar esta tag",
+    "shareSignInTitle": "Entre para compartilhar",
+    "shareSignInBody": "Ao compartilhar uma tag, outras pessoas podem participar e focar junto com você. Entre para começar a compartilhar.",
     "failedGenerateCode": "Não foi possível gerar o código",
     "stopSharingTitle": "Parar de compartilhar?",
     "stopSharingBody": "Ninguém novo poderá entrar. Os membros atuais mantêm a cópia.",
@@ -369,6 +371,7 @@
     "ranking": "Ranking"
   },
   "preferences": {
+    "general": "Geral",
     "notifications": "Notificações",
     "notificationsSub": "Configurações de som e vibração",
     "soundVibrate": "Som e vibração",

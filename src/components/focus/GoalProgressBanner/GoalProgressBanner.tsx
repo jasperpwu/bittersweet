@@ -1,7 +1,7 @@
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { View, useColorScheme } from 'react-native';
 import LottieView from 'lottie-react-native';
-import Svg, { Defs, LinearGradient as SvgGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Defs, LinearGradient as SvgGradient, Stop, Rect, Path } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -9,6 +9,7 @@ import Animated, {
   withDelay,
   withSpring,
   withSequence,
+  withRepeat,
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
@@ -39,20 +40,29 @@ const BLUE = {
   light: { bg: '#6592E9', border: '#4F7FD6' }, // theme `primary`
   dark: { bg: '#4F7FD6', border: '#3B6BBF' }, // theme `primary-light`
 };
-const ON_BANNER = '#FFFFFF'; // text/fill color on the colored banner
+const ON_BANNER = '#FFFFFF'; // text color on the colored banner
+// Fill is a touch translucent so the solid-white shiny tip reads as brighter
+// than the bar it leads — letting the banner color tint the filled portion.
+const FILL_ON_BANNER = 'rgba(255, 255, 255, 0.80)';
 const FLAME = '#FF9500'; // streak flame — iOS system orange, reads on the banner
 const SCRIM = 'rgba(0, 0, 0, 0.6)'; // semi-opaque backdrop behind the goal-met celebration
 const TRACK_ON_BANNER = 'rgba(255, 255, 255, 0.28)'; // unfilled bar
 
-// Shiny tip at the leading edge of the white fill — fades from the white bar
-// into a glow whose color reflects goal state: blue while in progress, green
-// once reached. Colors reuse the banner palette.
-const TIP = {
-  blue: BLUE.light.bg, // '#6592E9'
-  green: GREEN.light.bg, // '#34C759'
-};
-const TIP_WIDTH = 48; // px width of the gradient accent at the bar's leading edge
-const BAR_HEIGHT = 14; // progress bar / track height
+// Shiny white light that rides the leading edge of the fill — a soft white
+// streak trailing into the bar plus a bright glowing head with a white halo,
+// gently shimmering so it reads as a light "leading" the progress.
+const TIP_WHITE = '#FFFFFF';
+const TIP_WIDTH = 56; // px width of the white light streak at the leading edge
+const BAR_HEIGHT = 10; // progress bar / track height
+const TIP_SPARK = 22; // size of the spark glint leading the fill
+// Hand-tuned irregular starburst spark in a 22×22 box: ~7 rays at uneven angles
+// and lengths (longest reaching the leading right edge) with inner valleys at
+// varied radii, so no two spikes match and it reads as a rough real spark rather
+// than a tidy star. Core stays near the box center to ride the fill's edge.
+const SPARK_PATH =
+  'M22 11 L13.2 12.2 L14.4 15.9 L11.1 14 L6.5 18.8 L9.3 12.4 L6.2 12.3 ' +
+  'L7.8 10.6 L4.1 7 L9.8 8.9 L11 4.5 L12.3 8.3 L16.4 6.5 L13.4 10.1 Z';
+const TIP_ROTATE = '90deg'; // turned so the long rays run across the bar
 
 const formatTime = (minutes: number): string => {
   const rounded = Math.round(minutes);
@@ -157,6 +167,8 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
   const fill = useSharedValue(computed?.beforePct ?? 0);
   const streakScale = useSharedValue(0.7);
   const streakOpacity = useSharedValue(0);
+  // Gentle pulse driving the shiny tip's glow while the bar fills.
+  const shimmer = useSharedValue(0);
 
   useEffect(() => {
     if (!computed) return;
@@ -165,6 +177,13 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
     fill.value = withDelay(
       200,
       withTiming(computed.afterPct, { duration: 800, easing: Easing.out(Easing.cubic) }),
+    );
+
+    // Continuous soft shimmer on the leading light.
+    shimmer.value = withRepeat(
+      withTiming(1, { duration: 850, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
     );
 
     // Pop confetti as the bar lands, only if the goal was just reached.
@@ -234,6 +253,10 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
 
   const containerStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
   const fillStyle = useAnimatedStyle(() => ({ width: `${fill.value}%` }));
+  // Shiny tip pulses between a soft and a bright glow as the bar advances.
+  const tipGlowStyle = useAnimatedStyle(() => ({ opacity: 0.7 + 0.3 * shimmer.value }));
+  // Glowing head rides the fill's leading edge (centered on it via marginLeft).
+  const tipHeadStyle = useAnimatedStyle(() => ({ left: `${fill.value}%` }));
   const streakStyle = useAnimatedStyle(() => ({
     opacity: streakOpacity.value,
     transform: [{ scale: streakScale.value }],
@@ -245,7 +268,6 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
   const goalName = goal.customName || (tag ? `${tag.icon} ${tag.name}` : 'Goal');
   const reached = computed.afterMinutes >= computed.target;
   const palette = reached ? (isDark ? GREEN.dark : GREEN.light) : (isDark ? BLUE.dark : BLUE.light);
-  const tipColor = reached ? TIP.green : TIP.blue;
 
   const showStreak = computed.reachedNow && computed.streak > 0;
   const periodNoun = computed.period === 'weekly' ? 'week' : computed.period === 'monthly' ? 'month' : 'day';
@@ -318,43 +340,67 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
             </Typography>
           </View>
 
-          {/* Progress bar */}
-          <View
-            style={{
-              height: BAR_HEIGHT,
-              borderRadius: 999,
-              backgroundColor: TRACK_ON_BANNER,
-              overflow: 'hidden',
-            }}
-          >
-            <Animated.View
-              style={[{ height: '100%', borderRadius: 999, backgroundColor: ON_BANNER }, fillStyle]}
+          {/* Progress bar. Outer wrapper is unclipped so the glowing head can
+              bloom above/below the slim track; the inner track clips the fill. */}
+          <View style={{ height: BAR_HEIGHT, justifyContent: 'center' }}>
+            <View
+              style={{
+                height: BAR_HEIGHT,
+                borderRadius: 999,
+                backgroundColor: TRACK_ON_BANNER,
+                overflow: 'hidden',
+              }}
             >
-              {/* Shiny tip riding the leading edge of the fill. Blue while the
-                  goal is still in progress, green once it's reached. */}
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  bottom: 0,
-                  right: 0,
-                  width: TIP_WIDTH,
-                  shadowColor: tipColor,
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.9,
-                  shadowRadius: 4,
-                }}
+              <Animated.View
+                style={[{ height: '100%', borderRadius: 999, backgroundColor: FILL_ON_BANNER }, fillStyle]}
               >
-                <Svg width={TIP_WIDTH} height={BAR_HEIGHT}>
-                  <Defs>
-                    <SvgGradient id="barTip" x1="0" y1="0" x2="1" y2="0">
-                      <Stop offset="0" stopColor={ON_BANNER} stopOpacity={0} />
-                      <Stop offset="1" stopColor={tipColor} stopOpacity={1} />
-                    </SvgGradient>
-                  </Defs>
-                  <Rect x="0" y="0" width="100%" height="100%" fill="url(#barTip)" />
-                </Svg>
-              </View>
+                {/* Trailing white streak inside the bar — transparent fading up
+                    to bright white at the leading edge. */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    { position: 'absolute', top: 0, bottom: 0, right: 0, width: TIP_WIDTH },
+                    tipGlowStyle,
+                  ]}
+                >
+                  <Svg width={TIP_WIDTH} height={BAR_HEIGHT}>
+                    <Defs>
+                      <SvgGradient id="barTip" x1="0" y1="0" x2="1" y2="0">
+                        <Stop offset="0" stopColor={TIP_WHITE} stopOpacity={0} />
+                        <Stop offset="0.65" stopColor={TIP_WHITE} stopOpacity={0.5} />
+                        <Stop offset="1" stopColor={TIP_WHITE} stopOpacity={1} />
+                      </SvgGradient>
+                    </Defs>
+                    <Rect x="0" y="0" width="100%" height="100%" fill="url(#barTip)" />
+                  </Svg>
+                </Animated.View>
+              </Animated.View>
+            </View>
+
+            {/* Sparkle glint riding the fill's leading edge, in an unclipped
+                layer so its white glow blooms past the slim bar. */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                {
+                  position: 'absolute',
+                  top: (BAR_HEIGHT - TIP_SPARK) / 2,
+                  width: TIP_SPARK,
+                  height: TIP_SPARK,
+                  marginLeft: -TIP_SPARK / 2,
+                  shadowColor: TIP_WHITE,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 1,
+                  shadowRadius: 7,
+                  transform: [{ rotate: TIP_ROTATE }],
+                },
+                tipHeadStyle,
+                tipGlowStyle,
+              ]}
+            >
+              <Svg width={TIP_SPARK} height={TIP_SPARK}>
+                <Path d={SPARK_PATH} fill={TIP_WHITE} />
+              </Svg>
             </Animated.View>
           </View>
         </View>

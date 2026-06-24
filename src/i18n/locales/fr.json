@@ -119,6 +119,8 @@
     "shareGeneratePrompt": "Générez un code pour que d'autres rejoignent cette étiquette et suivent leur concentration avec vous.",
     "generating": "Génération...",
     "shareThisTag": "Partager cette étiquette",
+    "shareSignInTitle": "Connectez-vous pour partager",
+    "shareSignInBody": "En partageant une étiquette, d'autres personnes peuvent vous rejoindre et se concentrer avec vous. Connectez-vous pour commencer à partager.",
     "failedGenerateCode": "Échec de la génération du code",
     "stopSharingTitle": "Arrêter le partage ?",
     "stopSharingBody": "Plus personne ne pourra rejoindre. Les membres actuels gardent leur copie.",
@@ -369,6 +371,7 @@
     "ranking": "Classement"
   },
   "preferences": {
+    "general": "Général",
     "notifications": "Notifications",
     "notificationsSub": "Réglages du son et des vibrations",
     "soundVibrate": "Son et vibration",
