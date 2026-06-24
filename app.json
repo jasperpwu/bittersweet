@@ -44,6 +44,7 @@
       "expo-iap",
       "./plugins/withFmtFix",
       "./plugins/withHomeWidget",
+      "./plugins/withSiriShortcutsRefresh",
       [
         "expo-build-properties",
         {

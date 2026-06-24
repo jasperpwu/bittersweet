@@ -56,6 +56,9 @@ const withHomeWidget = (config) => {
         "SessionIntent.swift",
         "SessionIntentActivityKit.swift",
         "SupabaseClient.swift",
+        // Main-app target ONLY — an app may expose one AppShortcutsProvider, so this
+        // must not also go into widgetExtensionFiles (would double-register).
+        "FocusAppShortcuts.swift",
       ];
 
       // 1. Copy Swift files to widget extension directory

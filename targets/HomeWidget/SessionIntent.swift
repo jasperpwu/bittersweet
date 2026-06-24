@@ -36,13 +36,22 @@ enum WidgetActivityKit {
 @available(iOS 17.0, *)
 struct StartSessionIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Start Focus Session"
-  static var description: IntentDescription = "Starts a focus session with the configured tag"
+  static var description: IntentDescription = "Starts a focus session for a tag"
+
+  // Siri / Shortcuts surface: the spoken or picked tag. Widgets and Live Activity
+  // buttons don't set this — they pass `tagId` via init(tagId:duration:) instead.
+  @Parameter(title: "Focus Tag")
+  var tag: TagEntity?
 
   @Parameter(title: "Tag ID")
   var tagId: String?
 
   @Parameter(title: "Duration")
   var duration: Int?
+
+  static var parameterSummary: some ParameterSummary {
+    Summary("Start focus for \(\.$tag) for \(\.$duration) minutes")
+  }
 
   init() {}
 
@@ -51,28 +60,30 @@ struct StartSessionIntent: LiveActivityIntent {
     self.duration = duration
   }
 
-  func perform() async throws -> some IntentResult {
+  func perform() async throws -> some IntentResult & ProvidesDialog {
     // Ensure ActivityKit handlers are registered (main app target only; no-op in widget extension)
     WidgetActivityKit.registerIfNeeded()
 
     // Guard: don't double-start if a session is already active
     if let session = WidgetDataManager.shared.getSessionData(), session.isActive {
-      return .result()
+      return .result(dialog: "A focus session is already running.")
     }
 
     // Guard: don't start a focus session during an active unlock
     if let unlock = WidgetDataManager.shared.getUnlockSessionData(), unlock.isActive {
-      return .result()
+      return .result(dialog: "Can't start while apps are unlocked.")
     }
 
+    // Resolve the tag from the Siri entity (tag) or the widget-supplied tagId.
+    // No default-tag fallback: an unknown/missing id is a clean no-op, so Siri or a
+    // stale shortcut never silently starts an arbitrary tag.
     let tags = WidgetDataManager.shared.getTagList()
-    let tag = tagId.flatMap { id in tags.first(where: { $0.id == id }) } ?? tags.first
-
-    guard let tag = tag else {
-      return .result()
+    let effectiveId = tag?.id ?? tagId
+    guard let resolvedTag = tags.first(where: { $0.id == effectiveId }) else {
+      return .result(dialog: "That focus tag isn't available.")
     }
 
-    let resolvedDuration = duration ?? tag.lastDuration ?? 15
+    let resolvedDuration = duration ?? resolvedTag.lastDuration ?? 15
     let isInfinite = resolvedDuration == 0
     let now = Date().timeIntervalSince1970 * 1000
     let startTimeMs = now
@@ -88,7 +99,7 @@ struct StartSessionIntent: LiveActivityIntent {
     }
 
     // Start Live Activity (runs in main app process via LiveActivityIntent)
-    let tagLabel = "\(tag.icon.isEmpty ? "🎯" : tag.icon) \(tag.name)"
+    let tagLabel = "\(resolvedTag.icon.isEmpty ? "🎯" : resolvedTag.icon) \(resolvedTag.name)"
     let liveActivityId = WidgetActivityKit.startHandler?(
       tagLabel, resolvedDuration, startTimeMs, endTimeMs, isInfinite
     )
@@ -96,10 +107,10 @@ struct StartSessionIntent: LiveActivityIntent {
     // Update widget display
     WidgetDataManager.shared.writeSessionData(
       isActive: true,
-      tagId: tag.id,
-      tagName: tag.name,
-      tagIcon: tag.icon,
-      tagColor: tag.color,
+      tagId: resolvedTag.id,
+      tagName: resolvedTag.name,
+      tagIcon: resolvedTag.icon,
+      tagColor: resolvedTag.color,
       startTime: startTimeMs,
       endTime: endTimeMs,
       isInfinite: isInfinite
@@ -107,10 +118,10 @@ struct StartSessionIntent: LiveActivityIntent {
 
     // Write session info for JS adoption when app opens
     WidgetDataManager.shared.writeWidgetStartedSession(
-      tagId: tag.id,
-      tagName: tag.name,
-      tagIcon: tag.icon,
-      tagColor: tag.color,
+      tagId: resolvedTag.id,
+      tagName: resolvedTag.name,
+      tagIcon: resolvedTag.icon,
+      tagColor: resolvedTag.color,
       duration: resolvedDuration,
       startTime: startTimeMs,
       endTime: endTimeMs,
@@ -128,7 +139,69 @@ struct StartSessionIntent: LiveActivityIntent {
 
     WidgetDataManager.shared.reloadTimelines()
 
-    return .result()
+    let confirmation: String = isInfinite
+      ? "Started \(resolvedTag.name)."
+      : "Started \(resolvedTag.name) for \(resolvedDuration) minutes."
+    return .result(dialog: IntentDialog(stringLiteral: confirmation))
+  }
+}
+
+// MARK: - Tag Entity (Siri / Shortcuts)
+
+// Exposes focus tags as an AppEntity so they can be a spoken/picked parameter for
+// Siri ("Start a Reading focus session"). Defined here because SessionIntent.swift
+// compiles into both the main app and widget extension targets, so the entity is
+// visible wherever StartSessionIntent is.
+@available(iOS 17.0, *)
+struct TagEntity: AppEntity {
+  let id: String
+  let name: String
+  let icon: String
+  let color: String
+  let lastDuration: Int?
+
+  static var typeDisplayRepresentation: TypeDisplayRepresentation = "Focus Tag"
+  static var defaultQuery = TagEntityQuery()
+
+  // Plain name is the spoken/matched title — emoji icons don't voice-match well.
+  var displayRepresentation: DisplayRepresentation {
+    DisplayRepresentation(title: "\(name)")
+  }
+
+  init(id: String, name: String, icon: String, color: String, lastDuration: Int?) {
+    self.id = id
+    self.name = name
+    self.icon = icon
+    self.color = color
+    self.lastDuration = lastDuration
+  }
+
+  init(from tag: WidgetTagInfo) {
+    self.init(
+      id: tag.id, name: tag.name, icon: tag.icon, color: tag.color, lastDuration: tag.lastDuration
+    )
+  }
+}
+
+@available(iOS 17.0, *)
+struct TagEntityQuery: EntityQuery, EntityStringQuery {
+  // Resolve specific tags by id (e.g. when restoring a saved shortcut's parameter).
+  func entities(for identifiers: [String]) async throws -> [TagEntity] {
+    let tags = WidgetDataManager.shared.getTagList()
+    return tags.filter { identifiers.contains($0.id) }.map(TagEntity.init(from:))
+  }
+
+  // The set of tags Siri enumerates for the spoken `${tag}` slot / Shortcuts picker.
+  func suggestedEntities() async throws -> [TagEntity] {
+    WidgetDataManager.shared.getTagList().map(TagEntity.init(from:))
+  }
+
+  // In-app Shortcuts search: match a typed/spoken string against tag names.
+  func entities(matching string: String) async throws -> [TagEntity] {
+    let needle = string.lowercased()
+    return WidgetDataManager.shared.getTagList()
+      .filter { $0.name.lowercased().contains(needle) }
+      .map(TagEntity.init(from:))
   }
 }
 
