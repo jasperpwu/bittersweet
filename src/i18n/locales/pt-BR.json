@@ -1,4 +1,24 @@
 {
+  "todos": {
+    "title": "Tarefas",
+    "addRow": "Adicionar tarefa",
+    "dragHint": "Arraste para o calendário para agendar",
+    "filterAll": "Todas",
+    "empty": "Nenhuma tarefa ainda",
+    "deleted": "Tarefa excluída",
+    "completed": "Tarefa concluída",
+    "undo": "Desfazer",
+    "start": "Iniciar",
+    "newTitle": "Nova tarefa",
+    "editTitle": "Editar tarefa",
+    "nameLabel": "Tarefa",
+    "namePlaceholder": "No que você quer focar?",
+    "tagLabel": "Etiqueta",
+    "startLabel": "Data e hora de início",
+    "durationLabel": "Duração",
+    "notesLabel": "Notas",
+    "notesPlaceholder": "Adicionar notas…"
+  },
   "common": {
     "next": "Avançar",
     "skip": "Pular",
@@ -290,7 +310,7 @@
     "deleteButton": "Excluir medalha"
   },
   "coach": {
-    "title": "Coach de Foco IA",
+    "title": "Coach de Foco",
     "teaserReady": "Boa — seu primeiro relatório será liberado quando esta semana terminar.",
     "teaserDays_one": "Concentre-se por mais {{count}} dia esta semana para liberar seu relatório.",
     "teaserDays_other": "Concentre-se por mais {{count}} dias esta semana para liberar seu relatório.",

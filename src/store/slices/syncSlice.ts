@@ -4,6 +4,7 @@ import {
   sessionToRow,
   tagToRow,
   goalToRow,
+  todoToRow,
   badgeToRow,
   coachReportToRow,
   mergeSetupTasks,
@@ -93,6 +94,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           sessions: state.focus.sessions,
           tags: state.focus.tags,
           goals: state.focus.goals,
+          todos: state.focus.todos ?? { byId: {}, allIds: [] },
           badges: state.focus.badges ?? { byId: {}, allIds: [] },
           coachReports: state.focus.coachReports ?? { byId: {}, allIds: [] },
         },
@@ -130,6 +132,11 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
             ...s.focus.goals,
             byId: merged.focus.goals.byId,
             allIds: merged.focus.goals.allIds,
+          },
+          todos: {
+            ...s.focus.todos,
+            byId: merged.focus.todos.byId,
+            allIds: merged.focus.todos.allIds,
           },
           badges: {
             ...s.focus.badges,
@@ -288,6 +295,11 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
             ...s.focus.goals,
             byId: remoteData.focus.goals.byId,
             allIds: remoteData.focus.goals.allIds,
+          },
+          todos: {
+            ...s.focus.todos,
+            byId: remoteData.focus.todos?.byId ?? {},
+            allIds: remoteData.focus.todos?.allIds ?? [],
           },
           badges: {
             ...s.focus.badges,
@@ -554,6 +566,12 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
       remoteData.focus.goals.byId,
       (g) => goalToRow(g, userId)
     );
+    const todosPushed = await enqueueLocalWins(
+      'todos',
+      merged.focus.todos ?? { byId: {}, allIds: [] },
+      remoteData.focus.todos?.byId ?? {},
+      (t) => todoToRow(t, userId)
+    );
     const badgesPushed = await enqueueLocalWins(
       'badges',
       merged.focus.badges ?? { byId: {}, allIds: [] },
@@ -567,13 +585,13 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
       (r) => coachReportToRow(r, userId)
     );
 
-    if (tagsPushed + sessionsPushed + goalsPushed + badgesPushed + coachReportsPushed === 0) {
+    if (tagsPushed + sessionsPushed + goalsPushed + todosPushed + badgesPushed + coachReportsPushed === 0) {
       console.log('[triggerSync] No local-wins to push to cloud');
       return;
     }
 
     console.log(
-      `[triggerSync] Pushing local-wins — tags:${tagsPushed} sessions:${sessionsPushed} goals:${goalsPushed} badges:${badgesPushed} coachReports:${coachReportsPushed}`
+      `[triggerSync] Pushing local-wins — tags:${tagsPushed} sessions:${sessionsPushed} goals:${goalsPushed} todos:${todosPushed} badges:${badgesPushed} coachReports:${coachReportsPushed}`
     );
     const result = await SyncService.flush();
     console.log(`[triggerSync] Local-wins flush — flushed:${result.flushed} failed:${result.failed}`);

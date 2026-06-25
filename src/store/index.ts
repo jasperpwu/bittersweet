@@ -16,7 +16,7 @@ import {
 import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
 import { WidgetService } from '../services/WidgetService';
-import { FocusGoal, WeeklyCoachReport } from './types';
+import { FocusGoal, WeeklyCoachReport, Todo } from './types';
 import { persistenceConfig, persistStateNow } from './middleware/persistence';
 import { computeBadgeStats } from '../utils/badgeStats';
 import { fruitsForRating, type RatingSource } from '../utils/focusRating';
@@ -67,6 +67,15 @@ interface AppStore {
     // Goals for focus tracking
     goals: {
       byId: Record<string, FocusGoal>;
+      allIds: string[];
+      loading: boolean;
+      error: string | null;
+      lastUpdated: Date | null;
+    };
+
+    // TODOs (lightweight task planning, surfaced in Journal)
+    todos: {
+      byId: Record<string, Todo>;
       allIds: string[];
       loading: boolean;
       error: string | null;
@@ -148,6 +157,26 @@ interface AppStore {
     deleteBadge: (id: string) => void;
     reorderGoals: (orderedIds: string[]) => void;
     getActiveGoals: () => FocusGoal[];
+
+    // TODO management
+    createTodo: (input: {
+      name: string;
+      tagId: string;
+      startAt?: Date;
+      durationMinutes?: number;
+      notes?: string;
+    }) => Todo;
+    updateTodo: (
+      id: string,
+      updates: Partial<Pick<Todo, 'name' | 'tagId' | 'startAt' | 'durationMinutes' | 'notes'>>
+    ) => void;
+    toggleTodo: (id: string) => void;
+    deleteTodo: (id: string) => void;
+    restoreTodo: (id: string) => void;
+    // Persist a manual order for a subset of todos (e.g. one tag's incomplete
+    // todos reordered under the running timer). orderedIds is the visible subset
+    // in its new order — other todos are untouched.
+    reorderTodos: (orderedIds: string[]) => void;
 
     // Badges
     badges: {
@@ -328,6 +357,12 @@ const generateId = () => {
   return `${timestamp}-${randomStr}`;
 };
 
+// Todos with no start time get a sortOrder above this base so they always sort
+// after any realistically-dated timed todo (timed keys are minutes-since-epoch,
+// ~29M now and well under 2B until ~year 5800). Keeps the default order
+// chronological: timed first (by start), untimed last (by creation).
+const TODO_UNTIMED_SORT_BASE = 2_000_000_000;
+
 /**
  * Push a freshly-created/updated session straight to the sync queue, bypassing the
  * 2s debounced sync middleware. createCompletedSession is routinely followed by an
@@ -451,6 +486,13 @@ export const useAppStore = create<AppStore>()(
             lastUpdated: null,
           },
           goals: {
+            byId: {},
+            allIds: [],
+            loading: false,
+            error: null,
+            lastUpdated: null,
+          },
+          todos: {
             byId: {},
             allIds: [],
             loading: false,
@@ -1264,6 +1306,167 @@ export const useAppStore = create<AppStore>()(
                     byId: remainingBadges,
                     allIds: badges.allIds.filter((id: string) => id !== badgeId),
                     lastUpdated: new Date(),
+                  },
+                },
+              };
+            });
+          },
+
+          // --- TODOs ---
+          createTodo: (input) => {
+            const todoId = generateId();
+            const now = new Date();
+            const todo: Todo = {
+              id: todoId,
+              userId: get().auth?.user?.id ?? 'local-user',
+              name: input.name.trim(),
+              tagId: input.tagId,
+              startAt: input.startAt,
+              durationMinutes: input.durationMinutes,
+              notes: input.notes?.trim() || undefined,
+              completed: false,
+              // sortOrder is the single ordering key. Default it from start time so
+              // the list reads chronologically out of the box: timed todos sort by
+              // their start (minutes since epoch), untimed ones fall after all timed
+              // (large base) in creation order. Drag-to-reorder overwrites these.
+              sortOrder: input.startAt
+                ? Math.floor(new Date(input.startAt).getTime() / 60000)
+                : TODO_UNTIMED_SORT_BASE + get().focus.todos.allIds.length,
+              createdAt: now,
+              updatedAt: now,
+            };
+            set((state) => ({
+              focus: {
+                ...state.focus,
+                todos: {
+                  ...state.focus.todos,
+                  byId: { ...state.focus.todos.byId, [todoId]: todo },
+                  allIds: [...state.focus.todos.allIds, todoId],
+                  lastUpdated: now,
+                },
+              },
+            }));
+            return todo;
+          },
+
+          updateTodo: (todoId, updates) => {
+            set((state) => {
+              const existing = state.focus.todos.byId[todoId];
+              if (!existing) return state;
+              return {
+                focus: {
+                  ...state.focus,
+                  todos: {
+                    ...state.focus.todos,
+                    byId: {
+                      ...state.focus.todos.byId,
+                      [todoId]: { ...existing, ...updates, updatedAt: new Date() },
+                    },
+                    lastUpdated: new Date(),
+                  },
+                },
+              };
+            });
+          },
+
+          toggleTodo: (todoId) => {
+            set((state) => {
+              const existing = state.focus.todos.byId[todoId];
+              if (!existing) return state;
+              const completed = !existing.completed;
+              return {
+                focus: {
+                  ...state.focus,
+                  todos: {
+                    ...state.focus.todos,
+                    byId: {
+                      ...state.focus.todos.byId,
+                      [todoId]: {
+                        ...existing,
+                        completed,
+                        completedAt: completed ? new Date() : undefined,
+                        updatedAt: new Date(),
+                      },
+                    },
+                    lastUpdated: new Date(),
+                  },
+                },
+              };
+            });
+          },
+
+          deleteTodo: (todoId) => {
+            // Soft-delete so the cloud row is tombstoned (mirrors tags).
+            set((state) => {
+              const existing = state.focus.todos.byId[todoId];
+              if (!existing) return state;
+              return {
+                focus: {
+                  ...state.focus,
+                  todos: {
+                    ...state.focus.todos,
+                    byId: {
+                      ...state.focus.todos.byId,
+                      [todoId]: { ...existing, deletedAt: new Date(), updatedAt: new Date() },
+                    },
+                    lastUpdated: new Date(),
+                  },
+                },
+              };
+            });
+          },
+
+          restoreTodo: (todoId) => {
+            set((state) => {
+              const existing = state.focus.todos.byId[todoId];
+              if (!existing) return state;
+              const { deletedAt, ...rest } = existing;
+              return {
+                focus: {
+                  ...state.focus,
+                  todos: {
+                    ...state.focus.todos,
+                    byId: {
+                      ...state.focus.todos.byId,
+                      [todoId]: { ...rest, updatedAt: new Date() },
+                    },
+                    lastUpdated: new Date(),
+                  },
+                },
+              };
+            });
+          },
+
+          reorderTodos: (orderedIds) => {
+            // Re-encode the new manual order into sortOrder for just this subset.
+            // Anchor at the subset's current minimum so the reordered todos keep
+            // their rough global position (timed vs untimed magnitude) instead of
+            // jumping to the front of the cross-tag list — they only change order
+            // relative to each other. Other todos are left untouched.
+            set((state) => {
+              const byId = state.focus.todos.byId;
+              const existingOrders = orderedIds
+                .map((id) => byId[id]?.sortOrder)
+                .filter((n): n is number => typeof n === 'number');
+              const base = existingOrders.length ? Math.min(...existingOrders) : 0;
+              const now = new Date();
+              const updatedById = { ...byId };
+              orderedIds.forEach((id, index) => {
+                if (updatedById[id]) {
+                  updatedById[id] = {
+                    ...updatedById[id],
+                    sortOrder: base + index,
+                    updatedAt: now,
+                  };
+                }
+              });
+              return {
+                focus: {
+                  ...state.focus,
+                  todos: {
+                    ...state.focus.todos,
+                    byId: updatedById,
+                    lastUpdated: now,
                   },
                 },
               };
@@ -2577,6 +2780,16 @@ export const useAppStore = create<AppStore>()(
  * Typed hooks for accessing store slices
  */
 export const useFocus = () => useAppStore((state) => state.focus);
+export const useTodos = () => useAppStore((state) => state.focus.todos);
+export const useTodoActions = () =>
+  useAppStore((state) => ({
+    createTodo: state.focus.createTodo,
+    updateTodo: state.focus.updateTodo,
+    toggleTodo: state.focus.toggleTodo,
+    deleteTodo: state.focus.deleteTodo,
+    restoreTodo: state.focus.restoreTodo,
+    reorderTodos: state.focus.reorderTodos,
+  }));
 export const useSettings = () => useAppStore((state) => state.settings);
 export const useUI = () => useAppStore((state) => state.ui);
 export const useRewards = () => useAppStore((state) => state.rewards);
@@ -2648,6 +2861,12 @@ export const useFocusActions = () =>
     deleteCoachReport: state.focus.deleteCoachReport,
     reorderGoals: state.focus.reorderGoals,
     getActiveGoals: state.focus.getActiveGoals,
+    createTodo: state.focus.createTodo,
+    updateTodo: state.focus.updateTodo,
+    toggleTodo: state.focus.toggleTodo,
+    deleteTodo: state.focus.deleteTodo,
+    restoreTodo: state.focus.restoreTodo,
+    reorderTodos: state.focus.reorderTodos,
     shareTag: state.focus.shareTag,
     stopSharingTag: state.focus.stopSharingTag,
     resolveSharedTagCode: state.focus.resolveSharedTagCode,
@@ -2878,6 +3097,7 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
       sessions: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
       tags: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
       goals: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
+      todos: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
       badges: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
       coachReports: { byId: {}, allIds: [], loading: false, error: null, lastUpdated: null },
       currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },

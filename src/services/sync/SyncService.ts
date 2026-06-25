@@ -8,6 +8,8 @@ import {
   rowToTag,
   goalToRow,
   rowToGoal,
+  todoToRow,
+  rowToTodo,
   rewardsToRow,
   rowToRewards,
   badgeToRow,
@@ -29,6 +31,7 @@ const BATCH_SIZE = 100;
 const FLUSH_PRIORITY: Record<string, number> = {
   session_tags: 10,
   focus_goals: 20,
+  todos: 25,
   focus_sessions: 30,
   coach_reports: 40,
 };
@@ -73,6 +76,12 @@ export class SyncService {
     // Upload goals
     const goalRows = normalizedToRows(localState.focus.goals, goalToRow, userId);
     await SyncService.batchUpsert('focus_goals', goalRows);
+
+    // Upload todos
+    if (localState.focus.todos?.allIds?.length > 0) {
+      const todoRows = normalizedToRows(localState.focus.todos, todoToRow, userId);
+      await SyncService.batchUpsert('todos', todoRows);
+    }
 
     // Upload rewards
     const rewardsRow = rewardsToRow(localState.rewards, userId);
@@ -136,7 +145,7 @@ export class SyncService {
   static async pullAll(userId: string): Promise<any> {
     console.log('☁️ Pulling all data from cloud...');
 
-    const [sessionsRes, tagsRes, goalsRes, rewardsRes, badgesRes, coachRes, settingsRes, referralRes] =
+    const [sessionsRes, tagsRes, goalsRes, todosRes, rewardsRes, badgesRes, coachRes, settingsRes, referralRes] =
       await Promise.all([
         supabase
           .from('focus_sessions')
@@ -150,6 +159,11 @@ export class SyncService {
           .is('deleted_at', null),
         supabase
           .from('focus_goals')
+          .select('*')
+          .eq('user_id', userId)
+          .is('deleted_at', null),
+        supabase
+          .from('todos')
           .select('*')
           .eq('user_id', userId)
           .is('deleted_at', null),
@@ -176,6 +190,8 @@ export class SyncService {
     tags.allIds.sort((a, b) => (tags.byId[a]?.sortOrder ?? 0) - (tags.byId[b]?.sortOrder ?? 0));
     const goals = rowsToNormalized(goalsRes.data ?? [], rowToGoal);
     goals.allIds.sort((a, b) => (goals.byId[a]?.sortOrder ?? 0) - (goals.byId[b]?.sortOrder ?? 0));
+    const todos = rowsToNormalized(todosRes.data ?? [], rowToTodo);
+    todos.allIds.sort((a, b) => (todos.byId[a]?.sortOrder ?? 0) - (todos.byId[b]?.sortOrder ?? 0));
     const badges = rowsToNormalized(badgesRes.data ?? [], rowToBadge);
     const coachReports = rowsToNormalized(coachRes.data ?? [], rowToCoachReport);
     const rewards = rewardsRes.data
@@ -201,7 +217,7 @@ export class SyncService {
     );
 
     return {
-      focus: { sessions, tags, goals, badges, coachReports },
+      focus: { sessions, tags, goals, todos, badges, coachReports },
       rewards,
       settings,
       referral,
@@ -238,6 +254,12 @@ export class SyncService {
         goals: SyncService.mergeNormalized(
           local.focus.goals,
           remote.focus.goals,
+          'updatedAt',
+          'sortOrder'
+        ),
+        todos: SyncService.mergeNormalized(
+          local.focus.todos ?? { byId: {}, allIds: [] },
+          remote.focus.todos ?? { byId: {}, allIds: [] },
           'updatedAt',
           'sortOrder'
         ),

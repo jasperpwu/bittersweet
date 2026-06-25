@@ -1,4 +1,24 @@
 {
+  "todos": {
+    "title": "À faire",
+    "addRow": "Ajouter une tâche",
+    "dragHint": "Glisser vers le calendrier pour planifier",
+    "filterAll": "Tout",
+    "empty": "Aucune tâche pour le moment",
+    "deleted": "Tâche supprimée",
+    "completed": "Tâche terminée",
+    "undo": "Annuler",
+    "start": "Démarrer",
+    "newTitle": "Nouvelle tâche",
+    "editTitle": "Modifier la tâche",
+    "nameLabel": "Tâche",
+    "namePlaceholder": "Sur quoi veux-tu te concentrer ?",
+    "tagLabel": "Étiquette",
+    "startLabel": "Date et heure de début",
+    "durationLabel": "Durée",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Ajouter des notes…"
+  },
   "common": {
     "next": "Suivant",
     "skip": "Passer",
@@ -290,7 +310,7 @@
     "deleteButton": "Supprimer le badge"
   },
   "coach": {
-    "title": "Coach de concentration IA",
+    "title": "Coach de concentration",
     "teaserReady": "Bravo — votre premier rapport sera débloqué à la fin de la semaine.",
     "teaserDays_one": "Concentrez-vous {{count}} jour de plus cette semaine pour débloquer votre rapport.",
     "teaserDays_other": "Concentrez-vous {{count}} jours de plus cette semaine pour débloquer votre rapport.",

@@ -5,6 +5,7 @@ import {
   sessionToRow,
   tagToRow,
   goalToRow,
+  todoToRow,
   rewardsToRow,
   badgeToRow,
   coachReportToRow,
@@ -22,13 +23,14 @@ let debounceTimer: NodeJS.Timeout | null = null;
 const DEBOUNCE_MS = 2000;
 
 // Accumulated change flags across debounce resets
-let pendingChanges = { sessions: false, tags: false, goals: false, badges: false, coachReports: false, rewards: false, blocklist: false, settings: false };
+let pendingChanges = { sessions: false, tags: false, goals: false, todos: false, badges: false, coachReports: false, rewards: false, blocklist: false, settings: false };
 
 // Snapshot of last-synced state for diffing
 let lastSyncedSnapshot: {
   sessions: Record<string, any>;
   tags: Record<string, any>;
   goals: Record<string, any>;
+  todos: Record<string, any>;
   badges: Record<string, any>;
   coachReports: Record<string, any>;
   rewards: { balance: number; totalEarned: number; totalSpent: number };
@@ -90,6 +92,7 @@ export function initSyncMiddleware(store: any): () => void {
     const sessionsChanged = state.focus.sessions !== prevState.focus?.sessions;
     const tagsChanged = state.focus.tags !== prevState.focus?.tags;
     const goalsChanged = state.focus.goals !== prevState.focus?.goals;
+    const todosChanged = state.focus.todos !== prevState.focus?.todos;
     const badgesChanged = state.focus.badges !== prevState.focus?.badges;
     const coachReportsChanged = state.focus.coachReports !== prevState.focus?.coachReports;
     const rewardsChanged =
@@ -101,7 +104,7 @@ export function initSyncMiddleware(store: any): () => void {
     const durationByTagChanged =
       state.focus.lastDurationByTagId !== prevState.focus?.lastDurationByTagId;
 
-    if (!sessionsChanged && !tagsChanged && !goalsChanged && !badgesChanged && !coachReportsChanged && !rewardsChanged && !blocklistChanged && !durationByTagChanged) {
+    if (!sessionsChanged && !tagsChanged && !goalsChanged && !todosChanged && !badgesChanged && !coachReportsChanged && !rewardsChanged && !blocklistChanged && !durationByTagChanged) {
       return;
     }
 
@@ -109,6 +112,7 @@ export function initSyncMiddleware(store: any): () => void {
     if (sessionsChanged) pendingChanges.sessions = true;
     if (tagsChanged) pendingChanges.tags = true;
     if (goalsChanged) pendingChanges.goals = true;
+    if (todosChanged) pendingChanges.todos = true;
     if (badgesChanged) pendingChanges.badges = true;
     if (coachReportsChanged) pendingChanges.coachReports = true;
     if (rewardsChanged) pendingChanges.rewards = true;
@@ -122,7 +126,7 @@ export function initSyncMiddleware(store: any): () => void {
     debounceTimer = setTimeout(async () => {
       // Capture and reset pending changes
       const changes = { ...pendingChanges };
-      pendingChanges = { sessions: false, tags: false, goals: false, badges: false, coachReports: false, rewards: false, blocklist: false, settings: false };
+      pendingChanges = { sessions: false, tags: false, goals: false, todos: false, badges: false, coachReports: false, rewards: false, blocklist: false, settings: false };
 
       try {
         // Diff tags before sessions because focus_sessions.tag_id has a DB
@@ -163,6 +167,23 @@ export function initSyncMiddleware(store: any): () => void {
             lastSyncedSnapshot!.goals,
             state.focus.goals.byId,
             (item: any) => goalToRow(item, userId)
+          );
+        }
+
+        // Diff todos. tag_id FKs session_tags, so ensure the referenced tag is
+        // enqueued first (mirrors the session→tag guard above).
+        if (changes.todos) {
+          await diffAndEnqueue(
+            'todos',
+            lastSyncedSnapshot!.todos,
+            state.focus.todos.byId,
+            (item: any) => todoToRow(item, userId),
+            async (item: any) => {
+              const tag = state.focus.tags.byId[item.tagId];
+              if (tag) {
+                await SyncService.enqueue('session_tags', 'upsert', tagToRow(tag, userId));
+              }
+            }
           );
         }
 
@@ -232,7 +253,7 @@ export function initSyncMiddleware(store: any): () => void {
       clearTimeout(settingsDebounceTimer);
       settingsDebounceTimer = null;
     }
-    pendingChanges = { sessions: false, tags: false, goals: false, badges: false, coachReports: false, rewards: false, blocklist: false, settings: false };
+    pendingChanges = { sessions: false, tags: false, goals: false, todos: false, badges: false, coachReports: false, rewards: false, blocklist: false, settings: false };
     lastSyncedSnapshot = null;
     lastSyncedSettings = null;
   };
@@ -243,6 +264,7 @@ function takeSnapshot(state: any) {
     sessions: { ...state.focus.sessions.byId },
     tags: { ...state.focus.tags.byId },
     goals: { ...state.focus.goals.byId },
+    todos: { ...(state.focus.todos?.byId ?? {}) },
     badges: { ...(state.focus.badges?.byId ?? {}) },
     coachReports: { ...(state.focus.coachReports?.byId ?? {}) },
     rewards: {
@@ -293,7 +315,7 @@ async function diffAndEnqueue(
 export function invalidateSyncSnapshot(): void {
   lastSyncedSnapshot = null;
   lastSyncedSettings = null;
-  pendingChanges = { sessions: false, tags: false, goals: false, badges: false, coachReports: false, rewards: false, blocklist: false, settings: false };
+  pendingChanges = { sessions: false, tags: false, goals: false, todos: false, badges: false, coachReports: false, rewards: false, blocklist: false, settings: false };
 
   // Cancel any debounced flush already scheduled — otherwise it fires later and (post
   // sign-out) every upsert fails RLS, or it dereferences the now-null snapshot.

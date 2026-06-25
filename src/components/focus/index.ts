@@ -7,3 +7,4 @@ export * from './TagColorPicker';
 export * from './GoalProgressBanner';
 export * from './ActivityTypePicker/ActivityTypePicker';
 export * from './FocusRatingBlock';
+export * from './RunningTodoList';

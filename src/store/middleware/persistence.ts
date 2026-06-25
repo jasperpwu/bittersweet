@@ -477,6 +477,7 @@ export const persistenceConfig = {
       sessions: state.focus.sessions,
       tags: state.focus.tags,
       goals: state.focus.goals,
+      todos: state.focus.todos,
       badges: state.focus.badges,
       coachReports: state.focus.coachReports,
       currentSession: state.focus.currentSession,

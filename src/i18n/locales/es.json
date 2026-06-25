@@ -1,4 +1,24 @@
 {
+  "todos": {
+    "title": "Tareas",
+    "addRow": "Añadir tarea",
+    "dragHint": "Arrastra al calendario para programar",
+    "filterAll": "Todas",
+    "empty": "Aún no hay tareas",
+    "deleted": "Tarea eliminada",
+    "completed": "Tarea completada",
+    "undo": "Deshacer",
+    "start": "Iniciar",
+    "newTitle": "Nueva tarea",
+    "editTitle": "Editar tarea",
+    "nameLabel": "Tarea",
+    "namePlaceholder": "¿En qué quieres concentrarte?",
+    "tagLabel": "Etiqueta",
+    "startLabel": "Fecha y hora de inicio",
+    "durationLabel": "Duración",
+    "notesLabel": "Notas",
+    "notesPlaceholder": "Añade notas…"
+  },
   "common": {
     "next": "Siguiente",
     "skip": "Omitir",
@@ -290,7 +310,7 @@
     "deleteButton": "Eliminar insignia"
   },
   "coach": {
-    "title": "Coach de Concentración IA",
+    "title": "Coach de Concentración",
     "teaserReady": "Genial: tu primer informe se desbloqueará cuando termine esta semana.",
     "teaserDays_one": "Concéntrate {{count}} día más esta semana para desbloquear tu informe.",
     "teaserDays_other": "Concéntrate {{count}} días más esta semana para desbloquear tu informe.",

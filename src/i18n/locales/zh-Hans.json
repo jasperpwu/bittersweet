@@ -1,4 +1,24 @@
 {
+  "todos": {
+    "title": "待办",
+    "addRow": "添加待办",
+    "dragHint": "拖到日历即可安排时间",
+    "filterAll": "全部",
+    "empty": "暂无待办",
+    "deleted": "已删除待办",
+    "completed": "已完成待办",
+    "undo": "撤销",
+    "start": "开始",
+    "newTitle": "新建待办",
+    "editTitle": "编辑待办",
+    "nameLabel": "待办",
+    "namePlaceholder": "你想专注做什么？",
+    "tagLabel": "标签",
+    "startLabel": "开始日期和时间",
+    "durationLabel": "时长",
+    "notesLabel": "备注",
+    "notesPlaceholder": "添加备注…"
+  },
   "common": {
     "next": "下一步",
     "skip": "跳过",
@@ -290,7 +310,7 @@
     "deleteButton": "删除徽章"
   },
   "coach": {
-    "title": "AI 专注教练",
+    "title": "专注教练",
     "teaserReady": "不错——本周结束后将解锁你的首份报告。",
     "teaserDays_one": "本周再专注 {{count}} 天即可解锁报告。",
     "teaserDays_other": "本周再专注 {{count}} 天即可解锁报告。",

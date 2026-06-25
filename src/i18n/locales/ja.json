@@ -1,4 +1,24 @@
 {
+  "todos": {
+    "title": "やること",
+    "addRow": "やることを追加",
+    "dragHint": "カレンダーにドラッグして予定に追加",
+    "filterAll": "すべて",
+    "empty": "やることはまだありません",
+    "deleted": "やることを削除しました",
+    "completed": "やることを完了しました",
+    "undo": "元に戻す",
+    "start": "開始",
+    "newTitle": "新しいやること",
+    "editTitle": "やることを編集",
+    "nameLabel": "やること",
+    "namePlaceholder": "何に集中しますか？",
+    "tagLabel": "タグ",
+    "startLabel": "開始日時",
+    "durationLabel": "所要時間",
+    "notesLabel": "メモ",
+    "notesPlaceholder": "メモを追加…"
+  },
   "common": {
     "next": "次へ",
     "skip": "スキップ",
@@ -290,7 +310,7 @@
     "deleteButton": "バッジを削除"
   },
   "coach": {
-    "title": "AIフォーカスコーチ",
+    "title": "フォーカスコーチ",
     "teaserReady": "いい調子です。今週が終わると最初のレポートが解放されます。",
     "teaserDays_one": "今週あと{{count}}日集中すると、レポートが解放されます。",
     "teaserDays_other": "今週あと{{count}}日集中すると、レポートが解放されます。",

@@ -1,31 +1,44 @@
 import { FC, useMemo, useRef, useEffect, useState } from 'react';
 import { View, ScrollView, useColorScheme, ViewStyle } from 'react-native';
+import Animated, {
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 import { Typography } from '../../ui/Typography';
-import { SessionBlock } from '../SessionBlock';
+import { SessionBlock, ScheduledTodoBlock } from '../SessionBlock';
 import { FocusSession } from '../../../types/models';
+import type { Todo } from '../../../store/types';
+import type { TodoScheduleController } from '../TodoSheet/TodoScheduleController';
+import { colors } from '../../../config/theme';
+import {
+  TIME_COLUMN_WIDTH,
+  START_HOUR,
+  END_HOUR,
+  TOTAL_HOURS,
+  HOUR_HEIGHT,
+  PIXELS_PER_MINUTE,
+  SNAP_MINUTES,
+  BLOCK_H_PADDING,
+} from './constants';
 
 interface TimelineProps {
   sessions: FocusSession[];
+  scheduledTodos?: Todo[];
   currentTime: Date;
   isToday?: boolean;
   onSessionPress: (sessionId: string) => void;
+  onTodoPress?: (todo: Todo) => void;
+  onTodoReschedule?: (todoId: string, minutes: number) => void;
+  schedule?: TodoScheduleController;
   scrollToSessionId?: string | null;
   onScrollComplete?: () => void;
 }
 
-const TIME_COLUMN_WIDTH = 70;
+// Horizontal gap between stacked columns when sessions overlap in time.
+const BLOCK_GAP = 4;
+const DAY_END_MINUTES = (END_HOUR + 1) * 60;
 
-// Timeline configuration - showing full day
-const START_HOUR = 0; // 12:00 AM
-const END_HOUR = 23; // 11:00 PM
-const TOTAL_HOURS = END_HOUR - START_HOUR + 1;
-const HOUR_HEIGHT = 80;
-const PIXELS_PER_MINUTE = HOUR_HEIGHT / 60;
-
-// Horizontal layout for session blocks. Sessions that overlap in time are
-// split into side-by-side columns within the content area.
-const BLOCK_H_PADDING = 12; // gutter on each side of the content area
-const BLOCK_GAP = 4; // horizontal gap between stacked columns
+const AnimatedScrollView = Animated.ScrollView;
 
 /**
  * Calendar-style overlap layout. Sorted sessions are grouped into clusters of
@@ -107,14 +120,19 @@ const getCurrentTimePosition = (currentTime: Date) => {
 
 export const Timeline: FC<TimelineProps> = ({
   sessions,
+  scheduledTodos = [],
   currentTime,
   isToday: isTodayView = true,
   onSessionPress,
+  onTodoPress,
+  onTodoReschedule,
+  schedule,
   scrollToSessionId,
   onScrollComplete,
 }) => {
   const colorScheme = useColorScheme();
   const scrollViewRef = useRef<ScrollView>(null);
+  const rootRef = useRef<View>(null);
   // Measured width of the timeline content area, used to size overlap columns.
   const [contentWidth, setContentWidth] = useState(0);
   // Filter sessions for the visible time range and sort by start time
@@ -142,6 +160,58 @@ export const Timeline: FC<TimelineProps> = ({
   const showCurrentTimeIndicator = isTodayView && isCurrentTimeInRange(currentTime);
   const currentTimePosition = showCurrentTimeIndicator ? getCurrentTimePosition(currentTime) : 0;
 
+  // Keep the schedule controller's view of our scroll offset current (UI thread).
+  const scrollHandler = useAnimatedScrollHandler((e) => {
+    if (schedule) schedule.tlScrollY.value = e.contentOffset.y;
+  });
+
+  // Report the scroll viewport's screen position + height so the sheet's drag
+  // gesture can map a finger Y to a minute-of-day.
+  const measureViewport = () => {
+    if (!schedule) return;
+    rootRef.current?.measureInWindow((x, y, w, h) => {
+      schedule.tlPageY.value = y;
+      schedule.tlHeight.value = h;
+      // Geometry of a dropped block: same left/width as the indicator + session
+      // blocks, so the drag ghost can preview the exact landing size.
+      schedule.tlSlotLeftX.value = x + TIME_COLUMN_WIDTH + BLOCK_H_PADDING;
+      schedule.tlSlotWidth.value = Math.max(0, w - TIME_COLUMN_WIDTH - BLOCK_H_PADDING * 2);
+    });
+  };
+
+  // Live drop indicator: a dotted slot outline shown both when dragging a todo
+  // in from the sheet (finger-mapped) and when repositioning an existing block
+  // within the calendar (explicit preview values set by the block).
+  const indicatorStyle = useAnimatedStyle(() => {
+    if (!schedule) return { opacity: 0 };
+    const {
+      dragActive, fingerY, tlPageY, tlScrollY, tlHeight, sheetTopY, durationMin,
+      previewActive, previewMinutes, previewDuration,
+    } = schedule;
+
+    // Reposition preview takes priority — its target comes from block movement.
+    if (previewActive.value === 1) {
+      return {
+        opacity: 1,
+        top: previewMinutes.value * PIXELS_PER_MINUTE,
+        height: Math.max(previewDuration.value * PIXELS_PER_MINUTE, 22),
+      };
+    }
+
+    const contentY = fingerY.value - tlPageY.value + tlScrollY.value;
+    const raw = contentY / PIXELS_PER_MINUTE;
+    const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
+    const minutes = Math.max(0, Math.min(DAY_END_MINUTES - durationMin.value, snapped));
+    const floor = Math.min(tlPageY.value + tlHeight.value, sheetTopY.value);
+    const inRange =
+      dragActive.value === 1 && fingerY.value >= tlPageY.value && fingerY.value <= floor;
+    return {
+      opacity: inRange ? 1 : 0,
+      top: minutes * PIXELS_PER_MINUTE,
+      height: Math.max(durationMin.value * PIXELS_PER_MINUTE, 22),
+    };
+  });
+
   // Handle scrolling to specific session
   useEffect(() => {
     if (scrollToSessionId && scrollViewRef.current) {
@@ -150,7 +220,7 @@ export const Timeline: FC<TimelineProps> = ({
         const scrollPosition = getTopPosition(targetSession.startTime);
         // Offset to center the session in view (accounting for some padding)
         const offsetScrollPosition = Math.max(0, scrollPosition - 200);
-        
+
         setTimeout(() => {
           scrollViewRef.current?.scrollTo({
             y: offsetScrollPosition,
@@ -163,17 +233,19 @@ export const Timeline: FC<TimelineProps> = ({
   }, [scrollToSessionId, sortedSessions, onScrollComplete]);
 
   return (
-    <View className="flex-1">
-      <ScrollView
-        ref={scrollViewRef}
-        className="flex-1"
+    <View className="flex-1" ref={rootRef} onLayout={measureViewport}>
+      <AnimatedScrollView
+        ref={scrollViewRef as any}
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
       >
         <View className="flex-row" style={{ minHeight: TOTAL_HOURS * HOUR_HEIGHT }}>
           {/* Time labels column */}
-          <View 
-            style={{ 
+          <View
+            style={{
               width: TIME_COLUMN_WIDTH,
               paddingRight: 12,
             }}
@@ -223,6 +295,27 @@ export const Timeline: FC<TimelineProps> = ({
               />
             ))}
 
+            {/* Drop indicator for drag-to-schedule */}
+            {schedule && (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  {
+                    position: 'absolute',
+                    left: BLOCK_H_PADDING,
+                    right: BLOCK_H_PADDING,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: colors.primary,
+                    borderStyle: 'dotted',
+                    backgroundColor: `${colors.primary}24`,
+                    zIndex: 30,
+                  },
+                  indicatorStyle,
+                ]}
+              />
+            )}
+
             {/* Current time indicator */}
             {showCurrentTimeIndicator && (
               <View
@@ -237,7 +330,7 @@ export const Timeline: FC<TimelineProps> = ({
                 }}
               >
                 {/* Blue dot */}
-                <View 
+                <View
                   style={{
                     width: 12,
                     height: 12,
@@ -248,7 +341,7 @@ export const Timeline: FC<TimelineProps> = ({
                   }}
                 />
                 {/* Blue line */}
-                <View 
+                <View
                   style={{
                     flex: 1,
                     height: 2,
@@ -258,6 +351,25 @@ export const Timeline: FC<TimelineProps> = ({
                 />
               </View>
             )}
+
+            {/* Scheduled (planned) TODO blocks — drawn under real sessions */}
+            {scheduledTodos.map((todo) => {
+              if (!todo.startAt) return null;
+              return (
+                <ScheduledTodoBlock
+                  key={todo.id}
+                  todo={todo}
+                  schedule={schedule}
+                  onPress={() => onTodoPress?.(todo)}
+                  onReschedule={(minutes) => onTodoReschedule?.(todo.id, minutes)}
+                  style={{
+                    top: getTopPosition(new Date(todo.startAt)),
+                    left: BLOCK_H_PADDING,
+                    right: BLOCK_H_PADDING,
+                  }}
+                />
+              );
+            })}
 
             {/* Session blocks */}
             {sortedSessions.map((session) => {
@@ -298,7 +410,7 @@ export const Timeline: FC<TimelineProps> = ({
             })}
           </View>
         </View>
-      </ScrollView>
+      </AnimatedScrollView>
     </View>
   );
 };

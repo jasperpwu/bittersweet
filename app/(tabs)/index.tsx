@@ -25,6 +25,7 @@ import Reanimated, {
   useAnimatedStyle,
   withSpring,
   runOnJS,
+  LinearTransition,
 } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
 import { EmojiPickerOverlay } from '../../src/components/ui/EmojiPicker/EmojiPicker';
@@ -33,6 +34,7 @@ import {
   DurationPicker,
   TagColorPicker,
   ActivityTypePicker,
+  RunningTodoList,
 } from '../../src/components/focus';
 import type { ActivityType } from '../../src/utils/focusRating';
 import { inferActivityType } from '../../src/utils/inferActivityType';
@@ -63,7 +65,7 @@ import { blockSelection, stopMonitoring } from 'react-native-device-activity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import * as Notifications from 'expo-notifications';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { STORAGE_KEYS } from '../../src/config/constants';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
@@ -71,6 +73,7 @@ import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 import { JoinSharedTagSheet } from '../../src/components/grove/JoinSharedTagSheet';
 import type { SharedTagResolveResult } from '../../src/services/sharedTag/types';
+import { colors } from '../../src/config/theme';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
 
@@ -90,6 +93,7 @@ type DraggableTagRowProps = {
   index: number;
   selectedTag: string | null;
   lastDuration: number;
+  todoCount: number;
   isDragging: boolean;
   dragOriginalIndex: number;
   dragTargetIndex: number;
@@ -110,6 +114,7 @@ function DraggableTagRow({
   index,
   selectedTag,
   lastDuration,
+  todoCount,
   isDragging,
   dragOriginalIndex,
   dragTargetIndex,
@@ -379,6 +384,15 @@ function DraggableTagRow({
                       : t('home.minutesShort', { count: lastDuration })}
                 </Typography>
               </View>
+              {todoCount > 0 && (
+                <View
+                  className="ml-3 rounded-full px-3 py-1.5"
+                  style={{ backgroundColor: 'rgba(101, 146, 233, 0.18)' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
+                    {`${todoCount} TODOs`}
+                  </Text>
+                </View>
+              )}
             </View>
           </Pressable>
         </Swipeable>
@@ -447,25 +461,21 @@ function ShareTagOverlay({
 
   const handleStop = async () => {
     if (!tag) return;
-    Alert.alert(
-      t('home.stopSharingTitle'),
-      t('home.stopSharingBody'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('home.stopSharing'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await onStopSharing(tag.id);
-              onClose();
-            } catch (e: any) {
-              Alert.alert(t('common.error'), e.message || t('home.failedStopSharing'));
-            }
-          },
+    Alert.alert(t('home.stopSharingTitle'), t('home.stopSharingBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('home.stopSharing'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await onStopSharing(tag.id);
+            onClose();
+          } catch (e: any) {
+            Alert.alert(t('common.error'), e.message || t('home.failedStopSharing'));
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -677,7 +687,7 @@ export default function FocusScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   // Get tags from store
-  const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals } = useFocus();
+  const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals, todos } = useFocus();
   const {
     createTag,
     updateTag,
@@ -696,7 +706,7 @@ export default function FocusScreen() {
   const rewards = useRewards();
   // Unclaimed setup-task rewards waiting in the fruit store (same filter as fruit-store.tsx).
   const hasUnclaimedRewards = SETUP_TASK_IDS.some(
-    (id) => rewards.tasks?.[id]?.everSetup && !rewards.tasks?.[id]?.claimed,
+    (id) => rewards.tasks?.[id]?.everSetup && !rewards.tasks?.[id]?.claimed
   );
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
@@ -711,6 +721,17 @@ export default function FocusScreen() {
     .map((id) => tags.byId[id])
     .filter(Boolean)
     .filter((t) => !t.deletedAt);
+
+  // Count open (incomplete, non-deleted) todos per tag for the picker pill.
+  const openTodoCountByTagId = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const id of todos.allIds) {
+      const todo = todos.byId[id];
+      if (!todo || todo.deletedAt || todo.completed) continue;
+      counts[todo.tagId] = (counts[todo.tagId] ?? 0) + 1;
+    }
+    return counts;
+  }, [todos]);
 
   // Build challenge-only tags from active challenges (both incoming and outgoing)
   const challengeTags = React.useMemo(() => {
@@ -904,6 +925,10 @@ export default function FocusScreen() {
   // Session + timer state
   const [isSessionActive, setIsSessionActive] = useState(false); // true during transition or running
   const [isRunning, setIsRunning] = useState(false);
+  // Gates the under-timer TODO list. Tracked separately from isSessionActive so it
+  // can hide the instant a stop begins (in teardown) instead of lingering through
+  // the ~340ms stop animation, after which isSessionActive finally flips false.
+  const [todoListVisible, setTodoListVisible] = useState(false);
   const [isInfinite, setIsInfinite] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -974,11 +999,9 @@ export default function FocusScreen() {
         await checkAuthorizationStatus();
         router.push('/(modals)/app-selection');
       } else {
-        Alert.alert(
-          t('home.authRequiredTitle'),
-          t('home.authRequiredBody'),
-          [{ text: t('common.ok') }]
-        );
+        Alert.alert(t('home.authRequiredTitle'), t('home.authRequiredBody'), [
+          { text: t('common.ok') },
+        ]);
       }
     } else {
       router.push('/(modals)/app-selection');
@@ -989,11 +1012,9 @@ export default function FocusScreen() {
     triggerHaptic('light');
 
     if (currentSession.session !== null) {
-      Alert.alert(
-        t('home.blocklistLockedTitle'),
-        t('home.blocklistLockedBody'),
-        [{ text: t('common.ok') }]
-      );
+      Alert.alert(t('home.blocklistLockedTitle'), t('home.blocklistLockedBody'), [
+        { text: t('common.ok') },
+      ]);
       return;
     }
 
@@ -1194,25 +1215,21 @@ export default function FocusScreen() {
   const handleShareTag = (tag: any) => {
     const { isAuthenticated, signInWithApple } = useAppStore.getState().auth;
     if (!isAuthenticated) {
-      Alert.alert(
-        t('home.shareSignInTitle'),
-        t('home.shareSignInBody'),
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          {
-            text: t('common.continueWithApple'),
-            onPress: async () => {
-              await signInWithApple();
-              // Proceed to share only if sign-in actually completed
-              // (signInWithApple swallows user-cancellation without throwing).
-              if (useAppStore.getState().auth.isAuthenticated) {
-                setSharingTag(tag);
-                setShowShareModal(true);
-              }
-            },
+      Alert.alert(t('home.shareSignInTitle'), t('home.shareSignInBody'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.continueWithApple'),
+          onPress: async () => {
+            await signInWithApple();
+            // Proceed to share only if sign-in actually completed
+            // (signInWithApple swallows user-cancellation without throwing).
+            if (useAppStore.getState().auth.isAuthenticated) {
+              setSharingTag(tag);
+              setShowShareModal(true);
+            }
           },
-        ],
-      );
+        },
+      ]);
       return;
     }
     setSharingTag(tag);
@@ -1473,6 +1490,7 @@ export default function FocusScreen() {
     sessionTargetDurationRef.current = null;
     setIsRunning(false);
     setIsSessionActive(false);
+    setTodoListVisible(false);
     setIsBonusTime(false);
     setBonusSeconds(0);
     AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
@@ -1503,6 +1521,8 @@ export default function FocusScreen() {
     setIsRunning(false);
     setIsBonusTime(false);
     setBonusSeconds(0);
+    // Hide the TODO list immediately, before the stop animation runs.
+    setTodoListVisible(false);
 
     // Clear persisted session
     AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
@@ -1717,7 +1737,6 @@ export default function FocusScreen() {
       // 1. Check if widget stopped a session while app was backgrounded/killed
       const stopAction = WidgetService.checkWidgetStopAction();
       if (stopAction) {
-
         // Check if a NEWER session was started after this stop action.
         // Flow: start A → stop A → start B → user opens app.
         // The stop belongs to session A; session B is the current one.
@@ -1913,6 +1932,7 @@ export default function FocusScreen() {
         setIsInfinite(true);
         setIsRunning(true);
         setIsSessionActive(true);
+        setTodoListVisible(true);
         sessionStartTimeRef.current = persisted.startTime;
         sessionTargetDurationRef.current = persisted.targetDuration;
 
@@ -1955,6 +1975,7 @@ export default function FocusScreen() {
         setIsInfinite(false);
         setIsRunning(true);
         setIsSessionActive(true);
+        setTodoListVisible(true);
         sessionStartTimeRef.current = persisted.startTime;
         sessionEndTimeRef.current = persisted.endTime;
         sessionTargetDurationRef.current = persisted.targetDuration;
@@ -1988,6 +2009,7 @@ export default function FocusScreen() {
         setIsInfinite(false);
         setIsRunning(true);
         setIsSessionActive(true);
+        setTodoListVisible(true);
         sessionStartTimeRef.current = persisted.startTime;
         sessionEndTimeRef.current = persisted.endTime;
         sessionTargetDurationRef.current = persisted.targetDuration;
@@ -2122,7 +2144,17 @@ export default function FocusScreen() {
           mass: 0.6,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        // Mount the TODO list only after the entrance settles, so its heavy
+        // Reanimated rows don't jank the countdown/picker transition. Guard the
+        // start→quick-stop race: sessionStartTimeRef is null once a stop has torn
+        // the session down, so we don't re-show the list after it was hidden.
+        // Reanimated drives the appearance: the list fades in (entering) and the
+        // timer container glides up via its LinearTransition layout animation.
+        // (LayoutAnimation is a no-op under the New Architecture — which is why the
+        // earlier duration/easing tweaks had no visible effect.)
+        if (sessionStartTimeRef.current) setTodoListVisible(true);
+      });
     });
   };
 
@@ -2130,6 +2162,54 @@ export default function FocusScreen() {
   // tap lands after the first has flipped `isSessionActive`, so it falls into the
   // Stop branch and immediately cancels the session it just started.
   const handleStartFocusGuarded = useThrottledPress(handleStartFocus);
+
+  // --- Auto-start a focus session for a Journal TODO (swipe-left → start) ---
+  // The TODO sheet navigates here with { startTagId, startDuration, autostart, ts }.
+  // We can't reuse the store start path directly because the real start flow lives
+  // in this component (animations + native monitoring), so we prime the same tag +
+  // duration state the user would pick, then fire the existing start handler once
+  // the state has settled.
+  const focusParams = useLocalSearchParams<{
+    startTagId?: string;
+    startDuration?: string;
+    autostart?: string;
+    ts?: string;
+  }>();
+  const pendingStartRef = useRef<{ tagId: string; duration: number } | null>(null);
+  // Bumped each time a start is requested so the commit effect below runs even when
+  // setSelectedTag/setSelectedTime are no-ops (home already had that tag/duration) —
+  // otherwise the effect's deps wouldn't change and the start would silently never fire.
+  const [autostartNonce, setAutostartNonce] = useState(0);
+
+  useEffect(() => {
+    if (focusParams.autostart === '1' && focusParams.startTagId) {
+      const dur = Number(focusParams.startDuration) || 15;
+      pendingStartRef.current = { tagId: String(focusParams.startTagId), duration: dur };
+      setSelectedTag(String(focusParams.startTagId));
+      setSelectedTime(dur);
+      setAutostartNonce((n) => n + 1);
+      // Clear the params so returning to this tab later doesn't re-trigger a start.
+      router.setParams({
+        startTagId: undefined,
+        startDuration: undefined,
+        autostart: undefined,
+        ts: undefined,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusParams.ts]);
+
+  // Runs on the render that commits the primed tag/duration (same batched update as
+  // the nonce bump), so handleStartFocus closes over the right values.
+  useEffect(() => {
+    const pending = pendingStartRef.current;
+    if (!pending) return;
+    pendingStartRef.current = null;
+    // Can't start over a live/transitioning session — that would toggle Stop instead.
+    if (isRunning || isSessionActive) return;
+    handleStartFocusGuarded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autostartNonce]);
 
   const handleTimeChange = (time: number) => {
     setSelectedTime(time);
@@ -2301,8 +2381,11 @@ export default function FocusScreen() {
         </View>
 
         <View className="flex-1 items-center justify-center px-4">
-          {/* Time Selector or Running Timer - stacked and crossfaded */}
-          <View
+          {/* Time Selector or Running Timer - stacked and crossfaded.
+              LinearTransition makes this container glide up/down smoothly when the
+              TODO list below it mounts/unmounts and reflows the centred column. */}
+          <Reanimated.View
+            layout={LinearTransition.duration(550)}
             style={{
               height: 300,
               width: '100%',
@@ -2392,34 +2475,39 @@ export default function FocusScreen() {
                 {timerDisplayTime}
               </Animated.Text>
             </Animated.View>
-          </View>
+          </Reanimated.View>
 
-          {/* Focus Button (kept mounted, fade only) */}
+          {/* Focus Button (kept mounted, fade only) — swapped for the running
+              tag's TODO list once a session is active. */}
           <View
             style={{ width: '100%', marginBottom: 64, minHeight: 96, justifyContent: 'center' }}>
-            <Animated.View
-              style={{ opacity: isUnlockActive ? 0 : tagsOpacity }}
-              pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
-              <Pressable
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setShowTagModal(true);
-                }}
-                className="flex-row items-center justify-between rounded-2xl bg-light-border/30 px-6 py-4 active:opacity-80 dark:bg-gray-700">
-                <View className="flex-row items-center">
-                  <Typography variant="subtitle-16" color="primary">
-                    {availableTags.length === 0
-                      ? t('home.createNewTag')
-                      : selectedTagName || t('home.selectTag')}
-                  </Typography>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
-                />
-              </Pressable>
-            </Animated.View>
+            {todoListVisible && !isUnlockActive && selectedTag ? (
+              <RunningTodoList tagId={selectedTag} accentColor={selectedTagObj?.color} />
+            ) : (
+              <Animated.View
+                style={{ opacity: isUnlockActive ? 0 : tagsOpacity }}
+                pointerEvents={isRunning || isUnlockActive ? 'none' : 'auto'}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setShowTagModal(true);
+                  }}
+                  className="flex-row items-center justify-between rounded-2xl bg-light-border/30 px-6 py-4 active:opacity-80 dark:bg-gray-700">
+                  <View className="flex-row items-center">
+                    <Typography variant="subtitle-16" color="primary">
+                      {availableTags.length === 0
+                        ? t('home.createNewTag')
+                        : selectedTagName || t('home.selectTag')}
+                    </Typography>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+                  />
+                </Pressable>
+              </Animated.View>
+            )}
           </View>
         </View>
 
@@ -2512,6 +2600,7 @@ export default function FocusScreen() {
                       index={index}
                       selectedTag={selectedTag}
                       lastDuration={lastDurationByTagId[tag.id] ?? 15}
+                      todoCount={openTodoCountByTagId[tag.id] ?? 0}
                       isDragging={isDragging}
                       dragOriginalIndex={dragOriginalIdx}
                       dragTargetIndex={dragTargetIdx}
@@ -3065,7 +3154,9 @@ export default function FocusScreen() {
                     backgroundColor: '#6592E9',
                     opacity: blocklistEditCost.canAfford ? 1 : 0.5,
                   }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>{t('common.confirm')}</Text>
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
+                    {t('common.confirm')}
+                  </Text>
                 </Pressable>
               </View>
             </Pressable>

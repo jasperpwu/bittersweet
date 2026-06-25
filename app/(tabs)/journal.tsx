@@ -17,9 +17,13 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Modal, Slider, Typography, TimePicker, DatePicker } from '../../src/components/ui';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
-import { DateSelector, Timeline } from '../../src/components/journal';
+import { DateSelector, Timeline, TodoSheet } from '../../src/components/journal';
+import { TodoEditModal } from '../../src/components/journal/TodoSheet/TodoEditModal';
+import { TodoDragGhost } from '../../src/components/journal/TodoSheet/TodoDragGhost';
+import { useTodoScheduleController } from '../../src/components/journal/TodoSheet/TodoScheduleController';
 import { FruitCounter } from '../../src/components/rewards';
-import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore } from '../../src/store';
+import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore, useTodos, useTodoActions } from '../../src/store';
+import type { Todo } from '../../src/store/types';
 import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
 import { showToast } from '../../src/components/ui/Toast';
 import { isToday } from '../../src/utils/dateUtils';
@@ -40,6 +44,30 @@ export default function JournalScreen() {
   const { sessions, tags } = useFocus();
   const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession } = useFocusActions();
   const secondaryTagEnabled = useSecondaryTagEnabled();
+
+  // TODO scheduling — drag from the sheet onto the calendar + tap-to-edit blocks.
+  const todosState = useTodos();
+  const { updateTodo } = useTodoActions();
+  const [calendarEditTodo, setCalendarEditTodo] = useState<Todo | null>(null);
+  const [calendarEditVisible, setCalendarEditVisible] = useState(false);
+  const openTodoEditor = useCallback((todo: Todo) => {
+    setCalendarEditTodo(todo);
+    setCalendarEditVisible(true);
+  }, []);
+  const schedule = useTodoScheduleController({
+    selectedDate,
+    updateTodo,
+    onEditTodo: openTodoEditor,
+  });
+  const scheduledTodosForDate = useMemo(() => {
+    const dayStr = selectedDate.toDateString();
+    return todosState.allIds
+      .map((id) => todosState.byId[id])
+      .filter(
+        (td): td is Todo =>
+          !!td && !td.deletedAt && !!td.startAt && new Date(td.startAt).toDateString() === dayStr
+      );
+  }, [todosState, selectedDate]);
 
   // Manual Entry State
   const [isManualEntryModalVisible, setIsManualEntryModalVisible] = useState(false);
@@ -532,9 +560,13 @@ export default function JournalScreen() {
               <Animated.View className="flex-1 px-5 pt-4" style={animatedTimelineStyle}>
                 <Timeline
                   sessions={sessionsForSelectedDate}
+                  scheduledTodos={scheduledTodosForDate}
+                  schedule={schedule}
                   currentTime={currentTime}
                   isToday={!showJumpToToday}
                   onSessionPress={handleSessionPress}
+                  onTodoPress={openTodoEditor}
+                  onTodoReschedule={schedule.rescheduleTodo}
                   scrollToSessionId={scrollToSessionId}
                   onScrollComplete={() => setScrollToSessionId(null)}
                 />
@@ -1015,6 +1047,19 @@ export default function JournalScreen() {
         </Animated.View>
         </Pressable>
       </Modal>
+
+      {/* TODOs — draggable peek/expand sheet, always available on the Journal tab */}
+      <TodoSheet schedule={schedule} />
+
+      {/* Floating ghost that follows the finger while dragging a todo to schedule */}
+      <TodoDragGhost schedule={schedule} />
+
+      {/* Edit modal opened from tapping a scheduled block on the calendar */}
+      <TodoEditModal
+        isVisible={calendarEditVisible}
+        onClose={() => setCalendarEditVisible(false)}
+        todo={calendarEditTodo}
+      />
     </View>
   );
 }

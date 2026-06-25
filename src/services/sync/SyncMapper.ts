@@ -46,6 +46,7 @@ const DATE_FIELDS: Record<string, string[]> = {
   focus_sessions: ['start_time', 'end_time', 'created_at', 'updated_at', 'deleted_at'],
   session_tags: ['created_at', 'updated_at', 'deleted_at'],
   focus_goals: ['created_at', 'updated_at', 'last_reset_date', 'deleted_at'],
+  todos: ['created_at', 'updated_at', 'start_at', 'completed_at', 'deleted_at'],
   coach_reports: ['week_start', 'week_end', 'generated_at', 'created_at', 'updated_at', 'deleted_at'],
 };
 
@@ -186,6 +187,48 @@ export function rowToGoal(row: Record<string, any>): any {
     lastResetDate: row.last_reset_date ? new Date(row.last_reset_date) : new Date(),
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+  };
+}
+
+// --- Todo mapper ---
+
+export function todoToRow(todo: any, userId: string): Record<string, any> {
+  const toIso = (v: any) => (v instanceof Date ? v.toISOString() : v ?? null);
+  const row: Record<string, any> = {
+    id: todo.id,
+    user_id: userId,
+    name: todo.name,
+    tag_id: todo.tagId,
+    start_at: toIso(todo.startAt),
+    duration_minutes: todo.durationMinutes ?? null,
+    notes: todo.notes ?? null,
+    completed: todo.completed ?? false,
+    completed_at: toIso(todo.completedAt),
+    sort_order: todo.sortOrder ?? 0,
+    // Always emit deleted_at (null when active) so an undo/restore explicitly
+    // un-tombstones the cloud row instead of leaving a stale deleted_at behind.
+    deleted_at: toIso(todo.deletedAt),
+  };
+  if (todo.createdAt) row.created_at = toIso(todo.createdAt);
+  if (todo.updatedAt) row.updated_at = toIso(todo.updatedAt);
+  return row;
+}
+
+export function rowToTodo(row: Record<string, any>): any {
+  return {
+    id: row.id,
+    userId: row.user_id ?? 'local-user',
+    name: row.name,
+    tagId: row.tag_id,
+    ...(row.start_at ? { startAt: new Date(row.start_at) } : {}),
+    ...(row.duration_minutes != null ? { durationMinutes: row.duration_minutes } : {}),
+    ...(row.notes ? { notes: row.notes } : {}),
+    completed: row.completed ?? false,
+    ...(row.completed_at ? { completedAt: new Date(row.completed_at) } : {}),
+    sortOrder: row.sort_order ?? 0,
+    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+    updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+    ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
   };
 }
 

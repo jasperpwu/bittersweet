@@ -1,4 +1,24 @@
 {
+  "todos": {
+    "title": "TODOs",
+    "addRow": "Add a TODO",
+    "dragHint": "Drag to calendar to schedule",
+    "filterAll": "All",
+    "empty": "No tasks yet",
+    "deleted": "TODO deleted",
+    "completed": "Task completed",
+    "undo": "Undo",
+    "start": "Start",
+    "newTitle": "New TODO",
+    "editTitle": "Edit TODO",
+    "nameLabel": "Task",
+    "namePlaceholder": "What do you want to focus on?",
+    "tagLabel": "Tag",
+    "startLabel": "Start date & time",
+    "durationLabel": "Duration",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Add notes…"
+  },
   "common": {
     "next": "Next",
     "skip": "Skip",
@@ -290,7 +310,7 @@
     "deleteButton": "Delete Badge"
   },
   "coach": {
-    "title": "AI Focus Coach",
+    "title": "Focus Coach",
     "teaserReady": "Nice — your first report unlocks when this week wraps up.",
     "teaserDays_one": "Focus on {{count}} more day this week to unlock your report.",
     "teaserDays_other": "Focus on {{count}} more days this week to unlock your report.",

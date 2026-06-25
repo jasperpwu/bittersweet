@@ -101,6 +101,21 @@ export interface Tag extends BaseEntity {
   activityType?: ActivityType;
 }
 
+// Lightweight task planning, surfaced in the Journal "TODOs" sheet.
+// Synced as a "list" entity, mirroring FocusGoal.
+export interface Todo extends BaseEntity {
+  userId: string;
+  name: string;
+  tagId: string; // required — the tag this task belongs to
+  startAt?: Date; // optional start date + time
+  durationMinutes?: number; // optional estimated duration
+  notes?: string;
+  completed: boolean;
+  completedAt?: Date;
+  sortOrder: number;
+  deletedAt?: Date; // soft-delete, mirrors Tag
+}
+
 export interface TargetHistoryEntry {
   effectiveDate: string; // "YYYY-MM-DD" — changes apply from this date onward
   period: 'daily' | 'weekly' | 'monthly';

@@ -1,4 +1,24 @@
 {
+  "todos": {
+    "title": "Aufgaben",
+    "addRow": "Aufgabe hinzufügen",
+    "dragHint": "Zum Planen in den Kalender ziehen",
+    "filterAll": "Alle",
+    "empty": "Noch keine Aufgaben",
+    "deleted": "Aufgabe gelöscht",
+    "completed": "Aufgabe erledigt",
+    "undo": "Rückgängig",
+    "start": "Starten",
+    "newTitle": "Neue Aufgabe",
+    "editTitle": "Aufgabe bearbeiten",
+    "nameLabel": "Aufgabe",
+    "namePlaceholder": "Worauf möchtest du dich konzentrieren?",
+    "tagLabel": "Tag",
+    "startLabel": "Startdatum & -zeit",
+    "durationLabel": "Dauer",
+    "notesLabel": "Notizen",
+    "notesPlaceholder": "Notizen hinzufügen…"
+  },
   "common": {
     "next": "Weiter",
     "skip": "Überspringen",
@@ -290,7 +310,7 @@
     "deleteButton": "Abzeichen löschen"
   },
   "coach": {
-    "title": "KI-Fokus-Coach",
+    "title": "Fokus-Coach",
     "teaserReady": "Stark — dein erster Bericht wird freigeschaltet, sobald diese Woche endet.",
     "teaserDays_one": "Bleib diese Woche noch {{count}} Tag dran, um deinen Bericht freizuschalten.",
     "teaserDays_other": "Bleib diese Woche noch {{count}} Tage dran, um deinen Bericht freizuschalten.",

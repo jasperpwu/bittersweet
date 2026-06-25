@@ -1,4 +1,24 @@
 {
+  "todos": {
+    "title": "할 일",
+    "addRow": "할 일 추가",
+    "dragHint": "캘린더로 드래그해 일정 추가",
+    "filterAll": "전체",
+    "empty": "아직 할 일이 없어요",
+    "deleted": "할 일을 삭제했어요",
+    "completed": "할 일을 완료했어요",
+    "undo": "실행 취소",
+    "start": "시작",
+    "newTitle": "새 할 일",
+    "editTitle": "할 일 편집",
+    "nameLabel": "할 일",
+    "namePlaceholder": "무엇에 집중할까요?",
+    "tagLabel": "태그",
+    "startLabel": "시작 날짜 및 시간",
+    "durationLabel": "소요 시간",
+    "notesLabel": "메모",
+    "notesPlaceholder": "메모 추가…"
+  },
   "common": {
     "next": "다음",
     "skip": "건너뛰기",
@@ -290,7 +310,7 @@
     "deleteButton": "배지 삭제"
   },
   "coach": {
-    "title": "AI 집중 코치",
+    "title": "집중 코치",
     "teaserReady": "좋아요 — 이번 주가 끝나면 첫 리포트가 열려요.",
     "teaserDays_one": "이번 주에 {{count}}일 더 집중하면 리포트가 열려요.",
     "teaserDays_other": "이번 주에 {{count}}일 더 집중하면 리포트가 열려요.",
