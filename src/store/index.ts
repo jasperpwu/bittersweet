@@ -4,6 +4,7 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 import {
   FocusSession,
   SessionTag,
@@ -2850,7 +2851,7 @@ export const useGroveActions = () =>
  * Store actions hooks
  */
 export const useFocusActions = () =>
-  useAppStore((state) => ({
+  useAppStore(useShallow((state) => ({
     createSession: state.focus.createSession,
     updateSession: state.focus.updateSession,
     adjustSessionDuration: state.focus.adjustSessionDuration,
@@ -2892,34 +2893,34 @@ export const useFocusActions = () =>
     leaveSharedTag: state.focus.leaveSharedTag,
     removeJoiner: state.focus.removeJoiner,
     fetchJoinerStats: state.focus.fetchJoinerStats,
-  }));
+  })));
 
 export const useUIActions = () =>
-  useAppStore((state) => ({
+  useAppStore(useShallow((state) => ({
     showModal: state.ui.showModal,
     hideModal: state.ui.hideModal,
     setLoading: state.ui.setLoading,
     addError: state.ui.addError,
     clearError: state.ui.clearError,
     clearAllErrors: state.ui.clearAllErrors,
-  }));
+  })));
 
 export const useSettingsActions = () =>
-  useAppStore((state) => ({
+  useAppStore(useShallow((state) => ({
     updateTheme: state.settings.updateTheme,
     updateLanguage: state.settings.updateLanguage,
     updateNotifications: state.settings.updateNotifications,
-  }));
+  })));
 
 export const useRewardsActions = () =>
-  useAppStore((state) => ({
+  useAppStore(useShallow((state) => ({
     earnFruits: state.rewards.earnFruits,
     spendFruits: state.rewards.spendFruits,
     unlockApp: state.rewards.unlockApp,
-  }));
+  })));
 
 export const useBlocklistActions = () =>
-  useAppStore((state) => ({
+  useAppStore(useShallow((state) => ({
     checkAuthorizationStatus: state.blocklist.checkAuthorizationStatus,
     requestAuthorization: state.blocklist.requestAuthorization,
     updateBlockedApps: state.blocklist.updateBlockedApps,
@@ -2928,10 +2929,10 @@ export const useBlocklistActions = () =>
     endUnlock: state.blocklist.endUnlock,
     checkActiveUnlocks: state.blocklist.checkActiveUnlocks,
     getBlocklistEditCost: state.blocklist.getBlocklistEditCost,
-  }));
+  })));
 
 export const useBlocklistEditCost = () =>
-  useAppStore((state) => {
+  useAppStore(useShallow((state) => {
     const { editHistory } = state.blocklist;
     const currentWeekStart = getWeekStart().toISOString();
     const editsThisWeek =
@@ -2943,7 +2944,7 @@ export const useBlocklistEditCost = () =>
       canAfford: state.rewards.balance >= cost,
       balance: state.rewards.balance,
     };
-  });
+  }));
 
 /**
  * Store selectors hooks

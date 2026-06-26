@@ -8,7 +8,8 @@ import { CoachSection } from '../../src/components/analytics/CoachCard';
 import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
-import { useFocus, useFocusActions, useAppStore } from '../../src/store';
+import { useFocusActions, useAppStore } from '../../src/store';
+import { useShallow } from 'zustand/react/shallow';
 import { SharedTagStats } from '../../src/components/analytics/SharedTagStats/SharedTagStats';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
@@ -33,7 +34,16 @@ export default function InsightsScreen() {
   const weekStartDay = 1; // Always Monday
 
   // Get data from focus store
-  const { sessions, tags, goals, sharedTagStats } = useFocus();
+  // Narrow subscription: only re-render when one of these fields changes, not on
+  // every focus write (e.g. currentSession ticking during an active session).
+  const { sessions, tags, goals, sharedTagStats } = useAppStore(
+    useShallow((s) => ({
+      sessions: s.focus.sessions,
+      tags: s.focus.tags,
+      goals: s.focus.goals,
+      sharedTagStats: s.focus.sharedTagStats,
+    }))
+  );
   const { deleteGoal, concludeGoal, deleteBadge, reorderGoals, fetchJoinerStats, removeJoiner } =
     useFocusActions();
 

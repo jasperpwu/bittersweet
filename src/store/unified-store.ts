@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
@@ -305,23 +306,23 @@ export const useUnifiedStore = create<UnifiedStore>()(
 );
 
 // Convenience hooks
-export const useAppSettings = () => useUnifiedStore((state) => ({
+export const useAppSettings = () => useUnifiedStore(useShallow((state) => ({
   preferences: state.preferences,
   updatePreferences: state.updatePreferences,
   theme: state.getTheme(),
-}));
+})));
 
-export const useAppStats = () => useUnifiedStore((state) => ({
+export const useAppStats = () => useUnifiedStore(useShallow((state) => ({
   stats: state.stats,
   updateStats: state.updateStats,
-}));
+})));
 
-export const useAppState = () => useUnifiedStore((state) => ({
+export const useAppState = () => useUnifiedStore(useShallow((state) => ({
   isHydrated: state.app.isHydrated,
   isOnline: state.app.isOnline,
   appState: state.app.appState,
   initializeApp: state.initializeApp,
-}));
+})));
 
 // Initialize the store
 export const initializeUnifiedStore = async () => {

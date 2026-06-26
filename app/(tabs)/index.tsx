@@ -41,9 +41,9 @@ import { inferActivityType } from '../../src/utils/inferActivityType';
 import { useThrottledPress } from '../../src/hooks/common';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import { useShallow } from 'zustand/react/shallow';
 
 import {
-  useFocus,
   useFocusActions,
   useRewards,
   useAppStore,
@@ -687,7 +687,20 @@ export default function FocusScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   // Get tags from store
-  const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals, todos } = useFocus();
+  // Narrow subscription: this screen reads only these focus fields. Selecting
+  // the whole `state.focus` slice (via useFocus) re-rendered this 3k-line screen
+  // on unrelated focus writes (e.g. sharedTagStats fetches). useShallow keeps it
+  // re-rendering only when one of these specific fields actually changes.
+  const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals, todos } = useAppStore(
+    useShallow((s) => ({
+      tags: s.focus.tags,
+      sessions: s.focus.sessions,
+      lastSelectedTagId: s.focus.lastSelectedTagId,
+      lastDurationByTagId: s.focus.lastDurationByTagId,
+      goals: s.focus.goals,
+      todos: s.focus.todos,
+    }))
+  );
   const {
     createTag,
     updateTag,
@@ -710,7 +723,7 @@ export default function FocusScreen() {
   );
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
-  const { currentSession } = useFocus();
+  const currentSession = useAppStore((s) => s.focus.currentSession);
   const blocklistEditCost = useBlocklistEditCost();
   const { triggerHaptic } = useDeviceIntegration();
   const { preferences, updatePreferences } = useAppSettings();
