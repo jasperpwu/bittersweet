@@ -2411,9 +2411,14 @@ export default function FocusScreen() {
         <View className="flex-1 items-center justify-center px-4">
           {/* Time Selector or Running Timer - stacked and crossfaded.
               LinearTransition makes this container glide up/down smoothly when the
-              TODO list below it mounts/unmounts and reflows the centred column. */}
+              TODO list below it mounts/unmounts and reflows the centred column.
+              Only enabled while a session is active/ending — otherwise the layout
+              that settles right after cold mount (store hydration, font measuring,
+              selectedTag restore) would animate as an unwanted vertical jump. */}
           <Reanimated.View
-            layout={LinearTransition.duration(550)}
+            layout={
+              isSessionActive || todoListVisible ? LinearTransition.duration(550) : undefined
+            }
             style={{
               height: 300,
               width: '100%',
