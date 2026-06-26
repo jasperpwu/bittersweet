@@ -27,7 +27,11 @@
     "discardTitle": "¿Descartar cambios?",
     "discardMessage": "Perderás la tarea sin guardar.",
     "keepEditing": "Seguir editando",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "notifBody": "Es hora de empezar esta tarea",
+    "notifPermTitle": "¿Activar notificaciones?",
+    "notifPermMessage": "Activa las notificaciones en Ajustes para recibir recordatorios cuando empiecen tus tareas.",
+    "openSettings": "Abrir Ajustes"
   },
   "goals": {
     "discardTitle": "¿Descartar cambios?",

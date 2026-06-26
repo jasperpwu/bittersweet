@@ -27,7 +27,11 @@
     "discardTitle": "Discard changes?",
     "discardMessage": "Your unsaved TODO will be lost.",
     "keepEditing": "Keep Editing",
-    "discard": "Discard"
+    "discard": "Discard",
+    "notifBody": "Time to start this task",
+    "notifPermTitle": "Turn on notifications?",
+    "notifPermMessage": "Enable notifications in Settings to get reminders when your tasks start.",
+    "openSettings": "Open Settings"
   },
   "goals": {
     "discardTitle": "Discard changes?",

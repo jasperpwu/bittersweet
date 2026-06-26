@@ -1,6 +1,7 @@
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Linking,
   View,
   TextInput,
   Pressable,
@@ -15,6 +16,7 @@ import { showToast } from '../../ui/Toast';
 import { HorizontalTagSelector } from '../../focus/TagSelector';
 import { useFocus, useTodoActions } from '../../../store';
 import { colors } from '../../../config/theme';
+import { ensureTodoNotificationPermission } from '../../../services/notifications/todos';
 import type { Todo } from '../../../store/types';
 
 interface TodoEditModalProps {
@@ -147,8 +149,22 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
 
   const canSave = name.trim().length > 0 && tagId.length > 0;
 
+  // When the user sets a start, make sure we can actually deliver the reminder.
+  // Requests the system prompt if it hasn't been shown; points permanently-denied
+  // users at Settings so the start time isn't silently useless.
+  const ensureNotifications = async () => {
+    const result = await ensureTodoNotificationPermission();
+    if (result === 'denied') {
+      Alert.alert(t('todos.notifPermTitle'), t('todos.notifPermMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('todos.openSettings'), onPress: () => Linking.openSettings() },
+      ]);
+    }
+  };
+
   const handleSave = () => {
     if (!canSave) return;
+    if (startEnabled) ensureNotifications();
     const payload = {
       name: name.trim(),
       tagId,

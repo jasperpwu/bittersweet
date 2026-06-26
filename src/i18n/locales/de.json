@@ -27,7 +27,11 @@
     "discardTitle": "Änderungen verwerfen?",
     "discardMessage": "Dein nicht gespeichertes To-do geht verloren.",
     "keepEditing": "Weiter bearbeiten",
-    "discard": "Verwerfen"
+    "discard": "Verwerfen",
+    "notifBody": "Zeit, diese Aufgabe zu beginnen",
+    "notifPermTitle": "Mitteilungen aktivieren?",
+    "notifPermMessage": "Aktiviere Mitteilungen in den Einstellungen, um zum Start deiner Aufgaben erinnert zu werden.",
+    "openSettings": "Einstellungen öffnen"
   },
   "goals": {
     "discardTitle": "Änderungen verwerfen?",

@@ -12,6 +12,7 @@ import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
 import { useAppState, initializeUnifiedStore, clearUnifiedStoreData } from '../src/store/unified-store';
 import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
 import { useGoalNudgeNotifications } from '../src/hooks/useGoalNudgeNotifications';
+import { useTodoNotifications } from '../src/hooks/useTodoNotifications';
 import { useWeeklyCoach } from '../src/hooks/useWeeklyCoach';
 import { useApplyLanguage } from '../src/hooks/useApplyLanguage';
 import { useEffect, useRef, useState } from 'react';
@@ -79,6 +80,9 @@ export default function RootLayout() {
 
   // Schedule/cancel goal nudge notifications
   useGoalNudgeNotifications();
+
+  // Schedule/cancel per-todo start-time reminders
+  useTodoNotifications();
 
   // AI Focus Coach: generate weekly report + schedule the weekly nudge
   useWeeklyCoach();

@@ -27,7 +27,11 @@
     "discardTitle": "変更を破棄しますか？",
     "discardMessage": "保存していないTODOは失われます。",
     "keepEditing": "編集を続ける",
-    "discard": "破棄"
+    "discard": "破棄",
+    "notifBody": "このタスクを始める時間です",
+    "notifPermTitle": "通知をオンにしますか？",
+    "notifPermMessage": "設定で通知をオンにすると、タスクの開始時間にお知らせします。",
+    "openSettings": "設定を開く"
   },
   "goals": {
     "discardTitle": "変更を破棄しますか？",

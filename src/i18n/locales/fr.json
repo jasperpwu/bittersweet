@@ -27,7 +27,11 @@
     "discardTitle": "Abandonner les modifications ?",
     "discardMessage": "Votre tâche non enregistrée sera perdue.",
     "keepEditing": "Continuer la modification",
-    "discard": "Abandonner"
+    "discard": "Abandonner",
+    "notifBody": "C’est l’heure de commencer cette tâche",
+    "notifPermTitle": "Activer les notifications ?",
+    "notifPermMessage": "Activez les notifications dans les Réglages pour être prévenu au début de vos tâches.",
+    "openSettings": "Ouvrir Réglages"
   },
   "goals": {
     "discardTitle": "Abandonner les modifications ?",

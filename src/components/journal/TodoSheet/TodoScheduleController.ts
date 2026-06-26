@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import type { Todo } from '../../../store/types';
+import { ensureTodoNotificationPermission } from '../../../services/notifications/todos';
 import { DEFAULT_TODO_DURATION } from '../Timeline/constants';
 
 /**
@@ -109,6 +110,9 @@ export function useTodoScheduleController({
         startAt: dateAtMinutes(selectedDateRef.current, minutes),
         startHasTime: true,
       });
+      // Scheduling a start implies wanting a reminder — ask quietly (no alert
+      // mid-gesture; the edit modal handles the denied-Settings path).
+      ensureTodoNotificationPermission();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     [dragActive, updateTodo]
@@ -120,6 +124,7 @@ export function useTodoScheduleController({
         startAt: dateAtMinutes(selectedDateRef.current, minutes),
         startHasTime: true,
       });
+      ensureTodoNotificationPermission();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     [updateTodo]

@@ -27,7 +27,11 @@
     "discardTitle": "Descartar alterações?",
     "discardMessage": "Sua tarefa não salva será perdida.",
     "keepEditing": "Continuar editando",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "notifBody": "Hora de começar esta tarefa",
+    "notifPermTitle": "Ativar notificações?",
+    "notifPermMessage": "Ative as notificações nos Ajustes para receber lembretes quando suas tarefas começarem.",
+    "openSettings": "Abrir Ajustes"
   },
   "goals": {
     "discardTitle": "Descartar alterações?",

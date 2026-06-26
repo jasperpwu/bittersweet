@@ -27,7 +27,11 @@
     "discardTitle": "放弃更改？",
     "discardMessage": "未保存的待办将会丢失。",
     "keepEditing": "继续编辑",
-    "discard": "放弃"
+    "discard": "放弃",
+    "notifBody": "该开始这个任务了",
+    "notifPermTitle": "开启通知？",
+    "notifPermMessage": "在「设置」中开启通知，任务开始时即可收到提醒。",
+    "openSettings": "打开设置"
   },
   "goals": {
     "discardTitle": "放弃更改？",
