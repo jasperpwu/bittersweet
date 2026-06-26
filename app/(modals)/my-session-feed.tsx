@@ -2,8 +2,10 @@ import React, { useMemo } from 'react';
 import { View, SafeAreaView, Pressable, ScrollView, Image } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { useFocus } from '../../src/store';
+import i18n from '../../src/i18n';
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -15,7 +17,7 @@ function formatDuration(minutes: number): string {
 
 function formatDate(date: Date): string {
   const d = new Date(date);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString(i18n.language, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -24,13 +26,14 @@ function formatDate(date: Date): string {
 
 function formatTime(date: Date): string {
   const d = new Date(date);
-  return d.toLocaleTimeString(undefined, {
+  return d.toLocaleTimeString(i18n.language, {
     hour: 'numeric',
     minute: '2-digit',
   });
 }
 
 export default function MySessionFeedModal() {
+  const { t } = useTranslation();
   const { sessions, tags } = useFocus();
 
   const sortedSessions = useMemo(() => {
@@ -52,7 +55,7 @@ export default function MySessionFeedModal() {
           <Ionicons name="arrow-back" size={24} color="#6592E9" />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
-          My Sessions
+          {t('gm.feedMySessions')}
         </Typography>
       </View>
 
@@ -60,7 +63,7 @@ export default function MySessionFeedModal() {
         {sortedSessions.length === 0 ? (
           <View className="py-12 items-center">
             <Typography variant="body-14" color="secondary" className="text-center">
-              No sessions yet. Complete a focus session to see it here!
+              {t('gm.feedEmptyOwn')}
             </Typography>
           </View>
         ) : (
@@ -86,7 +89,7 @@ export default function MySessionFeedModal() {
                       className="flex-1"
                       numberOfLines={1}
                     >
-                      {tag?.name ?? 'Untagged'}
+                      {tag?.name ?? t('gm.feedUntagged')}
                     </Typography>
                     <Typography variant="subtitle-14-medium" color="primary">
                       {formatDuration(session.duration)}

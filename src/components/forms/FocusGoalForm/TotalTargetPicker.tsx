@@ -1,6 +1,7 @@
 import { FC, useState, useCallback } from 'react';
 import { View, Pressable, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui/Typography';
 import { WheelColumn } from '../../ui/WheelColumn';
 
@@ -27,6 +28,7 @@ interface TotalTargetPickerProps {
  * scroll view without nested-scroll gesture conflicts (mirrors TimePicker).
  */
 export const TotalTargetPicker: FC<TotalTargetPickerProps> = ({ value, onChange }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [pendingHours, setPendingHours] = useState(Math.max(1, Math.floor(value / 60)));
   const [pendingMinutes, setPendingMinutes] = useState(value % 60);
@@ -59,7 +61,7 @@ export const TotalTargetPicker: FC<TotalTargetPickerProps> = ({ value, onChange 
           <View className="flex-1 bg-black/60 justify-center items-center px-6">
             <View className="bg-light-bg dark:bg-dark-bg rounded-3xl p-6 w-full max-w-sm border border-light-border dark:border-dark-border">
               <Typography variant="headline-20" color="primary" className="mb-4 text-center">
-                Total Target
+                {t('goals.totalTarget')}
               </Typography>
 
               <View style={{ flexDirection: 'row' }}>
@@ -67,13 +69,13 @@ export const TotalTargetPicker: FC<TotalTargetPickerProps> = ({ value, onChange 
                   values={HOURS}
                   selectedValue={pendingHours}
                   onValueChange={setPendingHours}
-                  label="Hours"
+                  label={t('goals.totalTargetHours')}
                 />
                 <WheelColumn
                   values={MINUTES}
                   selectedValue={pendingMinutes}
                   onValueChange={setPendingMinutes}
-                  label="Minutes"
+                  label={t('goals.totalTargetMinutes')}
                   formatValue={(v) => String(v).padStart(2, '0')}
                 />
               </View>
@@ -84,7 +86,7 @@ export const TotalTargetPicker: FC<TotalTargetPickerProps> = ({ value, onChange 
                   className="flex-1 bg-light-border dark:bg-dark-border rounded-xl py-3 items-center justify-center active:opacity-80"
                 >
                   <Typography variant="subtitle-14-semibold" color="primary">
-                    Cancel
+                    {t('common.cancel')}
                   </Typography>
                 </Pressable>
                 <Pressable
@@ -92,7 +94,7 @@ export const TotalTargetPicker: FC<TotalTargetPickerProps> = ({ value, onChange 
                   className="flex-1 bg-primary rounded-xl py-3 items-center justify-center active:opacity-80"
                 >
                   <Typography variant="subtitle-14-semibold" color="white">
-                    Confirm
+                    {t('common.confirm')}
                   </Typography>
                 </Pressable>
               </View>

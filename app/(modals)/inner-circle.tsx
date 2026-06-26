@@ -11,10 +11,12 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { HeartbeatPauseSheet } from '../../src/components/grove/HeartbeatPauseSheet';
 import { useAppStore } from '../../src/store';
+import i18n from '../../src/i18n';
 import type { InnerCircleMember } from '../../src/services/grove/GroveHeartbeatService';
 import type { FriendItem } from '../../src/services/grove/GroveFriendService';
 
@@ -22,6 +24,7 @@ const MAX_INNER_CIRCLE = 3;
 const THRESHOLD_OPTIONS = [3, 5, 7, 14] as const;
 
 export default function InnerCircleModal() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -67,24 +70,24 @@ export default function InnerCircleModal() {
       await inviteToInnerCircle(friend.profile.user_id);
       setShowFriendPicker(false);
     } catch {
-      Alert.alert('Error', 'Failed to send invite. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errSendInvite'));
     }
   };
 
   const handleRemove = (member: InnerCircleMember) => {
     Alert.alert(
-      'Remove from Inner Circle',
-      `Remove ${member.profile.display_name} from your inner circle?`,
+      t('gm.icRemoveTitle'),
+      t('gm.icRemoveMsg', { name: member.profile.display_name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('common.remove'),
           style: 'destructive',
           onPress: async () => {
             try {
               await removeFromInnerCircle(member.id);
             } catch {
-              Alert.alert('Error', 'Failed to remove. Please try again.');
+              Alert.alert(t('common.error'), t('gm.errRemove'));
             }
           },
         },
@@ -96,7 +99,7 @@ export default function InnerCircleModal() {
     try {
       await acceptCircleInvite(inviteId);
     } catch {
-      Alert.alert('Error', 'Failed to accept invite. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errAcceptInvite'));
     }
   };
 
@@ -104,7 +107,7 @@ export default function InnerCircleModal() {
     try {
       await declineCircleInvite(inviteId);
     } catch {
-      Alert.alert('Error', 'Failed to decline invite. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errDeclineInvite'));
     }
   };
 
@@ -112,7 +115,7 @@ export default function InnerCircleModal() {
     try {
       await updateHeartbeatSettings({ quietThresholdDays: days });
     } catch {
-      Alert.alert('Error', 'Failed to update settings. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errUpdateSettings'));
     }
   };
 
@@ -139,7 +142,7 @@ export default function InnerCircleModal() {
             {profile.display_name}
           </Typography>
           <Typography variant="body-12" color="secondary">
-            {member.status === 'pending' ? 'Invite pending' : `@${profile.handle}`}
+            {member.status === 'pending' ? t('gm.icInvitePending') : `@${profile.handle}`}
           </Typography>
         </View>
         <Pressable
@@ -151,7 +154,7 @@ export default function InnerCircleModal() {
         </Pressable>
       </View>
     );
-  }, []);
+  }, [t]);
 
   if (heartbeatLoading || innerCircleLoading) {
     return (
@@ -174,7 +177,7 @@ export default function InnerCircleModal() {
             <Ionicons name="arrow-back" size={24} color="#FF6B6B" />
           </Pressable>
           <Typography variant="headline-18" color="primary" className="ml-2">
-            Choose a Friend
+            {t('gm.icChooseFriend')}
           </Typography>
         </View>
 
@@ -182,7 +185,7 @@ export default function InnerCircleModal() {
           <View className="flex-1 items-center justify-center px-8">
             <Ionicons name="people-outline" size={48} color="#8A8A8A" />
             <Typography variant="body-14" color="secondary" className="mt-4 text-center">
-              No eligible friends to add. All your friends are already in your inner circle.
+              {t('gm.icNoEligible')}
             </Typography>
           </View>
         ) : (
@@ -236,7 +239,7 @@ export default function InnerCircleModal() {
           <Ionicons name="arrow-back" size={24} color="#FF6B6B" />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
-          Inner Circle
+          {t('gm.icTitle')}
         </Typography>
       </View>
 
@@ -246,18 +249,18 @@ export default function InnerCircleModal() {
           <View className="flex-row items-center mb-2">
             <Ionicons name="heart" size={18} color="#FF6B6B" />
             <Typography variant="subtitle-14-medium" color="primary" className="ml-2">
-              Your Safety Net
+              {t('gm.icSafetyNet')}
             </Typography>
           </View>
           <Typography variant="body-12" color="secondary">
-            Choose up to {MAX_INNER_CIRCLE} close friends who will be gently notified if you go quiet for too long. They can check in on you and make sure you are okay.
+            {t('gm.icSafetyDesc', { count: MAX_INNER_CIRCLE })}
           </Typography>
         </View>
 
         {/* Current members */}
         <View className="mx-5 mb-4">
           <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
-            Members ({slotsUsed}/{MAX_INNER_CIRCLE})
+            {t('gm.icMembers', { used: slotsUsed, max: MAX_INNER_CIRCLE })}
           </Typography>
 
           <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
@@ -274,7 +277,7 @@ export default function InnerCircleModal() {
               <View className="py-6 items-center">
                 <Ionicons name="heart-outline" size={32} color="#8A8A8A" />
                 <Typography variant="body-12" color="secondary" className="mt-2">
-                  No members yet
+                  {t('gm.icNoMembers')}
                 </Typography>
               </View>
             )}
@@ -287,7 +290,7 @@ export default function InnerCircleModal() {
             >
               <Ionicons name="add" size={18} color="#FF6B6B" />
               <Typography variant="subtitle-14-medium" style={{ color: '#FF6B6B' }} className="ml-1.5">
-                Add Friend
+                {t('gm.addFriend')}
               </Typography>
             </Pressable>
           )}
@@ -297,7 +300,7 @@ export default function InnerCircleModal() {
         {incomingCircleInvites.length > 0 && (
           <View className="mx-5 mb-4">
             <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
-              Incoming Invites
+              {t('gm.icIncomingInvites')}
             </Typography>
 
             <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
@@ -323,7 +326,7 @@ export default function InnerCircleModal() {
                         {invite.profile.display_name}
                       </Typography>
                       <Typography variant="body-12" color="secondary">
-                        Wants you in their inner circle
+                        {t('gm.icWantsYou')}
                       </Typography>
                     </View>
                     <View className="flex-row gap-2">
@@ -353,10 +356,10 @@ export default function InnerCircleModal() {
         {/* Quiet threshold settings */}
         <View className="mx-5 mb-4">
           <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
-            Quiet Threshold
+            {t('gm.icQuietThreshold')}
           </Typography>
           <Typography variant="body-12" color="secondary" className="mb-3">
-            Notify your inner circle if you have been inactive for this many days.
+            {t('gm.icQuietDesc')}
           </Typography>
 
           <View className="flex-row bg-light-border/30 dark:bg-[#242540] rounded-xl overflow-hidden">
@@ -385,7 +388,7 @@ export default function InnerCircleModal() {
         {/* Pause section */}
         <View className="mx-5 mb-8">
           <Typography variant="subtitle-14-medium" color="secondary" className="mb-2">
-            Pause
+            {t('gm.icPause')}
           </Typography>
 
           <Pressable
@@ -401,14 +404,15 @@ export default function InnerCircleModal() {
             </View>
             <View className="flex-1">
               <Typography variant="subtitle-14-medium" color="primary">
-                {heartbeatSettings?.isPaused ? 'Heartbeat Paused' : 'Pause Heartbeat'}
+                {heartbeatSettings?.isPaused ? t('gm.icPaused') : t('gm.icPauseHeartbeat')}
               </Typography>
               {heartbeatSettings?.isPaused && heartbeatSettings.pauseExpiresAt && (
                 <Typography variant="body-12" color="secondary">
-                  Resumes{' '}
-                  {new Date(heartbeatSettings.pauseExpiresAt).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
+                  {t('gm.icResumes', {
+                    date: new Date(heartbeatSettings.pauseExpiresAt).toLocaleDateString(i18n.language, {
+                      month: 'short',
+                      day: 'numeric',
+                    }),
                   })}
                 </Typography>
               )}

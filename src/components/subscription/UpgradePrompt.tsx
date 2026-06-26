@@ -1,6 +1,7 @@
 import React, { FC } from 'react';
 import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
 
@@ -13,29 +14,18 @@ interface UpgradePromptProps {
   limitType: LimitType;
 }
 
-const LIMIT_COPY: Record<LimitType, { title: string; subtitle: string }> = {
-  tags: {
-    title: "You've used all your free tags",
-    subtitle: 'Upgrade to Premium to create unlimited tags and organize your focus sessions however you want.',
-  },
-  goals: {
-    title: "You've reached your goal limit",
-    subtitle: 'Upgrade to Premium to set unlimited focus goals and track your progress across all areas.',
-  },
-  adhd: {
-    title: 'Multi-Task mode is a Premium feature',
-    subtitle: 'Upgrade to Premium to add a second tag to a session — perfect for tracking two things you do at once, like a workout and an audiobook.',
-  },
-  health: {
-    title: 'Apple Health is a Premium feature',
-    subtitle: 'Upgrade to Premium to import your workouts as focus sessions, including workouts logged by popular fitness apps like SmartGym and Peloton.',
-  },
+// i18n key suffix per limit type → subscription.limit{Tags,Goals,Adhd,Health}{Title,Sub}
+const LIMIT_KEY: Record<LimitType, string> = {
+  tags: 'Tags',
+  goals: 'Goals',
+  adhd: 'Adhd',
+  health: 'Health',
 };
 
 const PERKS = [
-  { icon: 'pricetags-outline' as const, label: 'Unlimited tags' },
-  { icon: 'flag-outline' as const, label: 'Unlimited goals' },
-  { icon: 'cloud-outline' as const, label: 'Cloud backup & sync' },
+  { icon: 'pricetags-outline' as const, labelKey: 'subscription.perkUnlimitedTags' },
+  { icon: 'flag-outline' as const, labelKey: 'subscription.perkUnlimitedGoals' },
+  { icon: 'cloud-outline' as const, labelKey: 'subscription.perkCloudSync' },
 ];
 
 export const UpgradePrompt: FC<UpgradePromptProps> = ({
@@ -44,7 +34,11 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
   onUpgrade,
   limitType,
 }) => {
-  const copy = LIMIT_COPY[limitType];
+  const { t } = useTranslation();
+  const copy = {
+    title: t(`subscription.limit${LIMIT_KEY[limitType]}Title`),
+    subtitle: t(`subscription.limit${LIMIT_KEY[limitType]}Sub`),
+  };
 
   return (
     <BottomSheet isVisible={isVisible} onClose={onClose} height={380}>
@@ -64,12 +58,12 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
       <View className="bg-light-border/30 dark:bg-[#2A2B4A] rounded-2xl p-4 mb-6">
         {PERKS.map((perk, i) => (
           <View
-            key={perk.label}
+            key={perk.labelKey}
             className={`flex-row items-center py-2 ${i < PERKS.length - 1 ? 'border-b border-light-border dark:border-dark-border' : ''}`}
           >
             <Ionicons name={perk.icon} size={18} color="#8B7FFF" />
             <Typography variant="subtitle-14-medium" color="primary" className="ml-3">
-              {perk.label}
+              {t(perk.labelKey)}
             </Typography>
           </View>
         ))}
@@ -84,14 +78,14 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
         className="bg-primary rounded-2xl py-4 items-center active:opacity-80"
       >
         <Typography variant="subtitle-16" color="white" className="font-semibold">
-          See Plans
+          {t('subscription.seePlans')}
         </Typography>
       </Pressable>
 
       {/* Dismiss */}
       <Pressable onPress={onClose} className="mt-3 items-center active:opacity-70">
         <Typography variant="body-12" color="secondary">
-          Maybe later
+          {t('subscription.maybeLater')}
         </Typography>
       </Pressable>
     </BottomSheet>

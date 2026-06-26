@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Pressable, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
 import { useAppStore } from '../../store';
@@ -10,6 +11,7 @@ interface UpgradeSheetProps {
 }
 
 export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }) => {
+  const { t } = useTranslation();
   const { products, isLoading, error } = useAppStore((state) => state.subscription);
   const loadProducts = useAppStore((state) => state.subscription.loadProducts);
   const purchase = useAppStore((state) => state.subscription.purchase);
@@ -36,10 +38,10 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
   return (
     <BottomSheet isVisible={isVisible} onClose={onClose} height={480}>
       <Typography variant="headline-20" color="primary" className="mb-2">
-        Upgrade to Premium
+        {t('subscription.upgradeTitle')}
       </Typography>
       <Typography variant="body-14" color="secondary" className="mb-6">
-        Unlock unlimited tags, unlimited goals, and more.
+        {t('subscription.upgradeSubtitle')}
       </Typography>
 
       {isLoading && products.length === 0 ? (
@@ -59,10 +61,10 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
             <View className="flex-row items-center justify-between">
               <View>
                 <Typography variant="subtitle-14-medium" color="primary">
-                  Monthly
+                  {t('subscription.monthly')}
                 </Typography>
                 <Typography variant="body-12" color="secondary" className="mt-0.5">
-                  Billed monthly
+                  {t('subscription.billedMonthly')}
                 </Typography>
               </View>
               <Typography variant="subtitle-14-semibold" color="primary">
@@ -82,10 +84,10 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
             <View className="flex-row items-center justify-between">
               <View>
                 <Typography variant="subtitle-14-medium" color="primary">
-                  Yearly
+                  {t('subscription.yearly')}
                 </Typography>
                 <Typography variant="body-12" color="secondary" className="mt-0.5">
-                  Best value — save ~40%
+                  {t('subscription.bestValue')}
                 </Typography>
               </View>
               <Typography variant="subtitle-14-semibold" color="primary">
@@ -115,7 +117,7 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
         className="mt-4 items-center active:opacity-70"
       >
         <Typography variant="body-12" color="secondary">
-          Restore Purchases
+          {t('subscription.restorePurchases')}
         </Typography>
       </Pressable>
 
@@ -125,7 +127,7 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
         color="secondary"
         className="mt-4 text-center"
       >
-        Subscription auto-renews unless cancelled at least 24 hours before the end of the current period.
+        {t('subscription.autoRenewTerms')}
       </Typography>
     </BottomSheet>
   );

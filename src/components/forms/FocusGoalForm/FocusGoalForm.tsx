@@ -1,5 +1,6 @@
 import { FC, useState, useEffect, useRef } from 'react';
 import { View, Pressable, TextInput } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui/Typography';
 import { Slider } from '../../ui/Slider';
 import { Toggle } from '../../ui/Toggle';
@@ -23,14 +24,6 @@ const STEP_HOURS: Record<GoalPeriod, number> = {
   weekly: 1,
   monthly: 5,
   none: 0,
-};
-
-// User-facing label for each period option in the selector.
-const PERIOD_LABELS: Record<GoalPeriod, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-  none: 'Total',
 };
 
 // Daily goals use non-uniform stops: 15m and 30m at the low end, then 30m
@@ -103,6 +96,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   tagIcon,
   onDirtyChange,
 }) => {
+  const { t } = useTranslation();
   const [dailyTargetHours, setDailyTargetHours] = useState(1);
   const [dailyRestDayTargetHours, setDailyRestDayTargetHours] = useState(0.5);
   const [weeklyTargetHours, setWeeklyTargetHours] = useState(7);
@@ -115,13 +109,19 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
 
   const { preferences } = useAppSettings();
 
-  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayLabels = t('goals.dayAbbr').split(',');
   const restDaysLabel = (preferences.restDays || [0, 6])
-    .map(d => DAY_LABELS[d])
+    .map((d) => dayLabels[d])
     .join(', ');
 
+  // Period selector labels (daily/weekly/monthly reuse the streaks-view terms).
+  const periodLabel = (p: GoalPeriod): string =>
+    p === 'none' ? t('goals.periodTotal') : t(`goalProgress.period${p[0].toUpperCase()}${p.slice(1)}`);
+
   // Auto-generated name
-  const autoName = tagName ? `${tagIcon || ''} ${tagName} Goal`.trim() : 'Focus Goal';
+  const autoName = tagName
+    ? t('insights.goalSuffix', { icon: tagIcon || '', name: tagName }).trim()
+    : t('goals.focusGoalFallback');
 
   // Signature of the form as last seeded — compared against the live form to
   // tell whether there are unsaved changes worth confirming before discard.
@@ -274,7 +274,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       {/* Goal Name */}
       <View>
         <Typography variant="subtitle-16" color="primary" className="mb-2">
-          Goal Name
+          {t('goals.nameLabel')}
         </Typography>
         <TextInput
           value={customGoalName}
@@ -289,7 +289,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       {/* Time Period */}
       <View>
         <Typography variant="subtitle-16" color="primary" className="mb-2">
-          Time Period
+          {t('goals.timePeriod')}
         </Typography>
         <View className="flex-row gap-x-2">
           {(['daily', 'weekly', 'monthly', 'none'] as const).map((p) => (
@@ -304,7 +304,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
                 variant="body-12"
                 className={`text-center ${activePeriod === p ? 'text-white' : 'text-light-text-primary dark:text-white'}`}
               >
-                {PERIOD_LABELS[p]}
+                {periodLabel(p)}
               </Typography>
             </Pressable>
           ))}
@@ -314,9 +314,9 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       {/* Target Duration — slider for periodic goals, wheel picker for no-period */}
       <View>
         <Typography variant="subtitle-16" color="primary" className="mb-2">
-          {activePeriod === 'daily' ? 'Regular Day Target'
-            : activePeriod === 'none' ? 'Total Target'
-            : 'Target Duration'}
+          {activePeriod === 'daily' ? t('goals.regularDayTarget')
+            : activePeriod === 'none' ? t('goals.totalTarget')
+            : t('goals.targetDuration')}
         </Typography>
         {activePeriod === 'none' ? (
           <TotalTargetPicker value={totalTargetMinutes} onChange={setTotalTargetMinutes} />
@@ -338,7 +338,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
         )}
         {activePeriod === 'none' && (
           <Typography variant="body-12" color="secondary" className="mt-1.5">
-            A cumulative goal that counts all your focus time for this tag. It never resets.
+            {t('goals.cumulativeNote')}
           </Typography>
         )}
       </View>
@@ -347,7 +347,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       {activePeriod === 'daily' && (
         <View>
           <Typography variant="subtitle-16" color="primary" className="mb-2">
-            Rest Day Target
+            {t('goals.restDayTarget')}
           </Typography>
           <View className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-3 items-center">
             <Typography variant="headline-20" color="primary" className="mb-1">
@@ -364,7 +364,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
             />
           </View>
           <Typography variant="body-12" color="secondary" className="mt-1.5">
-            Rest days: {restDaysLabel}. Change in Settings.
+            {t('goals.restDaysHint', { days: restDaysLabel })}
           </Typography>
         </View>
       )}
@@ -373,7 +373,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       {editingGoal && (
         <View className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-3">
           <Typography variant="body-12" color="secondary">
-            Changing the target only affects today onward. Past periods keep the target that was active at the time.
+            {t('goals.targetChangeNote')}
           </Typography>
         </View>
       )}
@@ -383,10 +383,10 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
         <View className="flex-row items-center justify-between p-4">
           <View className="flex-1 mr-3">
             <Typography variant="subtitle-16" color="primary">
-              Show total hours
+              {t('goals.showTotalHours')}
             </Typography>
             <Typography variant="body-12" color="secondary" className="mt-0.5">
-              Display cumulative hours in the streaks view
+              {t('goals.showTotalHoursSub')}
             </Typography>
           </View>
           <Toggle value={showTotalHours} onValueChange={setShowTotalHours} />
@@ -400,7 +400,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
           className="flex-1 bg-light-border dark:bg-dark-border rounded-xl py-4 active:opacity-70"
         >
           <Typography variant="body-14" color="primary" className="text-center">
-            Cancel
+            {t('common.cancel')}
           </Typography>
         </Pressable>
         <Pressable
@@ -415,7 +415,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
             color="white"
             className="text-center"
           >
-            {editingGoal ? 'Update Goal' : 'Activate Goal'}
+            {editingGoal ? t('goals.updateGoal') : t('goals.activateGoal')}
           </Typography>
         </Pressable>
       </View>

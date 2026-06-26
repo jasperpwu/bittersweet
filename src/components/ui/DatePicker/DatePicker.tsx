@@ -2,6 +2,7 @@ import React, { FC, useState } from 'react';
 import { View, Pressable, Platform, Modal, useColorScheme } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../Typography';
 
 interface DatePickerProps {
@@ -23,6 +24,7 @@ export const DatePicker: FC<DatePickerProps> = ({
   minimumDate,
   maximumDate,
 }) => {
+  const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
   const [showPicker, setShowPicker] = useState(false);
   const [tempValue, setTempValue] = useState(value);
@@ -33,7 +35,7 @@ export const DatePicker: FC<DatePickerProps> = ({
   }, [showPicker, value]);
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString(i18n.language, {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -88,8 +90,8 @@ export const DatePicker: FC<DatePickerProps> = ({
           ${error ? 'border-error' : ''}
         `}
         accessibilityRole="button"
-        accessibilityLabel={`Select date, currently ${formatDate(value)}`}
-        accessibilityHint="Double tap to open date picker"
+        accessibilityLabel={t('datePicker.a11yLabel', { date: formatDate(value) })}
+        accessibilityHint={t('datePicker.a11yHint')}
       >
         <Typography variant="body-14" color="primary">
           {formatDate(value)}
@@ -114,7 +116,7 @@ export const DatePicker: FC<DatePickerProps> = ({
             <View className="flex-1 bg-black/60 justify-center items-center px-6">
               <View className="bg-light-bg dark:bg-dark-bg rounded-3xl p-6 w-full max-w-sm border border-light-border dark:border-dark-border">
                 <Typography variant="headline-20" color="primary" className="mb-4 text-center">
-                  Select Date
+                  {t('datePicker.selectDate')}
                 </Typography>
                 <DateTimePicker
                   value={tempValue}
@@ -131,13 +133,13 @@ export const DatePicker: FC<DatePickerProps> = ({
                     onPress={handleCancel}
                     className="flex-1 bg-light-border/30 dark:bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80"
                   >
-                    <Typography variant="subtitle-14-semibold" color="primary">Cancel</Typography>
+                    <Typography variant="subtitle-14-semibold" color="primary">{t('common.cancel')}</Typography>
                   </Pressable>
                   <Pressable
                     onPress={handleConfirm}
                     className="flex-1 bg-[#6592E9] rounded-xl py-3 items-center justify-center active:opacity-80"
                   >
-                    <Typography variant="subtitle-14-semibold" color="white">Confirm</Typography>
+                    <Typography variant="subtitle-14-semibold" color="white">{t('common.confirm')}</Typography>
                   </Pressable>
                 </View>
               </View>

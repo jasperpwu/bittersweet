@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
@@ -24,6 +25,7 @@ import type { FriendItem, FriendRequest } from '../../src/services/grove/GroveFr
 import type { GroveProfile } from '../../src/services/grove/GroveService';
 
 export default function AddFriendsModal() {
+  const { t } = useTranslation();
   const friends = useAppStore((s) => s.grove.friends);
   const fetchFriends = useAppStore((s) => s.grove.fetchFriends);
   const removeFriend = useAppStore((s) => s.grove.removeFriend);
@@ -101,9 +103,9 @@ export default function AddFriendsModal() {
     try {
       await sendFriendRequest(userId);
       setSentRequests((prev) => new Set(prev).add(userId));
-      showToast('Friend request sent!', 'success');
+      showToast(t('gm.afSentToast'), 'success');
     } catch {
-      Alert.alert('Error', 'Failed to send friend request. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errSendRequest'));
     }
   };
 
@@ -111,7 +113,7 @@ export default function AddFriendsModal() {
     try {
       await acceptFriendRequest(friendshipId);
     } catch {
-      Alert.alert('Error', 'Failed to accept request. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errAcceptRequest'));
     }
   };
 
@@ -119,24 +121,24 @@ export default function AddFriendsModal() {
     try {
       await rejectFriendRequest(friendshipId);
     } catch {
-      Alert.alert('Error', 'Failed to reject request. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errRejectRequest'));
     }
   };
 
   const handleRemove = (friend: FriendItem) => {
     Alert.alert(
-      'Remove Friend',
-      `Remove ${friend.profile.display_name} from your friends?`,
+      t('gm.afRemoveTitle'),
+      t('gm.afRemoveMsg', { name: friend.profile.display_name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('common.remove'),
           style: 'destructive',
           onPress: async () => {
             try {
               await removeFriend(friend.friendshipId);
             } catch {
-              Alert.alert('Error', 'Failed to remove friend. Please try again.');
+              Alert.alert(t('common.error'), t('gm.errRemoveFriend'));
             }
           },
         },
@@ -183,7 +185,7 @@ export default function AddFriendsModal() {
           className="px-4 h-8 rounded-full bg-primary items-center justify-center active:opacity-80"
         >
           <Typography variant="body-12" style={{ color: '#FFFFFF' }}>
-            Add
+            {t('gm.afAdd')}
           </Typography>
         </Pressable>
       );
@@ -198,14 +200,14 @@ export default function AddFriendsModal() {
             className="px-4 h-8 rounded-full bg-primary items-center justify-center active:opacity-80"
           >
             <Typography variant="body-12" style={{ color: '#FFFFFF' }}>
-              Accept
+              {t('gm.afAccept')}
             </Typography>
           </Pressable>
         );
       }
     }
 
-    const label = status === 'pending' ? 'Sent' : 'Friends';
+    const label = status === 'pending' ? t('gm.afSent') : t('gm.afFriends');
     return (
       <View className="px-4 h-8 rounded-full bg-light-border dark:bg-dark-border items-center justify-center">
         <Typography variant="body-12" color="secondary">
@@ -289,7 +291,7 @@ export default function AddFriendsModal() {
       return (
         <View className="py-3 px-5">
           <Typography variant="body-12" color="secondary">
-            No user found with handle "{searchQuery.trim()}"
+            {t('gm.afNoUser', { handle: searchQuery.trim() })}
           </Typography>
         </View>
       );
@@ -327,7 +329,7 @@ export default function AddFriendsModal() {
           <Ionicons name="arrow-back" size={24} color="#6592E9" />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2 flex-1">
-          Add Friends
+          {t('gm.afTitle')}
         </Typography>
         <Pressable
           onPress={() => shareLink()}
@@ -351,7 +353,7 @@ export default function AddFriendsModal() {
             ref={searchInputRef}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search by handle"
+            placeholder={t('gm.afSearch')}
             placeholderTextColor="#8A8A8A"
             autoCapitalize="none"
             autoCorrect={false}
@@ -380,7 +382,7 @@ export default function AddFriendsModal() {
         <View>
           <View className="mt-4 mb-2 px-5 flex-row items-center">
             <Typography variant="subtitle-14-medium" color="primary">
-              Friend Requests
+              {t('gm.frTitle')}
             </Typography>
             <View className="ml-2 w-5 h-5 rounded-full bg-primary items-center justify-center">
               <Typography variant="body-12" style={{ color: '#FFFFFF', fontSize: 11 }}>
@@ -408,7 +410,7 @@ export default function AddFriendsModal() {
             {/* My Friends Section Header */}
             <View className="mt-4 mb-2 px-5 flex-row items-center justify-between">
               <Typography variant="subtitle-14-medium" color="primary">
-                My Friends
+                {t('gm.afMyFriends')}
               </Typography>
               <Typography variant="body-12" color="secondary">
                 {friends.length}
@@ -420,7 +422,7 @@ export default function AddFriendsModal() {
           <View className="items-center pt-12">
             <Ionicons name="people-outline" size={48} color="#8A8A8A" />
             <Typography variant="body-14" color="secondary" className="mt-4 text-center px-8">
-              No friends yet
+              {t('gm.afNoFriends')}
             </Typography>
           </View>
         }

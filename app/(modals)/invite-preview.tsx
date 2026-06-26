@@ -12,6 +12,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { Button } from '../../src/components/ui/Button/Button';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
@@ -20,6 +21,7 @@ import { useAppStore } from '../../src/store';
 const DISMISS_THRESHOLD = 100;
 
 export default function InvitePreviewModal() {
+  const { t } = useTranslation();
   const { height: windowHeight } = useWindowDimensions();
   const SHEET_HEIGHT = windowHeight * 0.42;
   const insets = useSafeAreaInsets();
@@ -56,7 +58,7 @@ export default function InvitePreviewModal() {
       await acceptPendingInvite();
       router.back();
     } catch {
-      Alert.alert('Error', 'Failed to add friend. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errAddFriend'));
     } finally {
       setIsAccepting(false);
     }
@@ -156,12 +158,12 @@ export default function InvitePreviewModal() {
                 <View className="flex-row items-center gap-2">
                   <Ionicons name="checkmark-circle" size={20} color="#65E9A3" />
                   <Typography variant="body-14" color="secondary">
-                    Already friends with {profile.display_name}
+                    {t('gm.invAlreadyFriends', { name: profile.display_name })}
                   </Typography>
                 </View>
                 <View className="mt-6 w-full">
                   <Button variant="secondary" size="large" onPress={animateOut}>
-                    Dismiss
+                    {t('gm.dismiss')}
                   </Button>
                 </View>
               </View>
@@ -176,11 +178,11 @@ export default function InvitePreviewModal() {
                   </Pressable>
                 ) : (
                   <Button variant="primary" size="large" onPress={handleAccept}>
-                    Add Friend
+                    {t('gm.addFriend')}
                   </Button>
                 )}
                 <Button variant="secondary" size="large" onPress={animateOut}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </View>
             )}

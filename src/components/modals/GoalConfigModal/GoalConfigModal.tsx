@@ -91,7 +91,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
     onClose();
   };
 
-  const title = isActivating ? 'Activate Goal' : 'Edit Goal';
+  const title = isActivating ? t('goals.activateGoal') : t('goals.editTitle');
 
   // Prompt before throwing away unsaved edits; the Discard button drives the
   // actual close. Returns false to tell BottomSheet to keep the sheet open.

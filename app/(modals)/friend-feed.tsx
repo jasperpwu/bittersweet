@@ -2,8 +2,10 @@ import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { View, SafeAreaView, Pressable, ScrollView, Image, ActivityIndicator, useColorScheme } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
+import i18n from '../../src/i18n';
 import { FocusingBadge } from '../../src/components/grove/FocusingBadge';
 import { ReactionButton } from '../../src/components/grove/ReactionButton';
 import { useAppStore } from '../../src/store';
@@ -20,7 +22,7 @@ function formatDuration(minutes: number): string {
 
 function formatDate(dateString: string): string {
   const d = new Date(dateString);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString(i18n.language, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -29,7 +31,7 @@ function formatDate(dateString: string): string {
 
 function formatTime(dateString: string): string {
   const d = new Date(dateString);
-  return d.toLocaleTimeString(undefined, {
+  return d.toLocaleTimeString(i18n.language, {
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -38,6 +40,7 @@ function formatTime(dateString: string): string {
 type FilterType = 'has-photo' | 'has-notes';
 
 export default function FriendFeedModal() {
+  const { t } = useTranslation();
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const currentUserId = useAppStore((s) => s.auth.user?.id ?? '');
   const isCurrentUser = userId === currentUserId;
@@ -187,12 +190,10 @@ export default function FriendFeedModal() {
   const friendProfile = !isCurrentUser && feedItems.length > 0 ? feedItems[0].profile : null;
 
   const headerTitle = isCurrentUser
-    ? 'My Sessions'
-    : (friendProfile?.display_name ?? 'Sessions');
+    ? t('gm.feedMySessions')
+    : (friendProfile?.display_name ?? t('gm.feedSessions'));
 
-  const emptyMessage = isCurrentUser
-    ? 'No sessions yet. Complete a focus session to see it here!'
-    : 'No shared sessions yet.';
+  const emptyMessage = isCurrentUser ? t('gm.feedEmptyOwn') : t('gm.feedEmptyFriend');
 
   const chipBg = colorScheme === 'dark' ? '#242540' : 'rgba(0,0,0,0.06)';
   const chipActiveBg = '#6592E9';
@@ -256,7 +257,7 @@ export default function FriendFeedModal() {
                 variant="body-12"
                 style={{ color: activeFilters.has('has-photo') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666') }}
               >
-                Photo
+                {t('gm.feedPhoto')}
               </Typography>
             </Pressable>
 
@@ -282,7 +283,7 @@ export default function FriendFeedModal() {
                 variant="body-12"
                 style={{ color: activeFilters.has('has-notes') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666') }}
               >
-                Notes
+                {t('gm.feedNotes')}
               </Typography>
             </Pressable>
 
@@ -328,7 +329,7 @@ export default function FriendFeedModal() {
               >
                 <Ionicons name="close-circle-outline" size={14} color="#FF3B30" />
                 <Typography variant="body-12" style={{ color: '#FF3B30' }}>
-                  Clear
+                  {t('gm.feedClear')}
                 </Typography>
               </Pressable>
             )}
@@ -364,7 +365,7 @@ export default function FriendFeedModal() {
                   {friendProfile.is_focusing && (
                     <View className="ml-2 bg-[#34D399]/20 rounded-full px-2 py-0.5">
                       <Typography variant="body-12" style={{ color: '#34D399' }}>
-                        Focusing now
+                        {t('gm.feedFocusingNow')}
                       </Typography>
                     </View>
                   )}
@@ -387,7 +388,7 @@ export default function FriendFeedModal() {
           {filteredFeed.length === 0 ? (
             <View className="py-12 items-center">
               <Typography variant="body-14" color="secondary" className="text-center">
-                {hasActiveFilters ? 'No sessions match the selected filters.' : emptyMessage}
+                {hasActiveFilters ? t('gm.feedNoMatch') : emptyMessage}
               </Typography>
             </View>
           ) : (
@@ -408,7 +409,7 @@ export default function FriendFeedModal() {
                       className="flex-1"
                       numberOfLines={1}
                     >
-                      {item.session.session_tags?.name ?? 'Focus'}
+                      {item.session.session_tags?.name ?? t('gm.feedFocus')}
                     </Typography>
                     <Typography variant="subtitle-14-medium" color="primary">
                       {formatDuration(item.session.duration)}

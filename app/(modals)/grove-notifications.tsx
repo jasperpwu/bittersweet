@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, SafeAreaView, Pressable, Image, ScrollView, RefreshControl, Alert, useColorScheme } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
@@ -29,6 +30,7 @@ function NotificationAvatar({ profile }: { profile: GroveProfile }) {
 }
 
 export default function GroveNotificationsModal() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -94,7 +96,7 @@ export default function GroveNotificationsModal() {
     try {
       await acceptFriendRequest(friendshipId);
     } catch {
-      Alert.alert('Error', 'Failed to accept request. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errAcceptRequest'));
     }
   };
 
@@ -102,7 +104,7 @@ export default function GroveNotificationsModal() {
     try {
       await rejectFriendRequest(friendshipId);
     } catch {
-      Alert.alert('Error', 'Failed to decline request. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errDeclineRequest'));
     }
   };
 
@@ -110,7 +112,7 @@ export default function GroveNotificationsModal() {
     try {
       await acceptCircleInvite(inviteId);
     } catch {
-      Alert.alert('Error', 'Failed to accept invite. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errAcceptInvite'));
     }
   };
 
@@ -120,15 +122,12 @@ export default function GroveNotificationsModal() {
     try {
       const { claimed, fruitReward } = await claimChallengeReward(challengeId);
       if (claimed) {
-        Alert.alert(
-          'Reward claimed! 🎉',
-          `You earned ${fruitReward} ${fruitReward === 1 ? 'fruit' : 'fruits'}.`
-        );
+        Alert.alert(t('gm.notifRewardTitle'), t('gm.notifRewardBody', { count: fruitReward }));
       }
       // If it was already claimed elsewhere, the refresh inside the action updates
       // the row to "Claimed" with no pop-up — nothing more to do here.
     } catch {
-      Alert.alert('Error', 'Failed to claim reward. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errClaimReward'));
     } finally {
       setClaimingIds((ids) => ids.filter((id) => id !== challengeId));
     }
@@ -138,7 +137,7 @@ export default function GroveNotificationsModal() {
     try {
       await declineCircleInvite(inviteId);
     } catch {
-      Alert.alert('Error', 'Failed to decline invite. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errDeclineInvite'));
     }
   };
 
@@ -153,7 +152,7 @@ export default function GroveNotificationsModal() {
                 {item.profile.display_name}
               </Typography>
               <Typography variant="body-12" color="secondary">
-                Sent you a friend request
+                {t('gm.notifFriendRequest')}
               </Typography>
             </View>
             <View className="flex-row gap-2">
@@ -182,7 +181,7 @@ export default function GroveNotificationsModal() {
                 {item.profile.display_name}
               </Typography>
               <Typography variant="body-12" color="secondary">
-                Invited you to their inner circle
+                {t('gm.notifCircleInvite')}
               </Typography>
             </View>
             <View className="flex-row gap-2">
@@ -233,7 +232,7 @@ export default function GroveNotificationsModal() {
                 className="px-3 h-9 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
               >
                 <Typography variant="body-12" color="secondary">
-                  Dismiss
+                  {t('gm.dismiss')}
                 </Typography>
               </Pressable>
             )}
@@ -258,10 +257,12 @@ export default function GroveNotificationsModal() {
             </View>
             <View className="flex-1 mr-2">
               <Typography variant="subtitle-14-medium" color="primary">
-                {inviter?.profile.display_name ?? 'Someone'} invited you to a challenge
+                {t('gm.notifChallengeInvite', {
+                  name: inviter?.profile.display_name ?? t('gm.notifSomeone'),
+                })}
               </Typography>
               <Typography variant="body-12" color="secondary">
-                {challenge.tagIcon} {challenge.tagName} · Tap to review
+                {t('gm.notifChallengeReview', { icon: challenge.tagIcon, name: challenge.tagName })}
               </Typography>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#8A8A8A" />
@@ -277,7 +278,6 @@ export default function GroveNotificationsModal() {
           challenge.myParticipant ?? challenge.participants.find((p) => p.userId === currentUserId) ?? null;
         const claimed = !!myParticipant?.rewardClaimedAt;
         const claiming = claimingIds.includes(challenge.id);
-        const fruitLabel = `${challenge.fruitReward} ${challenge.fruitReward === 1 ? 'fruit' : 'fruits'}`;
 
         return (
           <Pressable
@@ -297,14 +297,16 @@ export default function GroveNotificationsModal() {
             </View>
             <View className="flex-1 mr-2">
               <Typography variant="subtitle-14-medium" color="primary">
-                {challenge.tagIcon} {challenge.tagName} challenge {won ? 'completed' : 'ended'}
+                {won
+                  ? t('gm.notifChallengeCompleted', { icon: challenge.tagIcon, name: challenge.tagName })
+                  : t('gm.notifChallengeEnded', { icon: challenge.tagIcon, name: challenge.tagName })}
               </Typography>
               <Typography variant="body-12" color="secondary">
                 {won
                   ? claimed
-                    ? `You earned ${fruitLabel}`
-                    : `Claim your ${fruitLabel}`
-                  : 'Target not reached this time'}
+                    ? t('gm.notifEarned', { count: challenge.fruitReward })
+                    : t('gm.notifClaimYour', { count: challenge.fruitReward })
+                  : t('gm.notifTargetMissed')}
               </Typography>
             </View>
             {won && !claimed ? (
@@ -315,14 +317,14 @@ export default function GroveNotificationsModal() {
                 hitSlop={6}
               >
                 <Typography variant="subtitle-14-medium" style={{ color: '#FFFFFF' }}>
-                  {claiming ? 'Claiming…' : 'Claim'}
+                  {claiming ? t('gm.notifClaiming') : t('gm.notifClaim')}
                 </Typography>
               </Pressable>
             ) : won && claimed ? (
               <View className="flex-row items-center">
                 <Ionicons name="checkmark-circle" size={16} color="#51BC6F" />
                 <Typography variant="body-12" className="ml-1" style={{ color: '#51BC6F' }}>
-                  Claimed
+                  {t('gm.notifClaimed')}
                 </Typography>
               </View>
             ) : (
@@ -346,7 +348,7 @@ export default function GroveNotificationsModal() {
           <Ionicons name="arrow-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
-          Notifications
+          {t('gm.notifTitle')}
         </Typography>
       </View>
 
@@ -354,7 +356,7 @@ export default function GroveNotificationsModal() {
         <View className="flex-1 items-center justify-center">
           <Ionicons name="notifications-off-outline" size={48} color="#8A8A8A" />
           <Typography variant="body-14" color="secondary" className="mt-4 text-center px-8">
-            You&apos;re all caught up
+            {t('gm.notifEmpty')}
           </Typography>
         </View>
       ) : (

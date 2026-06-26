@@ -2,12 +2,14 @@ import React, { useEffect } from 'react';
 import { View, SafeAreaView, Pressable, FlatList, Image, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
 import type { FriendRequest } from '../../src/services/grove/GroveFriendService';
 
 export default function FriendRequestsModal() {
+  const { t } = useTranslation();
   const incomingRequests = useAppStore((s) => s.grove.incomingRequests);
   const fetchFriendRequests = useAppStore((s) => s.grove.fetchFriendRequests);
   const acceptFriendRequest = useAppStore((s) => s.grove.acceptFriendRequest);
@@ -21,7 +23,7 @@ export default function FriendRequestsModal() {
     try {
       await acceptFriendRequest(friendshipId);
     } catch {
-      Alert.alert('Error', 'Failed to accept request. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errAcceptRequest'));
     }
   };
 
@@ -29,7 +31,7 @@ export default function FriendRequestsModal() {
     try {
       await rejectFriendRequest(friendshipId);
     } catch {
-      Alert.alert('Error', 'Failed to reject request. Please try again.');
+      Alert.alert(t('common.error'), t('gm.errRejectRequest'));
     }
   };
 
@@ -86,7 +88,7 @@ export default function FriendRequestsModal() {
           <Ionicons name="arrow-back" size={24} color="#6592E9" />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
-          Friend Requests
+          {t('gm.frTitle')}
         </Typography>
       </View>
 
@@ -94,7 +96,7 @@ export default function FriendRequestsModal() {
         <View className="flex-1 items-center justify-center">
           <Ionicons name="people-outline" size={48} color="#8A8A8A" />
           <Typography variant="body-14" color="secondary" className="mt-4 text-center px-8">
-            No pending friend requests
+            {t('gm.frEmpty')}
           </Typography>
         </View>
       ) : (

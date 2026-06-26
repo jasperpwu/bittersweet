@@ -6,6 +6,7 @@ import {
   Alert,
   useColorScheme
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { useBlocklist, useBlocklistActions } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
@@ -15,6 +16,7 @@ import { DeviceActivitySelectionView, DeviceActivitySelectionViewPersisted, getF
 import { Stack } from 'expo-router';
 
 export default function AppSelectionScreen() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { triggerHaptic } = useDeviceIntegration();
   const { updateBlockedApps } = useBlocklistActions();
@@ -123,10 +125,13 @@ export default function AppSelectionScreen() {
       router.back();
     } catch (error: any) {
       console.error('❌ Failed to save app selection:', error);
-      const message = error?.message?.includes('Insufficient fruits')
-        ? error.message
-        : 'Failed to save app selection. Please try again.';
-      Alert.alert('Error', message, [{ text: 'OK' }]);
+      // The store throws an English "Insufficient fruits. Required: X, Available: Y"
+      // for control flow — parse the counts back out and show a localized version.
+      const fruitsMatch = error?.message?.match(/Required:\s*(\d+),\s*Available:\s*(\d+)/);
+      const message = fruitsMatch
+        ? t('gm.asInsufficientFruits', { required: fruitsMatch[1], available: fruitsMatch[2] })
+        : t('gm.errSaveApps');
+      Alert.alert(t('common.error'), message, [{ text: t('common.ok') }]);
       triggerHaptic('error');
     }
   };
@@ -201,18 +206,18 @@ export default function AppSelectionScreen() {
       <View className="h-[76px] px-5 flex-row items-center justify-between border-b border-light-border dark:border-dark-border">
         <Pressable onPress={handleClose} className="active:opacity-70">
           <Typography variant="body-14" className="text-primary">
-            Cancel
+            {t('common.cancel')}
           </Typography>
         </Pressable>
         <Typography variant="headline-18" color="primary">
-          Select Apps
+          {t('gm.asSelectApps')}
         </Typography>
         <Pressable
           onPress={handleSave}
           className={`active:opacity-70 ${!hasSelection ? 'opacity-50' : ''}`}
         >
           <Typography variant="body-14" className="text-primary">
-            Save
+            {t('common.save')}
           </Typography>
         </Pressable>
       </View>
@@ -220,7 +225,7 @@ export default function AppSelectionScreen() {
       {/* Instructions */}
       <View className="px-5 py-4 bg-blue-500/10 border-b border-blue-500/20">
         <Typography variant="body-12" color="secondary" className="text-center">
-          Select the apps and categories you want to block during focus sessions.
+          {t('gm.asInstructions')}
         </Typography>
       </View>
 
@@ -233,8 +238,8 @@ export default function AppSelectionScreen() {
           }}
           onSelectionChange={handleSelectionChange}
           familyActivitySelectionId="bittersweet-blocklist"
-          headerText="Choose apps and categories to block"
-          footerText="Selected apps will be blocked during focus sessions. You can unlock them temporarily using fruits."
+          headerText={t('gm.asHeaderText')}
+          footerText={t('gm.asFooterText')}
           includeEntireCategory={true}
         />
       </View>

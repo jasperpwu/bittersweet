@@ -5,6 +5,7 @@ import {
   Alert,
   useWindowDimensions,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Typography } from './Typography';
 import { Slider } from './Slider';
 import { useBlocklist, useBlocklistActions, useRewards, useAppStore } from '../../store';
@@ -28,6 +29,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
   appName = 'App',
   balance: propBalance
 }) => {
+  const { t } = useTranslation();
   const { triggerHaptic } = useDeviceIntegration();
   const { balance } = useRewards();
   const { settings, currentSelectionId } = useBlocklist();
@@ -59,9 +61,9 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
     if (currentBalance < cost) {
       triggerHaptic('error');
       Alert.alert(
-        'Insufficient Fruits',
-        `You need ${cost} fruits to unlock for ${selectedDuration} minute${selectedDuration !== 1 ? 's' : ''}, but only have ${currentBalance} fruits.`,
-        [{ text: 'OK' }]
+        t('unlock.insufficientTitle'),
+        t('unlock.insufficientBody', { cost, minutes: selectedDuration, balance: currentBalance }),
+        [{ text: t('common.ok') }]
       );
       return;
     }
@@ -163,8 +165,8 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
         const secondsUntilExpiry = Math.max(1, Math.round((reblockTime.getTime() - Date.now()) / 1000));
         Notifications.scheduleNotificationAsync({
           content: {
-            title: 'Unlock Expired',
-            body: `Your ${selectedDuration}m unlock has ended. Apps are blocked again.`,
+            title: t('unlock.expiredTitle'),
+            body: t('unlock.expiredBody', { minutes: selectedDuration }),
             sound: true,
             data: {
               type: 'unlock-expired',
@@ -242,7 +244,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
         triggerHaptic('success');
         setIsUnlocking(false);
         onDismiss();
-        showToast(`Unlocked for ${selectedDuration}m`, 'success');
+        showToast(t('unlock.unlockedToast', { minutes: selectedDuration }), 'success');
       } else {
         throw new Error('Failed to create unlock session');
       }
@@ -250,9 +252,9 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
       console.error('❌ UnlockSnackbar: Failed to unlock apps:', error);
       triggerHaptic('error');
       Alert.alert(
-        'Error',
-        'An error occurred while unlocking the apps. Please try again.',
-        [{ text: 'OK' }]
+        t('common.error'),
+        t('unlock.errorBody'),
+        [{ text: t('common.ok') }]
       );
       setIsUnlocking(false);
     }
@@ -280,10 +282,10 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
           </View>
           <View className="flex-1">
             <Typography variant="subtitle-16" color="primary">
-              {appName} is blocked
+              {t('unlock.appBlocked', { app: appName })}
             </Typography>
             <Typography variant="body-12" color="secondary">
-              You have {currentBalance} 🍎 available
+              {t('unlock.available', { amount: currentBalance })}
             </Typography>
           </View>
           <Pressable
@@ -304,14 +306,14 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
             maximumValue={maxDuration}
             step={1}
             onValueChange={setSelectedDuration}
-            label="Unlock for"
+            label={t('unlock.unlockFor')}
             unit="m"
             width={sliderWidth}
             thumbSize={26}
           />
           <View className="items-center mt-1">
             <Typography variant="body-12" color="primary">
-              Cost: {selectedDuration * settings.unlockCostPerMinute} 🍎
+              {t('unlock.cost', { amount: selectedDuration * settings.unlockCostPerMinute })}
             </Typography>
           </View>
         </View>
@@ -323,7 +325,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
             className="flex-1 py-3 rounded-xl border border-light-border dark:border-gray-600 active:opacity-80"
           >
             <Typography variant="body-14" color="secondary" className="text-center">
-              Dismiss
+              {t('unlock.dismiss')}
             </Typography>
           </Pressable>
 
@@ -340,8 +342,8 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
           >
             <Typography variant="body-14" color="white" className="text-center">
               {isUnlocking
-                ? 'Unlocking...'
-                : `Unlock (${selectedDuration * settings.unlockCostPerMinute} 🍎)`
+                ? t('unlock.unlocking')
+                : t('unlock.unlockCta', { amount: selectedDuration * settings.unlockCostPerMinute })
               }
             </Typography>
           </Pressable>

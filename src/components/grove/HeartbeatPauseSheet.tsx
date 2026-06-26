@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
+import i18n from '../../i18n';
 import type { HeartbeatSettings } from '../../services/grove/GroveHeartbeatService';
 
 type PauseDuration = '1_week' | '2_weeks' | '1_month';
@@ -15,10 +17,10 @@ interface HeartbeatPauseSheetProps {
   onResume: () => Promise<void>;
 }
 
-const DURATION_OPTIONS: { value: PauseDuration; label: string }[] = [
-  { value: '1_week', label: '1 week' },
-  { value: '2_weeks', label: '2 weeks' },
-  { value: '1_month', label: '1 month' },
+const DURATION_OPTIONS: { value: PauseDuration; labelKey: string }[] = [
+  { value: '1_week', labelKey: 'gm.hbDur1Week' },
+  { value: '2_weeks', labelKey: 'gm.hbDur2Weeks' },
+  { value: '1_month', labelKey: 'gm.hbDur1Month' },
 ];
 
 export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
@@ -28,6 +30,7 @@ export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
   onPause,
   onResume,
 }) => {
+  const { t } = useTranslation();
   const [selectedDuration, setSelectedDuration] = useState<PauseDuration>('1_week');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -60,7 +63,7 @@ export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
   const formatExpiryDate = (dateStr: string | null): string => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
@@ -69,7 +72,7 @@ export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
         <View className="flex-row items-center mb-4">
           <Ionicons name="heart" size={20} color="#FF6B6B" />
           <Typography variant="headline-18" color="primary" className="ml-2">
-            {isPaused ? 'Heartbeat Paused' : 'Pause Heartbeat'}
+            {isPaused ? t('gm.icPaused') : t('gm.icPauseHeartbeat')}
           </Typography>
         </View>
 
@@ -77,13 +80,13 @@ export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
           <>
             <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl p-4 mb-4">
               <Typography variant="body-14" color="secondary">
-                Your heartbeat is paused until{' '}
+                {t('gm.hbPausedUntilPrefix')}{' '}
                 <Typography variant="subtitle-14-medium" color="primary">
                   {formatExpiryDate(settings?.pauseExpiresAt ?? null)}
                 </Typography>
               </Typography>
               <Typography variant="body-12" color="secondary" className="mt-2">
-                Your inner circle knows you are taking a break. Quiet threshold notifications are disabled until you resume.
+                {t('gm.hbPausedDesc')}
               </Typography>
             </View>
 
@@ -96,7 +99,7 @@ export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Typography variant="subtitle-14-medium" style={{ color: '#FFFFFF' }}>
-                  Resume Heartbeat
+                  {t('gm.hbResume')}
                 </Typography>
               )}
             </Pressable>
@@ -104,7 +107,7 @@ export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
         ) : (
           <>
             <Typography variant="body-14" color="secondary" className="mb-4">
-              Your inner circle will be notified you are taking a break. Quiet threshold notifications will be paused.
+              {t('gm.hbPauseDesc')}
             </Typography>
 
             <View className="mb-4">
@@ -126,7 +129,7 @@ export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
                     )}
                   </View>
                   <Typography variant="subtitle-14-medium" color="primary">
-                    {option.label}
+                    {t(option.labelKey)}
                   </Typography>
                 </Pressable>
               ))}
@@ -141,7 +144,7 @@ export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Typography variant="subtitle-14-medium" style={{ color: '#FFFFFF' }}>
-                  Pause Heartbeat
+                  {t('gm.icPauseHeartbeat')}
                 </Typography>
               )}
             </Pressable>
