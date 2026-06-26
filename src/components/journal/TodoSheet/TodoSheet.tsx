@@ -1,6 +1,17 @@
-import React, { FC, useMemo, useState, useCallback } from 'react';
-import { View, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import React, { FC, useMemo, useState, useCallback, useRef } from 'react';
+import {
+  View,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useColorScheme,
+  useWindowDimensions,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
+} from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -24,21 +35,55 @@ import type { TodoScheduleController } from './TodoScheduleController';
 
 const PEEK_HEIGHT = 54;
 const FALLBACK_DURATION = 15;
+// Gap left below the safe-area top so the iOS status bar stays visible above
+// the sheet even at full expansion.
+const TOP_GAP = 8;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+interface TodoSection {
+  key: string;
+  title: string;
+  todos: Todo[];
+  collapsible?: boolean;
+}
+
+// Header label for a future-dated section, e.g. "Sat, Jun 27", localized.
+const formatSectionDate = (date: Date, lang: string): string => {
+  const opts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+  try {
+    return date.toLocaleDateString(lang, opts);
+  } catch {
+    return date.toLocaleDateString(undefined, opts);
+  }
+};
 
 interface TodoSheetProps {
   schedule?: TodoScheduleController;
 }
 
 export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { height: screenHeight } = useWindowDimensions();
-  // Half-height sheet so the calendar/timeline stays visible above it.
-  const sheetHeight = Math.round(screenHeight * 0.5);
-  const collapsedY = sheetHeight - PEEK_HEIGHT;
-  // Screen Y of the sheet's top edge when fully expanded (translateY === 0).
-  const baseTop = screenHeight - sheetHeight;
+  const insets = useSafeAreaInsets();
+  // The sheet lives inside the journal screen, which is itself inset above the
+  // tab bar — so its available height excludes the tab bar, not just the safe
+  // areas. Subtracting the tab bar height keeps the bottom-anchored sheet from
+  // overshooting its top edge above the status bar.
+  const tabBarHeight = useBottomTabBarHeight();
+  const isDark = useColorScheme() === 'dark';
+  // The sheet is rendered at full height (top stops below the safe-area top,
+  // leaving the status bar visible) and bottom-anchored; translateY pushes it
+  // down to reveal less of it. Three snap points: full (0), half (calendar/
+  // timeline stays visible), and peek.
+  const fullHeight = screenHeight - insets.top - TOP_GAP - tabBarHeight;
+  const halfHeight = Math.round(screenHeight * 0.5);
+  const collapsedY = fullHeight - PEEK_HEIGHT;
+  const halfY = fullHeight - halfHeight;
+  // Screen Y of the sheet's top edge when fully expanded (translateY === 0):
+  // insets.top + TOP_GAP. Keeps `baseTop + translateY` the true on-screen top
+  // so the schedule drag math stays identical at the peek/half positions.
+  const baseTop = insets.top + TOP_GAP;
 
   // While a row is being dragged, swap the "Add a TODO" row for a hint.
   const hintActive = !!schedule?.draggingTodo;
@@ -52,6 +97,15 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
   const [expanded, setExpanded] = useState(false);
   // Latches once per drag so we collapse only the first time the todo leaves.
   const collapsedForDrag = useSharedValue(false);
+
+  // Bridges the list scroll position (JS) to the drag gesture (UI thread) so
+  // the pan knows when the list is at its top.
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useSharedValue(0);
+  // Anchors the sheet's position when a top-of-list pull-down takes over, and
+  // latches so onEnd knows the pull (not a normal scroll) drove the sheet.
+  const listContextY = useSharedValue(0);
+  const listDriving = useSharedValue(false);
 
   // Keep the drop floor in sync with the sheet's live top edge, so the valid
   // drop region grows as the sheet contracts.
@@ -89,42 +143,127 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
   const [filterTagId, setFilterTagId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+  // Completed section starts collapsed so finished tasks stay out of the way.
+  const [completedCollapsed, setCompletedCollapsed] = useState(true);
 
   const activeTags = useMemo(
     () => tags.allIds.map((id) => tags.byId[id]).filter((tg) => tg && !tg.deletedAt),
     [tags]
   );
 
-  const visibleTodos = useMemo(() => {
-    const list = todosState.allIds
+  // Group incomplete todos by their startAt date — Past, Today, one section per
+  // future date, then No date — followed by a Completed section at the bottom.
+  const sections = useMemo<TodoSection[]>(() => {
+    const all = todosState.allIds
       .map((id) => todosState.byId[id])
       .filter((td): td is Todo => !!td && !td.deletedAt)
       .filter((td) => !filterTagId || td.tagId === filterTagId);
-    // Incomplete first (by sortOrder), completed last (most recently done first).
-    return list.sort((a, b) => {
-      if (a.completed !== b.completed) return a.completed ? 1 : -1;
-      if (a.completed) {
-        return new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime();
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+    const past: Todo[] = [];
+    const today: Todo[] = [];
+    const noDate: Todo[] = [];
+    const completed: Todo[] = [];
+    const futureByDay = new Map<number, Todo[]>(); // key: start-of-day epoch ms
+
+    for (const td of all) {
+      if (td.completed) {
+        completed.push(td);
+      } else if (!td.startAt) {
+        noDate.push(td);
+      } else {
+        const when = new Date(td.startAt);
+        if (when < startOfToday) {
+          past.push(td);
+        } else if (when < startOfTomorrow) {
+          today.push(td);
+        } else {
+          const day = new Date(when);
+          day.setHours(0, 0, 0, 0);
+          const bucket = futureByDay.get(day.getTime());
+          if (bucket) bucket.push(td);
+          else futureByDay.set(day.getTime(), [td]);
+        }
       }
+    }
+
+    // Within a day, timed todos sort chronologically; date-only todos (no
+    // meaningful time) fall to the bottom of the day, ordered by sortOrder.
+    const startKey = (td: Todo): number => {
+      if (!td.startAt) return 0;
+      const when = new Date(td.startAt);
+      if (td.startHasTime === false) {
+        when.setHours(23, 59, 59, 999); // push date-only to end of its day
+      }
+      return when.getTime();
+    };
+    const byStartThenOrder = (a: Todo, b: Todo) => {
+      const ta = startKey(a);
+      const tb = startKey(b);
+      if (ta !== tb) return ta - tb;
       return a.sortOrder - b.sortOrder;
-    });
-  }, [todosState, filterTagId]);
+    };
+    past.sort(byStartThenOrder);
+    today.sort(byStartThenOrder);
+    noDate.sort((a, b) => a.sortOrder - b.sortOrder);
+    completed.sort(
+      (a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime()
+    );
+
+    const result: TodoSection[] = [];
+    if (past.length) result.push({ key: 'past', title: t('todos.sectionPast'), todos: past });
+    if (today.length) result.push({ key: 'today', title: t('todos.sectionToday'), todos: today });
+    [...futureByDay.keys()]
+      .sort((a, b) => a - b)
+      .forEach((dayMs) => {
+        result.push({
+          key: `future-${dayMs}`,
+          title: formatSectionDate(new Date(dayMs), i18n.language),
+          todos: futureByDay.get(dayMs)!.sort(byStartThenOrder),
+        });
+      });
+    if (noDate.length)
+      result.push({ key: 'noDate', title: t('todos.sectionNoDate'), todos: noDate });
+    if (completed.length)
+      result.push({
+        key: 'completed',
+        title: t('todos.sectionCompleted'),
+        todos: completed,
+        collapsible: true,
+      });
+    return result;
+  }, [todosState, filterTagId, t, i18n.language]);
 
   const snapTo = useCallback(
     (target: number) => {
       translateY.value = withTiming(target, { duration: 250 });
-      setExpanded(target === 0);
+      setExpanded(target !== collapsedY);
     },
-    [translateY]
+    [translateY, collapsedY]
   );
 
   const collapse = useCallback(() => snapTo(collapsedY), [snapTo, collapsedY]);
-  const expand = useCallback(() => snapTo(0), [snapTo]);
+  // Tap-to-expand opens to the half position; dragging the handle further up
+  // reaches full screen.
+  const expand = useCallback(() => snapTo(halfY), [snapTo, halfY]);
 
   const toggleSheet = useCallback(() => {
     if (expanded) collapse();
     else expand();
   }, [expanded, collapse, expand]);
+
+  // Mirror the list's scroll offset onto the UI thread so the drag gesture can
+  // tell whether the list is at its top.
+  const handleListScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollY.value = e.nativeEvent.contentOffset.y;
+    },
+    [scrollY]
+  );
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
@@ -134,14 +273,70 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
       translateY.value = Math.min(collapsedY, Math.max(0, contextY.value + event.translationY));
     })
     .onEnd((event) => {
-      const midpoint = collapsedY / 2;
-      const goingDown = event.velocityY > 400;
-      const goingUp = event.velocityY < -400;
-      const target =
-        goingUp ? 0 : goingDown ? collapsedY : translateY.value < midpoint ? 0 : collapsedY;
+      // Project where the throw would land, then snap to the nearest of the
+      // three stops (full / half / peek) so an upward flick reaches full screen.
+      const projected = translateY.value + event.velocityY * 0.08;
+      const points = [0, halfY, collapsedY];
+      let target = points[0];
+      let best = Math.abs(projected - points[0]);
+      for (let i = 1; i < points.length; i++) {
+        const d = Math.abs(projected - points[i]);
+        if (d < best) {
+          best = d;
+          target = points[i];
+        }
+      }
       translateY.value = withTiming(target, { duration: 250 });
-      runOnJS(setExpanded)(target === 0);
+      runOnJS(setExpanded)(target !== collapsedY);
     });
+
+  // Drag on the list itself: once it's scrolled to the top, a downward pull
+  // drives the whole sheet down instead of (uselessly) overscrolling the list.
+  // Runs simultaneously with the ScrollView's native gesture so vertical
+  // scrolling within the list is unaffected.
+  const listPanGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      const atTop = scrollY.value <= 0;
+      if (!listDriving.value) {
+        // Only take over when expanded, at the top, and pulling downward.
+        if (atTop && event.translationY > 0 && translateY.value < collapsedY) {
+          listDriving.value = true;
+          // Anchor so the sheet stays put at the moment of takeover (no jump).
+          listContextY.value = translateY.value - event.translationY;
+        } else {
+          return;
+        }
+      }
+      translateY.value = Math.min(
+        collapsedY,
+        Math.max(0, listContextY.value + event.translationY)
+      );
+    })
+    .onEnd((event) => {
+      if (!listDriving.value) return;
+      listDriving.value = false;
+      // A top-of-list pull only drives the sheet downward; snap to the nearest
+      // stop at or below where the throw projects (half or peek).
+      const projected = translateY.value + event.velocityY * 0.08;
+      const points = [0, halfY, collapsedY];
+      let target = points[0];
+      let best = Math.abs(projected - points[0]);
+      for (let i = 1; i < points.length; i++) {
+        const d = Math.abs(projected - points[i]);
+        if (d < best) {
+          best = d;
+          target = points[i];
+        }
+      }
+      translateY.value = withTiming(target, { duration: 250 });
+      runOnJS(setExpanded)(target !== collapsedY);
+    })
+    .onFinalize(() => {
+      listDriving.value = false;
+    })
+    .simultaneousWithExternalGesture(
+      scrollRef as unknown as React.RefObject<React.ComponentType>
+    );
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -206,7 +401,7 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
       />
 
       <Animated.View
-        style={[styles.sheet, { height: sheetHeight }, sheetStyle]}
+        style={[styles.sheet, { height: fullHeight }, sheetStyle]}
         className="absolute left-0 right-0 bottom-0 bg-light-bg dark:bg-dark-bg rounded-t-3xl"
       >
         {/* Header (drag + tap to toggle) */}
@@ -219,11 +414,6 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
               <Typography variant="subtitle-16" color="primary">
                 {t('todos.title')}
               </Typography>
-              <Ionicons
-                name={expanded ? 'chevron-down' : 'chevron-up'}
-                size={20}
-                color={colors.textGrey}
-              />
             </View>
           </Pressable>
         </GestureDetector>
@@ -255,33 +445,74 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
         </View>
 
         {/* Rows */}
-        <ScrollView
-          className="flex-1 px-5"
-          contentContainerStyle={{ paddingTop: 4 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {visibleTodos.length === 0 ? (
+        <GestureDetector gesture={listPanGesture}>
+          <ScrollView
+            ref={scrollRef}
+            className="flex-1 px-5"
+            contentContainerStyle={{ paddingTop: 4 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            onScroll={handleListScroll}
+            scrollEventThrottle={16}
+            // No top overscroll bounce — a downward pull at the top drives the
+            // sheet (via listPanGesture) rather than rubber-banding the list.
+            bounces={false}
+          >
+          {sections.length === 0 ? (
             <View className="items-center py-10">
               <Typography variant="body-12" color="secondary">
                 {t('todos.empty')}
               </Typography>
             </View>
           ) : (
-            visibleTodos.map((todo) => (
-              <TodoRow
-                key={todo.id}
-                todo={todo}
-                tag={tags.byId[todo.tagId] as any}
-                onToggle={toggleTodo}
-                onPressEdit={openEdit}
-                onDelete={handleDelete}
-                onStart={handleStart}
-                schedule={schedule}
-              />
-            ))
+            sections.map((section) => {
+              const collapsed = section.collapsible && completedCollapsed;
+              const Header = section.collapsible ? Pressable : View;
+              return (
+                <View key={section.key}>
+                  <Header
+                    onPress={
+                      section.collapsible
+                        ? () => setCompletedCollapsed((v) => !v)
+                        : undefined
+                    }
+                    className="flex-row items-center justify-between pt-4 pb-1.5"
+                  >
+                    <View className="flex-row items-center">
+                      <Typography variant="subtitle-14-semibold" color="secondary">
+                        {section.title}
+                      </Typography>
+                      <Typography variant="body-12" color="secondary" className="ml-1.5">
+                        {section.todos.length}
+                      </Typography>
+                    </View>
+                    {section.collapsible && (
+                      <Ionicons
+                        name={collapsed ? 'chevron-down' : 'chevron-up'}
+                        size={16}
+                        color={isDark ? colors.dark.textSecondary : colors.light.textSecondary}
+                      />
+                    )}
+                  </Header>
+                  {!collapsed &&
+                    section.todos.map((todo) => (
+                      <TodoRow
+                        key={todo.id}
+                        todo={todo}
+                        tag={tags.byId[todo.tagId] as any}
+                        onToggle={toggleTodo}
+                        onPressEdit={openEdit}
+                        onDelete={handleDelete}
+                        onStart={handleStart}
+                        schedule={schedule}
+                      />
+                    ))}
+                </View>
+              );
+            })
           )}
-        </ScrollView>
+          </ScrollView>
+        </GestureDetector>
 
         {/* Tag filter pills */}
         <View className="py-2">

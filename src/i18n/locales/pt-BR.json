@@ -5,6 +5,10 @@
     "dragHint": "Arraste para o calendário para agendar",
     "filterAll": "Todas",
     "empty": "Nenhuma tarefa ainda",
+    "sectionPast": "Passado",
+    "sectionToday": "Hoje",
+    "sectionNoDate": "Sem data",
+    "sectionCompleted": "Concluídas",
     "deleted": "Tarefa excluída",
     "completed": "Tarefa concluída",
     "undo": "Desfazer",
@@ -14,10 +18,22 @@
     "nameLabel": "Tarefa",
     "namePlaceholder": "No que você quer focar?",
     "tagLabel": "Etiqueta",
-    "startLabel": "Data e hora de início",
+    "startLabel": "Início",
+    "deadlineLabel": "Prazo",
+    "setTime": "Definir horário",
     "durationLabel": "Duração",
     "notesLabel": "Notas",
-    "notesPlaceholder": "Adicionar notas…"
+    "notesPlaceholder": "Adicionar notas…",
+    "discardTitle": "Descartar alterações?",
+    "discardMessage": "Sua tarefa não salva será perdida.",
+    "keepEditing": "Continuar editando",
+    "discard": "Descartar"
+  },
+  "goals": {
+    "discardTitle": "Descartar alterações?",
+    "discardMessage": "Suas alterações de meta não salvas serão perdidas.",
+    "keepEditing": "Continuar editando",
+    "discard": "Descartar"
   },
   "common": {
     "next": "Avançar",
@@ -124,6 +140,7 @@
     "createNewTagTitle": "Criar nova tag",
     "createTag": "Criar tag",
     "chooseEmojiNewTag": "Escolha um emoji para a nova tag",
+    "chooseColor": "Escolha uma cor",
     "blocklistTipBody": "Aqui você adiciona apps que não ajudam nas suas metas e que distraem.\n\nA primeira configuração é grátis. Depois, cada edição custa frutos — começando em 1 e dobrando a cada vez, com reinício semanal.",
     "understood": "Entendi",
     "editBlockList": "Editar lista de bloqueio",

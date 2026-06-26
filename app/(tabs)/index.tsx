@@ -32,7 +32,7 @@ import { EmojiPickerOverlay } from '../../src/components/ui/EmojiPicker/EmojiPic
 import {
   TimeScroller,
   DurationPicker,
-  TagColorPicker,
+  ColorPickerOverlay,
   ActivityTypePicker,
   RunningTodoList,
 } from '../../src/components/focus';
@@ -769,6 +769,7 @@ export default function FocusScreen() {
   }, [availableTags, selectedTag]);
   const [showTagModal, setShowTagModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showNewColorPicker, setShowNewColorPicker] = useState(false);
   const [showNewTagModal, setShowNewTagModal] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
@@ -795,6 +796,7 @@ export default function FocusScreen() {
   const newTagActivityTouched = useRef(false);
   const editTagActivityTouched = useRef(false);
   const [showEditEmojiGrid, setShowEditEmojiGrid] = useState(false);
+  const [showEditColorPicker, setShowEditColorPicker] = useState(false);
 
   // Debounced inference of the activity type from the tag name (new tag modal).
   // Only fills the picker until the user makes their own choice.
@@ -1084,6 +1086,12 @@ export default function FocusScreen() {
     setShowEmojiPicker(false);
   };
 
+  const handleNewTagColorPress = () => {
+    // Keep the New Tag overlay mounted underneath; the color overlay covers it.
+    Keyboard.dismiss();
+    setShowNewColorPicker(true);
+  };
+
   const handleCreateNewTag = () => {
     if (!canCreateTag) {
       setShowNewTagModal(false);
@@ -1125,6 +1133,7 @@ export default function FocusScreen() {
     setEditTagActivityType(tag.activityType);
     // Respect an already-set type; only auto-infer when the tag had none.
     editTagActivityTouched.current = !!tag.activityType;
+    setShowEditColorPicker(false);
     setShowEditTagModal(true);
     // Keep tag modal open - edit appears as overlay within it
   };
@@ -1132,6 +1141,11 @@ export default function FocusScreen() {
   const handleEditTagEmojiPress = () => {
     Keyboard.dismiss();
     setShowEditEmojiGrid(true);
+  };
+
+  const handleEditTagColorPress = () => {
+    Keyboard.dismiss();
+    setShowEditColorPicker(true);
   };
 
   const handleSaveEditTag = () => {
@@ -2070,6 +2084,7 @@ export default function FocusScreen() {
     // tag picker Modal, so that Modal must be mounted for the overlay to render)
     if (availableTags.length === 0) {
       setShowTagModal(true);
+      setShowNewColorPicker(false);
       setShowNewTagModal(true);
       return;
     }
@@ -2642,6 +2657,7 @@ export default function FocusScreen() {
                         setShowUpgradePrompt(true);
                         return;
                       }
+                      setShowNewColorPicker(false);
                       setShowNewTagModal(true);
                     }}
                     className="flex-1 items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
@@ -2709,15 +2725,19 @@ export default function FocusScreen() {
                     <Typography variant="body-14" color="primary" className="mb-3">
                       {t('home.color')}
                     </Typography>
-                    <ScrollView
-                      style={{ maxHeight: 240 }}
-                      nestedScrollEnabled
-                      showsVerticalScrollIndicator={false}>
-                      <TagColorPicker
-                        selectedColor={editTagColor}
-                        onSelectColor={setEditTagColor}
+                    <Pressable
+                      onPress={handleEditTagColorPress}
+                      className="flex-row items-center justify-between rounded-xl border border-gray-500 bg-gray-700 px-4 py-3 active:opacity-80">
+                      <View
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 14,
+                          backgroundColor: editTagColor,
+                        }}
                       />
-                    </ScrollView>
+                      <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                    </Pressable>
                   </View>
 
                   {/* Activity type (optional) — improves focus-rating accuracy */}
@@ -2780,6 +2800,16 @@ export default function FocusScreen() {
                 setEditTagEmoji(emoji);
                 setShowEditEmojiGrid(false);
               }}
+            />
+          )}
+
+          {/* Edit Tag — Color Picker Overlay (on top of the Edit Tag overlay) */}
+          {showEditTagModal && showEditColorPicker && (
+            <ColorPickerOverlay
+              title={t('home.chooseColor')}
+              selectedColor={editTagColor}
+              onSelectColor={setEditTagColor}
+              onClose={() => setShowEditColorPicker(false)}
             />
           )}
 
@@ -2944,17 +2974,21 @@ export default function FocusScreen() {
                     {/* Color Selection */}
                     <View>
                       <Typography variant="body-14" color="primary" className="mb-3">
-                        Color
+                        {t('home.color')}
                       </Typography>
-                      <ScrollView
-                        style={{ maxHeight: 240 }}
-                        nestedScrollEnabled
-                        showsVerticalScrollIndicator={false}>
-                        <TagColorPicker
-                          selectedColor={newTagColor}
-                          onSelectColor={setNewTagColor}
+                      <Pressable
+                        onPress={handleNewTagColorPress}
+                        className="flex-row items-center justify-between rounded-xl border border-light-border bg-light-border/30 px-4 py-3 active:opacity-80 dark:border-gray-500 dark:bg-gray-700">
+                        <View
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 14,
+                            backgroundColor: newTagColor,
+                          }}
                         />
-                      </ScrollView>
+                        <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                      </Pressable>
                     </View>
 
                     {/* Activity type (optional) — improves focus-rating accuracy */}
@@ -3020,6 +3054,16 @@ export default function FocusScreen() {
               title={t('home.chooseEmojiNewTag')}
               onClose={() => setShowEmojiPicker(false)}
               onEmojiSelect={handleEmojiSelect}
+            />
+          )}
+
+          {/* New Tag — Color Picker Overlay (on top of the New Tag overlay) */}
+          {showNewTagModal && showNewColorPicker && (
+            <ColorPickerOverlay
+              title={t('home.chooseColor')}
+              selectedColor={newTagColor}
+              onSelectColor={setNewTagColor}
+              onClose={() => setShowNewColorPicker(false)}
             />
           )}
         </Modal>

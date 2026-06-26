@@ -71,8 +71,45 @@ const ActionPanel: FC<ActionPanelProps> = ({ progress, align, color, icon, label
   );
 };
 
+// Short deadline label, e.g. "Jun 27" or "Jun 27, 3:00 PM" when a time is set.
+const formatDeadline = (date: Date, hasTime: boolean, lang: string): string => {
+  const dateOpts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const datePart = (() => {
+    try {
+      return date.toLocaleDateString(lang, dateOpts);
+    } catch {
+      return date.toLocaleDateString(undefined, dateOpts);
+    }
+  })();
+  if (!hasTime) return datePart;
+  const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
+  let timePart: string;
+  try {
+    timePart = date.toLocaleTimeString(lang, timeOpts);
+  } catch {
+    timePart = date.toLocaleTimeString(undefined, timeOpts);
+  }
+  return `Due ${datePart}, ${timePart}`;
+};
+
+// A deadline is past due once its moment has passed. Date-only deadlines lapse
+// at the end of their day; timed ones at the exact time.
+const isPastDeadline = (date: Date, hasTime: boolean): boolean => {
+  const due = new Date(date);
+  if (!hasTime) due.setHours(23, 59, 59, 999);
+  return due.getTime() < Date.now();
+};
+
 export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, onDelete, onStart, schedule }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const deadlineLabel = todo.deadlineAt
+    ? formatDeadline(new Date(todo.deadlineAt), !!todo.deadlineHasTime, i18n.language)
+    : null;
+  // Overdue styling only matters while the task is still open.
+  const deadlineOverdue =
+    !todo.completed &&
+    !!todo.deadlineAt &&
+    isPastDeadline(new Date(todo.deadlineAt), !!todo.deadlineHasTime);
   const swipeableRef = useRef<any>(null);
   const didSwipe = useRef(false);
   const firedRef = useRef(false);
@@ -189,7 +226,7 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
           />
         </Pressable>
 
-        {/* Name */}
+        {/* Name + optional deadline */}
         <View className="flex-1 mr-2">
           <Typography
             variant="body-14"
@@ -199,6 +236,26 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
           >
             {todo.name}
           </Typography>
+          {deadlineLabel && (
+            <View
+              className="flex-row items-center self-start mt-1 px-2 py-0.5 rounded-full border border-light-border dark:border-dark-border"
+              style={deadlineOverdue ? { borderColor: colors.error } : undefined}
+            >
+              <Ionicons
+                name="flag-outline"
+                size={11}
+                color={deadlineOverdue ? colors.error : colors.textGrey}
+              />
+              <Typography
+                variant="tiny-10"
+                color="secondary"
+                className="ml-1"
+                style={deadlineOverdue ? { color: colors.error } : undefined}
+              >
+                {deadlineLabel}
+              </Typography>
+            </View>
+          )}
         </View>
 
         {/* Tag pill */}

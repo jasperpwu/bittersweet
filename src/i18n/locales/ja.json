@@ -5,6 +5,10 @@
     "dragHint": "カレンダーにドラッグして予定に追加",
     "filterAll": "すべて",
     "empty": "やることはまだありません",
+    "sectionPast": "過去",
+    "sectionToday": "今日",
+    "sectionNoDate": "日付なし",
+    "sectionCompleted": "完了",
     "deleted": "やることを削除しました",
     "completed": "やることを完了しました",
     "undo": "元に戻す",
@@ -14,10 +18,22 @@
     "nameLabel": "やること",
     "namePlaceholder": "何に集中しますか？",
     "tagLabel": "タグ",
-    "startLabel": "開始日時",
+    "startLabel": "開始",
+    "deadlineLabel": "締め切り",
+    "setTime": "時刻を指定",
     "durationLabel": "所要時間",
     "notesLabel": "メモ",
-    "notesPlaceholder": "メモを追加…"
+    "notesPlaceholder": "メモを追加…",
+    "discardTitle": "変更を破棄しますか？",
+    "discardMessage": "保存していないTODOは失われます。",
+    "keepEditing": "編集を続ける",
+    "discard": "破棄"
+  },
+  "goals": {
+    "discardTitle": "変更を破棄しますか？",
+    "discardMessage": "保存していない目標の変更は失われます。",
+    "keepEditing": "編集を続ける",
+    "discard": "破棄"
   },
   "common": {
     "next": "次へ",
@@ -124,6 +140,7 @@
     "createNewTagTitle": "新しいタグを作成",
     "createTag": "タグを作成",
     "chooseEmojiNewTag": "新しいタグの絵文字を選ぶ",
+    "chooseColor": "カラーを選ぶ",
     "blocklistTipBody": "目標に不要で気が散るアプリをここに追加します。\n\n最初の設定は無料です。その後は編集ごとに実がかかり、1個から始まって毎回2倍になり、毎週リセットされます。",
     "understood": "了解",
     "editBlockList": "ブロックリストを編集",

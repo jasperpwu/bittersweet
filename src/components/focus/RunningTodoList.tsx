@@ -258,9 +258,10 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
     zIndex: zIndex.value,
   }));
 
-  const timeLabel = todo.startAt
-    ? new Date(todo.startAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-    : null;
+  const timeLabel =
+    todo.startAt && todo.startHasTime !== false
+      ? new Date(todo.startAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      : null;
 
   const accent = accentColor || colors.primary;
   const textPrimary = isDark ? colors.dark.textPrimary : colors.light.textPrimary;

@@ -5,6 +5,10 @@
     "dragHint": "拖到日历即可安排时间",
     "filterAll": "全部",
     "empty": "暂无待办",
+    "sectionPast": "过去",
+    "sectionToday": "今天",
+    "sectionNoDate": "无日期",
+    "sectionCompleted": "已完成",
     "deleted": "已删除待办",
     "completed": "已完成待办",
     "undo": "撤销",
@@ -14,10 +18,22 @@
     "nameLabel": "待办",
     "namePlaceholder": "你想专注做什么？",
     "tagLabel": "标签",
-    "startLabel": "开始日期和时间",
+    "startLabel": "开始",
+    "deadlineLabel": "截止时间",
+    "setTime": "设定时间",
     "durationLabel": "时长",
     "notesLabel": "备注",
-    "notesPlaceholder": "添加备注…"
+    "notesPlaceholder": "添加备注…",
+    "discardTitle": "放弃更改？",
+    "discardMessage": "未保存的待办将会丢失。",
+    "keepEditing": "继续编辑",
+    "discard": "放弃"
+  },
+  "goals": {
+    "discardTitle": "放弃更改？",
+    "discardMessage": "未保存的目标更改将会丢失。",
+    "keepEditing": "继续编辑",
+    "discard": "放弃"
   },
   "common": {
     "next": "下一步",
@@ -124,6 +140,7 @@
     "createNewTagTitle": "创建新标签",
     "createTag": "创建标签",
     "chooseEmojiNewTag": "为新标签选择表情",
+    "chooseColor": "选择颜色",
     "blocklistTipBody": "在这里添加对你的目标无益、又让你分心的应用。\n\n首次设置免费。之后每次编辑都需要果实——从 1 个开始，每次翻倍，每周重置。",
     "understood": "明白了",
     "editBlockList": "编辑屏蔽列表",

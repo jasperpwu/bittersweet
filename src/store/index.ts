@@ -163,12 +163,27 @@ interface AppStore {
       name: string;
       tagId: string;
       startAt?: Date;
+      startHasTime?: boolean;
+      deadlineAt?: Date;
+      deadlineHasTime?: boolean;
       durationMinutes?: number;
       notes?: string;
     }) => Todo;
     updateTodo: (
       id: string,
-      updates: Partial<Pick<Todo, 'name' | 'tagId' | 'startAt' | 'durationMinutes' | 'notes'>>
+      updates: Partial<
+        Pick<
+          Todo,
+          | 'name'
+          | 'tagId'
+          | 'startAt'
+          | 'startHasTime'
+          | 'deadlineAt'
+          | 'deadlineHasTime'
+          | 'durationMinutes'
+          | 'notes'
+        >
+      >
     ) => void;
     toggleTodo: (id: string) => void;
     deleteTodo: (id: string) => void;
@@ -1322,6 +1337,9 @@ export const useAppStore = create<AppStore>()(
               name: input.name.trim(),
               tagId: input.tagId,
               startAt: input.startAt,
+              startHasTime: input.startHasTime,
+              deadlineAt: input.deadlineAt,
+              deadlineHasTime: input.deadlineHasTime,
               durationMinutes: input.durationMinutes,
               notes: input.notes?.trim() || undefined,
               completed: false,

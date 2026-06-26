@@ -1,5 +1,6 @@
-import React, { FC, useState } from 'react';
-import { View, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { FC, useCallback, useRef, useState } from 'react';
+import { Alert, View, Pressable, useWindowDimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { Typography } from '../../ui/Typography';
 import { FocusGoalForm } from '../../forms/FocusGoalForm';
@@ -21,7 +22,16 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
   tagId,
   onUpgrade,
 }) => {
+  const { t } = useTranslation();
   const [internalEditingGoal, setInternalEditingGoal] = useState<string | null>(null);
+  const { height: screenHeight } = useWindowDimensions();
+
+  // Tracks unsaved-changes state reported by the form, so a swipe/backdrop/✕
+  // dismiss can confirm before discarding (mirrors the Journal TODO sheet).
+  const isDirtyRef = useRef(false);
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    isDirtyRef.current = dirty;
+  }, []);
 
   // Get data from focus store
   const { goals, tags } = useFocus();
@@ -83,14 +93,42 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
 
   const title = isActivating ? 'Activate Goal' : 'Edit Goal';
 
+  // Prompt before throwing away unsaved edits; the Discard button drives the
+  // actual close. Returns false to tell BottomSheet to keep the sheet open.
+  const promptDiscard = () => {
+    Alert.alert(t('goals.discardTitle'), t('goals.discardMessage'), [
+      { text: t('goals.keepEditing'), style: 'cancel' },
+      { text: t('goals.discard'), style: 'destructive', onPress: onClose },
+    ]);
+  };
+
+  // Guard for BottomSheet (swipe / backdrop / hardware back): allow the close
+  // only when there's nothing unsaved.
+  const handleBeforeClose = (): boolean => {
+    if (!isDirtyRef.current) return true;
+    promptDiscard();
+    return false;
+  };
+
+  // Guard for the explicit close (✕ / Cancel) buttons.
+  const handleClosePress = () => {
+    if (isDirtyRef.current) promptDiscard();
+    else onClose();
+  };
+
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose}>
+    <BottomSheet
+      isVisible={isVisible}
+      onClose={onClose}
+      height={screenHeight * 0.85}
+      scrollable
+      beforeClose={handleBeforeClose}>
       {/* Header */}
       <View className="mb-6 flex-row items-center justify-between">
         <Typography variant="headline-20" color="primary">
           {title}
         </Typography>
-        <Pressable onPress={onClose} className="p-2 active:opacity-70">
+        <Pressable onPress={handleClosePress} className="p-2 active:opacity-70">
           <Typography variant="headline-18" color="secondary">
             ✕
           </Typography>
@@ -98,24 +136,14 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
       </View>
 
       {/* Form Content */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
-      >
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <FocusGoalForm
-            onSubmit={handleSubmit}
-            onCancel={onClose}
-            editingGoal={editingGoal}
-            tagName={tag?.name}
-            tagIcon={tag?.icon}
-          />
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <FocusGoalForm
+        onSubmit={handleSubmit}
+        onCancel={handleClosePress}
+        editingGoal={editingGoal}
+        tagName={tag?.name}
+        tagIcon={tag?.icon}
+        onDirtyChange={handleDirtyChange}
+      />
     </BottomSheet>
   );
 };

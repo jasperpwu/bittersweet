@@ -5,6 +5,10 @@
     "dragHint": "Glisser vers le calendrier pour planifier",
     "filterAll": "Tout",
     "empty": "Aucune tâche pour le moment",
+    "sectionPast": "Passé",
+    "sectionToday": "Aujourd'hui",
+    "sectionNoDate": "Sans date",
+    "sectionCompleted": "Terminé",
     "deleted": "Tâche supprimée",
     "completed": "Tâche terminée",
     "undo": "Annuler",
@@ -14,10 +18,22 @@
     "nameLabel": "Tâche",
     "namePlaceholder": "Sur quoi veux-tu te concentrer ?",
     "tagLabel": "Étiquette",
-    "startLabel": "Date et heure de début",
+    "startLabel": "Début",
+    "deadlineLabel": "Échéance",
+    "setTime": "Définir l'heure",
     "durationLabel": "Durée",
     "notesLabel": "Notes",
-    "notesPlaceholder": "Ajouter des notes…"
+    "notesPlaceholder": "Ajouter des notes…",
+    "discardTitle": "Abandonner les modifications ?",
+    "discardMessage": "Votre tâche non enregistrée sera perdue.",
+    "keepEditing": "Continuer la modification",
+    "discard": "Abandonner"
+  },
+  "goals": {
+    "discardTitle": "Abandonner les modifications ?",
+    "discardMessage": "Vos modifications d'objectif non enregistrées seront perdues.",
+    "keepEditing": "Continuer la modification",
+    "discard": "Abandonner"
   },
   "common": {
     "next": "Suivant",
@@ -124,6 +140,7 @@
     "createNewTagTitle": "Créer une nouvelle étiquette",
     "createTag": "Créer l'étiquette",
     "chooseEmojiNewTag": "Choisir un emoji pour la nouvelle étiquette",
+    "chooseColor": "Choisir une couleur",
     "blocklistTipBody": "C'est ici que vous ajoutez les apps inutiles à vos objectifs et qui vous distraient.\n\nLe premier réglage est gratuit. Ensuite, chaque modification coûte des fruits : à partir de 1, doublant à chaque fois, avec remise à zéro chaque semaine.",
     "understood": "Compris",
     "editBlockList": "Modifier la liste de blocage",

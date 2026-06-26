@@ -5,6 +5,10 @@
     "dragHint": "Arrastra al calendario para programar",
     "filterAll": "Todas",
     "empty": "Aún no hay tareas",
+    "sectionPast": "Pasado",
+    "sectionToday": "Hoy",
+    "sectionNoDate": "Sin fecha",
+    "sectionCompleted": "Completadas",
     "deleted": "Tarea eliminada",
     "completed": "Tarea completada",
     "undo": "Deshacer",
@@ -14,10 +18,22 @@
     "nameLabel": "Tarea",
     "namePlaceholder": "¿En qué quieres concentrarte?",
     "tagLabel": "Etiqueta",
-    "startLabel": "Fecha y hora de inicio",
+    "startLabel": "Inicio",
+    "deadlineLabel": "Fecha límite",
+    "setTime": "Definir hora",
     "durationLabel": "Duración",
     "notesLabel": "Notas",
-    "notesPlaceholder": "Añade notas…"
+    "notesPlaceholder": "Añade notas…",
+    "discardTitle": "¿Descartar cambios?",
+    "discardMessage": "Perderás la tarea sin guardar.",
+    "keepEditing": "Seguir editando",
+    "discard": "Descartar"
+  },
+  "goals": {
+    "discardTitle": "¿Descartar cambios?",
+    "discardMessage": "Perderás los cambios de la meta sin guardar.",
+    "keepEditing": "Seguir editando",
+    "discard": "Descartar"
   },
   "common": {
     "next": "Siguiente",
@@ -124,6 +140,7 @@
     "createNewTagTitle": "Crear nueva etiqueta",
     "createTag": "Crear etiqueta",
     "chooseEmojiNewTag": "Elige un emoji para la nueva etiqueta",
+    "chooseColor": "Elige un color",
     "blocklistTipBody": "Aquí añades las apps que no necesitas para tus metas y que te distraen.\n\nLa primera configuración es gratis. Después, cada cambio cuesta fruta: empieza en 1 y se duplica cada vez, reiniciándose cada semana.",
     "understood": "Entendido",
     "editBlockList": "Editar lista de bloqueo",

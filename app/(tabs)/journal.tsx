@@ -65,7 +65,13 @@ export default function JournalScreen() {
       .map((id) => todosState.byId[id])
       .filter(
         (td): td is Todo =>
-          !!td && !td.deletedAt && !!td.startAt && new Date(td.startAt).toDateString() === dayStr
+          !!td &&
+          !td.deletedAt &&
+          !!td.startAt &&
+          // Only timed todos appear on the calendar; date-only ones (startHasTime
+          // explicitly false) stay in the sheet's day sections but off the timeline.
+          td.startHasTime !== false &&
+          new Date(td.startAt).toDateString() === dayStr
       );
   }, [todosState, selectedDate]);
 

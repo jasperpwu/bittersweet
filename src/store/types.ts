@@ -107,7 +107,12 @@ export interface Todo extends BaseEntity {
   userId: string;
   name: string;
   tagId: string; // required — the tag this task belongs to
-  startAt?: Date; // optional start date + time
+  startAt?: Date; // optional start date (carries a time only when startHasTime)
+  // True when startAt's time-of-day is meaningful. When false/undefined the todo
+  // is "date only" — grouped by day in the sheet but NOT drawn on the calendar.
+  startHasTime?: boolean;
+  deadlineAt?: Date; // optional deadline date (carries a time only when deadlineHasTime)
+  deadlineHasTime?: boolean; // True when deadlineAt's time-of-day is meaningful
   durationMinutes?: number; // optional estimated duration
   notes?: string;
   completed: boolean;

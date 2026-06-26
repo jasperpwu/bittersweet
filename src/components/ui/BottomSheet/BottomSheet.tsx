@@ -1,5 +1,14 @@
 import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, View, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import {
+  Modal,
+  View,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
+} from 'react-native';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -17,6 +26,14 @@ interface BottomSheetProps {
   children: ReactNode;
   height?: number;
   showHandle?: boolean;
+  // When true the content sits in an internal ScrollView and a downward pull
+  // past the top of that list drags the whole sheet down to dismiss (mirrors the
+  // Journal TODO sheet). Leave false for short, non-scrolling content.
+  scrollable?: boolean;
+  // Guard run on every user-initiated dismiss (swipe, backdrop, hardware back).
+  // Return false to veto the close — the sheet snaps back open and the caller is
+  // expected to drive the actual close itself (e.g. after a confirm dialog).
+  beforeClose?: () => boolean;
 }
 
 const DISMISS_THRESHOLD = 100;
@@ -26,6 +43,8 @@ export const BottomSheet: FC<BottomSheetProps> = ({
   onClose,
   children,
   height: heightProp,
+  scrollable = false,
+  beforeClose,
 }) => {
   const { height: screenHeight } = useWindowDimensions();
   const height = heightProp ?? screenHeight * 0.8;
@@ -62,13 +81,19 @@ export const BottomSheet: FC<BottomSheetProps> = ({
     }
   }, [isVisible]);
 
-  const animateOutAndClose = useCallback(() => {
+  // Every user-initiated dismiss funnels through here so the beforeClose guard
+  // gets a say. A veto snaps the sheet back open; otherwise it animates out.
+  const requestClose = useCallback(() => {
+    if (beforeClose && !beforeClose()) {
+      translateY.value = withTiming(0, { duration: 200 });
+      return;
+    }
     translateY.value = withTiming(height, { duration: 250 }, (finished) => {
       if (finished) {
         runOnJS(notifyClose)();
       }
     });
-  }, [translateY, height, notifyClose]);
+  }, [beforeClose, translateY, height, notifyClose]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetY(10)
@@ -80,31 +105,68 @@ export const BottomSheet: FC<BottomSheetProps> = ({
       translateY.value = Math.max(0, contextY.value + event.translationY);
     })
     .onEnd((event) => {
-      if (
-        translateY.value > DISMISS_THRESHOLD ||
-        event.velocityY > 500
-      ) {
-        translateY.value = withTiming(height, { duration: 250 }, (finished) => {
-          if (finished) {
-            runOnJS(notifyClose)();
-          }
-        });
+      if (translateY.value > DISMISS_THRESHOLD || event.velocityY > 500) {
+        runOnJS(requestClose)();
       } else {
         translateY.value = withTiming(0, { duration: 200 });
       }
     });
+
+  // --- Scrollable mode: pull the list past its top to drag the sheet down ---
+  const scrollY = useSharedValue(0);
+  const listContextY = useSharedValue(0);
+  const listDriving = useSharedValue(false);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollY.value = e.nativeEvent.contentOffset.y;
+    },
+    [scrollY]
+  );
+
+  // Represents the inner ScrollView's own scroll gesture so the sheet pan can
+  // run simultaneously with it — this is what lets a downward drag anywhere over
+  // the list (not just the handle) reach the pan below.
+  const scrollNativeGesture = Gesture.Native();
+
+  const listPanGesture = Gesture.Pan()
+    // Only claim deliberate downward drags — taps, the slider, the horizontal
+    // tag selector, and upward scrolls all pass through to their own handlers.
+    .activeOffsetY(12)
+    .failOffsetY(-12)
+    .onUpdate((event) => {
+      const atTop = scrollY.value <= 0;
+      if (!listDriving.value) {
+        // Only take over when the list is at its top and the pull is downward.
+        if (atTop && event.translationY > 0) {
+          listDriving.value = true;
+          listContextY.value = translateY.value - event.translationY;
+        } else {
+          return;
+        }
+      }
+      translateY.value = Math.max(0, listContextY.value + event.translationY);
+    })
+    .onEnd((event) => {
+      if (!listDriving.value) return;
+      listDriving.value = false;
+      if (translateY.value > DISMISS_THRESHOLD || event.velocityY > 500) {
+        runOnJS(requestClose)();
+      } else {
+        translateY.value = withTiming(0, { duration: 200 });
+      }
+    })
+    .onFinalize(() => {
+      listDriving.value = false;
+    })
+    .simultaneousWithExternalGesture(scrollNativeGesture);
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      translateY.value,
-      [0, height],
-      [1, 0],
-      Extrapolation.CLAMP,
-    ),
+    opacity: interpolate(translateY.value, [0, height], [1, 0], Extrapolation.CLAMP),
   }));
 
   // Always keep Modal mounted — toggling visible instead of unmounting
@@ -114,44 +176,65 @@ export const BottomSheet: FC<BottomSheetProps> = ({
       visible={modalVisible}
       transparent
       animationType="none"
-      onRequestClose={animateOutAndClose}
-      statusBarTranslucent
-    >
+      onRequestClose={requestClose}
+      statusBarTranslucent>
       <GestureHandlerRootView style={styles.flex}>
         {/* Backdrop */}
-        <Animated.View
-          className="flex-1 bg-black/50"
-          style={backdropStyle}
-        >
-          <Pressable
-            className="flex-1"
-            onPress={animateOutAndClose}
-          />
+        <Animated.View className="flex-1 bg-black/50" style={backdropStyle}>
+          <Pressable className="flex-1" onPress={requestClose} />
         </Animated.View>
 
         {/* Bottom Sheet */}
-        <GestureDetector gesture={panGesture}>
-          <Animated.View
-            className="absolute left-0 right-0 bottom-0 bg-light-bg dark:bg-dark-bg rounded-t-3xl"
-            style={[
-              {
-                height: sheetHeight,
-                paddingBottom: insets.bottom,
-              },
-              sheetStyle,
-            ]}
-          >
-            {/* Handle */}
-            <View className="items-center py-3">
-              <View className="w-10 h-[5px] bg-gray-500 rounded-full" />
-            </View>
+        <Animated.View
+          className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-light-bg dark:bg-dark-bg"
+          style={[
+            {
+              height: sheetHeight,
+              paddingBottom: insets.bottom,
+            },
+            sheetStyle,
+          ]}>
+          {scrollable ? (
+            // The pan spans the whole sheet (handle + list) so a downward drag
+            // anywhere dismisses while the list is at its top; the inner list's
+            // own scroll gesture runs simultaneously, so it still scrolls.
+            <GestureDetector gesture={listPanGesture}>
+              <View className="flex-1">
+                {/* Handle */}
+                <View className="items-center py-3">
+                  <View className="h-[5px] w-10 rounded-full bg-gray-500" />
+                </View>
 
-            {/* Content */}
-            <View className="flex-1 px-6">
-              {children}
-            </View>
-          </Animated.View>
-        </GestureDetector>
+                {/* Scrollable content */}
+                <GestureDetector gesture={scrollNativeGesture}>
+                  <ScrollView
+                    className="flex-1 px-6"
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    automaticallyAdjustKeyboardInsets
+                    bounces={false}
+                    onScroll={handleScroll}
+                    scrollEventThrottle={16}
+                    contentContainerStyle={{ paddingBottom: 24 }}>
+                    {children}
+                  </ScrollView>
+                </GestureDetector>
+              </View>
+            </GestureDetector>
+          ) : (
+            <GestureDetector gesture={panGesture}>
+              <View className="flex-1">
+                {/* Handle */}
+                <View className="items-center py-3">
+                  <View className="h-[5px] w-10 rounded-full bg-gray-500" />
+                </View>
+
+                {/* Content */}
+                <View className="flex-1 px-6">{children}</View>
+              </View>
+            </GestureDetector>
+          )}
+        </Animated.View>
       </GestureHandlerRootView>
     </Modal>
   );

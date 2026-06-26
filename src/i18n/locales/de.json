@@ -5,6 +5,10 @@
     "dragHint": "Zum Planen in den Kalender ziehen",
     "filterAll": "Alle",
     "empty": "Noch keine Aufgaben",
+    "sectionPast": "Vergangen",
+    "sectionToday": "Heute",
+    "sectionNoDate": "Ohne Datum",
+    "sectionCompleted": "Erledigt",
     "deleted": "Aufgabe gelöscht",
     "completed": "Aufgabe erledigt",
     "undo": "Rückgängig",
@@ -14,10 +18,22 @@
     "nameLabel": "Aufgabe",
     "namePlaceholder": "Worauf möchtest du dich konzentrieren?",
     "tagLabel": "Tag",
-    "startLabel": "Startdatum & -zeit",
+    "startLabel": "Start",
+    "deadlineLabel": "Frist",
+    "setTime": "Uhrzeit festlegen",
     "durationLabel": "Dauer",
     "notesLabel": "Notizen",
-    "notesPlaceholder": "Notizen hinzufügen…"
+    "notesPlaceholder": "Notizen hinzufügen…",
+    "discardTitle": "Änderungen verwerfen?",
+    "discardMessage": "Dein nicht gespeichertes To-do geht verloren.",
+    "keepEditing": "Weiter bearbeiten",
+    "discard": "Verwerfen"
+  },
+  "goals": {
+    "discardTitle": "Änderungen verwerfen?",
+    "discardMessage": "Deine nicht gespeicherten Zieländerungen gehen verloren.",
+    "keepEditing": "Weiter bearbeiten",
+    "discard": "Verwerfen"
   },
   "common": {
     "next": "Weiter",
@@ -124,6 +140,7 @@
     "createNewTagTitle": "Neues Label erstellen",
     "createTag": "Label erstellen",
     "chooseEmojiNewTag": "Emoji fürs neue Label wählen",
+    "chooseColor": "Farbe wählen",
     "blocklistTipBody": "Hier fügst du Apps hinzu, die du für deine Ziele nicht brauchst und die dich ablenken.\n\nDie erste Einrichtung ist kostenlos. Danach kostet jede Änderung Früchte — beginnend bei 1 und sich jedes Mal verdoppelnd, mit wöchentlichem Reset.",
     "understood": "Verstanden",
     "editBlockList": "Sperrliste bearbeiten",

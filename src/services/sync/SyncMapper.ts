@@ -200,6 +200,9 @@ export function todoToRow(todo: any, userId: string): Record<string, any> {
     name: todo.name,
     tag_id: todo.tagId,
     start_at: toIso(todo.startAt),
+    start_has_time: todo.startHasTime ?? null,
+    deadline_at: toIso(todo.deadlineAt),
+    deadline_has_time: todo.deadlineHasTime ?? null,
     duration_minutes: todo.durationMinutes ?? null,
     notes: todo.notes ?? null,
     completed: todo.completed ?? false,
@@ -220,7 +223,12 @@ export function rowToTodo(row: Record<string, any>): any {
     userId: row.user_id ?? 'local-user',
     name: row.name,
     tagId: row.tag_id,
-    ...(row.start_at ? { startAt: new Date(row.start_at) } : {}),
+    // Legacy rows predate start_has_time (null) but always carried a real time,
+    // so default null → true; an explicit false marks a date-only todo.
+    ...(row.start_at ? { startAt: new Date(row.start_at), startHasTime: row.start_has_time ?? true } : {}),
+    ...(row.deadline_at
+      ? { deadlineAt: new Date(row.deadline_at), deadlineHasTime: row.deadline_has_time ?? false }
+      : {}),
     ...(row.duration_minutes != null ? { durationMinutes: row.duration_minutes } : {}),
     ...(row.notes ? { notes: row.notes } : {}),
     completed: row.completed ?? false,

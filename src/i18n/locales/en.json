@@ -5,6 +5,10 @@
     "dragHint": "Drag to calendar to schedule",
     "filterAll": "All",
     "empty": "No tasks yet",
+    "sectionPast": "Past",
+    "sectionToday": "Today",
+    "sectionNoDate": "No date",
+    "sectionCompleted": "Completed",
     "deleted": "TODO deleted",
     "completed": "Task completed",
     "undo": "Undo",
@@ -14,10 +18,22 @@
     "nameLabel": "Task",
     "namePlaceholder": "What do you want to focus on?",
     "tagLabel": "Tag",
-    "startLabel": "Start date & time",
+    "startLabel": "Start",
+    "deadlineLabel": "Deadline",
+    "setTime": "Set time",
     "durationLabel": "Duration",
     "notesLabel": "Notes",
-    "notesPlaceholder": "Add notes…"
+    "notesPlaceholder": "Add notes…",
+    "discardTitle": "Discard changes?",
+    "discardMessage": "Your unsaved TODO will be lost.",
+    "keepEditing": "Keep Editing",
+    "discard": "Discard"
+  },
+  "goals": {
+    "discardTitle": "Discard changes?",
+    "discardMessage": "Your unsaved goal changes will be lost.",
+    "keepEditing": "Keep Editing",
+    "discard": "Discard"
   },
   "common": {
     "next": "Next",
@@ -124,6 +140,7 @@
     "createNewTagTitle": "Create New Tag",
     "createTag": "Create Tag",
     "chooseEmojiNewTag": "Choose Emoji for New Tag",
+    "chooseColor": "Choose Color",
     "blocklistTipBody": "This is where you add apps that are unnecessary for achieving your goals and also distracting.\n\nYour first setup is free. After that, each edit costs fruits — starting at 1 and doubling each time, resetting weekly.",
     "understood": "Understood",
     "editBlockList": "Edit Block List",

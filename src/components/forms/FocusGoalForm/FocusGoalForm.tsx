@@ -1,4 +1,4 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 import { View, Pressable, TextInput } from 'react-native';
 import { Typography } from '../../ui/Typography';
 import { Slider } from '../../ui/Slider';
@@ -64,6 +64,35 @@ interface FocusGoalFormProps {
   editingGoal?: FocusGoal;
   tagName?: string;
   tagIcon?: string;
+  // Reports whether the form has unsaved changes vs the values it was seeded
+  // with, so the host sheet can confirm before a swipe/backdrop/✕ discards them.
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
+interface GoalFormSnapshot {
+  activePeriod: GoalPeriod;
+  dailyTargetHours: number;
+  dailyRestDayTargetHours: number;
+  weeklyTargetHours: number;
+  monthlyTargetHours: number;
+  totalTargetMinutes: number;
+  showTotalHours: boolean;
+  customGoalName: string;
+}
+
+// Stable string of everything a submit would persist, so two states that save
+// identically compare equal.
+function goalSignature(s: GoalFormSnapshot): string {
+  return JSON.stringify({
+    activePeriod: s.activePeriod,
+    dailyTargetHours: s.dailyTargetHours,
+    dailyRestDayTargetHours: s.dailyRestDayTargetHours,
+    weeklyTargetHours: s.weeklyTargetHours,
+    monthlyTargetHours: s.monthlyTargetHours,
+    totalTargetMinutes: s.totalTargetMinutes,
+    showTotalHours: s.showTotalHours,
+    customGoalName: s.customGoalName.trim(),
+  });
 }
 
 export const FocusGoalForm: FC<FocusGoalFormProps> = ({
@@ -72,6 +101,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   editingGoal,
   tagName,
   tagIcon,
+  onDirtyChange,
 }) => {
   const [dailyTargetHours, setDailyTargetHours] = useState(1);
   const [dailyRestDayTargetHours, setDailyRestDayTargetHours] = useState(0.5);
@@ -93,11 +123,15 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   // Auto-generated name
   const autoName = tagName ? `${tagIcon || ''} ${tagName} Goal`.trim() : 'Focus Goal';
 
+  // Signature of the form as last seeded — compared against the live form to
+  // tell whether there are unsaved changes worth confirming before discard.
+  const initialSigRef = useRef('');
+
   // Populate form fields when editing
   useEffect(() => {
+    let seed: GoalFormSnapshot;
     if (editingGoal) {
       const period = (editingGoal as any).activePeriod || (editingGoal as any).period || 'daily';
-      setActivePeriod(period === 'yearly' ? 'monthly' : period);
 
       // Per-period targets
       const daily = editingGoal.dailyTargetMinutes || 0;
@@ -105,28 +139,70 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       const monthly = editingGoal.monthlyTargetMinutes || 0;
       const total = editingGoal.totalTargetMinutes || 0;
 
-      setDailyTargetHours(daily > 0 ? snapDailyHours(daily / 60) : 1);
-      setDailyRestDayTargetHours(
-        snapDailyHours((editingGoal.dailyRestDayTargetMinutes || 0) / 60, true)
-      );
-      setWeeklyTargetHours(weekly > 0 ? Math.round(weekly / 60) : 7);
-      setMonthlyTargetHours(monthly > 0 ? Math.round(monthly / 60 / 5) * 5 : 30);
-      setTotalTargetMinutes(total > 0 ? total : 100 * 60);
-
-      setShowTotalHours(editingGoal.showTotalHours ?? true);
-      setCustomGoalName(editingGoal.customName || '');
+      seed = {
+        activePeriod: period === 'yearly' ? 'monthly' : period,
+        dailyTargetHours: daily > 0 ? snapDailyHours(daily / 60) : 1,
+        dailyRestDayTargetHours: snapDailyHours(
+          (editingGoal.dailyRestDayTargetMinutes || 0) / 60,
+          true
+        ),
+        weeklyTargetHours: weekly > 0 ? Math.round(weekly / 60) : 7,
+        monthlyTargetHours: monthly > 0 ? Math.round(monthly / 60 / 5) * 5 : 30,
+        totalTargetMinutes: total > 0 ? total : 100 * 60,
+        showTotalHours: editingGoal.showTotalHours ?? true,
+        customGoalName: editingGoal.customName || '',
+      };
     } else {
-      // Reset to defaults when creating/activating
-      setDailyTargetHours(1);
-      setDailyRestDayTargetHours(0.5);
-      setWeeklyTargetHours(7);
-      setMonthlyTargetHours(30);
-      setTotalTargetMinutes(100 * 60);
-      setActivePeriod('daily');
-      setCustomGoalName('');
-      setShowTotalHours(true);
+      // Defaults when creating/activating
+      seed = {
+        activePeriod: 'daily',
+        dailyTargetHours: 1,
+        dailyRestDayTargetHours: 0.5,
+        weeklyTargetHours: 7,
+        monthlyTargetHours: 30,
+        totalTargetMinutes: 100 * 60,
+        showTotalHours: true,
+        customGoalName: '',
+      };
     }
-  }, [editingGoal]);
+    setActivePeriod(seed.activePeriod);
+    setDailyTargetHours(seed.dailyTargetHours);
+    setDailyRestDayTargetHours(seed.dailyRestDayTargetHours);
+    setWeeklyTargetHours(seed.weeklyTargetHours);
+    setMonthlyTargetHours(seed.monthlyTargetHours);
+    setTotalTargetMinutes(seed.totalTargetMinutes);
+    setShowTotalHours(seed.showTotalHours);
+    setCustomGoalName(seed.customGoalName);
+    initialSigRef.current = goalSignature(seed);
+    onDirtyChange?.(false);
+  }, [editingGoal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Report unsaved-changes state to the host sheet whenever the form drifts
+  // from its seeded signature.
+  useEffect(() => {
+    const dirty =
+      goalSignature({
+        activePeriod,
+        dailyTargetHours,
+        dailyRestDayTargetHours,
+        weeklyTargetHours,
+        monthlyTargetHours,
+        totalTargetMinutes,
+        showTotalHours,
+        customGoalName,
+      }) !== initialSigRef.current;
+    onDirtyChange?.(dirty);
+  }, [
+    activePeriod,
+    dailyTargetHours,
+    dailyRestDayTargetHours,
+    weeklyTargetHours,
+    monthlyTargetHours,
+    totalTargetMinutes,
+    showTotalHours,
+    customGoalName,
+    onDirtyChange,
+  ]);
 
   // Get current period's target hours for the slider (daily/weekly/monthly).
   // No-period goals use the wheel picker below, not this slider abstraction.

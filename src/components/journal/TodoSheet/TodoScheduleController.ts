@@ -104,7 +104,11 @@ export function useTodoScheduleController({
       draggingRef.current = null;
       setDraggingTodo(null);
       if (!todo || !inRange) return;
-      updateTodo(todo.id, { startAt: dateAtMinutes(selectedDateRef.current, minutes) });
+      // Dropping onto the timeline pins a concrete time → mark it as timed.
+      updateTodo(todo.id, {
+        startAt: dateAtMinutes(selectedDateRef.current, minutes),
+        startHasTime: true,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     [dragActive, updateTodo]
@@ -112,7 +116,10 @@ export function useTodoScheduleController({
 
   const rescheduleTodo = useCallback(
     (todoId: string, minutes: number) => {
-      updateTodo(todoId, { startAt: dateAtMinutes(selectedDateRef.current, minutes) });
+      updateTodo(todoId, {
+        startAt: dateAtMinutes(selectedDateRef.current, minutes),
+        startHasTime: true,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     [updateTodo]
