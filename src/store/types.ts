@@ -255,6 +255,7 @@ export interface WeeklyCoachReport extends BaseEntity {
   cards: CoachInsightCard[];
   narrator: CoachNarrator;
   generatedAt: Date;
+  seenAt?: Date; // set when the user opens the coach section; drives the red dot, synced
   deletedAt?: Date;
 }
 

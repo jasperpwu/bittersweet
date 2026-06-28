@@ -331,8 +331,14 @@ export class SyncService {
     for (const entry of entries) {
       try {
         if (entry.operation === 'upsert') {
-          // rewards and user_settings tables use user_id as primary key, not id
-          const conflictCol = (entry.table === 'rewards' || entry.table === 'user_settings') ? 'user_id' : 'id';
+          // rewards and user_settings tables use user_id as primary key, not id;
+          // coach_reports has a composite (user_id, id) PK because report ids are
+          // deterministic per week and shared across users (see migration).
+          const conflictCol = (entry.table === 'rewards' || entry.table === 'user_settings')
+            ? 'user_id'
+            : entry.table === 'coach_reports'
+              ? 'user_id,id'
+              : 'id';
           const { error } = await supabase
             .from(entry.table)
             .upsert(entry.data, { onConflict: conflictCol });
@@ -395,7 +401,11 @@ export class SyncService {
     table: string,
     rows: Record<string, any>[]
   ): Promise<void> {
-    const conflictCol = (table === 'rewards' || table === 'user_settings') ? 'user_id' : 'id';
+    const conflictCol = (table === 'rewards' || table === 'user_settings')
+      ? 'user_id'
+      : table === 'coach_reports'
+        ? 'user_id,id'
+        : 'id';
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
       const { error } = await supabase

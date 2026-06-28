@@ -14,6 +14,9 @@ export interface GroveProfile {
   interests: string[];
   is_active: boolean;
   is_focusing: boolean;
+  // Read cursor for the Grove notifications bell. Synced so the red-dot state
+  // (unread = notifications newer than this) survives reinstall / new device.
+  notifications_last_seen_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -44,6 +47,7 @@ export interface UpdateProfileInput {
   interests?: string[];
   is_active?: boolean;
   is_focusing?: boolean;
+  notifications_last_seen_at?: string;
 }
 
 export interface UpdatePrivacyInput {

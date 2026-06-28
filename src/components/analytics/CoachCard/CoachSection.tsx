@@ -1,6 +1,5 @@
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useMemo, useState } from 'react';
 import { View, Pressable, useColorScheme } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../ui/Typography';
@@ -13,9 +12,6 @@ import { ScoreRing } from './CoachVisuals';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../../i18n';
 
-const SEEN_KEY = 'bittersweet-coach-last-seen';
-
-const weekStartISO = (r: WeeklyCoachReport) => new Date(r.weekStart).toISOString().slice(0, 10);
 const fmtDay = (d: Date | string) =>
   new Date(d).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' });
 
@@ -90,19 +86,11 @@ export const CoachSection: FC = () => {
   const { t } = useTranslation();
   const coachReports = useAppStore((s) => s.focus.coachReports);
   const sessionCount = useAppStore((s) => s.focus.sessions.allIds.length);
+  const upsertCoachReport = useAppStore((s) => s.focus.upsertCoachReport);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const [lastSeen, setLastSeen] = useState<string | null>(null);
-  const [seenLoaded, setSeenLoaded] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem(SEEN_KEY).then((v) => {
-      setLastSeen(v);
-      setSeenLoaded(true);
-    });
-  }, []);
 
   const reports = useMemo<WeeklyCoachReport[]>(() => {
     if (!coachReports?.allIds) return [];
@@ -114,14 +102,14 @@ export const CoachSection: FC = () => {
   }, [coachReports]);
 
   const latest = reports[0];
-  const latestISO = latest ? weekStartISO(latest) : null;
-  // Gate on seenLoaded so the dot never flashes before AsyncStorage resolves.
-  const hasUnseen = seenLoaded && !!latestISO && (!lastSeen || latestISO > lastSeen);
+  // Read state lives on the report row itself (synced), so it survives reinstall.
+  const hasUnseen = !!latest && !latest.seenAt;
 
   const markSeen = () => {
-    if (latestISO) {
-      setLastSeen(latestISO);
-      void AsyncStorage.setItem(SEEN_KEY, latestISO);
+    if (latest && !latest.seenAt) {
+      const now = new Date();
+      // Bump updatedAt so the seen flag wins last-write-wins on merge/pull.
+      upsertCoachReport({ ...latest, seenAt: now, updatedAt: now });
     }
   };
 

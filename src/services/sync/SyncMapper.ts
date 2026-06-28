@@ -47,7 +47,7 @@ const DATE_FIELDS: Record<string, string[]> = {
   session_tags: ['created_at', 'updated_at', 'deleted_at'],
   focus_goals: ['created_at', 'updated_at', 'last_reset_date', 'deleted_at'],
   todos: ['created_at', 'updated_at', 'start_at', 'completed_at', 'deleted_at'],
-  coach_reports: ['week_start', 'week_end', 'generated_at', 'created_at', 'updated_at', 'deleted_at'],
+  coach_reports: ['week_start', 'week_end', 'generated_at', 'seen_at', 'created_at', 'updated_at', 'deleted_at'],
 };
 
 // --- Session mapper ---
@@ -383,6 +383,7 @@ export function coachReportToRow(report: any, userId: string): Record<string, an
     narrator: report.narrator ?? 'template',
   };
   if (report.generatedAt) row.generated_at = toIso(report.generatedAt);
+  if (report.seenAt instanceof Date) row.seen_at = report.seenAt.toISOString();
   if (report.createdAt instanceof Date) row.created_at = report.createdAt.toISOString();
   if (report.updatedAt instanceof Date) row.updated_at = report.updatedAt.toISOString();
   if (report.deletedAt instanceof Date) row.deleted_at = report.deletedAt.toISOString();
@@ -402,6 +403,7 @@ export function rowToCoachReport(row: Record<string, any>): any {
     generatedAt: row.generated_at ? new Date(row.generated_at) : new Date(),
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+    ...(row.seen_at ? { seenAt: new Date(row.seen_at) } : {}),
     ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
   };
 }

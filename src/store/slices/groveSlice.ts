@@ -192,15 +192,29 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       const profile = await GroveService.fetchProfile();
       if (profile) {
         const privacy = await GroveService.fetchPrivacySettings();
-        set((state: any) => ({
-          grove: {
-            ...state.grove,
-            profile,
-            privacySettings: privacy,
-            isActive: profile.is_active,
-            profileLoaded: true,
-          },
-        }));
+        set((state: any) => {
+          // Last-write-wins on the notifications read cursor: keep whichever is
+          // newer between the local value and the cloud value. On reinstall the
+          // local value is null, so the cloud value is adopted (fixes the stale
+          // red-dot); if the user marked notifications seen offline more recently,
+          // the local value is kept and pushed up on the next markNotificationsSeen.
+          const localSeen = state.grove.notificationsLastSeenAt;
+          const cloudSeen = profile.notifications_last_seen_at;
+          const notificationsLastSeenAt =
+            !localSeen || (cloudSeen && new Date(cloudSeen).getTime() > new Date(localSeen).getTime())
+              ? cloudSeen ?? localSeen
+              : localSeen;
+          return {
+            grove: {
+              ...state.grove,
+              profile,
+              privacySettings: privacy,
+              isActive: profile.is_active,
+              notificationsLastSeenAt,
+              profileLoaded: true,
+            },
+          };
+        });
 
         // Sync privacy settings to UserDefaults for native intent REST calls
         if (privacy) {
@@ -1193,9 +1207,17 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
   },
 
   markNotificationsSeen: () => {
+    const seenAt = new Date().toISOString();
     set((state: any) => ({
-      grove: { ...state.grove, notificationsLastSeenAt: new Date().toISOString() },
+      grove: { ...state.grove, notificationsLastSeenAt: seenAt },
     }));
+    // Persist the read cursor to the cloud so the bell red-dot survives reinstall.
+    // Fire-and-forget; only meaningful once a grove profile exists.
+    if (get().grove.profile) {
+      GroveService.updateProfile({ notifications_last_seen_at: seenAt }).catch((error: any) => {
+        console.error('Failed to sync notifications-seen timestamp:', error);
+      });
+    }
   },
 
   // ========== Focusing Status ==========
