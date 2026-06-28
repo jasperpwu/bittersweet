@@ -298,6 +298,7 @@ struct MediumFocusWidget: Widget {
       .configurationDisplayName("Focus Grid")
       .description("Start any focus session from a tag grid.")
       .supportedFamilies([.systemMedium])
+      .contentMarginsDisabled()
     } else {
       return StaticConfiguration(
         kind: kind,
@@ -308,6 +309,7 @@ struct MediumFocusWidget: Widget {
       .configurationDisplayName("Focus Grid")
       .description("Start any focus session from a tag grid.")
       .supportedFamilies([.systemMedium])
+      .contentMarginsDisabled()
     }
   }
 }

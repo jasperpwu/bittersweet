@@ -225,6 +225,25 @@ export default function JournalScreen() {
     closeManualEntryModal();
   };
 
+  // Expand the TODO sheet when arriving from the TODO Home Screen widget. The
+  // param carries a timestamp so each widget tap produces a fresh signal value.
+  const [todoExpandSignal, setTodoExpandSignal] = useState<string | null>(null);
+  useEffect(() => {
+    if (params.expandTodos) {
+      setTodoExpandSignal(String(params.expandTodos));
+      router.setParams({ expandTodos: undefined });
+    }
+  }, [params.expandTodos]);
+
+  // Open the new-TODO modal when arriving from the widget's "+" button.
+  const [todoCreateSignal, setTodoCreateSignal] = useState<string | null>(null);
+  useEffect(() => {
+    if (params.newTodo) {
+      setTodoCreateSignal(String(params.newTodo));
+      router.setParams({ newTodo: undefined });
+    }
+  }, [params.newTodo]);
+
   // Handle navigation from session creation
   useEffect(() => {
     if (params.sessionId && params.sessionDate) {
@@ -1055,7 +1074,11 @@ export default function JournalScreen() {
       </Modal>
 
       {/* TODOs — draggable peek/expand sheet, always available on the Journal tab */}
-      <TodoSheet schedule={schedule} />
+      <TodoSheet
+        schedule={schedule}
+        expandSignal={todoExpandSignal}
+        createSignal={todoCreateSignal}
+      />
 
       {/* Floating ghost that follows the finger while dragging a todo to schedule */}
       <TodoDragGhost schedule={schedule} />

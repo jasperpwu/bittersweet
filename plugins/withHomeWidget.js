@@ -48,6 +48,9 @@ const withHomeWidget = (config) => {
         "SupabaseClient.swift",
         "GoalWidget.swift",
         "GoalWidgetView.swift",
+        "ToggleTodoIntent.swift",
+        "TodoWidget.swift",
+        "TodoWidgetView.swift",
       ];
 
       // Files also needed in main app target (for LiveActivityIntent to run in app process)
@@ -56,6 +59,10 @@ const withHomeWidget = (config) => {
         "SessionIntent.swift",
         "SessionIntentActivityKit.swift",
         "SupabaseClient.swift",
+        // OpenNewTodoIntent uses openAppWhenRun, so the system launches the app
+        // and runs perform() in the app process — the intent must exist in the
+        // app target. (ToggleTodoIntent compiles here harmlessly too.)
+        "ToggleTodoIntent.swift",
         // Main-app target ONLY — an app may expose one AppShortcutsProvider, so this
         // must not also go into widgetExtensionFiles (would double-register).
         "FocusAppShortcuts.swift",
@@ -259,6 +266,19 @@ const withHomeWidget = (config) => {
           fs.writeFileSync(bundlePath, bundleContent, "utf8");
           console.log(
             "[withHomeWidget] Added GoalWidget to widget bundle"
+          );
+        }
+
+        // Re-read and add the TODO widgets if not already present
+        bundleContent = fs.readFileSync(bundlePath, "utf8");
+        if (!bundleContent.includes("SmallTodoWidget()")) {
+          bundleContent = bundleContent.replace(
+            "GoalWidget()",
+            "GoalWidget()\n    SmallTodoWidget()\n    MediumTodoWidget()"
+          );
+          fs.writeFileSync(bundlePath, bundleContent, "utf8");
+          console.log(
+            "[withHomeWidget] Added SmallTodoWidget + MediumTodoWidget to widget bundle"
           );
         }
       }

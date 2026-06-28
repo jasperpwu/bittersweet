@@ -187,6 +187,10 @@ interface AppStore {
       >
     ) => void;
     toggleTodo: (id: string) => void;
+    // Set a todo's completed state to an explicit value (vs toggleTodo's flip).
+    // Used when adopting a Home Screen widget toggle, where the desired state is
+    // known up front.
+    setTodoCompleted: (id: string, completed: boolean) => void;
     deleteTodo: (id: string) => void;
     restoreTodo: (id: string) => void;
     // Persist a manual order for a subset of todos (e.g. one tag's incomplete
@@ -378,6 +382,20 @@ const generateId = () => {
 // ~29M now and well under 2B until ~year 5800). Keeps the default order
 // chronological: timed first (by start), untimed last (by creation).
 const TODO_UNTIMED_SORT_BASE = 2_000_000_000;
+
+/**
+ * Recompute and push the Home Screen TODO widget list after a todo mutation, so
+ * the widget reflects changes immediately instead of waiting for the next
+ * app-foreground sync. Lazy-required to avoid a circular import (widgetTodos
+ * reads useAppStore from this module); best-effort, never throws into the store.
+ */
+const syncTodosWidget = () => {
+  try {
+    require('../services/widgetTodos').syncWidgetTodos();
+  } catch (error) {
+    console.error('📱 [Widget] Failed to sync todos to widget:', error);
+  }
+};
 
 /**
  * Push a freshly-created/updated session straight to the sync queue, bypassing the
@@ -1365,6 +1383,7 @@ export const useAppStore = create<AppStore>()(
                 },
               },
             }));
+            syncTodosWidget();
             return todo;
           },
 
@@ -1386,6 +1405,7 @@ export const useAppStore = create<AppStore>()(
                 },
               };
             });
+            syncTodosWidget();
           },
 
           toggleTodo: (todoId) => {
@@ -1412,6 +1432,33 @@ export const useAppStore = create<AppStore>()(
                 },
               };
             });
+            syncTodosWidget();
+          },
+
+          setTodoCompleted: (todoId, completed) => {
+            set((state) => {
+              const existing = state.focus.todos.byId[todoId];
+              if (!existing || existing.completed === completed) return state;
+              return {
+                focus: {
+                  ...state.focus,
+                  todos: {
+                    ...state.focus.todos,
+                    byId: {
+                      ...state.focus.todos.byId,
+                      [todoId]: {
+                        ...existing,
+                        completed,
+                        completedAt: completed ? new Date() : undefined,
+                        updatedAt: new Date(),
+                      },
+                    },
+                    lastUpdated: new Date(),
+                  },
+                },
+              };
+            });
+            syncTodosWidget();
           },
 
           deleteTodo: (todoId) => {
@@ -1433,6 +1480,7 @@ export const useAppStore = create<AppStore>()(
                 },
               };
             });
+            syncTodosWidget();
           },
 
           restoreTodo: (todoId) => {
@@ -1454,6 +1502,7 @@ export const useAppStore = create<AppStore>()(
                 },
               };
             });
+            syncTodosWidget();
           },
 
           reorderTodos: (orderedIds) => {
@@ -1490,6 +1539,7 @@ export const useAppStore = create<AppStore>()(
                 },
               };
             });
+            syncTodosWidget();
           },
 
           // --- AI Focus Coach ---
@@ -2805,6 +2855,7 @@ export const useTodoActions = () =>
     createTodo: state.focus.createTodo,
     updateTodo: state.focus.updateTodo,
     toggleTodo: state.focus.toggleTodo,
+    setTodoCompleted: state.focus.setTodoCompleted,
     deleteTodo: state.focus.deleteTodo,
     restoreTodo: state.focus.restoreTodo,
     reorderTodos: state.focus.reorderTodos,

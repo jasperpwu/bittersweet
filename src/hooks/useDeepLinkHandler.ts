@@ -7,6 +7,7 @@ import { useAppStore } from '../store';
 const INVITE_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/invite\/(.+)/;
 const REFER_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/refer\/(.+)/;
 const INSIGHTS_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/insights\/?$/;
+const JOURNAL_PATTERN = /^bittersweet-mobile(?:-dev)?:\/\/journal\/?$/;
 
 const PENDING_REFERRAL_KEY = 'bittersweet-pending-referral-code';
 
@@ -93,6 +94,14 @@ function handleDeepLink(url: string) {
   // Widget deep link: navigate to insights tab
   if (INSIGHTS_PATTERN.test(url)) {
     router.replace('/(tabs)/insights');
+    return;
+  }
+
+  // TODO widget deep link: navigate to the journal tab and expand the TODO sheet.
+  // The timestamp makes the param change on every tap so the journal screen
+  // re-triggers the expand even if it's already the active route.
+  if (JOURNAL_PATTERN.test(url)) {
+    router.replace({ pathname: '/(tabs)/journal', params: { expandTodos: String(Date.now()) } });
     return;
   }
 

@@ -387,36 +387,42 @@ struct HomeScreenWidgetView: View {
   private var mediumIdleGridView: some View {
     let tags = entry.configuredTags
     let isTwoTag = tags.count <= 2
-    return VStack(spacing: 0) {
+    // Inter-cell spacing (rows + columns). Kept small so the cells get more of
+    // the widget height and read as full rather than floating in blank space.
+    // .contentMarginsDisabled() on MediumFocusWidget keeps the system from
+    // adding its own margin on top of the outer inset applied below.
+    let gap: CGFloat = 8
+    return VStack(spacing: gap) {
       if isTwoTag {
         // 1 row x 2 columns
-        HStack(spacing: 10) {
+        HStack(spacing: gap) {
           ForEach(0..<min(tags.count, 2), id: \.self) { i in
             tagGridButton(tag: tags[i])
           }
         }
       } else {
         // 2 rows x 2 columns
-        VStack(spacing: 10) {
-          HStack(spacing: 10) {
-            tagGridButton(tag: tags[0])
-            if tags.count > 1 {
-              tagGridButton(tag: tags[1])
-            }
+        HStack(spacing: gap) {
+          tagGridButton(tag: tags[0])
+          if tags.count > 1 {
+            tagGridButton(tag: tags[1])
           }
-          HStack(spacing: 10) {
-            if tags.count > 2 {
-              tagGridButton(tag: tags[2])
-            }
-            if tags.count > 3 {
-              tagGridButton(tag: tags[3])
-            }
+        }
+        HStack(spacing: gap) {
+          if tags.count > 2 {
+            tagGridButton(tag: tags[2])
+          }
+          if tags.count > 3 {
+            tagGridButton(tag: tags[3])
           }
         }
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .padding(14)
+    // Outer inset around the grid. Slightly larger than the inter-cell `gap` so
+    // the grid still has breathing room from the widget edge without leaving the
+    // cells floating in too much blank space.
+    .padding(12)
   }
 
   @available(iOS 17.0, *)
@@ -442,7 +448,9 @@ struct HomeScreenWidgetView: View {
             .foregroundStyle(.white)
             if !durationText.isEmpty {
               Text(durationText)
-                .font(.system(size: 29, weight: .semibold))
+                .font(.system(size: 28, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .foregroundStyle(.white.opacity(0.75))
             }
           }
@@ -452,7 +460,10 @@ struct HomeScreenWidgetView: View {
             .foregroundStyle(.white.opacity(0.7))
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        // Smaller vertical inset so the two rows + outer margin fit within the
+        // medium widget's height. Otherwise the cells overflow and visually eat
+        // the top/bottom margin (see mediumIdleGridView .padding).
+        .padding(.vertical, 8)
       }
     }
     .buttonStyle(.plain)

@@ -1,4 +1,4 @@
-import React, { FC, useMemo, useState, useCallback, useRef } from 'react';
+import React, { FC, useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Pressable,
@@ -29,6 +29,7 @@ import { showToast } from '../../ui/Toast';
 import { colors } from '../../../config/theme';
 import { useFocus, useTodos, useTodoActions } from '../../../store';
 import type { Todo } from '../../../store/types';
+import { buildTodoSections } from '../../../utils/todoSections';
 import { TodoRow } from './TodoRow';
 import { TodoEditModal } from './TodoEditModal';
 import type { TodoScheduleController } from './TodoScheduleController';
@@ -41,28 +42,17 @@ const TOP_GAP = 8;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-interface TodoSection {
-  key: string;
-  title: string;
-  todos: Todo[];
-  collapsible?: boolean;
-}
-
-// Header label for a future-dated section, e.g. "Sat, Jun 27", localized.
-const formatSectionDate = (date: Date, lang: string): string => {
-  const opts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
-  try {
-    return date.toLocaleDateString(lang, opts);
-  } catch {
-    return date.toLocaleDateString(undefined, opts);
-  }
-};
-
 interface TodoSheetProps {
   schedule?: TodoScheduleController;
+  // Changing value (e.g. a timestamp) requests the sheet expand to full height —
+  // used by the TODO Home Screen widget deep link.
+  expandSignal?: string | null;
+  // Changing value requests opening the new-TODO modal — used by the TODO
+  // widget's "+" button.
+  createSignal?: string | null;
 }
 
-export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
+export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSignal }) => {
   const { t, i18n } = useTranslation();
   const { height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -153,89 +143,10 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
 
   // Group incomplete todos by their startAt date — Past, Today, one section per
   // future date, then No date — followed by a Completed section at the bottom.
-  const sections = useMemo<TodoSection[]>(() => {
-    const all = todosState.allIds
-      .map((id) => todosState.byId[id])
-      .filter((td): td is Todo => !!td && !td.deletedAt)
-      .filter((td) => !filterTagId || td.tagId === filterTagId);
-
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const startOfTomorrow = new Date(startOfToday);
-    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-
-    const past: Todo[] = [];
-    const today: Todo[] = [];
-    const noDate: Todo[] = [];
-    const completed: Todo[] = [];
-    const futureByDay = new Map<number, Todo[]>(); // key: start-of-day epoch ms
-
-    for (const td of all) {
-      if (td.completed) {
-        completed.push(td);
-      } else if (!td.startAt) {
-        noDate.push(td);
-      } else {
-        const when = new Date(td.startAt);
-        if (when < startOfToday) {
-          past.push(td);
-        } else if (when < startOfTomorrow) {
-          today.push(td);
-        } else {
-          const day = new Date(when);
-          day.setHours(0, 0, 0, 0);
-          const bucket = futureByDay.get(day.getTime());
-          if (bucket) bucket.push(td);
-          else futureByDay.set(day.getTime(), [td]);
-        }
-      }
-    }
-
-    // Within a day, timed todos sort chronologically; date-only todos (no
-    // meaningful time) fall to the bottom of the day, ordered by sortOrder.
-    const startKey = (td: Todo): number => {
-      if (!td.startAt) return 0;
-      const when = new Date(td.startAt);
-      if (td.startHasTime === false) {
-        when.setHours(23, 59, 59, 999); // push date-only to end of its day
-      }
-      return when.getTime();
-    };
-    const byStartThenOrder = (a: Todo, b: Todo) => {
-      const ta = startKey(a);
-      const tb = startKey(b);
-      if (ta !== tb) return ta - tb;
-      return a.sortOrder - b.sortOrder;
-    };
-    past.sort(byStartThenOrder);
-    today.sort(byStartThenOrder);
-    noDate.sort((a, b) => a.sortOrder - b.sortOrder);
-    completed.sort(
-      (a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime()
-    );
-
-    const result: TodoSection[] = [];
-    if (past.length) result.push({ key: 'past', title: t('todos.sectionPast'), todos: past });
-    if (today.length) result.push({ key: 'today', title: t('todos.sectionToday'), todos: today });
-    [...futureByDay.keys()]
-      .sort((a, b) => a - b)
-      .forEach((dayMs) => {
-        result.push({
-          key: `future-${dayMs}`,
-          title: formatSectionDate(new Date(dayMs), i18n.language),
-          todos: futureByDay.get(dayMs)!.sort(byStartThenOrder),
-        });
-      });
-    if (noDate.length)
-      result.push({ key: 'noDate', title: t('todos.sectionNoDate'), todos: noDate });
-    if (completed.length)
-      result.push({
-        key: 'completed',
-        title: t('todos.sectionCompleted'),
-        todos: completed,
-        collapsible: true,
-      });
-    return result;
+  // Shared with the Home Screen TODO widget via buildTodoSections so both match.
+  const sections = useMemo(() => {
+    const all = todosState.allIds.map((id) => todosState.byId[id]).filter((td): td is Todo => !!td);
+    return buildTodoSections(all, { filterTagId, t, lang: i18n.language });
   }, [todosState, filterTagId, t, i18n.language]);
 
   const snapTo = useCallback(
@@ -255,6 +166,12 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
     if (expanded) collapse();
     else expand();
   }, [expanded, collapse, expand]);
+
+  // Expand to full height when the TODO widget deep link requests it. The signal
+  // value changes per tap, so re-tapping the widget re-expands a collapsed sheet.
+  useEffect(() => {
+    if (expandSignal) snapTo(0);
+  }, [expandSignal, snapTo]);
 
   // Mirror the list's scroll offset onto the UI thread so the drag gesture can
   // tell whether the list is at its top.
@@ -350,6 +267,15 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule }) => {
     setEditingTodo(null);
     setModalVisible(true);
   }, []);
+
+  // Open the new-TODO modal when the widget's "+" requests it (and expand the
+  // sheet so it's visible behind the modal). The signal changes per tap.
+  useEffect(() => {
+    if (createSignal) {
+      snapTo(0);
+      openCreate();
+    }
+  }, [createSignal, snapTo, openCreate]);
 
   const openEdit = useCallback((todo: Todo) => {
     setEditingTodo(todo);

@@ -23,6 +23,9 @@ enum WidgetKeys {
   static let unlockSessionData = "widgetUnlockSessionData"
   static let goalsData = "widgetGoalsData"
   static let scheduledNotificationId = "widgetScheduledNotificationId"
+  static let todoList = "widgetTodoList"
+  static let todoToggles = "widgetTodoToggles"
+  static let openNewTodo = "widgetOpenNewTodo"
 
   // Supabase sync keys (written by JS for native intent REST calls)
   static let supabaseUserId = "supabaseUserId"
@@ -121,6 +124,43 @@ struct WidgetGoalItem {
   }
 }
 
+/// One flattened row for the TODO widget — a section header or a todo. Built by
+/// JS (`widgetTodos.ts`) in the same order as the Journal sheet; completed todos
+/// are excluded.
+struct WidgetTodoItem {
+  enum Kind { case header, todo }
+  let kind: Kind
+  // Header fields
+  let title: String
+  let count: Int
+  // Todo fields
+  let id: String
+  let name: String
+  let tagIcon: String
+  let tagColor: String
+
+  init?(dict: [String: Any]) {
+    guard let type = dict["type"] as? String else { return nil }
+    switch type {
+    case "header":
+      self.kind = .header
+      self.title = dict["title"] as? String ?? ""
+      self.count = dict["count"] as? Int ?? 0
+      self.id = ""; self.name = ""; self.tagIcon = ""; self.tagColor = ""
+    case "todo":
+      guard let id = dict["id"] as? String else { return nil }
+      self.kind = .todo
+      self.id = id
+      self.name = dict["name"] as? String ?? ""
+      self.tagIcon = dict["tagIcon"] as? String ?? ""
+      self.tagColor = dict["tagColor"] as? String ?? ""
+      self.title = ""; self.count = 0
+    default:
+      return nil
+    }
+  }
+}
+
 struct PendingWidgetAction {
   let action: String // "start" or "stop"
   let tagId: String?
@@ -216,6 +256,75 @@ struct WidgetDataManager {
     guard didChange else { return }
     userDefaults?.set(array, forKey: WidgetKeys.goalsData)
     userDefaults?.synchronize()
+  }
+
+  // MARK: - TODO Widget
+
+  func getTodoList() -> [WidgetTodoItem] {
+    guard let array = userDefaults?.array(forKey: WidgetKeys.todoList) as? [[String: Any]] else { return [] }
+    return array.compactMap { WidgetTodoItem(dict: $0) }
+  }
+
+  /// Record a TODO toggle tapped on the widget: queue it for JS adoption AND
+  /// remove the todo from the stored snapshot so the row vanishes immediately
+  /// (the widget only shows incomplete todos). Empty section headers are dropped
+  /// and remaining header counts updated. JS re-syncs the full list on next
+  /// foreground, correcting any drift.
+  func appendTodoToggle(id: String, completed: Bool) {
+    guard !id.isEmpty else { return }
+
+    // Queue the toggle for JS adoption.
+    var toggles = userDefaults?.array(forKey: WidgetKeys.todoToggles) as? [[String: Any]] ?? []
+    toggles.append([
+      "id": id,
+      "completed": completed,
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+    ])
+    userDefaults?.set(toggles, forKey: WidgetKeys.todoToggles)
+
+    // Optimistically drop the toggled todo from the snapshot, then compact away
+    // any now-empty headers and refresh header counts.
+    if var list = userDefaults?.array(forKey: WidgetKeys.todoList) as? [[String: Any]] {
+      list.removeAll { ($0["type"] as? String) == "todo" && ($0["id"] as? String) == id }
+      userDefaults?.set(compactTodoList(list), forKey: WidgetKeys.todoList)
+    }
+
+    userDefaults?.synchronize()
+  }
+
+  /// Mark that the "+" button was tapped on the TODO widget. JS reads & clears
+  /// this on foreground/launch and navigates to the new-TODO modal.
+  func requestOpenNewTodo() {
+    userDefaults?.set(Date().timeIntervalSince1970 * 1000, forKey: WidgetKeys.openNewTodo)
+    userDefaults?.synchronize()
+  }
+
+  /// Rebuild a flattened todo list so each header reflects its real todo count
+  /// and headers with no following todos are removed.
+  private func compactTodoList(_ list: [[String: Any]]) -> [[String: Any]] {
+    var result: [[String: Any]] = []
+    var index = 0
+    while index < list.count {
+      let item = list[index]
+      if (item["type"] as? String) == "header" {
+        var todoCount = 0
+        var next = index + 1
+        while next < list.count, (list[next]["type"] as? String) != "header" {
+          todoCount += 1
+          next += 1
+        }
+        if todoCount > 0 {
+          var header = item
+          header["count"] = todoCount
+          result.append(header)
+        }
+        index += 1
+      } else {
+        result.append(item)
+        index += 1
+      }
+    }
+    return result
   }
 
   // MARK: - Write Session Data
@@ -466,5 +575,7 @@ struct WidgetDataManager {
     WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.HomeScreenWidget")
     WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.MediumFocusWidget")
     WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.GoalWidget")
+    WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.SmallTodoWidget")
+    WidgetCenter.shared.reloadTimelines(ofKind: "com.path2us.bittersweet.MediumTodoWidget")
   }
 }

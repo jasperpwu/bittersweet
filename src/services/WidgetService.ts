@@ -20,6 +20,9 @@ const GROVE_SHARE_NOTES_KEY = 'groveShareNotes';
 const GROVE_SHOW_LIVE_STATUS_KEY = 'groveShowLiveStatus';
 const GOALS_DATA_KEY = 'widgetGoalsData';
 const GROVE_ACTIVE_CHALLENGES_KEY = 'groveActiveChallenges';
+const TODO_LIST_KEY = 'widgetTodoList';
+const TODO_TOGGLES_KEY = 'widgetTodoToggles';
+const OPEN_NEW_TODO_KEY = 'widgetOpenNewTodo';
 
 export interface WidgetSessionData {
   isActive: boolean;
@@ -85,6 +88,19 @@ export interface PendingWidgetAction {
   action: 'start' | 'stop';
   tagId?: string;
   duration?: number; // minutes; undefined = unknown, 0 = infinite
+  timestamp: number;
+}
+
+// One flattened row for the TODO widget — either a section header or a todo.
+// Built in sheet order (Past → Today → future days → No date); completed todos
+// are excluded. The widget renders these top-down and truncates to fit.
+export type WidgetTodoItem =
+  | { type: 'header'; title: string; count: number }
+  | { type: 'todo'; id: string; name: string; tagIcon: string; tagColor: string };
+
+export interface WidgetTodoToggle {
+  id: string;
+  completed: boolean;
   timestamp: number;
 }
 
@@ -385,6 +401,60 @@ export class WidgetService {
   }
 
   /**
+   * Sync the ordered TODO list to the widget (same order as the Journal sheet:
+   * Past → Today → future days → No date; completed excluded). Each item is a
+   * section header or a todo row. Call on mount, foreground, and whenever todos
+   * change so the widget stays current.
+   */
+  static syncTodoList(items: WidgetTodoItem[]): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsSet(TODO_LIST_KEY, items);
+      reloadWidgetTimelines();
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync todo list:', error);
+    }
+  }
+
+  /**
+   * Read and clear todo toggles written by the widget's ToggleTodoIntent.
+   * Returns an array (multiple boxes may have been tapped before foregrounding).
+   */
+  static checkWidgetTodoToggles(): WidgetTodoToggle[] {
+    try {
+      const raw = ReactNativeDeviceActivity.userDefaultsGet(TODO_TOGGLES_KEY);
+      if (!Array.isArray(raw)) return [];
+
+      const toggles = raw.filter(
+        (t): t is WidgetTodoToggle =>
+          !!t && typeof t === 'object' && typeof t.id === 'string' && typeof t.timestamp === 'number'
+      );
+
+      ReactNativeDeviceActivity.userDefaultsRemove(TODO_TOGGLES_KEY);
+      return toggles;
+    } catch (error) {
+      console.error('📱 [Widget] Failed to check widget todo toggles:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if the "+" button was tapped on the TODO widget (written by
+   * OpenNewTodoIntent). Returns the request timestamp and clears it. The caller
+   * navigates to the Journal tab and opens the new-TODO modal.
+   */
+  static checkOpenNewTodoRequest(): number | null {
+    try {
+      const raw = ReactNativeDeviceActivity.userDefaultsGet(OPEN_NEW_TODO_KEY);
+      if (typeof raw !== 'number' || raw <= 0) return null;
+      ReactNativeDeviceActivity.userDefaultsRemove(OPEN_NEW_TODO_KEY);
+      return raw;
+    } catch (error) {
+      console.error('📱 [Widget] Failed to check open-new-todo request:', error);
+      return null;
+    }
+  }
+
+  /**
    * Check if the widget stopped a session (written by StopSessionIntent).
    * Reads and clears the widgetStopAction UserDefaults key.
    */
@@ -423,6 +493,9 @@ export class WidgetService {
       ReactNativeDeviceActivity.userDefaultsRemove(GROVE_SHOW_LIVE_STATUS_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(GOALS_DATA_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(GROVE_ACTIVE_CHALLENGES_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(TODO_LIST_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(TODO_TOGGLES_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(OPEN_NEW_TODO_KEY);
       reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to clear all widget data:', error);

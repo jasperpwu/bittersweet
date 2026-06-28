@@ -151,6 +151,30 @@ enum SupabaseClient {
     }
   }
 
+  /// Patch a todo's completed state in `todos`. Mirrors the JS todoToRow columns
+  /// (completed / completed_at / updated_at) so the JS adoption write and this
+  /// native write collapse to one row (upsert by id, last-write-wins).
+  static func setTodoCompleted(todoId: String, completed: Bool) {
+    guard let creds = credentials() else { return }
+    guard !todoId.isEmpty else { return }
+
+    let nowStr = ISO8601DateFormatter().string(from: Date())
+    let body: [String: Any] = [
+      "completed": completed,
+      "completed_at": completed ? nowStr : NSNull(),
+      "updated_at": nowStr,
+    ]
+
+    guard let request = makeRequest(
+      path: "/rest/v1/todos?id=eq.\(todoId)",
+      method: "PATCH",
+      body: body,
+      accessToken: creds.accessToken
+    ) else { return }
+
+    fire(request, label: "setTodoCompleted(\(todoId), \(completed))")
+  }
+
   /// Record challenge progress via the server-side RPC.
   /// The RPC is idempotent (returns `already_logged` if day was already recorded).
   static func recordChallengeProgress(challengeId: String) {

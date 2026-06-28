@@ -25,6 +25,7 @@ import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
 import { Toast } from '../src/components/ui/Toast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
 import { WidgetService } from '../src/services/WidgetService';
+import { syncWidgetTodos } from '../src/services/widgetTodos';
 import { syncHealthKitWorkouts } from '../src/services/health/syncHealthKitWorkouts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore, clearAllStoreData } from '../src/store';
@@ -575,12 +576,50 @@ export default function RootLayout() {
     }
   };
 
+  // Adopt any TODO toggles tapped on the Home Screen widget while the app was
+  // backgrounded. The widget already wrote the change to Supabase + UserDefaults;
+  // here we mirror it into the store so the sheet matches and the sync middleware
+  // enqueues the cloud update (collapses with the native write by id).
+  const adoptWidgetTodoToggles = () => {
+    try {
+      const toggles = WidgetService.checkWidgetTodoToggles();
+      if (toggles.length === 0) return;
+      const setTodoCompleted = useAppStore.getState().focus.setTodoCompleted;
+      for (const toggle of toggles) {
+        setTodoCompleted(toggle.id, toggle.completed);
+      }
+    } catch (error) {
+      console.error('📱 [Widget] Failed to adopt widget todo toggles:', error);
+    }
+  };
+
+  // Handle a "+" tap on the TODO widget: route to the Journal tab and open the
+  // new-TODO modal. The param carries the request timestamp so the journal
+  // screen treats each tap as a fresh signal.
+  const handleWidgetNewTodoRequest = (attempt = 0) => {
+    try {
+      const ts = WidgetService.checkOpenNewTodoRequest();
+      if (ts) {
+        router.replace({ pathname: '/(tabs)/journal', params: { newTodo: String(ts) } });
+      } else if (attempt < 1) {
+        // The intent's perform() (openAppWhenRun) can write the marker a beat
+        // after the app becomes active; re-check once shortly after.
+        setTimeout(() => handleWidgetNewTodoRequest(attempt + 1), 600);
+      }
+    } catch (error) {
+      console.error('📱 [Widget] Failed to handle new-todo request:', error);
+    }
+  };
+
   useEffect(() => {
     if (isHydrated && mainStoreHydrated) {
       checkExpiredUnlockSessions('mount');
       syncShieldConfiguration('mount');
       syncWidgetTagList();
       syncWidgetGoalsData();
+      adoptWidgetTodoToggles();
+      syncWidgetTodos();
+      handleWidgetNewTodoRequest();
       // Sync currentSelectionId so native StopUnlockIntent can re-block apps
       WidgetService.syncCurrentSelectionId(useAppStore.getState().blocklist.currentSelectionId);
     }
@@ -674,6 +713,9 @@ export default function RootLayout() {
         syncShieldConfiguration('foreground');
         syncWidgetTagList();
         syncWidgetGoalsData();
+        adoptWidgetTodoToggles();
+        syncWidgetTodos();
+        handleWidgetNewTodoRequest();
         WidgetService.syncCurrentSelectionId(useAppStore.getState().blocklist.currentSelectionId);
 
         // Re-check subscription status
