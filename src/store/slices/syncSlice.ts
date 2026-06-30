@@ -584,14 +584,37 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
       remoteData.focus.coachReports?.byId ?? {},
       (r) => coachReportToRow(r, userId)
     );
+    const mergedDurations = merged.settings?.lastDurationByTagId ?? {};
+    const remoteDurations = remoteData.settings?.lastDurationByTagId ?? {};
+    const settingsPushed =
+      JSON.stringify(mergedDurations) !== JSON.stringify(remoteDurations) && merged.settings
+        ? 1
+        : 0;
 
-    if (tagsPushed + sessionsPushed + goalsPushed + todosPushed + badgesPushed + coachReportsPushed === 0) {
+    if (settingsPushed) {
+      await SyncService.enqueue(
+        'user_settings',
+        'upsert',
+        settingsToRow(merged.settings, userId, mergedDurations)
+      );
+    }
+
+    if (
+      tagsPushed +
+        sessionsPushed +
+        goalsPushed +
+        todosPushed +
+        badgesPushed +
+        coachReportsPushed +
+        settingsPushed ===
+      0
+    ) {
       console.log('[triggerSync] No local-wins to push to cloud');
       return;
     }
 
     console.log(
-      `[triggerSync] Pushing local-wins — tags:${tagsPushed} sessions:${sessionsPushed} goals:${goalsPushed} todos:${todosPushed} badges:${badgesPushed} coachReports:${coachReportsPushed}`
+      `[triggerSync] Pushing local-wins — tags:${tagsPushed} sessions:${sessionsPushed} goals:${goalsPushed} todos:${todosPushed} badges:${badgesPushed} coachReports:${coachReportsPushed} settings:${settingsPushed}`
     );
     const result = await SyncService.flush();
     console.log(`[triggerSync] Local-wins flush — flushed:${result.flushed} failed:${result.failed}`);

@@ -236,6 +236,15 @@ export class SyncService {
       const localTime = new Date(local.settings?.updatedAt ?? 0).getTime();
       const remoteTime = new Date(remote.settings?.updatedAt ?? 0).getTime();
       mergedSettings = remoteTime > localTime ? remote.settings : local.settings;
+      if (mergedSettings) {
+        mergedSettings = {
+          ...mergedSettings,
+          lastDurationByTagId: {
+            ...(remote.settings?.lastDurationByTagId ?? {}),
+            ...(local.settings?.lastDurationByTagId ?? {}),
+          },
+        };
+      }
     }
 
     return {

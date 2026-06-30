@@ -27,6 +27,7 @@ import type { Todo } from '../../src/store/types';
 import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
 import { showToast } from '../../src/components/ui/Toast';
 import { isToday } from '../../src/utils/dateUtils';
+import { fruitsForRating, RATING_FRUIT_MULTIPLIER } from '../../src/utils/focusRating';
 import { FocusSession } from '../../src/types/models';
 import { saveSessionPhoto, deleteSessionPhoto } from '../../src/services/sessionPhotoService';
 import { EmptyState } from '../../src/components/ui/EmptyState/EmptyState';
@@ -42,7 +43,7 @@ export default function JournalScreen() {
   const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
   const [adjustedDuration, setAdjustedDuration] = useState(0);
   const { sessions, tags } = useFocus();
-  const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession } = useFocusActions();
+  const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession, applyFocusRating } = useFocusActions();
   const secondaryTagEnabled = useSecondaryTagEnabled();
 
   // TODO scheduling — drag from the sheet onto the calendar + tap-to-edit blocks.
@@ -95,6 +96,7 @@ export default function JournalScreen() {
   const [editNotes, setEditNotes] = useState('');
   const [editSecondaryTag, setEditSecondaryTag] = useState<string>('');
   const [editPhotoUri, setEditPhotoUri] = useState<string | null>(null);
+  const [editFocusRating, setEditFocusRating] = useState<number | null>(null);
   const [isEditSaving, setIsEditSaving] = useState(false);
 
   const colorScheme = useColorScheme();
@@ -382,6 +384,7 @@ export default function JournalScreen() {
     setEditNotes(session.notes ?? '');
     setEditSecondaryTag(session.secondaryTagId ?? '');
     setEditPhotoUri(null);
+    setEditFocusRating(session.focusRating ?? null);
   };
 
   const closeSessionModal = () => {
@@ -394,6 +397,10 @@ export default function JournalScreen() {
     setIsEditSaving(true);
 
     adjustSessionDuration(selectedSession.id, adjustedDuration);
+
+    if (editFocusRating != null && editFocusRating !== selectedSession.focusRating) {
+      applyFocusRating(selectedSession.id, editFocusRating, 'user');
+    }
 
     // Save notes if changed
     const trimmedNotes = editNotes.trim();
@@ -485,14 +492,34 @@ export default function JournalScreen() {
   const selectedSessionTagName = selectedSessionTag?.name
     || selectedSessionChallengeTag?.tagName
     || null;
-  const journalAccelerateMultiplier = useAppStore((s) => s.rewards.isAccelerateActive()) ? 2 : 1;
-  const currentFruits = isManual ? 0 : calculateFruitsEarnedForDuration(
-    selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0,
+  const fallbackAccelerateMultiplier = useAppStore((s) => s.rewards.isAccelerateActive()) ? 2 : 1;
+  const selectedAccelerateMultiplier = selectedSession?.accelerateMultiplier ?? fallbackAccelerateMultiplier;
+  const selectedCurrentDuration = selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0;
+  const currentBaseFruits = isManual ? 0 : calculateFruitsEarnedForDuration(
+    selectedCurrentDuration,
     selectedTargetDuration,
-    journalAccelerateMultiplier
+    selectedAccelerateMultiplier
   );
-  const adjustedFruits = isManual ? 0 : calculateFruitsEarnedForDuration(adjustedDuration, selectedTargetDuration, journalAccelerateMultiplier);
+  const adjustedBaseFruits = isManual ? 0 : calculateFruitsEarnedForDuration(
+    adjustedDuration,
+    selectedTargetDuration,
+    selectedAccelerateMultiplier
+  );
+  const currentFruits = isManual
+    ? 0
+    : selectedSession?.awardedFruits ??
+      (selectedSession?.focusRating != null
+        ? fruitsForRating(currentBaseFruits, selectedSession.focusRating)
+        : currentBaseFruits);
+  const adjustedFruits = isManual
+    ? 0
+    : editFocusRating != null
+      ? fruitsForRating(adjustedBaseFruits, editFocusRating)
+      : adjustedBaseFruits;
   const fruitDelta = adjustedFruits - currentFruits;
+  const ratingRewardPercent = editFocusRating != null
+    ? Math.round((RATING_FRUIT_MULTIPLIER[editFocusRating] ?? 1) * 100)
+    : 100;
 
   // Convert store sessions to component format and filter for selected date
   const hasAnySessions = sessions?.allIds?.length > 0;
@@ -704,6 +731,46 @@ export default function JournalScreen() {
 
             {!isManual ? (
               <View className="bg-light-border/30 dark:bg-gray-700 rounded-xl p-4 mb-5">
+                <View className="mb-4">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Typography variant="body-12" color="secondary">
+                      {t('journal.focusRating', { defaultValue: 'Focus rating' })}
+                    </Typography>
+                    <Typography variant="body-12" color="secondary">
+                      {editFocusRating != null
+                        ? t('journal.ratingRewardPercent', {
+                            defaultValue: '{{percent}}% reward',
+                            percent: ratingRewardPercent,
+                          })
+                        : t('journal.unratedReward', { defaultValue: 'Full reward' })}
+                    </Typography>
+                  </View>
+                  <View className="flex-row" style={{ gap: 6 }}>
+                    {[1, 2, 3, 4, 5].map((rating) => {
+                      const filled = (editFocusRating ?? 0) >= rating;
+                      return (
+                        <Pressable
+                          key={rating}
+                          onPress={() => setEditFocusRating(rating)}
+                          disabled={isEditSaving}
+                          hitSlop={6}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('journal.setFocusRating', {
+                            defaultValue: 'Set focus rating to {{rating}} stars',
+                            rating,
+                          })}
+                          className="active:opacity-70"
+                        >
+                          <Ionicons
+                            name={filled ? 'star' : 'star-outline'}
+                            size={28}
+                            color={filled ? '#6592E9' : colorScheme === 'dark' ? '#4B5563' : '#D4C4A8'}
+                          />
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
                 <View className="flex-row items-center justify-between">
                   <Typography variant="body-12" color="secondary">
                     {t('journal.fruitsAfterAdjustment')}

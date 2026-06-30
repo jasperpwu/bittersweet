@@ -1331,7 +1331,7 @@ export default function FocusScreen() {
     showToast(t('home.unlockStopped'), 'neutral');
   };
 
-  const startTimer = () => {
+  const startTimer = async () => {
     // Signal focusing status to friends
     useAppStore.getState().grove.setFocusing(true);
 
@@ -1384,7 +1384,7 @@ export default function FocusScreen() {
     if (infinite) {
       // Infinite mode: no end time — use a count-up live activity
       sessionEndTimeRef.current = null;
-      const activityId = LiveActivityService.startFocusTimerInfinite(new Date(), selectedTagLabel);
+      const activityId = await LiveActivityService.startFocusTimerInfinite(new Date(), selectedTagLabel);
       if (activityId) {
         liveActivityId = activityId;
         liveActivityIdRef.current = activityId;
@@ -1395,7 +1395,7 @@ export default function FocusScreen() {
     } else {
       const endTime = new Date(Date.now() + timerSeconds * 1000);
       sessionEndTimeRef.current = endTime.getTime();
-      const activityId = LiveActivityService.startFocusTimer(
+      const activityId = await LiveActivityService.startFocusTimer(
         endTime,
         isDevTimer ? devCountsAsMinutes : selectedTime,
         selectedTagLabel
@@ -1977,7 +1977,7 @@ export default function FocusScreen() {
           const recoveredTagLabel = recoveredTagObj
             ? `${recoveredTagObj.icon || '🎯'} ${recoveredTagObj.name}`
             : 'Focus';
-          const activityId = LiveActivityService.startFocusTimerInfinite(
+          const activityId = await LiveActivityService.startFocusTimerInfinite(
             new Date(persisted.startTime),
             recoveredTagLabel
           );

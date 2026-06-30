@@ -56,7 +56,7 @@ export class LiveActivityService {
    * @param reason - The reason for unlocking (user-provided text)
    * @returns Activity ID if started successfully, undefined otherwise
    */
-  static startUnlockCountdown(endTime: Date, durationMinutes: number, reason?: string): string | undefined {
+  static async startUnlockCountdown(endTime: Date, durationMinutes: number, reason?: string): Promise<string | undefined> {
     // Check if Live Activities are available
     if (!this.isAvailable()) {
       console.log('Live Activities not available:', {
@@ -73,7 +73,7 @@ export class LiveActivityService {
       if (this.lastUnlockActivityId) {
         console.log('🧹 Cleaning up stale unlock activity:', this.lastUnlockActivityId);
         try {
-          LiveActivity.stopActivity(this.lastUnlockActivityId, {
+          await LiveActivity.stopActivity(this.lastUnlockActivityId, {
             title: 'Unlock Ended',
             progressBar: { date: Date.now() },
           } as LiveActivity.LiveActivityState);
@@ -130,7 +130,7 @@ export class LiveActivityService {
         return undefined;
       }
 
-      const activityId = LiveActivity.startActivity(state, config);
+      const activityId = await LiveActivity.startActivity(state, config);
 
       if (activityId) {
         this.lastUnlockActivityId = activityId;
@@ -153,7 +153,7 @@ export class LiveActivityService {
    * @param activityId - The ID of the activity to stop
    * @param reason - Optional reason for stopping (for final state)
    */
-  static stopUnlockCountdown(activityId: string, reason: 'expired' | 'manual' = 'expired'): void {
+  static async stopUnlockCountdown(activityId: string, reason: 'expired' | 'manual' = 'expired'): Promise<void> {
     if (!this.isAvailable()) {
       return;
     }
@@ -173,7 +173,7 @@ export class LiveActivityService {
         },
       };
 
-      LiveActivity.stopActivity(activityId, finalState);
+      await LiveActivity.stopActivity(activityId, finalState);
       if (this.lastUnlockActivityId === activityId) {
         this.lastUnlockActivityId = undefined;
         this.unlockEndTimestamp = undefined;
@@ -200,7 +200,7 @@ export class LiveActivityService {
    * @param labelName - The focus label/tag name
    * @returns Activity ID if started successfully, undefined otherwise
    */
-  static startFocusTimer(endTime: Date, durationMinutes: number, labelName: string): string | undefined {
+  static async startFocusTimer(endTime: Date, durationMinutes: number, labelName: string): Promise<string | undefined> {
     // Check if Live Activities are available
     if (!this.isAvailable()) {
       console.log('Live Activities not available:', {
@@ -254,7 +254,7 @@ export class LiveActivityService {
       // most one focus live activity is shown at any time.
       if (this.lastFocusActivityId) {
         try {
-          LiveActivity.updateActivity(this.lastFocusActivityId, state);
+          await LiveActivity.updateActivity(this.lastFocusActivityId, state);
           this.focusEndTimestamp = endTimestamp;
           this.clearPersistedIdleActivity();
           console.log('♻️ Reused existing Live Activity:', this.lastFocusActivityId);
@@ -280,7 +280,7 @@ export class LiveActivityService {
         timerType: 'digital',
       };
 
-      const activityId = LiveActivity.startActivity(state, config);
+      const activityId = await LiveActivity.startActivity(state, config);
 
       if (activityId) {
         this.lastFocusActivityId = activityId;
@@ -306,7 +306,7 @@ export class LiveActivityService {
    * @param labelName - The focus label/tag name
    * @returns Activity ID if started successfully, undefined otherwise
    */
-  static startFocusTimerInfinite(startTime: Date, labelName: string): string | undefined {
+  static async startFocusTimerInfinite(startTime: Date, labelName: string): Promise<string | undefined> {
     if (!this.isAvailable()) {
       return undefined;
     }
@@ -334,7 +334,7 @@ export class LiveActivityService {
       // Reuse existing live activity if one is still around
       if (this.lastFocusActivityId) {
         try {
-          LiveActivity.updateActivity(this.lastFocusActivityId, state);
+          await LiveActivity.updateActivity(this.lastFocusActivityId, state);
           this.focusEndTimestamp = undefined;
           this.clearPersistedIdleActivity();
           return this.lastFocusActivityId;
@@ -356,7 +356,7 @@ export class LiveActivityService {
         timerType: 'digital',
       };
 
-      const activityId = LiveActivity.startActivity(state, config);
+      const activityId = await LiveActivity.startActivity(state, config);
 
       if (activityId) {
         this.lastFocusActivityId = activityId;
@@ -376,7 +376,7 @@ export class LiveActivityService {
    * @param activityId - The ID of the activity to stop
    * @param reason - Optional reason for stopping (for final state)
    */
-  static stopFocusTimer(activityId: string, reason: 'completed' | 'cancelled' = 'completed'): void {
+  static async stopFocusTimer(activityId: string, reason: 'completed' | 'cancelled' = 'completed'): Promise<void> {
     if (!this.isAvailable()) {
       return;
     }
@@ -401,7 +401,7 @@ export class LiveActivityService {
       // Transition to idle via updateActivity so the activity stays alive
       // and can be updated when the user changes tag/duration.
       console.log('🛑 Transitioning Focus Timer Live Activity to idle:', activityId, 'Reason:', reason);
-      LiveActivity.updateActivity(activityId, idleState);
+      await LiveActivity.updateActivity(activityId, idleState);
       // Keep lastFocusActivityId so subsequent tag/duration changes can
       // update this activity via showIdleFocusActivity / hasFocusActivity.
       this.lastFocusActivityId = activityId;
@@ -539,7 +539,7 @@ export class LiveActivityService {
    * tag/duration. Uses updateAllActivities so it works regardless of
    * whether we still have the activity ID tracked in memory.
    */
-  static showIdleFocusActivity(tagName: string, tagId?: string, durationMinutes?: number): void {
+  static async showIdleFocusActivity(tagName: string, tagId?: string, durationMinutes?: number): Promise<void> {
     if (!this.isAvailable()) return;
 
     const durationLabel = durationMinutes != null
@@ -557,22 +557,26 @@ export class LiveActivityService {
       durationMinutes,
     };
 
-    LiveActivity.updateAllActivities(idleState);
-    this.lastTagName = tagName;
-    this.lastTagId = tagId;
-    this.lastDurationMinutes = durationMinutes;
-    this.focusEndTimestamp = undefined;
-    // Persist so the idle LA can be re-adopted after a cold start (no-op when
-    // we don't have a tracked activity ID, e.g. the unlock-expiry path).
-    this.persistIdleActivity();
-    console.log('✅ Updated all idle focus LAs with tag:', tagName, 'duration:', durationMinutes);
+    try {
+      await LiveActivity.updateAllActivities(idleState);
+      this.lastTagName = tagName;
+      this.lastTagId = tagId;
+      this.lastDurationMinutes = durationMinutes;
+      this.focusEndTimestamp = undefined;
+      // Persist so the idle LA can be re-adopted after a cold start (no-op when
+      // we don't have a tracked activity ID, e.g. the unlock-expiry path).
+      this.persistIdleActivity();
+      console.log('✅ Updated all idle focus LAs with tag:', tagName, 'duration:', durationMinutes);
+    } catch (error: any) {
+      console.error('❌ Error updating all idle focus LAs:', error);
+    }
   }
 
   /**
    * Truly end the focus Live Activity (dismiss it completely).
    * Used when the user explicitly dismisses or in rare cleanup cases.
    */
-  static endFocusActivity(activityId?: string): void {
+  static async endFocusActivity(activityId?: string): Promise<void> {
     if (!this.isAvailable()) return;
 
     const id = activityId || this.lastFocusActivityId;
@@ -582,7 +586,7 @@ export class LiveActivityService {
       const finalState: LiveActivity.LiveActivityState = {
         title: 'Session Ended',
       };
-      LiveActivity.stopActivity(id, finalState);
+      await LiveActivity.stopActivity(id, finalState);
       if (this.lastFocusActivityId === id) {
         this.lastFocusActivityId = undefined;
       }

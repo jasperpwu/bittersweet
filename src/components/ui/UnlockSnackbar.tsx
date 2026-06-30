@@ -131,7 +131,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
 
       if (unlockSession) {
         // Start Live Activity for countdown display with reason
-        const liveActivityId = LiveActivityService.startUnlockCountdown(reblockTime, selectedDuration);
+        const liveActivityId = await LiveActivityService.startUnlockCountdown(reblockTime, selectedDuration);
 
         // Persist the Live Activity ID in the store so endUnlock can stop it
         if (liveActivityId) {

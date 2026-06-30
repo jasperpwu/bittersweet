@@ -648,21 +648,31 @@ export const useAppStore = create<AppStore>()(
               Math.min(actualDuration, Math.round(adjustedDuration))
             );
             const targetDuration = session.initialSetDuration ?? session.duration;
-            const adjustMultiplier = get().rewards.isAccelerateActive() ? 2 : 1;
-            const previousFruits = session.isManualEntry
+            const adjustMultiplier =
+              session.accelerateMultiplier ?? (get().rewards.isAccelerateActive() ? 2 : 1);
+            const previousBaseFruits = session.isManualEntry
               ? 0
               : calculateFruitsEarnedForDuration(
                   previousAdjustedDuration,
                   targetDuration,
                   adjustMultiplier
                 );
-            const nextFruits = session.isManualEntry
+            const nextBaseFruits = session.isManualEntry
               ? 0
               : calculateFruitsEarnedForDuration(
                   nextAdjustedDuration,
                   targetDuration,
                   adjustMultiplier
                 );
+            const previousFruits =
+              session.awardedFruits ??
+              (session.focusRating != null
+                ? fruitsForRating(previousBaseFruits, session.focusRating)
+                : previousBaseFruits);
+            const nextFruits =
+              session.focusRating != null
+                ? fruitsForRating(nextBaseFruits, session.focusRating)
+                : nextBaseFruits;
             const fruitDelta = nextFruits - previousFruits;
 
             set((state) => ({
@@ -678,6 +688,9 @@ export const useAppStore = create<AppStore>()(
                       actualDuration,
                       adjustedDuration: nextAdjustedDuration,
                       duration: nextAdjustedDuration,
+                      accelerateMultiplier: adjustMultiplier,
+                      baseFruits: nextBaseFruits,
+                      awardedFruits: nextFruits,
                       updatedAt: new Date(),
                     },
                   },
@@ -1630,6 +1643,7 @@ export const useAppStore = create<AppStore>()(
                 lastDurationByTagId: { ...state.focus.lastDurationByTagId, [tagId]: duration },
               },
             }));
+            persistStateNow(get());
           },
           createTag: (tagData) => {
             console.log('🏷️ Creating tag:', tagData);
