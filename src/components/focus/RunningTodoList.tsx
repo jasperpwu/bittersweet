@@ -35,9 +35,11 @@ interface RunningTodoListProps {
   tagId: string;
   /** Tag color — used as the start-time accent so it matches the running tag. */
   accentColor?: string;
+  /** Opens the create-todo sheet (preselected to the running tag). */
+  onAddTodo?: () => void;
 }
 
-export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor }) => {
+export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor, onAddTodo }) => {
   // Read the todo collection WITHOUT useSyncExternalStore. Zustand v4's useStore
   // subscribes through useSyncExternalStore, whose mount-time consistency check
   // can dispatch a forceUpdate while React is flushing insertion effects during
@@ -56,6 +58,7 @@ export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor }
     return useAppStore.subscribe(sync);
   }, []);
   const { t } = useTranslation();
+  const isDark = useColorScheme() === 'dark';
   const toggleTodo = useRef(useAppStore.getState().focus.toggleTodo).current;
   const reorderTodos = useRef(useAppStore.getState().focus.reorderTodos).current;
 
@@ -132,37 +135,93 @@ export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor }
     dragTargetIdxRef.current = -1;
   }, [reorderTodos]);
 
-  if (orderedTodos.length === 0) return null;
+  // Nothing to show when there are no open tasks and no way to add one.
+  if (orderedTodos.length === 0 && !onAddTodo) return null;
+
+  // Muted tone matching the rows' neutral icons/handles, so the add action reads
+  // as a subtle affordance rather than clashing with the (arbitrary) tag accent.
+  const addTint = isDark ? colors.dark.textSecondary : colors.light.textSecondary;
+  // Card boundary matching the Journal todo cards: faint border token + a fill
+  // that equals the SCREEN background (not the white `background` token), so the
+  // fill is invisible and only the border + shadow read — exactly like the
+  // Journal card, whose `bg-light-bg` fill matches the sheet behind it. The fill
+  // is still needed for the shadow to render on the rounded rect (iOS).
+  const cardBorder = isDark ? colors.dark.screenBorder : colors.light.screenBorder;
+  const cardBg = isDark ? colors.dark.screen : colors.light.screen;
 
   return (
     <Reanimated.View
       entering={FadeIn.duration(550)}
       style={{ width: '100%', paddingHorizontal: 8 }}>
-      <ScrollView
-        style={{ maxHeight: MAX_LIST_HEIGHT }}
-        scrollEnabled={!isDragging}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
-        {derivedIds.map((id, index) => {
-          const todo = todosState.byId[id];
-          if (!todo) return null;
-          return (
-            <TodoDragRow
-              key={id}
-              todo={todo}
-              index={index}
-              isDragging={isDragging}
-              dragOriginalIndex={dragOriginalIdx}
-              dragTargetIndex={dragTargetIdx}
-              accentColor={accentColor}
-              onToggle={handleToggle}
-              onDragStart={handleDragStart}
-              onDragMove={handleDragMove}
-              onDragEnd={handleDragEnd}
-            />
-          );
-        })}
-      </ScrollView>
+      {/* TODO list — card container matching the Journal todo cards (border token,
+          filled surface, soft drop shadow). */}
+      {orderedTodos.length > 0 && (
+        <View
+          style={{
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: cardBorder,
+            backgroundColor: cardBg,
+            paddingVertical: 4,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 6,
+            elevation: 3,
+          }}>
+          <ScrollView
+            style={{ maxHeight: MAX_LIST_HEIGHT }}
+            scrollEnabled={!isDragging}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled">
+            {derivedIds.map((id, index) => {
+              const todo = todosState.byId[id];
+              if (!todo) return null;
+              return (
+                <TodoDragRow
+                  key={id}
+                  todo={todo}
+                  index={index}
+                  isLast={index === derivedIds.length - 1}
+                  isDragging={isDragging}
+                  dragOriginalIndex={dragOriginalIdx}
+                  dragTargetIndex={dragTargetIdx}
+                  accentColor={accentColor}
+                  onToggle={handleToggle}
+                  onDragStart={handleDragStart}
+                  onDragMove={handleDragMove}
+                  onDragEnd={handleDragEnd}
+                />
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* "Add a TODO" action — plain row, no container. */}
+      {onAddTodo && (
+        <Pressable
+          onPress={onAddTodo}
+          hitSlop={8}
+          style={{
+            height: 44,
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 12,
+            marginTop: orderedTodos.length > 0 ? 4 : 0,
+          }}>
+          <Ionicons name="add" size={22} color={addTint} style={{ marginRight: 10 }} />
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 14,
+              fontFamily: 'Poppins-Regular',
+              color: addTint,
+            }}>
+            {t('todos.addRow')}
+          </Text>
+        </Pressable>
+      )}
     </Reanimated.View>
   );
 };
@@ -170,6 +229,8 @@ export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor }
 interface TodoDragRowProps {
   todo: Todo;
   index: number;
+  /** Last row in the list — drops its bottom divider (also covers the single-task case). */
+  isLast: boolean;
   isDragging: boolean;
   dragOriginalIndex: number;
   dragTargetIndex: number;
@@ -183,6 +244,7 @@ interface TodoDragRowProps {
 const TodoDragRow: FC<TodoDragRowProps> = ({
   todo,
   index,
+  isLast,
   isDragging,
   dragOriginalIndex,
   dragTargetIndex,
@@ -266,10 +328,11 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
   const accent = accentColor || colors.primary;
   const textPrimary = isDark ? colors.dark.textPrimary : colors.light.textPrimary;
   const textSecondary = isDark ? colors.dark.textSecondary : colors.light.textSecondary;
-  const dividerColor = isDark ? colors.dark.border : colors.light.border;
+  const dividerColor = isDark ? colors.dark.screenBorder : colors.light.screenBorder;
   // Only the lifted (dragged) row needs an opaque fill so it doesn't show rows
-  // beneath it; resting rows sit transparent on the focus screen.
-  const liftedBg = isDark ? colors.dark.background : colors.light.background;
+  // beneath it; resting rows sit transparent on the focus screen. Use the screen
+  // color so the lifted row blends with the card container instead of flashing white.
+  const liftedBg = isDark ? colors.dark.screen : colors.light.screen;
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -293,7 +356,7 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
             paddingHorizontal: 12,
             borderRadius: 12,
             backgroundColor: isBeingDragged ? liftedBg : 'transparent',
-            borderBottomWidth: isBeingDragged ? 0 : 1,
+            borderBottomWidth: isBeingDragged || isLast ? 0 : 1,
             borderBottomColor: dividerColor,
           }}>
           {/* Checkbox — completes the task (drops it from the running list) */}

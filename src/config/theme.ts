@@ -19,14 +19,26 @@ export const colors = {
     textSecondary: '#8A8A8A',
     border: '#E1E1E1',
     background: '#FFFFFF',
+    // App screen background (NativeWind `bg-light-bg`). Differs from `background`
+    // (#FFFFFF) — the screen is cream. Use this for inline-styled surfaces that
+    // need to blend into the screen the way `bg-light-bg` does.
+    screen: '#F5E6D3',
+    // Border tuned for the cream screen (NativeWind `border-light-border`).
+    // Differs from `border` (#E1E1E1, a grey for white surfaces) — the grey reads
+    // too white on cream. Use this for inline-styled borders on the screen.
+    screenBorder: '#D4C4A8',
   },
-  
+
   // Dark Mode Colors
   dark: {
     textPrimary: '#FFFFFF',
     textSecondary: '#CACACA',
     border: '#575757',
     background: '#1B1C30',
+    // App screen background (NativeWind `bg-dark-bg`); same as `background` in dark.
+    screen: '#1B1C30',
+    // Border on the dark screen (NativeWind `border-dark-border`); same as `border`.
+    screenBorder: '#575757',
   },
 } as const;
 

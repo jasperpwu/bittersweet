@@ -37,6 +37,7 @@ import {
   RunningTodoList,
   CreateTagModal,
 } from '../../src/components/focus';
+import { TodoEditModal } from '../../src/components/journal/TodoSheet/TodoEditModal';
 import type { ActivityType } from '../../src/utils/focusRating';
 import { inferActivityType } from '../../src/utils/inferActivityType';
 import { useThrottledPress } from '../../src/hooks/common';
@@ -920,6 +921,8 @@ export default function FocusScreen() {
   // can hide the instant a stop begins (in teardown) instead of lingering through
   // the ~340ms stop animation, after which isSessionActive finally flips false.
   const [todoListVisible, setTodoListVisible] = useState(false);
+  // Create-todo sheet opened from the "Add a TODO" action under the running list.
+  const [showAddTodoModal, setShowAddTodoModal] = useState(false);
   const [isInfinite, setIsInfinite] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -2448,7 +2451,11 @@ export default function FocusScreen() {
           <View
             style={{ width: '100%', marginBottom: 64, minHeight: 96, justifyContent: 'center' }}>
             {todoListVisible && !isUnlockActive && selectedTag ? (
-              <RunningTodoList tagId={selectedTag} accentColor={selectedTagObj?.color} />
+              <RunningTodoList
+                tagId={selectedTag}
+                accentColor={selectedTagObj?.color}
+                onAddTodo={() => setShowAddTodoModal(true)}
+              />
             ) : (
               <Animated.View
                 style={{ opacity: isUnlockActive ? 0 : tagsOpacity }}
@@ -3022,6 +3029,14 @@ export default function FocusScreen() {
             setShowJoinModal(false);
             setResolvedSharedTag(result);
           }}
+        />
+
+        {/* Create-todo sheet for the "Add a TODO" action under the running list */}
+        <TodoEditModal
+          isVisible={showAddTodoModal}
+          onClose={() => setShowAddTodoModal(false)}
+          todo={null}
+          initialTagId={selectedTag}
         />
 
         {/* Join Tag — step 2: map onto an existing tag or clone a new one */}
