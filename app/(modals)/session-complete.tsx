@@ -28,7 +28,7 @@ import Animated, {
 import { Typography } from '../../src/components/ui';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { GoalProgressBanner } from '../../src/components/focus/GoalProgressBanner';
-import { FocusRatingBlock, FocusRatingInsightsSheet } from '../../src/components/focus';
+import { FocusRatingBlock, FocusRatingInsightsSheet, CreateTagModal } from '../../src/components/focus';
 import { FruitCounter } from '../../src/components/rewards';
 import {
   calculateFruitsEarnedForDuration,
@@ -62,6 +62,7 @@ export default function SessionCompleteModal() {
   const secondaryTagEnabled = useSecondaryTagEnabled();
   const [notes, setNotes] = useState(session?.notes ?? '');
   const [secondaryTag, setSecondaryTag] = useState<string>(session?.secondaryTagId ?? '');
+  const [showCreateTag, setShowCreateTag] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isSavingPhoto, setIsUploadingPhoto] = useState(false);
 
@@ -452,6 +453,7 @@ export default function SessionCompleteModal() {
                 selectedTags={secondaryTag ? [secondaryTag] : []}
                 onTagSelect={(id) => setSecondaryTag((prev) => (prev === id ? '' : id))}
                 maxSelections={1}
+                onCreateTag={() => setShowCreateTag(true)}
               />
             </View>
           )}
@@ -622,6 +624,13 @@ export default function SessionCompleteModal() {
           </Typography>
         </Pressable>
       </BottomSheet>
+
+      {/* Create-new-tag modal for the secondary tag selector */}
+      <CreateTagModal
+        visible={showCreateTag}
+        onClose={() => setShowCreateTag(false)}
+        onCreated={(tag) => setSecondaryTag(tag.id)}
+      />
     </SafeAreaView>
   );
 }

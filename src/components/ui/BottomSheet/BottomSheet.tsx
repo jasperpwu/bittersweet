@@ -134,6 +134,9 @@ export const BottomSheet: FC<BottomSheetProps> = ({
     // tag selector, and upward scrolls all pass through to their own handlers.
     .activeOffsetY(12)
     .failOffsetY(-12)
+    // Bail out the moment a drag is predominantly horizontal so swiping the
+    // tag selector (or any horizontal list) never reads as a dismiss pull.
+    .failOffsetX([-15, 15])
     .onUpdate((event) => {
       const atTop = scrollY.value <= 0;
       if (!listDriving.value) {

@@ -1,5 +1,5 @@
 import React, { FC, useState } from 'react';
-import { ScrollView, Pressable, View, Modal } from 'react-native';
+import { ScrollView, Pressable, View, Modal, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -9,7 +9,9 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui/Typography';
+import { colors } from '../../../config/theme';
 
 interface Tag {
   id: string;
@@ -25,6 +27,8 @@ interface HorizontalTagSelectorProps {
   maxSelections?: number;
   onTagDelete?: (tagId: string) => void;
   onTagReorder?: (reorderedTags: Tag[]) => void;
+  /** When provided, renders a "＋ New tag" placeholder pill at the end. */
+  onCreateTag?: () => void;
 }
 
 
@@ -35,7 +39,11 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
   maxSelections,
   onTagDelete,
   onTagReorder,
+  onCreateTag,
 }) => {
+  const { t } = useTranslation();
+  const isDark = useColorScheme() === 'dark';
+  const placeholderIconColor = isDark ? colors.dark.textSecondary : colors.light.textSecondary;
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -199,6 +207,23 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
             />
           );
         })}
+
+        {/* Create-new-tag placeholder pill */}
+        {onCreateTag && (
+          <Pressable
+            onPress={onCreateTag}
+            className="mr-3 flex-row items-center rounded-xl border border-dashed border-light-border px-4 py-2.5 active:opacity-70 dark:border-dark-border"
+          >
+            <Ionicons name="add" size={16} color={placeholderIconColor} />
+            <Typography
+              variant="body-14"
+              color="secondary"
+              className="ml-1"
+            >
+              {t('home.newTag')}
+            </Typography>
+          </Pressable>
+        )}
       </ScrollView>
     
     

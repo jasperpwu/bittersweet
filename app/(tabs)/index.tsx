@@ -35,6 +35,7 @@ import {
   ColorPickerOverlay,
   ActivityTypePicker,
   RunningTodoList,
+  CreateTagModal,
 } from '../../src/components/focus';
 import type { ActivityType } from '../../src/utils/focusRating';
 import { inferActivityType } from '../../src/utils/inferActivityType';
@@ -702,7 +703,6 @@ export default function FocusScreen() {
     }))
   );
   const {
-    createTag,
     updateTag,
     deleteTag,
     reorderTags,
@@ -781,15 +781,9 @@ export default function FocusScreen() {
     }
   }, [availableTags, selectedTag]);
   const [showTagModal, setShowTagModal] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showNewColorPicker, setShowNewColorPicker] = useState(false);
   const [showNewTagModal, setShowNewTagModal] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
-  const [newTagEmoji, setNewTagEmoji] = useState('');
-  const [newTagColor, setNewTagColor] = useState('#6592E9');
-  const [newTagActivityType, setNewTagActivityType] = useState<ActivityType | undefined>(undefined);
   const [showEditTagModal, setShowEditTagModal] = useState(false);
   const [editingTag, setEditingTag] = useState<{
     id: string;
@@ -806,27 +800,9 @@ export default function FocusScreen() {
   );
   // Tracks whether the user has manually picked an activity type this modal
   // session; once they have, name-based inference stops overriding their choice.
-  const newTagActivityTouched = useRef(false);
   const editTagActivityTouched = useRef(false);
   const [showEditEmojiGrid, setShowEditEmojiGrid] = useState(false);
   const [showEditColorPicker, setShowEditColorPicker] = useState(false);
-
-  // Debounced inference of the activity type from the tag name (new tag modal).
-  // Only fills the picker until the user makes their own choice.
-  useEffect(() => {
-    if (!showNewTagModal || newTagActivityTouched.current) return;
-    const name = newTagName;
-    const t = setTimeout(() => {
-      if (newTagActivityTouched.current) return;
-      setNewTagActivityType(inferActivityType(name) ?? undefined);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [newTagName, showNewTagModal]);
-
-  // Reset the "touched" flag each time the new tag modal opens.
-  useEffect(() => {
-    if (showNewTagModal) newTagActivityTouched.current = false;
-  }, [showNewTagModal]);
 
   // Debounced inference for the edit tag modal — only when the tag had no
   // activity type set (handleEditTag marks existing values as already chosen).
@@ -1088,48 +1064,6 @@ export default function FocusScreen() {
     setShowTagModal(false);
   };
 
-  const handleNewTagEmojiPress = () => {
-    // Keep the New Tag overlay mounted underneath; the emoji overlay covers it.
-    Keyboard.dismiss();
-    setShowEmojiPicker(true);
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    setNewTagEmoji(emoji);
-    setShowEmojiPicker(false);
-  };
-
-  const handleNewTagColorPress = () => {
-    // Keep the New Tag overlay mounted underneath; the color overlay covers it.
-    Keyboard.dismiss();
-    setShowNewColorPicker(true);
-  };
-
-  const handleCreateNewTag = () => {
-    if (!canCreateTag) {
-      setShowNewTagModal(false);
-      setShowUpgradePrompt(true);
-      return;
-    }
-    if (newTagName.trim() && newTagEmoji) {
-      // Create tag using store action — returns the created tag with its ID
-      const newTag = createTag({
-        name: newTagName.trim(),
-        icon: newTagEmoji,
-        color: newTagColor,
-        activityType: newTagActivityType,
-      });
-
-      setSelectedTag(newTag.id);
-      setLastSelectedTagId(newTag.id);
-      WidgetService.syncSelectedTagId(newTag.id);
-      setShowNewTagModal(false);
-      setNewTagName('');
-      setNewTagEmoji('');
-      setNewTagColor('#6592E9');
-      setNewTagActivityType(undefined);
-    }
-  };
 
   const handleEditTag = (tag: any, event: any) => {
     event?.stopPropagation();
@@ -2093,11 +2027,10 @@ export default function FocusScreen() {
       return;
     }
 
-    // If no tags exist, show new tag modal (the New Tag overlay lives inside the
-    // tag picker Modal, so that Modal must be mounted for the overlay to render)
+    // If no tags exist, open the tag picker plus the new-tag modal so that
+    // creating the first tag lands the user back in the (now non-empty) list.
     if (availableTags.length === 0) {
       setShowTagModal(true);
-      setShowNewColorPicker(false);
       setShowNewTagModal(true);
       return;
     }
@@ -2675,7 +2608,6 @@ export default function FocusScreen() {
                         setShowUpgradePrompt(true);
                         return;
                       }
-                      setShowNewColorPicker(false);
                       setShowNewTagModal(true);
                     }}
                     className="flex-1 items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
@@ -2920,170 +2852,17 @@ export default function FocusScreen() {
             />
           )}
 
-          {/* New Tag Creation Overlay - covers entire screen including tag picker */}
-          {showNewTagModal && (
-            <KeyboardAvoidingView
-              className="absolute inset-0"
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-              <Pressable
-                className="flex-1 items-center justify-center bg-black/50 px-4"
-                onPress={() => {
-                  setShowNewTagModal(false);
-                  setNewTagName('');
-                  setNewTagEmoji('');
-                  setNewTagColor('#6592E9');
-                }}>
-                <Pressable
-                  onPress={() => {}}
-                  className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
-                  {/* Modal Header */}
-                  <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
-                    <Typography variant="headline-20" color="primary">
-                      {t('home.createNewTagTitle')}
-                    </Typography>
-                    <Pressable
-                      onPress={() => {
-                        setShowNewTagModal(false);
-                        setNewTagName('');
-                        setNewTagEmoji('');
-                        setNewTagColor('#6592E9');
-                      }}
-                      className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700">
-                      <Ionicons
-                        name="close"
-                        size={20}
-                        color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
-                      />
-                    </Pressable>
-                  </View>
-
-                  {/* New Tag Form */}
-                  <View className="p-6">
-                    {/* Emoji + Name row */}
-                    <View className="mb-6 flex-row items-center" style={{ gap: 12 }}>
-                      <Pressable
-                        onPress={handleNewTagEmojiPress}
-                        className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-gray-500 dark:bg-gray-700">
-                        {newTagEmoji ? (
-                          <Text className="text-2xl">{newTagEmoji}</Text>
-                        ) : (
-                          <Ionicons name="happy-outline" size={24} color="#6592E9" />
-                        )}
-                      </Pressable>
-                      <TextInput
-                        value={newTagName}
-                        onChangeText={setNewTagName}
-                        placeholder={t('home.tagNamePlaceholder')}
-                        placeholderTextColor="#666"
-                        className="flex-1"
-                        style={{
-                          backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
-                          borderRadius: 12,
-                          padding: 14,
-                          fontSize: 16,
-                          color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
-                          borderWidth: 1,
-                          borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
-                        }}
-                        autoFocus={true}
-                      />
-                    </View>
-
-                    {/* Color Selection */}
-                    <View>
-                      <Typography variant="body-14" color="primary" className="mb-3">
-                        {t('home.color')}
-                      </Typography>
-                      <Pressable
-                        onPress={handleNewTagColorPress}
-                        className="flex-row items-center justify-between rounded-xl border border-light-border bg-light-border/30 px-4 py-3 active:opacity-80 dark:border-gray-500 dark:bg-gray-700">
-                        <View
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: newTagColor,
-                          }}
-                        />
-                        <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-                      </Pressable>
-                    </View>
-
-                    {/* Activity type (optional) — improves focus-rating accuracy */}
-                    <View className="mt-4">
-                      <Typography variant="body-14" color="primary" className="mb-1">
-                        Activity type (optional)
-                      </Typography>
-                      <Typography variant="body-12" color="secondary" className="mb-3">
-                        Helps suggest a focus rating from your motion.
-                      </Typography>
-                      <ActivityTypePicker
-                        value={newTagActivityType}
-                        onChange={(v) => {
-                          newTagActivityTouched.current = true;
-                          setNewTagActivityType(v);
-                        }}
-                      />
-                      {newTagActivityType && !newTagActivityTouched.current && (
-                        <Typography variant="body-12" color="secondary" className="mt-2">
-                          ✨ Suggested from name — tap to change
-                        </Typography>
-                      )}
-                    </View>
-                  </View>
-
-                  {/* Action Buttons */}
-                  <View
-                    className="flex-row border-t border-light-border p-4 dark:border-gray-700"
-                    style={{ gap: 12 }}>
-                    <Pressable
-                      onPress={() => {
-                        setShowNewTagModal(false);
-                        setNewTagName('');
-                        setNewTagEmoji('');
-                        setNewTagColor('#6592E9');
-                      }}
-                      className="flex-1 items-center rounded-2xl bg-gray-600 py-4 active:opacity-80">
-                      <Typography variant="subtitle-16" color="white">
-                        {t('common.cancel')}
-                      </Typography>
-                    </Pressable>
-                    <Pressable
-                      onPress={handleCreateNewTag}
-                      disabled={!newTagName.trim() || !newTagEmoji}
-                      className={`flex-1 items-center rounded-2xl py-4 ${
-                        newTagName.trim() && newTagEmoji
-                          ? 'bg-blue-600 active:opacity-80'
-                          : 'bg-gray-500 opacity-50'
-                      }`}>
-                      <Typography variant="subtitle-16" color="white" className="font-semibold">
-                        {t('home.createTag')}
-                      </Typography>
-                    </Pressable>
-                  </View>
-                </Pressable>
-              </Pressable>
-            </KeyboardAvoidingView>
-          )}
-
-          {/* New Tag — Emoji Picker Overlay (on top of the New Tag overlay) */}
-          {showNewTagModal && showEmojiPicker && (
-            <EmojiPickerOverlay
-              title={t('home.chooseEmojiNewTag')}
-              onClose={() => setShowEmojiPicker(false)}
-              onEmojiSelect={handleEmojiSelect}
-            />
-          )}
-
-          {/* New Tag — Color Picker Overlay (on top of the New Tag overlay) */}
-          {showNewTagModal && showNewColorPicker && (
-            <ColorPickerOverlay
-              title={t('home.chooseColor')}
-              selectedColor={newTagColor}
-              onSelectColor={setNewTagColor}
-              onClose={() => setShowNewColorPicker(false)}
-            />
-          )}
+          {/* New Tag Creation — shared modal (emoji + name + color + activity type) */}
+          <CreateTagModal
+            visible={showNewTagModal}
+            onClose={() => setShowNewTagModal(false)}
+            onUpgradeNeeded={() => setShowUpgradePrompt(true)}
+            onCreated={(newTag) => {
+              setSelectedTag(newTag.id);
+              setLastSelectedTagId(newTag.id);
+              WidgetService.syncSelectedTagId(newTag.id);
+            }}
+          />
         </Modal>
 
         {/* Blocklist Tip Modal */}

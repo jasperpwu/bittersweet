@@ -14,6 +14,7 @@ import { Typography, DatePicker, TimePicker, Slider } from '../../ui';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { showToast } from '../../ui/Toast';
 import { HorizontalTagSelector } from '../../focus/TagSelector';
+import { CreateTagModal } from '../../focus';
 import { useFocus, useTodoActions } from '../../../store';
 import { colors } from '../../../config/theme';
 import { ensureTodoNotificationPermission } from '../../../services/notifications/todos';
@@ -47,6 +48,7 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
 
   const [name, setName] = useState('');
   const [tagId, setTagId] = useState('');
+  const [showCreateTag, setShowCreateTag] = useState(false);
   const [startEnabled, setStartEnabled] = useState(false);
   const [startTimeEnabled, setStartTimeEnabled] = useState(false);
   const [startAt, setStartAt] = useState<Date>(new Date());
@@ -239,6 +241,7 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
           selectedTags={tagId ? [tagId] : []}
           onTagSelect={(id) => setTagId(id)}
           maxSelections={1}
+          onCreateTag={() => setShowCreateTag(true)}
         />
       </View>
 
@@ -373,6 +376,12 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
           </Typography>
         </Pressable>
       )}
+
+      <CreateTagModal
+        visible={showCreateTag}
+        onClose={() => setShowCreateTag(false)}
+        onCreated={(tag) => setTagId(tag.id)}
+      />
     </BottomSheet>
   );
 };

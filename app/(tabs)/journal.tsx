@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Modal, Slider, Typography, TimePicker, DatePicker } from '../../src/components/ui';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
+import { CreateTagModal } from '../../src/components/focus';
 import { DateSelector, Timeline, TodoSheet } from '../../src/components/journal';
 import { TodoEditModal } from '../../src/components/journal/TodoSheet/TodoEditModal';
 import { TodoDragGhost } from '../../src/components/journal/TodoSheet/TodoDragGhost';
@@ -87,6 +88,10 @@ export default function JournalScreen() {
   const [manualDate, setManualDate] = useState(new Date());
   const [manualTag, setManualTag] = useState<string>('');
   const [manualSecondaryTag, setManualSecondaryTag] = useState<string>('');
+  // Which tag field a newly created tag should populate (drives CreateTagModal).
+  const [createTagTarget, setCreateTagTarget] = useState<
+    null | 'manual' | 'manualSecondary' | 'editSecondary'
+  >(null);
   const [manualNotes, setManualNotes] = useState('');
   const [manualPhotoUri, setManualPhotoUri] = useState<string | null>(null);
   const [manualEntryError, setManualEntryError] = useState<string | null>(null);
@@ -807,6 +812,7 @@ export default function JournalScreen() {
                   selectedTags={editSecondaryTag ? [editSecondaryTag] : []}
                   onTagSelect={(id) => setEditSecondaryTag(prev => (prev === id ? '' : id))}
                   maxSelections={1}
+                  onCreateTag={() => setCreateTagTarget('editSecondary')}
                 />
               </View>
             )}
@@ -1000,6 +1006,7 @@ export default function JournalScreen() {
                   if (manualSecondaryTag === id) setManualSecondaryTag('');
                 }}
                 maxSelections={1}
+                onCreateTag={() => setCreateTagTarget('manual')}
               />
             </View>
 
@@ -1015,6 +1022,7 @@ export default function JournalScreen() {
                     selectedTags={manualSecondaryTag ? [manualSecondaryTag] : []}
                     onTagSelect={(id) => setManualSecondaryTag(prev => (prev === id ? '' : id))}
                     maxSelections={1}
+                    onCreateTag={() => setCreateTagTarget('manualSecondary')}
                   />
                 </View>
               </>
@@ -1155,6 +1163,23 @@ export default function JournalScreen() {
         isVisible={calendarEditVisible}
         onClose={() => setCalendarEditVisible(false)}
         todo={calendarEditTodo}
+      />
+
+      {/* Create-new-tag modal, shared across the journal's tag selectors */}
+      <CreateTagModal
+        visible={createTagTarget !== null}
+        onClose={() => setCreateTagTarget(null)}
+        onCreated={(tag) => {
+          if (createTagTarget === 'manual') {
+            setManualTag(tag.id);
+            if (manualSecondaryTag === tag.id) setManualSecondaryTag('');
+          } else if (createTagTarget === 'manualSecondary') {
+            setManualSecondaryTag(tag.id);
+          } else if (createTagTarget === 'editSecondary') {
+            setEditSecondaryTag(tag.id);
+          }
+          setCreateTagTarget(null);
+        }}
       />
     </View>
   );
