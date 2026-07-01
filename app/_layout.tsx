@@ -327,9 +327,25 @@ export default function RootLayout() {
             // Sync Supabase credentials to UserDefaults for native intent REST calls
             WidgetService.syncSupabaseCredentials(user.id, session.access_token);
 
+            // supabase-js re-emits SIGNED_IN on token auto-refresh and app
+            // foreground for the user who is ALREADY signed in. That is not a
+            // fresh sign-in — running the existing-account clear+pullAndApply
+            // below would wipe any local-only data that hasn't flushed to cloud
+            // yet (e.g. a session the user just finished and is still rating on
+            // the summary modal), and reset rewards.balance to the cloud value.
+            // Detect it: a genuine sign-in always has previousUserId !== user.id
+            // (sign-out nulls lastSignedInUserId, and only this handler sets it
+            // after a full sign-in). Same user + SIGNED_IN => redundant re-emit;
+            // creds were already synced above, so there is nothing more to do.
+            const isSignedInReemit = event === 'SIGNED_IN' && previousUserId === user.id;
+
             // Sync strategy depends on auth event type
             try {
-              if (event === 'SIGNED_IN') {
+              if (isSignedInReemit) {
+                console.log(
+                  '🔁 Redundant SIGNED_IN for current user — skipping clear/pull (preserving local data)'
+                );
+              } else if (event === 'SIGNED_IN') {
                 // Distinguish a brand-new sign-up from a sign-in to an existing
                 // account. The app can't tell directly (Apple Sign-In auto-creates
                 // accounts), so we probe the cloud: a brand-new account has no

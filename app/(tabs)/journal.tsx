@@ -44,7 +44,7 @@ export default function JournalScreen() {
   const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
   const [adjustedDuration, setAdjustedDuration] = useState(0);
   const { sessions, tags } = useFocus();
-  const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession, applyFocusRating } = useFocusActions();
+  const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession } = useFocusActions();
   const secondaryTagEnabled = useSecondaryTagEnabled();
 
   // TODO scheduling — drag from the sheet onto the calendar + tap-to-edit blocks.
@@ -403,10 +403,6 @@ export default function JournalScreen() {
 
     adjustSessionDuration(selectedSession.id, adjustedDuration);
 
-    if (editFocusRating != null && editFocusRating !== selectedSession.focusRating) {
-      applyFocusRating(selectedSession.id, editFocusRating, 'user');
-    }
-
     // Save notes if changed
     const trimmedNotes = editNotes.trim();
     if (trimmedNotes !== (selectedSession.notes ?? '')) {
@@ -754,24 +750,12 @@ export default function JournalScreen() {
                     {[1, 2, 3, 4, 5].map((rating) => {
                       const filled = (editFocusRating ?? 0) >= rating;
                       return (
-                        <Pressable
+                        <Ionicons
                           key={rating}
-                          onPress={() => setEditFocusRating(rating)}
-                          disabled={isEditSaving}
-                          hitSlop={6}
-                          accessibilityRole="button"
-                          accessibilityLabel={t('journal.setFocusRating', {
-                            defaultValue: 'Set focus rating to {{rating}} stars',
-                            rating,
-                          })}
-                          className="active:opacity-70"
-                        >
-                          <Ionicons
-                            name={filled ? 'star' : 'star-outline'}
-                            size={28}
-                            color={filled ? '#6592E9' : colorScheme === 'dark' ? '#4B5563' : '#D4C4A8'}
-                          />
-                        </Pressable>
+                          name={filled ? 'star' : 'star-outline'}
+                          size={28}
+                          color={filled ? '#6592E9' : colorScheme === 'dark' ? '#4B5563' : '#D4C4A8'}
+                        />
                       );
                     })}
                   </View>
