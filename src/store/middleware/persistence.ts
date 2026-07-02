@@ -495,6 +495,7 @@ export const persistenceConfig = {
       updatedAt: state.rewards.updatedAt,
       unlockableApps: state.rewards.unlockableApps,
       accelerateCard: state.rewards.accelerateCard,
+      unlockHistory: state.rewards.unlockHistory,
       // Persist one-time setup-task claim state (everSetup/claimed). Without this,
       // every cold start rehydrates tasks as undefined → normalizeSetupTasks defaults
       // to claimed:false → the goal/widget reward shows reclaimable again (re-claimable).
@@ -588,6 +589,7 @@ export const persistenceConfig = {
           totalSpent: 0,
           transactions: [],
           unlockableApps: [],
+          unlockHistory: {},
         };
       }
 

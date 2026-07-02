@@ -8,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Typography } from './Typography';
 import { Slider } from './Slider';
+import { UnlockTrendChart } from './UnlockTrendChart';
 import { useBlocklist, useBlocklistActions, useRewards, useAppStore } from '../../store';
 import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
 import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
@@ -31,7 +32,7 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
 }) => {
   const { t } = useTranslation();
   const { triggerHaptic } = useDeviceIntegration();
-  const { balance } = useRewards();
+  const { balance, unlockHistory } = useRewards();
   const { settings, currentSelectionId } = useBlocklist();
   const { requestUnlock } = useBlocklistActions();
 
@@ -296,6 +297,14 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
               ✕
             </Typography>
           </Pressable>
+        </View>
+
+        {/* Unlock time trend — today's bar grows with the slider below */}
+        <View className="mb-4">
+          <UnlockTrendChart
+            history={unlockHistory ?? {}}
+            previewMinutes={selectedDuration}
+          />
         </View>
 
         {/* Unlock duration slider */}

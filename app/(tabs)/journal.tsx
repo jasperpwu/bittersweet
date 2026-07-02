@@ -193,12 +193,29 @@ export default function JournalScreen() {
       return newStart < existingEnd && existingStart < newEnd;
     });
 
+    // Overlapping with an existing session is allowed but discouraged — warn
+    // and let the user proceed or back out (mirrors the discard-changes prompt).
     if (hasOverlap) {
-      setManualEntryError(t('journal.errOverlap'));
-      triggerManualEntryShake();
+      Alert.alert(t('journal.overlapWarnTitle'), t('journal.overlapWarnMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('journal.overlapProceed'),
+          style: 'destructive',
+          onPress: () => {
+            void persistManualEntry(finalStart, finalEnd);
+          },
+        },
+      ]);
       return;
     }
 
+    await persistManualEntry(finalStart, finalEnd);
+  };
+
+  // Writes the manual session to the store (plus optional photo) and closes the
+  // modal. Split out of handleManualEntrySave so the overlap-warning "Proceed"
+  // path can reuse the exact same save flow.
+  const persistManualEntry = async (finalStart: Date, finalEnd: Date) => {
     const duration = Math.round((finalEnd.getTime() - finalStart.getTime()) / (1000 * 60));
 
     setIsManualSaving(true);

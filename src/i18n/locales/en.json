@@ -250,7 +250,9 @@
     "errSelectTag": "Please select a tag",
     "errStartBeforeEnd": "Start time must be before end time",
     "errFuture": "Cannot create manual session for future time",
-    "errOverlap": "Time overlaps with another focus session",
+    "overlapWarnTitle": "Overlapping session",
+    "overlapWarnMessage": "This session overlaps with an existing one. Add it anyway?",
+    "overlapProceed": "Add Anyway",
     "failedSavePhoto": "Failed to save photo",
     "permissionTitle": "Permission Required",
     "permissionBodyCamera": "Please allow access to your camera in Settings to add photos.",
@@ -785,6 +787,9 @@
     "stationary": "read,study,studie,write,writ,code,coding,program,work,focus,meditat,draw,design,paint,journal,homework,exam,learn,research,plan,email,desk,office,lecture,class,book,essay,thesis,math,revis,note"
   },
   "unlock": {
+    "trendTitle": "Unlock time trend",
+    "today": "Today",
+    "avgLabel": "Avg {{minutes}}m",
     "insufficientTitle": "Insufficient Fruits",
     "insufficientBody": "You need {{cost}} 🍎 to unlock for {{minutes}}m, but you only have {{balance}} 🍎.",
     "expiredTitle": "Unlock Expired",

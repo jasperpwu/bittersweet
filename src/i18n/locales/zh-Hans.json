@@ -250,7 +250,9 @@
     "errSelectTag": "请选择一个标签",
     "errStartBeforeEnd": "开始时间必须早于结束时间",
     "errFuture": "无法为将来的时间创建手动会话",
-    "errOverlap": "该时间与另一个专注会话重叠",
+    "overlapWarnTitle": "会话时间重叠",
+    "overlapWarnMessage": "该会话与已有会话的时间重叠，仍要添加吗？",
+    "overlapProceed": "仍然添加",
     "failedSavePhoto": "无法保存照片",
     "permissionTitle": "需要权限",
     "permissionBodyCamera": "请在“设置”中允许访问相机以添加照片。",
@@ -785,6 +787,9 @@
     "stationary": "阅读,看书,读,学习,写作,写,编写,代码,编程,工作,专注,冥想,绘画,画,设计,日记,作业,考试,研究,计划,邮件,书桌,办公,上课,课,作文,论文,数学,复习,笔记,书"
   },
   "unlock": {
+    "trendTitle": "解锁时长趋势",
+    "today": "今天",
+    "avgLabel": "平均 {{minutes}}分钟",
     "insufficientTitle": "果实不足",
     "insufficientBody": "解锁 {{minutes}} 分钟需要 {{cost}} 🍎，但你只有 {{balance}} 🍎。",
     "expiredTitle": "解锁已结束",

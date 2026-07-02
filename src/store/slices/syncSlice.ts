@@ -103,6 +103,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           totalEarned: state.rewards.totalEarned,
           totalSpent: state.rewards.totalSpent,
           tasks: state.rewards.tasks,
+          unlockHistory: state.rewards.unlockHistory ?? {},
           updatedAt: state.rewards.updatedAt,
         },
         settings: localPrefs ? {
@@ -157,6 +158,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           totalEarned: merged.rewards.totalEarned,
           totalSpent: merged.rewards.totalSpent,
           tasks: merged.rewards.tasks,
+          unlockHistory: merged.rewards.unlockHistory ?? {},
         },
         // Referral: LWW — remote always has authoritative count from DB
         referral: {
@@ -322,6 +324,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           // Cloud-wins on aggregates, but OR-merge tasks so a locally-detected setup
           // isn't erased by a stale cloud row.
           tasks: mergeSetupTasks(s.rewards.tasks, remoteData.rewards.tasks),
+          unlockHistory: remoteData.rewards.unlockHistory ?? {},
           updatedAt: remoteData.rewards.updatedAt,
         },
         referral: {

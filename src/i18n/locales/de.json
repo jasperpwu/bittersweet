@@ -250,7 +250,9 @@
     "errSelectTag": "Wähle ein Label",
     "errStartBeforeEnd": "Die Startzeit muss vor der Endzeit liegen",
     "errFuture": "Eine manuelle Sitzung kann nicht in der Zukunft liegen",
-    "errOverlap": "Der Zeitraum überschneidet sich mit einer anderen Fokus-Sitzung",
+    "overlapWarnTitle": "Überschneidende Sitzung",
+    "overlapWarnMessage": "Diese Sitzung überschneidet sich mit einer vorhandenen. Trotzdem hinzufügen?",
+    "overlapProceed": "Trotzdem hinzufügen",
     "failedSavePhoto": "Foto konnte nicht gespeichert werden",
     "permissionTitle": "Berechtigung erforderlich",
     "permissionBodyCamera": "Erlaube den Zugriff auf deine Kamera in den Einstellungen, um Fotos hinzuzufügen.",
@@ -785,6 +787,9 @@
     "stationary": "lesen,les,lern,studi,schreib,code,programmier,arbeit,fokus,meditier,zeichn,design,mal,tagebuch,hausaufgab,prüfung,prufung,examen,recherch,plan,mail,email,schreibtisch,büro,buro,kurs,vorlesung,buch,aufsatz,these,mathe,wiederhol,notiz"
   },
   "unlock": {
+    "trendTitle": "Freischaltzeit-Verlauf",
+    "today": "Heute",
+    "avgLabel": "Ø {{minutes}} Min.",
     "insufficientTitle": "Nicht genug Früchte",
     "insufficientBody": "Du brauchst {{cost}} 🍎, um {{minutes}} Min. freizuschalten, hast aber nur {{balance}} 🍎.",
     "expiredTitle": "Freischaltung abgelaufen",

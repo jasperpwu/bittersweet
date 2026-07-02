@@ -196,7 +196,7 @@ export class SyncService {
     const coachReports = rowsToNormalized(coachRes.data ?? [], rowToCoachReport);
     const rewards = rewardsRes.data
       ? rowToRewards(rewardsRes.data)
-      : { balance: 0, totalEarned: 0, totalSpent: 0, tasks: defaultSetupTasks() };
+      : { balance: 0, totalEarned: 0, totalSpent: 0, tasks: defaultSetupTasks(), unlockHistory: {} };
     const settings = settingsRes.data
       ? rowToSettings(settingsRes.data)
       : null;
@@ -288,8 +288,8 @@ export class SyncService {
         ...(
           new Date(local.rewards?.updatedAt ?? 0).getTime() >=
           new Date(remote.rewards?.updatedAt ?? 0).getTime()
-            ? { balance: local.rewards.balance, totalEarned: local.rewards.totalEarned, totalSpent: local.rewards.totalSpent, updatedAt: local.rewards.updatedAt }
-            : { balance: remote.rewards.balance, totalEarned: remote.rewards.totalEarned, totalSpent: remote.rewards.totalSpent, updatedAt: remote.rewards.updatedAt }
+            ? { balance: local.rewards.balance, totalEarned: local.rewards.totalEarned, totalSpent: local.rewards.totalSpent, unlockHistory: local.rewards.unlockHistory ?? {}, updatedAt: local.rewards.updatedAt }
+            : { balance: remote.rewards.balance, totalEarned: remote.rewards.totalEarned, totalSpent: remote.rewards.totalSpent, unlockHistory: remote.rewards.unlockHistory ?? {}, updatedAt: remote.rewards.updatedAt }
         ),
         // Setup tasks are monotonic — OR-merge so a claim/setup on either side is never
         // lost to LWW (e.g. local just detected widget setup while remote already claimed).

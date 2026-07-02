@@ -250,7 +250,9 @@
     "errSelectTag": "Choisissez une étiquette",
     "errStartBeforeEnd": "L'heure de début doit précéder l'heure de fin",
     "errFuture": "Impossible de créer une session manuelle dans le futur",
-    "errOverlap": "Le créneau chevauche une autre session de concentration",
+    "overlapWarnTitle": "Session qui se chevauche",
+    "overlapWarnMessage": "Cette session en chevauche une autre déjà enregistrée. L'ajouter quand même ?",
+    "overlapProceed": "Ajouter quand même",
     "failedSavePhoto": "Échec de l'enregistrement de la photo",
     "permissionTitle": "Autorisation requise",
     "permissionBodyCamera": "Autorisez l'accès à votre appareil photo dans Réglages pour ajouter des photos.",
@@ -785,6 +787,9 @@
     "stationary": "lire,lect,étud,etud,écri,ecri,rédig,redig,code,cod,program,travail,travaill,concentr,médit,medit,dessin,design,peind,peintur,journal,devoir,examen,apprend,recherch,plan,courriel,email,mail,bureau,cours,livre,dissert,thèse,these,math,révis,revis,note"
   },
   "unlock": {
+    "trendTitle": "Tendance de déblocage",
+    "today": "Aujourd'hui",
+    "avgLabel": "Moy. {{minutes}} min",
     "insufficientTitle": "Fruits insuffisants",
     "insufficientBody": "Il vous faut {{cost}} 🍎 pour débloquer {{minutes}} min, mais vous n'avez que {{balance}} 🍎.",
     "expiredTitle": "Déblocage terminé",

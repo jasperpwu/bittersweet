@@ -250,7 +250,9 @@
     "errSelectTag": "Escolha uma tag",
     "errStartBeforeEnd": "A hora de início deve ser anterior à de término",
     "errFuture": "Não é possível criar uma sessão manual no futuro",
-    "errOverlap": "O horário se sobrepõe a outra sessão de foco",
+    "overlapWarnTitle": "Sessão sobreposta",
+    "overlapWarnMessage": "Esta sessão se sobrepõe a uma já existente. Adicionar mesmo assim?",
+    "overlapProceed": "Adicionar mesmo assim",
     "failedSavePhoto": "Não foi possível salvar a foto",
     "permissionTitle": "Permissão necessária",
     "permissionBodyCamera": "Permita o acesso à sua câmera em Ajustes para adicionar fotos.",
@@ -785,6 +787,9 @@
     "stationary": "ler,leitur,estud,escrev,código,codigo,program,trabalh,foco,medit,desenh,design,pint,diário,diario,dever,tarefa,prova,exame,aprend,pesquis,plan,email,e-mail,escritório,escritorio,aula,livro,redaç,redac,tese,matemát,matemat,revis,anot,nota"
   },
   "unlock": {
+    "trendTitle": "Tendência de desbloqueio",
+    "today": "Hoje",
+    "avgLabel": "Méd. {{minutes}} min",
     "insufficientTitle": "Frutos insuficientes",
     "insufficientBody": "Você precisa de {{cost}} 🍎 para desbloquear por {{minutes}} min, mas só tem {{balance}} 🍎.",
     "expiredTitle": "Desbloqueio encerrado",

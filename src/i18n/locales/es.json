@@ -250,7 +250,9 @@
     "errSelectTag": "Elige una etiqueta",
     "errStartBeforeEnd": "La hora de inicio debe ser anterior a la de fin",
     "errFuture": "No puedes crear una sesión manual para una hora futura",
-    "errOverlap": "El horario se solapa con otra sesión de concentración",
+    "overlapWarnTitle": "Sesión superpuesta",
+    "overlapWarnMessage": "Esta sesión se solapa con otra ya existente. ¿Añadirla de todos modos?",
+    "overlapProceed": "Añadir de todos modos",
     "failedSavePhoto": "No se pudo guardar la foto",
     "permissionTitle": "Permiso necesario",
     "permissionBodyCamera": "Permite el acceso a tu cámara en Ajustes para añadir fotos.",
@@ -785,6 +787,9 @@
     "stationary": "leer,ley,estudi,escrib,código,codigo,program,trabaj,concentr,medita,dibuj,diseñ,disen,pint,diario,deber,tarea,examen,aprend,investig,plan,correo,email,escritorio,oficina,clase,libro,ensayo,tesis,mate,repas,apunt,nota"
   },
   "unlock": {
+    "trendTitle": "Tendencia de desbloqueo",
+    "today": "Hoy",
+    "avgLabel": "Prom. {{minutes}} min",
     "insufficientTitle": "Fruta insuficiente",
     "insufficientBody": "Necesitas {{cost}} 🍎 para desbloquear {{minutes}} min, pero solo tienes {{balance}} 🍎.",
     "expiredTitle": "Desbloqueo finalizado",

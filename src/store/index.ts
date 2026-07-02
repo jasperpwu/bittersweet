@@ -277,6 +277,10 @@ interface AppStore {
     updatedAt: string | null;
     unlockableApps: any[];
     accelerateCard: { activatedAt: string; expiresAt: string } | null;
+    // Daily unlock-minutes history (YYYY-MM-DD -> total minutes actually used that day).
+    // Lives on rewards (not blocklist) so it rides the rewards row's cloud sync and
+    // survives reinstalls. Feeds the unlock time trend chart in the unlock modal.
+    unlockHistory: Record<string, number>;
     // One-time setup tasks (set up widget / set a goal), each worth SETUP_TASK_REWARD fruits.
     tasks: SetupTasks;
     earnFruits: (amount: number, source: string, metadata?: any) => void;
@@ -2173,6 +2177,7 @@ export const useAppStore = create<AppStore>()(
           updatedAt: null as string | null,
           unlockableApps: [],
           accelerateCard: null,
+          unlockHistory: {},
           tasks: defaultSetupTasks(),
           earnFruits: (amount, source, metadata) => {
             set((state) => ({
@@ -2692,8 +2697,27 @@ export const useAppStore = create<AppStore>()(
                 status: 'completed',
               };
 
+              // Record today's unlocked minutes for the trend chart, pruning to
+              // the most recent 30 days so the history can't grow unbounded. Stored on
+              // the rewards slice so it rides the rewards row's cloud sync (survives
+              // reinstalls). The spendFruits call below bumps rewards.updatedAt, which
+              // is what enqueues this row for sync.
+              const todayKey = startTime.toLocaleDateString('en-CA'); // YYYY-MM-DD (local)
+              const prunedHistory: Record<string, number> = {};
+              const cutoff = new Date(startTime);
+              cutoff.setDate(cutoff.getDate() - 30);
+              const cutoffKey = cutoff.toLocaleDateString('en-CA');
+              Object.entries(rewards.unlockHistory ?? {}).forEach(([key, mins]) => {
+                if (key >= cutoffKey) prunedHistory[key] = mins;
+              });
+              prunedHistory[todayKey] = (prunedHistory[todayKey] ?? 0) + duration;
+
               // Update state
               set((state) => ({
+                rewards: {
+                  ...state.rewards,
+                  unlockHistory: prunedHistory,
+                },
                 blocklist: {
                   ...state.blocklist,
                   lastUnlockDuration: duration,
@@ -2754,15 +2778,6 @@ export const useAppStore = create<AppStore>()(
                 session.cost,
                 remainingMinutes * get().blocklist.settings.unlockCostPerMinute
               );
-              if (refundAmount > 0) {
-                get().rewards.earnFruits(refundAmount, 'unlock_refund', {
-                  sessionId,
-                  refundedMinutes: remainingMinutes,
-                });
-                console.log(
-                  `🍎 Refunded ${refundAmount} fruits for ${remainingMinutes} unused unlock minute(s)`
-                );
-              }
 
               // Stop Live Activity if it exists
               if (session.liveActivityId) {
@@ -2783,7 +2798,28 @@ export const useAppStore = create<AppStore>()(
               // into a later session. Mirrors the focus-session stop path.
               WidgetService.syncScheduledNotificationId(null);
 
+              // Subtract the unused minutes from the trend chart bucket for the day
+              // this unlock was purchased (keyed by startTime, matching requestUnlock),
+              // so the chart reflects minutes actually used, not just purchased.
+              const startTimeMs =
+                session.startTime instanceof Date
+                  ? session.startTime
+                  : new Date(session.startTime);
+              const dayKey = startTimeMs.toLocaleDateString('en-CA');
+              const currentHistory = get().rewards.unlockHistory ?? {};
+              const adjustedHistory = { ...currentHistory };
+              if (remainingMinutes > 0 && adjustedHistory[dayKey] !== undefined) {
+                adjustedHistory[dayKey] = Math.max(
+                  0,
+                  adjustedHistory[dayKey] - remainingMinutes
+                );
+              }
+
               set((state) => ({
+                rewards: {
+                  ...state.rewards,
+                  unlockHistory: adjustedHistory,
+                },
                 blocklist: {
                   ...state.blocklist,
                   activeSessions: {
@@ -2800,6 +2836,21 @@ export const useAppStore = create<AppStore>()(
                   },
                 },
               }));
+
+              // Refund unused minutes AFTER writing unlockHistory above, so earnFruits
+              // (which bumps rewards.updatedAt and is the mutation the sync middleware
+              // keys off) captures the already-adjusted history in its state snapshot.
+              // Order matters: if we refunded first, the middleware would push the
+              // stale pre-refund history until the next rewards change.
+              if (refundAmount > 0) {
+                get().rewards.earnFruits(refundAmount, 'unlock_refund', {
+                  sessionId,
+                  refundedMinutes: remainingMinutes,
+                });
+                console.log(
+                  `🍎 Refunded ${refundAmount} fruits for ${remainingMinutes} unused unlock minute(s)`
+                );
+              }
 
               // Note: Re-blocking is now handled automatically by DeviceActivity schedule
 
@@ -3197,6 +3248,7 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
       updatedAt: null,
       unlockableApps: [],
       accelerateCard: null,
+      unlockHistory: {},
       tasks: defaultSetupTasks(),
     },
     blocklist: {

@@ -299,6 +299,7 @@ export function rewardsToRow(rewards: any, userId: string): Record<string, any> 
     total_earned: rewards.totalEarned,
     total_spent: rewards.totalSpent,
     tasks: normalizeSetupTasks(rewards.tasks),
+    unlock_history: rewards.unlockHistory ?? {},
     updated_at: rewards.updatedAt ?? new Date().toISOString(),
   };
 }
@@ -309,6 +310,10 @@ export function rowToRewards(row: Record<string, any>): any {
     totalEarned: row.total_earned ?? 0,
     totalSpent: row.total_spent ?? 0,
     tasks: normalizeSetupTasks(row.tasks),
+    unlockHistory:
+      row.unlock_history && typeof row.unlock_history === 'object'
+        ? row.unlock_history
+        : {},
     updatedAt: row.updated_at ?? null,
   };
 }
