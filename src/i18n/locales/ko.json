@@ -372,6 +372,7 @@
     "failedRemove": "멤버를 제거하지 못했어요"
   },
   "goalProgress": {
+    "start": "시작",
     "badge": "배지",
     "pause": "일시정지",
     "notActivated": "비활성",

@@ -372,6 +372,7 @@
     "failedRemove": "No se pudo quitar al miembro"
   },
   "goalProgress": {
+    "start": "Iniciar",
     "badge": "Insignia",
     "pause": "Pausar",
     "notActivated": "No activadas",

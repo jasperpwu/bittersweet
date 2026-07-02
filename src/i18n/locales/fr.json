@@ -372,6 +372,7 @@
     "failedRemove": "Échec du retrait du membre"
   },
   "goalProgress": {
+    "start": "Démarrer",
     "badge": "Badge",
     "pause": "Mettre en pause",
     "notActivated": "Non activés",

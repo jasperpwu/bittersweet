@@ -372,6 +372,7 @@
     "failedRemove": "Failed to remove member"
   },
   "goalProgress": {
+    "start": "Start",
     "badge": "Badge",
     "pause": "Pause",
     "notActivated": "Not Activated",

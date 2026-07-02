@@ -372,6 +372,7 @@
     "failedRemove": "Não foi possível remover o membro"
   },
   "goalProgress": {
+    "start": "Iniciar",
     "badge": "Medalha",
     "pause": "Pausar",
     "notActivated": "Não ativadas",

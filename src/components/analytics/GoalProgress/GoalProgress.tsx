@@ -1,11 +1,14 @@
 import React, { FC, useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useIsFocused } from '@react-navigation/native';
+import { router } from 'expo-router';
 import { View, Pressable, Share, Platform, useColorScheme } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
+  interpolate,
+  Extrapolation,
   withSpring,
   withTiming,
   withDelay,
@@ -13,6 +16,7 @@ import Reanimated, {
   withRepeat,
   Easing,
   runOnJS,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -87,6 +91,7 @@ type DraggableGoalRowProps = {
   onEdit?: (goalId: string) => void;
   onDelete?: (goalId: string) => void;
   onConclude?: (goalId: string) => void;
+  onStartSession?: (goal: ProcessedGoal) => void;
   onSwipeOpen?: (ref: any) => void;
   onDragStart: (index: number) => void;
   onDragMove: (translationY: number) => void;
@@ -96,7 +101,7 @@ type DraggableGoalRowProps = {
 
 function DraggableGoalRow({
   goal, index, tags, isDragging, dragOriginalIndex, dragTargetIndex,
-  onPress, onEdit, onDelete, onConclude, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
+  onPress, onEdit, onDelete, onConclude, onStartSession, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
   shouldNudge,
 }: DraggableGoalRowProps) {
   const { t } = useTranslation();
@@ -110,6 +115,7 @@ function DraggableGoalRow({
   const nudgeX = useSharedValue(0);
   const swipeableRef = useRef<any>(null);
   const didSwipe = useRef(false);
+  const firedRef = useRef(false);
 
   // Swipe hint: nudge left briefly on first-ever mount, staggered per row
   React.useEffect(() => {
@@ -185,14 +191,16 @@ function DraggableGoalRow({
     zIndex: zIndex.value,
   }));
 
-  const renderRightActions = () => (
-    <View className="flex-row items-center ml-2">
+  // Swipe left→right reveals the management actions (moved here from the right so
+  // the right edge is free for the start-session gesture).
+  const renderLeftActions = () => (
+    <View className="flex-row items-center mr-2">
       <Pressable
         onPress={() => {
           swipeableRef.current?.close();
           onEdit?.(goal.id);
         }}
-        className="bg-primary rounded-lg w-16 h-full items-center justify-center mr-2"
+        className="bg-primary rounded-lg w-16 h-full items-center justify-center ml-2"
       >
         <Typography variant="body-14" color="white">
           {t('common.edit')}
@@ -203,7 +211,7 @@ function DraggableGoalRow({
           swipeableRef.current?.close();
           onConclude?.(goal.id);
         }}
-        className="rounded-lg w-16 h-full items-center justify-center mr-2"
+        className="rounded-lg w-16 h-full items-center justify-center ml-2"
         style={{ backgroundColor: '#F59E0B' }}
       >
         <Typography variant="body-14" color="white">
@@ -215,7 +223,7 @@ function DraggableGoalRow({
           swipeableRef.current?.close();
           onDelete?.(goal.id);
         }}
-        className="bg-red-500 rounded-lg w-16 h-full items-center justify-center"
+        className="bg-red-500 rounded-lg w-16 h-full items-center justify-center ml-2"
       >
         <Typography variant="body-14" color="white">
           {t('goalProgress.pause')}
@@ -223,6 +231,30 @@ function DraggableGoalRow({
       </Pressable>
     </View>
   );
+
+  // Swipe right→left reveals the Start panel; dragging past the threshold commits
+  // (iOS-Mail-style full swipe) and starts a focus session for the goal's tag,
+  // pre-filled with the goal's remaining minutes.
+  const renderRightActions = (progress: SharedValue<number>) => (
+    <GoalStartAction progress={progress} />
+  );
+
+  // Full-swipe commit. ReanimatedSwipeable reports `direction` by the row's
+  // translation sign: a left→right pull (management buttons) reports 'right'; a
+  // right→left pull (Start panel) reports 'left'. Only the Start side commits on
+  // full swipe — the buttons just stay revealed for tapping.
+  const handleWillOpen = (direction: 'left' | 'right') => {
+    didSwipe.current = true;
+    onSwipeOpen?.(swipeableRef.current);
+    if (direction !== 'left') return;
+    if (firedRef.current) return;
+    firedRef.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Leave the row OPEN — the revealed Start panel is the "it worked" confirmation.
+    // Closing/resetting it here reads as a snap-back right before the tab switch,
+    // which feels like the swipe failed. The parent closes it off-screen on blur.
+    onStartSession?.(goal);
+  };
 
   const pressScale = useSharedValue(1);
 
@@ -263,13 +295,13 @@ function DraggableGoalRow({
       >
         <Swipeable
           ref={swipeableRef}
+          renderLeftActions={renderLeftActions}
           renderRightActions={renderRightActions}
-          overshootRight={false}
-          onSwipeableWillOpen={() => {
-            didSwipe.current = true;
-            onSwipeOpen?.(swipeableRef.current);
-          }}
+          rightThreshold={START_ACTION_THRESHOLD}
+          overshootFriction={8}
+          onSwipeableWillOpen={handleWillOpen}
           onSwipeableClose={() => {
+            firedRef.current = false;
             setTimeout(() => { didSwipe.current = false; }, 100);
           }}
         >
@@ -288,6 +320,41 @@ function DraggableGoalRow({
     </GestureDetector>
   );
 }
+
+// ---------- Start-Session Swipe Action ----------
+
+// Drag past this distance (px) and the Start commits on release. Kept low so a
+// short, relaxed swipe triggers it — a faster flick commits even sooner via the
+// swipe velocity that ReanimatedSwipeable factors into the release position.
+const START_ACTION_THRESHOLD = 44;
+
+// Right-side swipe panel for a goal row — mirrors the TodoSheet's ActionPanel so
+// the reveal stays buttery: the colored panel fills the swiped gap via flexbox
+// (no per-frame width animation), and only the icon fades + scales in with the
+// swipe `progress`. The actual start is committed by the row's full-swipe handler.
+const GoalStartAction: FC<{ progress: SharedValue<number> }> = ({ progress }) => {
+  const { t } = useTranslation();
+  const iconStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.5, 1], [0, 0.6, 1], Extrapolation.CLAMP),
+    transform: [
+      { scale: interpolate(progress.value, [0, 1], [0.7, 1], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  return (
+    <View
+      className="flex-1 ml-2 rounded-lg justify-center items-end"
+      style={{ backgroundColor: COMPLETED_FILL, paddingHorizontal: 22 }}
+    >
+      <Reanimated.View style={iconStyle} className="items-center">
+        <Ionicons name="play" size={22} color="#FFFFFF" />
+        <Typography variant="tiny-10" color="white">
+          {t('goalProgress.start')}
+        </Typography>
+      </Reanimated.View>
+    </View>
+  );
+};
 
 // ---------- GoalProgress ----------
 
@@ -329,8 +396,20 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   // Track open swipeable refs to close others
   const openSwipeableRef = useRef<any>(null);
 
+  // A committed Start swipe intentionally leaves its row open (Start panel showing)
+  // as it navigates away — closing it there would read as a snap-back. Close it here
+  // once the screen loses focus, so it's reset off-screen (close() also fires
+  // onSwipeableClose, which clears the row's fired-guard for next time).
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused && openSwipeableRef.current) {
+      openSwipeableRef.current.close?.();
+      openSwipeableRef.current = null;
+    }
+  }, [isFocused]);
+
   // Get tags and sessions from store for real data
-  const { tags, sessions } = useFocus();
+  const { tags, sessions, lastDurationByTagId } = useFocus();
   const restDays = preferences.restDays ?? [0, 6];
   const weekStartDay = 1; // Always Monday
 
@@ -376,6 +455,29 @@ export const GoalProgress: FC<GoalProgressProps> = ({
       setExpandedGoalId(prev => prev === goal.id ? null : goal.id);
     }
   }, []);
+
+  // Start a focus session for the goal's tag, pre-filled with the goal's remaining
+  // minutes. Reuses the home tab's autostart path (same as the Journal TODO swipe).
+  const handleStartSession = useCallback((goal: ProcessedGoal) => {
+    const tagId = (goal as any).tagId;
+    if (!tagId) return;
+    const target = goal._effectiveTarget ?? getGoalCurrentTarget(goal);
+    const remaining = Math.round(target - goal.currentProgress);
+    // Goal already met (or no target) → fall back to the tag's last-used duration.
+    const duration = remaining >= 1 ? remaining : (lastDurationByTagId?.[tagId] ?? 15);
+    // navigate() switches to the already-mounted focus tab instantly. push() would
+    // add a new stack entry and run a full push transition + re-render of the heavy
+    // focus screen, which is the ~1s "lingers on insights" delay before the jump.
+    router.navigate({
+      pathname: '/(tabs)',
+      params: {
+        startTagId: tagId,
+        startDuration: String(duration),
+        autostart: '1',
+        ts: String(Date.now()),
+      },
+    });
+  }, [lastDurationByTagId]);
 
   const handleSwipeOpen = useCallback((ref: any) => {
     if (openSwipeableRef.current && openSwipeableRef.current !== ref) {
@@ -451,6 +553,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
                     onEdit={onEditGoal}
                     onDelete={onDeleteGoal}
                     onConclude={onConcludeGoal}
+                    onStartSession={handleStartSession}
                     onSwipeOpen={handleSwipeOpen}
                     onDragStart={handleDragStart}
                     onDragMove={handleDragMove}

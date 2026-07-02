@@ -304,7 +304,10 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
       const duration =
         todo.durationMinutes ?? lastDurationByTagId?.[todo.tagId] ?? FALLBACK_DURATION;
       collapse();
-      router.push({
+      // navigate() switches to the already-mounted focus tab in place; push() adds a
+      // stack entry and runs a full push transition + re-render of the heavy focus
+      // screen, which is the lag before the jump.
+      router.navigate({
         pathname: '/(tabs)',
         params: {
           startTagId: todo.tagId,

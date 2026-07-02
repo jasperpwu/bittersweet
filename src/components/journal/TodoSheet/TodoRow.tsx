@@ -1,4 +1,5 @@
-import React, { FC, useRef } from 'react';
+import React, { FC, useRef, useEffect } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -31,8 +32,11 @@ interface TodoRowProps {
   schedule?: TodoScheduleController;
 }
 
-// Past this drag distance the action commits on release (iOS-Mail style).
+// Past this drag distance the action commits on release (iOS-Mail style). Delete
+// stays higher so it takes a deliberate pull; Start is kept low so a short, relaxed
+// swipe launches it (a faster flick commits even sooner via swipe velocity).
 const ACTION_THRESHOLD = 96;
+const START_ACTION_THRESHOLD = 44;
 
 // The colored action panel that sits behind the row. Its icon scales + fades in
 // with swipe progress, and it aligns to the edge the row is being pulled from.
@@ -114,6 +118,17 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
   const didSwipe = useRef(false);
   const firedRef = useRef(false);
 
+  // A committed Start swipe leaves its row open (Start panel showing) as it navigates
+  // to the focus tab — closing it there reads as a snap-back that feels like the swipe
+  // failed. Close it off-screen once the journal tab loses focus (close() also fires
+  // onSwipeableClose, which clears firedRef for next time).
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused && firedRef.current) {
+      swipeableRef.current?.close();
+    }
+  }, [isFocused]);
+
   // Long-press picks the row up and drags it onto the calendar to schedule it.
   // A quick horizontal flick still triggers the swipe actions below, because
   // the drag only activates after a stationary long press.
@@ -175,10 +190,11 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       onDelete(todo);
     } else {
-      // swiped left → right-side panel (Start) revealed
+      // swiped left → right-side panel (Start) revealed. Leave the row OPEN — the
+      // revealed Start panel is the "it worked" confirmation; it's reset off-screen
+      // on blur (see effect above). Closing here would read as a snap-back.
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       onStart(todo);
-      swipeableRef.current?.close();
     }
   };
 
@@ -197,7 +213,7 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
       renderRightActions={renderRightActions}
       renderLeftActions={renderLeftActions}
       leftThreshold={ACTION_THRESHOLD}
-      rightThreshold={ACTION_THRESHOLD}
+      rightThreshold={START_ACTION_THRESHOLD}
       overshootFriction={8}
       onSwipeableWillOpen={handleWillOpen}
       onSwipeableClose={() => {

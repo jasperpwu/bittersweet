@@ -372,6 +372,7 @@
     "failedRemove": "メンバーを削除できませんでした"
   },
   "goalProgress": {
+    "start": "開始",
     "badge": "バッジ",
     "pause": "一時停止",
     "notActivated": "未アクティブ",

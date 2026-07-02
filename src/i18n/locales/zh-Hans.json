@@ -372,6 +372,7 @@
     "failedRemove": "无法移除成员"
   },
   "goalProgress": {
+    "start": "开始",
     "badge": "徽章",
     "pause": "暂停",
     "notActivated": "未激活",
