@@ -13,6 +13,10 @@ interface FriendActivityCardProps {
   isNew?: boolean;
 }
 
+// All cards share this height so a photo doesn't make one card taller than the
+// rest (which would push the page indicator / next section down in the carousel).
+export const ACTIVITY_CARD_HEIGHT = 300;
+
 function timeAgo(dateString: string): string {
   const now = new Date();
   const date = new Date(dateString);
@@ -41,8 +45,14 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
 }) => {
   const { profile, session, reactionCount, hasReacted } = item;
 
+  const tagIcon = session.session_tags?.icon ?? '🎯';
+  const tagName = session.session_tags?.name ?? 'Focus';
+
   return (
-    <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 w-[280px]">
+    <View
+      className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 w-[280px]"
+      style={{ height: ACTIVITY_CARD_HEIGHT }}
+    >
       {/* Header: avatar + name + time */}
       <View className="flex-row items-center mb-3">
         <View style={{ position: 'relative', marginRight: 10 }}>
@@ -75,41 +85,57 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
         </View>
       </View>
 
-      {/* Session info: tag icon + name + duration */}
-      <View className="flex-row items-center mb-2">
-        <Typography variant="body-14" color="primary" className="mr-1.5">
-          {session.session_tags?.icon ?? '🎯'}
-        </Typography>
-        <Typography variant="subtitle-14-medium" color="primary" className="flex-1" numberOfLines={1}>
-          {session.session_tags?.name ?? 'Focus'}
-        </Typography>
-        <Typography variant="subtitle-14-medium" color="primary">
-          {formatDuration(session.duration)}
-        </Typography>
+      {/* Content zone — flex-1 so every card is the same height whether or not
+          it has a photo. */}
+      <View className="flex-1">
+        {session.photo_url ? (
+          <>
+            {/* Session info: tag icon + name + duration */}
+            <View className="flex-row items-center mb-2">
+              <Typography variant="body-14" color="primary" className="mr-1.5">
+                {tagIcon}
+              </Typography>
+              <Typography variant="subtitle-14-medium" color="primary" className="flex-1" numberOfLines={1}>
+                {tagName}
+              </Typography>
+              <Typography variant="subtitle-14-medium" color="primary">
+                {formatDuration(session.duration)}
+              </Typography>
+            </View>
+            <Image
+              source={{ uri: session.photo_url }}
+              style={{ width: '100%', flex: 1, borderRadius: 10 }}
+              resizeMode="cover"
+            />
+            {session.notes && (
+              <Typography variant="body-12" color="secondary" className="mt-2" numberOfLines={1}>
+                {session.notes}
+              </Typography>
+            )}
+          </>
+        ) : (
+          /* No photo — center the tag emoji + name (and duration) in the middle */
+          <View className="flex-1 items-center justify-center">
+            <Typography variant="body-14" color="primary" style={{ fontSize: 44, lineHeight: 52 }}>
+              {tagIcon}
+            </Typography>
+            <Typography variant="subtitle-14-medium" color="primary" className="mt-2" numberOfLines={1}>
+              {tagName}
+            </Typography>
+            <Typography variant="body-12" color="secondary" className="mt-0.5">
+              {formatDuration(session.duration)}
+            </Typography>
+            {session.notes && (
+              <Typography variant="body-12" color="secondary" className="mt-1.5 text-center" numberOfLines={2}>
+                {session.notes}
+              </Typography>
+            )}
+          </View>
+        )}
       </View>
 
-      {/* Photo (if any) */}
-      {session.photo_url && (
-        <View className="mb-2">
-          <Image
-            source={{ uri: session.photo_url }}
-            style={{ width: '100%', height: 150, borderRadius: 10 }}
-            resizeMode="cover"
-          />
-        </View>
-      )}
-
-      {/* Notes (if any) */}
-      {session.notes && (
-        <View className="mb-2">
-          <Typography variant="body-12" color="secondary" numberOfLines={2}>
-            {session.notes}
-          </Typography>
-        </View>
-      )}
-
       {/* Reaction button */}
-      <View className="flex-row justify-end mt-1">
+      <View className="flex-row justify-end mt-2">
         <ReactionButton
           hasReacted={hasReacted}
           reactionCount={reactionCount}

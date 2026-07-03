@@ -186,9 +186,43 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
       true,
     );
 
-    // Pop confetti as the bar lands, only if the goal was just reached.
+    // Light "ratcheting" ticks that ride the bar as it fills (200 → ~1000ms), so
+    // the progress is felt as well as seen. Tick count scales with how far the
+    // bar actually travels — a tiny increment gets one soft tick, a big jump gets
+    // a satisfying run of them — spaced evenly across the fill window.
+    const FILL_START = 200;
+    const FILL_END = 1000;
+    const fillTimers: ReturnType<typeof setTimeout>[] = [];
+    const delta = Math.max(0, computed.afterPct - computed.beforePct);
+    if (delta > 0.5) {
+      const tickCount = Math.min(8, Math.max(1, Math.round(delta / 12)));
+      for (let i = 1; i <= tickCount; i++) {
+        const at = FILL_START + ((FILL_END - FILL_START) * i) / tickCount;
+        fillTimers.push(
+          setTimeout(() => {
+            Haptics.selectionAsync().catch(() => {});
+          }, at),
+        );
+      }
+    }
+
+    // Landing tap as the bar settles — only for a plain progress update; a
+    // reached goal instead gets the heavier confetti "pop" below.
+    if (!computed.reachedNow) {
+      fillTimers.push(
+        setTimeout(() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        }, FILL_END),
+      );
+    }
+
+    // Pop confetti as the bar lands, only if the goal was just reached — with a
+    // heavy "boom" tap to punctuate the burst.
     const celebrateTimer = computed.reachedNow
-      ? setTimeout(() => setCelebrate(true), 900)
+      ? setTimeout(() => {
+          setCelebrate(true);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+        }, 900)
       : undefined;
 
     // Streak reveal: the count fades in showing the *previous* streak, a short
@@ -246,6 +280,7 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
       if (celebrateTimer) clearTimeout(celebrateTimer);
       clearTimeout(fadeTimer);
       streakTimers.forEach(clearTimeout);
+      fillTimers.forEach(clearTimeout);
     };
     // Runs once — `computed` is stable for a given session/goal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
