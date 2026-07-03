@@ -6,6 +6,7 @@ import {
   Animated,
   Easing,
   Modal,
+  Image,
   Text,
   TextInput,
   ScrollView,
@@ -912,6 +913,8 @@ export default function FocusScreen() {
   // Blocklist tip modal
   const [showBlocklistTip, setShowBlocklistTip] = useState(false);
   const [showEditCostModal, setShowEditCostModal] = useState(false);
+  // Pre-permission guide shown the very first time (before the system Screen Time prompt)
+  const [showScreenTimeGuide, setShowScreenTimeGuide] = useState(false);
   const blocklistTipAcknowledgedRef = useRef<boolean | null>(null);
 
   // Session + timer state
@@ -985,21 +988,36 @@ export default function FocusScreen() {
     : null;
   const isUnlockActive = !!activeUnlockSession && !isSessionActive;
 
+  // Trigger the native Screen Time permission prompt, then open the picker.
+  const requestAuthAndOpenPicker = async () => {
+    const granted = await requestAuthorization();
+    if (granted) {
+      await checkAuthorizationStatus();
+      router.push('/(modals)/app-selection');
+    } else {
+      Alert.alert(t('home.authRequiredTitle'), t('home.authRequiredBody'), [
+        { text: t('common.ok') },
+      ]);
+    }
+  };
+
   const proceedToBlockList = async () => {
     const authorized = await checkAuthorizationStatus();
-    if (!authorized) {
-      const granted = await requestAuthorization();
-      if (granted) {
-        await checkAuthorizationStatus();
-        router.push('/(modals)/app-selection');
-      } else {
-        Alert.alert(t('home.authRequiredTitle'), t('home.authRequiredBody'), [
-          { text: t('common.ok') },
-        ]);
-      }
-    } else {
+    if (authorized) {
       router.push('/(modals)/app-selection');
+      return;
     }
+
+    // Permission not yet granted. If it has never been asked (notDetermined),
+    // the native "Access Screen Time" prompt is about to appear — show a guide
+    // first so the user knows to tap "Continue" (not "Don't Allow").
+    const status = useAppStore.getState().blocklist.authorizationStatus;
+    if (status === 0) {
+      setShowScreenTimeGuide(true);
+      return;
+    }
+
+    await requestAuthAndOpenPicker();
   };
 
   const handleBlockList = async () => {
@@ -2925,6 +2943,105 @@ export default function FocusScreen() {
                   }}>
                   <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
                     {t('home.understood')}
+                  </Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Screen Time Permission Guide (shown before the native prompt) */}
+        <Modal
+          visible={showScreenTimeGuide}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowScreenTimeGuide(false)}>
+          <Pressable
+            className="flex-1 items-center justify-center bg-black/50 px-6"
+            onPress={() => setShowScreenTimeGuide(false)}>
+            <Pressable
+              onPress={() => {}}
+              className="w-full max-w-sm overflow-hidden rounded-2xl bg-light-bg p-6 dark:bg-dark-bg">
+              <Text
+                style={{
+                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  fontSize: 17,
+                  fontWeight: '600',
+                  marginBottom: 8,
+                }}>
+                {t('home.screenTimeGuideTitle')}
+              </Text>
+              <Text
+                style={{
+                  color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355',
+                  fontSize: 14,
+                  lineHeight: 20,
+                  marginBottom: 16,
+                }}>
+                {t('home.screenTimeGuideBody')}
+              </Text>
+
+              {/* Screenshot of the native prompt with a callout pointing at Continue */}
+              <Image
+                source={
+                  colorScheme === 'dark'
+                    ? require('../../assets/screen-time-request-dark.jpg')
+                    : require('../../assets/screen-time-request.jpg')
+                }
+                style={{
+                  width: '100%',
+                  height: 200,
+                  borderRadius: 12,
+                }}
+                resizeMode="contain"
+              />
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  alignSelf: 'flex-start',
+                  marginLeft: '10%',
+                  marginTop: 4,
+                  marginBottom: 20,
+                }}>
+                <Ionicons name="arrow-up" size={18} color="#6592E9" />
+                <Text
+                  style={{
+                    color: '#6592E9',
+                    fontSize: 13,
+                    fontWeight: '600',
+                    marginLeft: 6,
+                  }}>
+                  {t('home.screenTimeGuideHint')}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+                <Pressable
+                  onPress={() => setShowScreenTimeGuide(false)}
+                  style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
+                  <Text
+                    style={{
+                      color: colorScheme === 'dark' ? '#888888' : '#8B7355',
+                      fontSize: 15,
+                      fontWeight: '500',
+                    }}>
+                    {t('common.cancel')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={async () => {
+                    setShowScreenTimeGuide(false);
+                    await requestAuthAndOpenPicker();
+                  }}
+                  style={{
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    backgroundColor: '#6592E9',
+                  }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
+                    {t('home.screenTimeGuideConfirm')}
                   </Text>
                 </Pressable>
               </View>
