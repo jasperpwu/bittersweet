@@ -1,5 +1,5 @@
 import { FC, useMemo, useRef, useEffect, useState } from 'react';
-import { View, ScrollView, useColorScheme, ViewStyle } from 'react-native';
+import { View, ScrollView, Pressable, StyleSheet, useColorScheme, ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -20,6 +20,7 @@ import {
   SNAP_MINUTES,
   BLOCK_H_PADDING,
 } from './constants';
+import { computeOverlapColumns } from './overlapColumns';
 
 interface TimelineProps {
   sessions: FocusSession[];
@@ -28,7 +29,7 @@ interface TimelineProps {
   isToday?: boolean;
   onSessionPress: (sessionId: string) => void;
   onTodoPress?: (todo: Todo) => void;
-  onTodoReschedule?: (todoId: string, minutes: number) => void;
+  onTodoReschedule?: (todoId: string, minutes: number, durationMinutes?: number) => void;
   schedule?: TodoScheduleController;
   scrollToSessionId?: string | null;
   onScrollComplete?: () => void;
@@ -39,55 +40,6 @@ const BLOCK_GAP = 4;
 const DAY_END_MINUTES = (END_HOUR + 1) * 60;
 
 const AnimatedScrollView = Animated.ScrollView;
-
-/**
- * Calendar-style overlap layout. Sorted sessions are grouped into clusters of
- * transitively-overlapping events; within a cluster each event is greedily
- * placed into the first column whose previous event has already ended. Every
- * event in a cluster is sized to 1/numCols of the width so nothing overlaps.
- *
- * Returns a map of session id → { colIndex, numCols }.
- */
-const computeOverlapColumns = (sessions: FocusSession[]) => {
-  const layout = new Map<string, { colIndex: number; numCols: number }>();
-  let columns: FocusSession[][] = [];
-  let groupEnd = 0;
-
-  const flushGroup = () => {
-    const numCols = columns.length;
-    columns.forEach((col, colIndex) => {
-      col.forEach((ev) => layout.set(ev.id, { colIndex, numCols }));
-    });
-    columns = [];
-    groupEnd = 0;
-  };
-
-  for (const session of sessions) {
-    const start = session.startTime.getTime();
-    const end = session.endTime.getTime();
-
-    // A new event starting at/after the whole group's end closes the group.
-    if (columns.length > 0 && start >= groupEnd) {
-      flushGroup();
-    }
-
-    // Place into the first column whose last event has already ended.
-    let placed = false;
-    for (const col of columns) {
-      if (start >= col[col.length - 1].endTime.getTime()) {
-        col.push(session);
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) columns.push([session]);
-
-    groupEnd = Math.max(groupEnd, end);
-  }
-  flushGroup();
-
-  return layout;
-};
 
 const formatHour = (hour: number) => {
   const period = hour >= 12 ? 'PM' : 'AM';
@@ -135,6 +87,14 @@ export const Timeline: FC<TimelineProps> = ({
   const rootRef = useRef<View>(null);
   // Measured width of the timeline content area, used to size overlap columns.
   const [contentWidth, setContentWidth] = useState(0);
+  // Todo block armed for move/resize (long-pressed). Owned here so only one is
+  // editable at a time and scrolling pauses while its pan gestures are active.
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  useEffect(() => {
+    if (editingTodoId && !scheduledTodos.some((td) => td.id === editingTodoId)) {
+      setEditingTodoId(null);
+    }
+  }, [editingTodoId, scheduledTodos]);
   // Filter sessions for the visible time range and sort by start time
   const sortedSessions = useMemo(() => {
     return [...sessions]
@@ -143,7 +103,14 @@ export const Timeline: FC<TimelineProps> = ({
 
   // Side-by-side column assignment for overlapping sessions.
   const overlapLayout = useMemo(
-    () => computeOverlapColumns(sortedSessions),
+    () =>
+      computeOverlapColumns(
+        sortedSessions.map((s) => ({
+          id: s.id,
+          start: s.startTime.getTime(),
+          end: s.endTime.getTime(),
+        }))
+      ),
     [sortedSessions]
   );
 
@@ -165,6 +132,13 @@ export const Timeline: FC<TimelineProps> = ({
     if (schedule) schedule.tlScrollY.value = e.contentOffset.y;
   });
 
+  // A freshly mounted timeline starts at offset 0, but the shared value may
+  // still hold the previous view's offset (views swap when switching tabs).
+  useEffect(() => {
+    if (schedule) schedule.tlScrollY.value = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Report the scroll viewport's screen position + height so the sheet's drag
   // gesture can map a finger Y to a minute-of-day.
   const measureViewport = () => {
@@ -172,10 +146,12 @@ export const Timeline: FC<TimelineProps> = ({
     rootRef.current?.measureInWindow((x, y, w, h) => {
       schedule.tlPageY.value = y;
       schedule.tlHeight.value = h;
-      // Geometry of a dropped block: same left/width as the indicator + session
-      // blocks, so the drag ghost can preview the exact landing size.
-      schedule.tlSlotLeftX.value = x + TIME_COLUMN_WIDTH + BLOCK_H_PADDING;
-      schedule.tlSlotWidth.value = Math.max(0, w - TIME_COLUMN_WIDTH - BLOCK_H_PADDING * 2);
+      // Single full-width day column: the drag ghost + drop math derive a
+      // block's left/width from this the same way the 3-day view does.
+      schedule.tlDaysLeftX.value = x + TIME_COLUMN_WIDTH;
+      schedule.tlDayWidth.value = Math.max(0, w - TIME_COLUMN_WIDTH);
+      schedule.tlNumDays.value = 1;
+      schedule.tlSlotPad.value = BLOCK_H_PADDING;
     });
   };
 
@@ -241,8 +217,17 @@ export const Timeline: FC<TimelineProps> = ({
         contentContainerStyle={{ paddingBottom: 40 }}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        scrollEnabled={editingTodoId == null}
       >
         <View className="flex-row" style={{ minHeight: TOTAL_HOURS * HOUR_HEIGHT }}>
+          {/* While a block is armed, a tap on any empty area exits editing.
+              First child, so blocks (later siblings) win touches over it. */}
+          {editingTodoId != null && (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setEditingTodoId(null)}
+            />
+          )}
           {/* Time labels column */}
           <View
             style={{
@@ -360,8 +345,20 @@ export const Timeline: FC<TimelineProps> = ({
                   key={todo.id}
                   todo={todo}
                   schedule={schedule}
-                  onPress={() => onTodoPress?.(todo)}
-                  onReschedule={(minutes) => onTodoReschedule?.(todo.id, minutes)}
+                  selected={editingTodoId === todo.id}
+                  onSelectedChange={(sel) => setEditingTodoId(sel ? todo.id : null)}
+                  onPress={() => {
+                    // While another block is armed, a tap here counts as
+                    // "outside": exit editing instead of opening the editor.
+                    if (editingTodoId && editingTodoId !== todo.id) {
+                      setEditingTodoId(null);
+                      return;
+                    }
+                    onTodoPress?.(todo);
+                  }}
+                  onReschedule={(minutes, durationMinutes) =>
+                    onTodoReschedule?.(todo.id, minutes, durationMinutes)
+                  }
                   style={{
                     top: getTopPosition(new Date(todo.startAt)),
                     left: BLOCK_H_PADDING,

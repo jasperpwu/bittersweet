@@ -152,13 +152,27 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
     })
     .onEnd(() => {
       if (!schedule) return;
-      const { fingerY, tlPageY, tlScrollY, tlHeight, sheetTopY, durationMin } = schedule;
+      const {
+        fingerX, fingerY, tlPageY, tlScrollY, tlHeight, sheetTopY, durationMin,
+        tlDaysLeftX, tlDayWidth, tlNumDays,
+      } = schedule;
       const contentY = fingerY.value - tlPageY.value + tlScrollY.value;
       const snapped = Math.round(contentY / PIXELS_PER_MINUTE / SNAP_MINUTES) * SNAP_MINUTES;
       const minutes = Math.max(0, Math.min(DAY_END_MINUTES - durationMin.value, snapped));
       const floor = Math.min(tlPageY.value + tlHeight.value, sheetTopY.value);
       const inRange = fingerY.value >= tlPageY.value && fingerY.value <= floor;
-      runOnJS(schedule.commitSchedule)(minutes, inRange);
+      // Which day column the finger is over (always 0 in the single-day view).
+      const dayIndex =
+        tlDayWidth.value > 0
+          ? Math.max(
+              0,
+              Math.min(
+                tlNumDays.value - 1,
+                Math.floor((fingerX.value - tlDaysLeftX.value) / tlDayWidth.value)
+              )
+            )
+          : 0;
+      runOnJS(schedule.commitSchedule)(minutes, inRange, dayIndex);
     })
     .onFinalize((_e, success) => {
       // Safety net: if the gesture is cancelled before onEnd, drop the drag state.

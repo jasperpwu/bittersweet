@@ -226,6 +226,7 @@
     "backToToday": "Volver a hoy",
     "addManualA11y": "Añadir sesión manual",
     "todaySuffix": ", hoy",
+    "viewSessions": "Sesiones",
     "focusSession": "Sesión de concentración",
     "manualSuffix": "(manual)",
     "adjustedDuration": "Duración ajustada: {{duration}}",

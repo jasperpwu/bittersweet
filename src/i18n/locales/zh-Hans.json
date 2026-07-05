@@ -226,6 +226,7 @@
     "backToToday": "回到今天",
     "addManualA11y": "添加手动会话",
     "todaySuffix": "，今天",
+    "viewSessions": "会话",
     "focusSession": "专注会话",
     "manualSuffix": "（手动）",
     "adjustedDuration": "调整后时长：{{duration}}",

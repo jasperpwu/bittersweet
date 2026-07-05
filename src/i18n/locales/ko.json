@@ -226,6 +226,7 @@
     "backToToday": "오늘로 돌아가기",
     "addManualA11y": "수동 세션 추가",
     "todaySuffix": " (오늘)",
+    "viewSessions": "세션",
     "focusSession": "집중 세션",
     "manualSuffix": "(수동)",
     "adjustedDuration": "조정된 시간: {{duration}}",

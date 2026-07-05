@@ -3,7 +3,7 @@ import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import type { Todo } from '../../../store/types';
 import { ensureTodoNotificationPermission } from '../../../services/notifications/todos';
-import { DEFAULT_TODO_DURATION } from '../Timeline/constants';
+import { DEFAULT_TODO_DURATION, BLOCK_H_PADDING } from '../Timeline/constants';
 
 /**
  * Shared state + callbacks that wire the TODO sheet's drag-to-schedule gesture
@@ -13,6 +13,12 @@ import { DEFAULT_TODO_DURATION } from '../Timeline/constants';
  *
  * Reanimated shared values carry per-frame drag state on the UI thread; the JS
  * callbacks run the actual store writes.
+ *
+ * Day-column geometry: the mounted calendar view reports its layout as
+ * "`tlNumDays` columns starting at `tlDaysLeftX`, each `tlDayWidth` wide". The
+ * single-day Sessions timeline reports one full-width column; the 3-day TODOs
+ * view reports three. Finger X → day index and finger Y → minute-of-day both
+ * derive from these values, so the same drag gesture works against either view.
  */
 export interface TodoScheduleController {
   // --- UI-thread drag state ---
@@ -21,25 +27,33 @@ export interface TodoScheduleController {
   fingerY: SharedValue<number>; // absolute screen Y of the finger
   durationMin: SharedValue<number>; // slot length of the dragged todo (minutes)
 
-  // --- Timeline metrics (reported by the Timeline) ---
+  // --- Timeline metrics (reported by the mounted calendar view) ---
   tlPageY: SharedValue<number>; // screen Y of the timeline scroll viewport top
   tlScrollY: SharedValue<number>; // current vertical scroll offset of the timeline
   tlHeight: SharedValue<number>; // height of the timeline scroll viewport
   sheetTopY: SharedValue<number>; // screen Y of the sheet's top edge (drop floor)
-  tlSlotLeftX: SharedValue<number>; // screen X of a block's left edge in the content area
-  tlSlotWidth: SharedValue<number>; // width a dropped block occupies (matches the indicator)
+  tlDaysLeftX: SharedValue<number>; // screen X where the day columns start (after the time gutter)
+  tlDayWidth: SharedValue<number>; // width of one day column
+  tlNumDays: SharedValue<number>; // number of day columns (1 = Sessions view, 3 = TODOs view)
+  tlSlotPad: SharedValue<number>; // inner horizontal padding of a block within its column
 
   // --- Reposition preview (dragging an existing block within the calendar) ---
   previewActive: SharedValue<number>; // 0 | 1
   previewMinutes: SharedValue<number>; // snapped start minute-of-day of the target slot
   previewDuration: SharedValue<number>; // slot length (minutes)
+  previewDayIndex: SharedValue<number>; // which day column the previewed block lives in
 
   // --- JS state / callbacks ---
   draggingTodo: Todo | null; // non-null while a sheet row is being dragged
   beginDrag: (todo: Todo) => void;
-  commitSchedule: (minutes: number, inRange: boolean) => void;
+  commitSchedule: (minutes: number, inRange: boolean, dayIndex?: number) => void;
   cancelDrag: () => void;
-  rescheduleTodo: (todoId: string, minutes: number) => void;
+  rescheduleTodo: (
+    todoId: string,
+    minutes: number,
+    baseDate?: Date,
+    durationMinutes?: number
+  ) => void;
   openEditTodo: (todo: Todo) => void;
 }
 
@@ -47,6 +61,8 @@ interface ControllerDeps {
   selectedDate: Date;
   updateTodo: (id: string, updates: Partial<Todo>) => void;
   onEditTodo: (todo: Todo) => void;
+  /** Fired when a sheet row starts being dragged (used to switch to the TODOs view). */
+  onDragStart?: () => void;
 }
 
 /** Build a Date on `base`'s calendar day at the given minutes-from-midnight. */
@@ -60,6 +76,7 @@ export function useTodoScheduleController({
   selectedDate,
   updateTodo,
   onEditTodo,
+  onDragStart,
 }: ControllerDeps): TodoScheduleController {
   const dragActive = useSharedValue(0);
   const fingerX = useSharedValue(0);
@@ -69,11 +86,14 @@ export function useTodoScheduleController({
   const tlScrollY = useSharedValue(0);
   const tlHeight = useSharedValue(0);
   const sheetTopY = useSharedValue(0);
-  const tlSlotLeftX = useSharedValue(0);
-  const tlSlotWidth = useSharedValue(0);
+  const tlDaysLeftX = useSharedValue(0);
+  const tlDayWidth = useSharedValue(0);
+  const tlNumDays = useSharedValue(1);
+  const tlSlotPad = useSharedValue(BLOCK_H_PADDING);
   const previewActive = useSharedValue(0);
   const previewMinutes = useSharedValue(0);
   const previewDuration = useSharedValue(DEFAULT_TODO_DURATION);
+  const previewDayIndex = useSharedValue(0);
 
   const [draggingTodo, setDraggingTodo] = useState<Todo | null>(null);
   // Latest values read inside gesture callbacks (which capture stale closures).
@@ -87,9 +107,10 @@ export function useTodoScheduleController({
       durationMin.value = todo.durationMinutes ?? DEFAULT_TODO_DURATION;
       dragActive.value = 1;
       setDraggingTodo(todo);
+      onDragStart?.();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
-    [dragActive, durationMin]
+    [dragActive, durationMin, onDragStart]
   );
 
   const cancelDrag = useCallback(() => {
@@ -99,15 +120,19 @@ export function useTodoScheduleController({
   }, [dragActive]);
 
   const commitSchedule = useCallback(
-    (minutes: number, inRange: boolean) => {
+    (minutes: number, inRange: boolean, dayIndex: number = 0) => {
       const todo = draggingRef.current;
       dragActive.value = 0;
       draggingRef.current = null;
       setDraggingTodo(null);
       if (!todo || !inRange) return;
+      // The drop day is the visible column under the finger: the first column
+      // is the selected date, subsequent columns the following days.
+      const dropDay = new Date(selectedDateRef.current);
+      dropDay.setDate(dropDay.getDate() + dayIndex);
       // Dropping onto the timeline pins a concrete time → mark it as timed.
       updateTodo(todo.id, {
-        startAt: dateAtMinutes(selectedDateRef.current, minutes),
+        startAt: dateAtMinutes(dropDay, minutes),
         startHasTime: true,
       });
       // Scheduling a start implies wanting a reminder — ask quietly (no alert
@@ -119,10 +144,12 @@ export function useTodoScheduleController({
   );
 
   const rescheduleTodo = useCallback(
-    (todoId: string, minutes: number) => {
+    (todoId: string, minutes: number, baseDate?: Date, durationMinutes?: number) => {
       updateTodo(todoId, {
-        startAt: dateAtMinutes(selectedDateRef.current, minutes),
+        startAt: dateAtMinutes(baseDate ?? selectedDateRef.current, minutes),
         startHasTime: true,
+        // Present when the commit came from a resize (edge drag) — moves keep it.
+        ...(durationMinutes !== undefined ? { durationMinutes } : {}),
       });
       ensureTodoNotificationPermission();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -140,11 +167,14 @@ export function useTodoScheduleController({
       tlScrollY,
       tlHeight,
       sheetTopY,
-      tlSlotLeftX,
-      tlSlotWidth,
+      tlDaysLeftX,
+      tlDayWidth,
+      tlNumDays,
+      tlSlotPad,
       previewActive,
       previewMinutes,
       previewDuration,
+      previewDayIndex,
       draggingTodo,
       beginDrag,
       commitSchedule,
@@ -161,11 +191,14 @@ export function useTodoScheduleController({
       tlScrollY,
       tlHeight,
       sheetTopY,
-      tlSlotLeftX,
-      tlSlotWidth,
+      tlDaysLeftX,
+      tlDayWidth,
+      tlNumDays,
+      tlSlotPad,
       previewActive,
       previewMinutes,
       previewDuration,
+      previewDayIndex,
       draggingTodo,
       beginDrag,
       commitSchedule,

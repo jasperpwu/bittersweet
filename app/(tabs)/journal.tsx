@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Modal, Slider, Typography, TimePicker, DatePicker } from '../../src/components/ui';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { CreateTagModal } from '../../src/components/focus';
-import { DateSelector, Timeline, TodoSheet } from '../../src/components/journal';
+import { DateSelector, Timeline, ThreeDayTimeline, TodoSheet } from '../../src/components/journal';
 import { TodoEditModal } from '../../src/components/journal/TodoSheet/TodoEditModal';
 import { TodoDragGhost } from '../../src/components/journal/TodoSheet/TodoDragGhost';
 import { useTodoScheduleController } from '../../src/components/journal/TodoSheet/TodoScheduleController';
@@ -47,6 +47,10 @@ export default function JournalScreen() {
   const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession } = useFocusActions();
   const secondaryTagEnabled = useSecondaryTagEnabled();
 
+  // Which calendar is showing: the single-day Sessions timeline or the 3-day
+  // TODOs planner. Dragging a todo out of the sheet force-switches to TODOs.
+  const [journalView, setJournalView] = useState<'sessions' | 'todos'>('sessions');
+
   // TODO scheduling — drag from the sheet onto the calendar + tap-to-edit blocks.
   const todosState = useTodos();
   const { updateTodo } = useTodoActions();
@@ -56,13 +60,19 @@ export default function JournalScreen() {
     setCalendarEditTodo(todo);
     setCalendarEditVisible(true);
   }, []);
+  const switchToTodosView = useCallback(() => setJournalView('todos'), []);
   const schedule = useTodoScheduleController({
     selectedDate,
     updateTodo,
     onEditTodo: openTodoEditor,
+    onDragStart: switchToTodosView,
   });
-  const scheduledTodosForDate = useMemo(() => {
-    const dayStr = selectedDate.toDateString();
+  // Timed todos falling in the TODOs view's 3-day window (selected date + 2).
+  const scheduledTodosForRange = useMemo(() => {
+    const rangeStart = new Date(selectedDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(rangeStart);
+    rangeEnd.setDate(rangeEnd.getDate() + 3);
     return todosState.allIds
       .map((id) => todosState.byId[id])
       .filter(
@@ -73,7 +83,8 @@ export default function JournalScreen() {
           // Only timed todos appear on the calendar; date-only ones (startHasTime
           // explicitly false) stay in the sheet's day sections but off the timeline.
           td.startHasTime !== false &&
-          new Date(td.startAt).toDateString() === dayStr
+          new Date(td.startAt) >= rangeStart &&
+          new Date(td.startAt) < rangeEnd
       );
   }, [todosState, selectedDate]);
 
@@ -283,6 +294,7 @@ export default function JournalScreen() {
       const sessionDate = new Date(params.sessionDate as string);
       setSelectedDate(sessionDate);
       setScrollToSessionId(params.sessionId as string);
+      setJournalView('sessions');
       
       // Clear the params to avoid re-triggering
       router.setParams({ sessionId: undefined, sessionDate: undefined });
@@ -648,6 +660,36 @@ export default function JournalScreen() {
               </View>
             </View>
 
+            {/* View switcher: Sessions (single-day) / TODOs (3-day planner) */}
+            <View className="px-4 pb-2">
+              <View className="flex-row self-start rounded-full p-1 bg-black/10 dark:bg-white/10">
+                {(
+                  [
+                    { key: 'sessions', label: t('journal.viewSessions') },
+                    { key: 'todos', label: t('todos.title') },
+                  ] as const
+                ).map(({ key, label }) => {
+                  const active = journalView === key;
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() => setJournalView(key)}
+                      className={`rounded-full px-4 py-1.5 active:opacity-80 ${active ? 'bg-primary' : ''}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                    >
+                      <Typography
+                        variant="subtitle-14-semibold"
+                        color={active ? 'white' : 'secondary'}
+                      >
+                        {label}
+                      </Typography>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
             {/* Week strip */}
             <DateSelector
               selectedDate={selectedDate}
@@ -659,18 +701,25 @@ export default function JournalScreen() {
             {/* Timeline */}
             <GestureDetector gesture={swipeGesture}>
               <Animated.View className="flex-1 px-5 pt-4" style={animatedTimelineStyle}>
-                <Timeline
-                  sessions={sessionsForSelectedDate}
-                  scheduledTodos={scheduledTodosForDate}
-                  schedule={schedule}
-                  currentTime={currentTime}
-                  isToday={!showJumpToToday}
-                  onSessionPress={handleSessionPress}
-                  onTodoPress={openTodoEditor}
-                  onTodoReschedule={schedule.rescheduleTodo}
-                  scrollToSessionId={scrollToSessionId}
-                  onScrollComplete={() => setScrollToSessionId(null)}
-                />
+                {journalView === 'sessions' ? (
+                  <Timeline
+                    sessions={sessionsForSelectedDate}
+                    currentTime={currentTime}
+                    isToday={!showJumpToToday}
+                    onSessionPress={handleSessionPress}
+                    scrollToSessionId={scrollToSessionId}
+                    onScrollComplete={() => setScrollToSessionId(null)}
+                  />
+                ) : (
+                  <ThreeDayTimeline
+                    startDate={selectedDate}
+                    todos={scheduledTodosForRange}
+                    currentTime={currentTime}
+                    schedule={schedule}
+                    onTodoPress={openTodoEditor}
+                    onTodoReschedule={schedule.rescheduleTodo}
+                  />
+                )}
               </Animated.View>
             </GestureDetector>
 

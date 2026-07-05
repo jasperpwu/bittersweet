@@ -15,3 +15,10 @@ export const DEFAULT_TODO_DURATION = 30;
 
 // Gutter on each side of the timeline content area.
 export const BLOCK_H_PADDING = 12;
+
+// --- 3-day TODOs view ---
+export const THREE_DAY_COUNT = 3;
+// Narrower time gutter (short "3 PM" labels) so three day columns fit.
+export const THREE_DAY_TIME_COLUMN_WIDTH = 44;
+// Inner gutter of a block within its (narrow) day column.
+export const THREE_DAY_BLOCK_H_PADDING = 3;

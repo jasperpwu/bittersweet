@@ -226,6 +226,7 @@
     "backToToday": "今日に戻る",
     "addManualA11y": "手動セッションを追加",
     "todaySuffix": "（今日）",
+    "viewSessions": "セッション",
     "focusSession": "集中セッション",
     "manualSuffix": "（手動）",
     "adjustedDuration": "調整後の長さ：{{duration}}",

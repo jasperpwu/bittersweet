@@ -32,13 +32,24 @@ export const TodoDragGhost: FC<Props> = ({ schedule }) => {
   const color = tag?.color ?? colors.primary;
 
   const style = useAnimatedStyle(() => {
-    const slotW = schedule.tlSlotWidth.value;
+    const dayW = schedule.tlDayWidth.value;
+    const slotW = dayW - schedule.tlSlotPad.value * 2;
     const width = slotW > 0 ? slotW : FALLBACK_WIDTH;
     const height = Math.max(schedule.durationMin.value * PIXELS_PER_MINUTE, MIN_HEIGHT);
-    // When the timeline geometry is known, align horizontally to the calendar
-    // column (full width spans the finger anyway); otherwise center on the finger.
-    const left =
-      slotW > 0 ? schedule.tlSlotLeftX.value : schedule.fingerX.value - width / 2;
+    // When the timeline geometry is known, align horizontally to the day column
+    // under the finger (snapping between columns in the 3-day view); otherwise
+    // center on the finger.
+    let left = schedule.fingerX.value - width / 2;
+    if (slotW > 0) {
+      const col = Math.max(
+        0,
+        Math.min(
+          schedule.tlNumDays.value - 1,
+          Math.floor((schedule.fingerX.value - schedule.tlDaysLeftX.value) / dayW)
+        )
+      );
+      left = schedule.tlDaysLeftX.value + col * dayW + schedule.tlSlotPad.value;
+    }
     return {
       opacity: schedule.dragActive.value,
       width: withTiming(width, { duration: 140 }),
