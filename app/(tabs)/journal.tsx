@@ -548,7 +548,12 @@ export default function JournalScreen() {
       console.warn('Sessions data is not properly initialized:', sessions);
       return [];
     }
-    
+
+    const dayStart = new Date(selectedDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
     return sessions.allIds
       .map(id => {
         const session = sessions.byId[id];
@@ -568,15 +573,23 @@ export default function JournalScreen() {
           isManualEntry: session.isManualEntry,
         };
       })
-      .filter(session => {
-        if (!session) return false;
-        
-        // Filter for selected date
-        const sessionDate = session.startTime.toDateString();
-        const selectedDateString = selectedDate.toDateString();
-        return sessionDate === selectedDateString;
-      })
-      .filter((session): session is NonNullable<typeof session> => session !== null);
+      .filter((session): session is NonNullable<typeof session> => session !== null)
+      // Show the session on every day its time range overlaps, not just its
+      // start day — a cross-midnight session appears on both days.
+      .filter(session => session.startTime < dayEnd && session.endTime > dayStart)
+      // Clip cross-midnight sessions to the selected day so each day renders
+      // only its own portion (top position and block height stay in bounds).
+      .map(session => {
+        if (session.startTime >= dayStart && session.endTime <= dayEnd) return session;
+        const clippedStart = session.startTime < dayStart ? dayStart : session.startTime;
+        const clippedEnd = session.endTime > dayEnd ? dayEnd : session.endTime;
+        return {
+          ...session,
+          startTime: clippedStart,
+          endTime: clippedEnd,
+          duration: Math.round((clippedEnd.getTime() - clippedStart.getTime()) / (1000 * 60)),
+        };
+      });
   }, [sessions, selectedDate]);
 
 
