@@ -31,7 +31,18 @@
     "notifBody": "Hora de começar esta tarefa",
     "notifPermTitle": "Ativar notificações?",
     "notifPermMessage": "Ative as notificações nos Ajustes para receber lembretes quando suas tarefas começarem.",
-    "openSettings": "Abrir Ajustes"
+    "openSettings": "Abrir Ajustes",
+    "repeatLabel": "Repetir",
+    "repeatNone": "Nunca",
+    "repeatDaily": "Todos os dias",
+    "repeatWeekly": "Toda semana",
+    "repeatMonthly": "Todo mês",
+    "repeatCustom": "Personalizado",
+    "repeatWeeklyHint": "Repete-se a cada {{day}}",
+    "repeatMonthlyHint": "Repete-se no dia {{day}} de cada mês",
+    "repeatOnWeekdays": "Toda semana em…",
+    "repeatOnMonthDay": "Todo mês no dia…",
+    "repeatMonthDayLabel": "Dia do mês"
   },
   "goals": {
     "discardTitle": "Descartar alterações?",

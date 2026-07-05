@@ -31,7 +31,18 @@
     "notifBody": "이 작업을 시작할 시간이에요",
     "notifPermTitle": "알림을 켤까요?",
     "notifPermMessage": "설정에서 알림을 켜면 작업 시작 시간에 알려드려요.",
-    "openSettings": "설정 열기"
+    "openSettings": "설정 열기",
+    "repeatLabel": "반복",
+    "repeatNone": "없음",
+    "repeatDaily": "매일",
+    "repeatWeekly": "매주",
+    "repeatMonthly": "매월",
+    "repeatCustom": "직접 설정",
+    "repeatWeeklyHint": "매주 {{day}}에 반복",
+    "repeatMonthlyHint": "매월 {{day}}일에 반복",
+    "repeatOnWeekdays": "매주…",
+    "repeatOnMonthDay": "매월…",
+    "repeatMonthDayLabel": "날짜"
   },
   "goals": {
     "discardTitle": "변경 사항을 취소할까요?",

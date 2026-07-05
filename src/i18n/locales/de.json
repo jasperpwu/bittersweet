@@ -31,7 +31,18 @@
     "notifBody": "Zeit, diese Aufgabe zu beginnen",
     "notifPermTitle": "Mitteilungen aktivieren?",
     "notifPermMessage": "Aktiviere Mitteilungen in den Einstellungen, um zum Start deiner Aufgaben erinnert zu werden.",
-    "openSettings": "Einstellungen öffnen"
+    "openSettings": "Einstellungen öffnen",
+    "repeatLabel": "Wiederholen",
+    "repeatNone": "Nie",
+    "repeatDaily": "Täglich",
+    "repeatWeekly": "Wöchentlich",
+    "repeatMonthly": "Monatlich",
+    "repeatCustom": "Benutzerdefiniert",
+    "repeatWeeklyHint": "Wiederholt sich jeden {{day}}",
+    "repeatMonthlyHint": "Wiederholt sich jeden Monat am {{day}}.",
+    "repeatOnWeekdays": "Wöchentlich am…",
+    "repeatOnMonthDay": "Monatlich am…",
+    "repeatMonthDayLabel": "Tag des Monats"
   },
   "goals": {
     "discardTitle": "Änderungen verwerfen?",

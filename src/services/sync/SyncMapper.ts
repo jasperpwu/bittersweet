@@ -208,6 +208,9 @@ export function todoToRow(todo: any, userId: string): Record<string, any> {
     completed: todo.completed ?? false,
     completed_at: toIso(todo.completedAt),
     sort_order: todo.sortOrder ?? 0,
+    // Always emit recurrence (null when none) so removing a repeat rule
+    // clears the cloud column instead of leaving a stale rule behind.
+    recurrence: todo.recurrence ?? null,
     // Always emit deleted_at (null when active) so an undo/restore explicitly
     // un-tombstones the cloud row instead of leaving a stale deleted_at behind.
     deleted_at: toIso(todo.deletedAt),
@@ -234,6 +237,7 @@ export function rowToTodo(row: Record<string, any>): any {
     completed: row.completed ?? false,
     ...(row.completed_at ? { completedAt: new Date(row.completed_at) } : {}),
     sortOrder: row.sort_order ?? 0,
+    ...(row.recurrence ? { recurrence: row.recurrence } : {}),
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
     ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),

@@ -31,7 +31,18 @@
     "notifBody": "Time to start this task",
     "notifPermTitle": "Turn on notifications?",
     "notifPermMessage": "Enable notifications in Settings to get reminders when your tasks start.",
-    "openSettings": "Open Settings"
+    "openSettings": "Open Settings",
+    "repeatLabel": "Repeat",
+    "repeatNone": "None",
+    "repeatDaily": "Every day",
+    "repeatWeekly": "Every week",
+    "repeatMonthly": "Every month",
+    "repeatCustom": "Custom",
+    "repeatWeeklyHint": "Repeats every {{day}}",
+    "repeatMonthlyHint": "Repeats on day {{day}} of each month",
+    "repeatOnWeekdays": "Weekly on…",
+    "repeatOnMonthDay": "Monthly on…",
+    "repeatMonthDayLabel": "Day of the month"
   },
   "goals": {
     "discardTitle": "Discard changes?",

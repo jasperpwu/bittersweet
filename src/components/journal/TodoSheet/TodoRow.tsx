@@ -1,7 +1,7 @@
 import React, { FC, useRef, useEffect } from 'react';
 import { useIsFocused } from '@react-navigation/native';
-import { View, Pressable, StyleSheet } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { View, Pressable, StyleSheet, useColorScheme } from 'react-native';
+import { Gesture, GestureDetector, type PanGesture } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, {
   useAnimatedStyle,
@@ -30,6 +30,10 @@ interface TodoRowProps {
   onDelete: (todo: Todo) => void;
   onStart: (todo: Todo) => void;
   schedule?: TodoScheduleController;
+  // The sheet's edge-pull pan (TodoSheet). The Swipeable declares itself
+  // simultaneous with it so its own pan/tap don't block a vertical pull that
+  // starts on this row from expanding/collapsing the sheet.
+  sheetPan?: PanGesture;
 }
 
 // Past this drag distance the action commits on release (iOS-Mail style). Delete
@@ -37,6 +41,22 @@ interface TodoRowProps {
 // swipe launches it (a faster flick commits even sooner via swipe velocity).
 const ACTION_THRESHOLD = 96;
 const START_ACTION_THRESHOLD = 44;
+
+// Horizontal distance before the swipe gesture activates at all (default 10).
+// The swipe pan has no vertical fail offset, so at the default it races the
+// list's vertical scroll at equal sensitivity and diagonal scrolls easily
+// trigger accidental Start/Delete swipes. 30px lets the scroll win unless the
+// swipe is deliberately horizontal.
+const SWIPE_ACTIVATION_OFFSET = 30;
+
+// Vertical travel past which the swipe pan FAILS outright (before reaching the
+// horizontal activation distance). This is what makes the swipe directional:
+// the row swipe runs simultaneous with the sheet's vertical pull, so without a
+// vertical fail bound a long up/down drag that drifts 30px sideways still
+// commits Start/Delete. Requires our patch to react-native-gesture-handler —
+// stock ReanimatedSwipeable types failOffsetY but never applies it to its pan
+// (see patches/react-native-gesture-handler+2.24.0.patch).
+const SWIPE_FAIL_OFFSET_Y = 20;
 
 // The colored action panel that sits behind the row. Its icon scales + fades in
 // with swipe progress, and it aligns to the edge the row is being pulled from.
@@ -104,8 +124,12 @@ const isPastDeadline = (date: Date, hasTime: boolean): boolean => {
   return due.getTime() < Date.now();
 };
 
-export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, onDelete, onStart, schedule }) => {
+export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, onDelete, onStart, schedule, sheetPan }) => {
   const { t, i18n } = useTranslation();
+  const isDark = useColorScheme() === 'dark';
+  // Matches the Typography "secondary" tokens; textGrey is unreadable on the
+  // cream light-mode card.
+  const secondaryIconColor = isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary;
   const deadlineLabel = todo.deadlineAt
     ? formatDeadline(new Date(todo.deadlineAt), !!todo.deadlineHasTime, i18n.language)
     : null;
@@ -228,6 +252,10 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
       renderLeftActions={renderLeftActions}
       leftThreshold={ACTION_THRESHOLD}
       rightThreshold={START_ACTION_THRESHOLD}
+      dragOffsetFromLeftEdge={SWIPE_ACTIVATION_OFFSET}
+      dragOffsetFromRightEdge={SWIPE_ACTIVATION_OFFSET}
+      failOffsetY={[-SWIPE_FAIL_OFFSET_Y, SWIPE_FAIL_OFFSET_Y]}
+      simultaneousWithExternalGesture={sheetPan}
       overshootFriction={8}
       onSwipeableWillOpen={handleWillOpen}
       onSwipeableClose={() => {
@@ -258,14 +286,27 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
 
         {/* Name + optional deadline */}
         <View className="flex-1 mr-2">
-          <Typography
-            variant="body-14"
-            color={todo.completed ? 'secondary' : 'primary'}
-            numberOfLines={1}
-            style={todo.completed ? { textDecorationLine: 'line-through' } : undefined}
-          >
-            {todo.name}
-          </Typography>
+          <View className="flex-row items-center">
+            <Typography
+              variant="body-14"
+              color={todo.completed ? 'secondary' : 'primary'}
+              numberOfLines={1}
+              style={[
+                { flexShrink: 1 },
+                todo.completed ? { textDecorationLine: 'line-through' } : null,
+              ]}
+            >
+              {todo.name}
+            </Typography>
+            {!!todo.recurrence && (
+              <Ionicons
+                name="repeat"
+                size={13}
+                color={secondaryIconColor}
+                style={{ marginLeft: 5 }}
+              />
+            )}
+          </View>
           {deadlineLabel && (
             <View
               className="flex-row items-center self-start mt-1 px-2 py-0.5 rounded-full border border-light-border dark:border-dark-border"

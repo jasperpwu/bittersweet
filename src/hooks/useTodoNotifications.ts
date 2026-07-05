@@ -20,9 +20,10 @@ const getTodos = (): Todo[] => {
 
 /**
  * Compact primitive signature of just the fields that affect a todo's reminder
- * (start, time flag, name, completed, deleted). Returning a string keeps this a
- * value-compared selector — the host only re-runs scheduling when a reminder-
- * relevant field actually changes, not on every focus-store write (timer ticks).
+ * (start, time flag, recurrence, name, completed, deleted). Returning a string
+ * keeps this a value-compared selector — the host only re-runs scheduling when
+ * a reminder-relevant field actually changes, not on every focus-store write
+ * (timer ticks).
  */
 const computeSignature = (todos: TodosSlice): string => {
   const ids = todos?.allIds ?? [];
@@ -31,7 +32,8 @@ const computeSignature = (todos: TodosSlice): string => {
       const t = todos.byId[id];
       if (!t) return '';
       const start = t.startAt ? new Date(t.startAt).getTime() : 0;
-      return `${t.id}:${start}:${t.startHasTime ? 1 : 0}:${t.completed ? 1 : 0}:${t.deletedAt ? 1 : 0}:${t.name}`;
+      const rec = t.recurrence ? JSON.stringify(t.recurrence) : '';
+      return `${t.id}:${start}:${t.startHasTime ? 1 : 0}:${t.completed ? 1 : 0}:${t.deletedAt ? 1 : 0}:${rec}:${t.name}`;
     })
     .join('|');
 };
@@ -57,19 +59,25 @@ export const useTodoNotifications = () => {
   };
 
   // Reschedule whenever the master toggle, sound, or a reminder-relevant todo
-  // field changes.
+  // field changes. Roll recurring todos forward first (Google Tasks-style):
+  // it's idempotent, and when it does advance a todo the signature changes and
+  // this effect re-runs against the rolled state.
   useEffect(() => {
     if (!isHydrated) return;
+    useAppStore.getState().focus.rollRecurringTodos();
     reschedule();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated, enabled, soundEnabled, todoSignature]);
 
-  // Reschedule on foreground so date-only reminders whose default hour has passed
-  // drop off, and to recover from any missed scheduling while backgrounded.
+  // On foreground: roll recurring todos into the new period, then reschedule so
+  // date-only reminders whose default hour has passed drop off and any missed
+  // scheduling while backgrounded is recovered.
   useEffect(() => {
     if (!isHydrated) return;
     const handleChange = (next: AppStateStatus) => {
-      if (next === 'active') reschedule();
+      if (next !== 'active') return;
+      useAppStore.getState().focus.rollRecurringTodos();
+      reschedule();
     };
     const subscription = AppState.addEventListener('change', handleChange);
     return () => subscription.remove();

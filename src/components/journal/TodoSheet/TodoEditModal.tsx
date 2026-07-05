@@ -18,7 +18,7 @@ import { CreateTagModal } from '../../focus';
 import { useFocus, useTodoActions } from '../../../store';
 import { colors } from '../../../config/theme';
 import { ensureTodoNotificationPermission } from '../../../services/notifications/todos';
-import type { Todo } from '../../../store/types';
+import type { Todo, TodoRecurrence } from '../../../store/types';
 
 interface TodoEditModalProps {
   isVisible: boolean;
@@ -35,7 +35,7 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
   todo,
   initialTagId,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isDark = useColorScheme() === 'dark';
   const { height: screenHeight } = useWindowDimensions();
   const { tags } = useFocus();
@@ -52,6 +52,10 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
   const [startEnabled, setStartEnabled] = useState(false);
   const [startTimeEnabled, setStartTimeEnabled] = useState(false);
   const [startAt, setStartAt] = useState<Date>(new Date());
+  const [repeat, setRepeat] = useState<RepeatChoice>('none');
+  const [customFreq, setCustomFreq] = useState<'weekly' | 'monthly'>('weekly');
+  const [customWeekdays, setCustomWeekdays] = useState<number[]>([]);
+  const [customMonthDay, setCustomMonthDay] = useState(1);
   const [deadlineEnabled, setDeadlineEnabled] = useState(false);
   const [deadlineTimeEnabled, setDeadlineTimeEnabled] = useState(false);
   const [deadlineAt, setDeadlineAt] = useState<Date>(new Date());
@@ -80,6 +84,7 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
           durationEnabled: todo.durationMinutes != null,
           duration: todo.durationMinutes ?? DEFAULT_DURATION,
           notes: todo.notes ?? '',
+          ...repeatSeed(todo.recurrence, todo.startAt ? new Date(todo.startAt) : roundedNow()),
         }
       : {
           name: '',
@@ -93,6 +98,7 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
           durationEnabled: false,
           duration: DEFAULT_DURATION,
           notes: '',
+          ...repeatSeed(undefined, roundedNow()),
         };
     setName(seed.name);
     setTagId(seed.tagId);
@@ -105,26 +111,35 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
     setDurationEnabled(seed.durationEnabled);
     setDuration(seed.duration);
     setNotes(seed.notes);
+    setRepeat(seed.repeat);
+    setCustomFreq(seed.customFreq);
+    setCustomWeekdays(seed.customWeekdays);
+    setCustomMonthDay(seed.customMonthDay);
     initialSigRef.current = formSignature(seed);
     // Re-seed only when the modal opens or the target todo changes — pulling in
     // activeTags/initialTagId would reset the form mid-edit when tags update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisible, todo]);
 
-  const isDirty = () =>
-    formSignature({
-      name,
-      tagId,
-      startEnabled,
-      startTimeEnabled,
-      startAt,
-      deadlineEnabled,
-      deadlineTimeEnabled,
-      deadlineAt,
-      durationEnabled,
-      duration,
-      notes,
-    }) !== initialSigRef.current;
+  const currentForm = (): FormState => ({
+    name,
+    tagId,
+    startEnabled,
+    startTimeEnabled,
+    startAt,
+    deadlineEnabled,
+    deadlineTimeEnabled,
+    deadlineAt,
+    durationEnabled,
+    duration,
+    notes,
+    repeat,
+    customFreq,
+    customWeekdays,
+    customMonthDay,
+  });
+
+  const isDirty = () => formSignature(currentForm()) !== initialSigRef.current;
 
   // Prompt before throwing away unsaved edits; the Discard button drives the
   // actual close. Returns false to tell BottomSheet to keep the sheet open.
@@ -176,6 +191,7 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
       deadlineHasTime: deadlineEnabled ? deadlineTimeEnabled : undefined,
       durationMinutes: durationEnabled ? duration : undefined,
       notes: notes.trim() || undefined,
+      recurrence: recurrenceOf(currentForm()) ?? undefined,
     };
     if (todo) {
       updateTodo(todo.id, payload);
@@ -274,6 +290,105 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
             />
           </Pressable>
           {startTimeEnabled && <TimePicker value={startAt} onChange={setStartAt} />}
+        </View>
+      )}
+
+      {/* Repeat (requires a start date) */}
+      {startEnabled && (
+        <View className="mb-5">
+          <Typography variant="body-14" color="primary" className="mb-2">
+            {t('todos.repeatLabel')}
+          </Typography>
+          <View className="flex-row flex-wrap gap-2">
+            {REPEAT_CHOICES.map((choice) => {
+              const selected = repeat === choice;
+              return (
+                <Pressable
+                  key={choice}
+                  onPress={() => setRepeat(choice)}
+                  className={`rounded-full px-3.5 py-2 active:opacity-70 ${
+                    selected ? 'bg-primary' : 'bg-black/5 dark:bg-white/5'
+                  }`}>
+                  <Typography variant="body-12" color={selected ? 'white' : 'primary'}>
+                    {t(REPEAT_LABEL_KEYS[choice])}
+                  </Typography>
+                </Pressable>
+              );
+            })}
+          </View>
+          {repeat === 'weekly' && (
+            <Typography variant="body-12" color="secondary" className="mt-2">
+              {t('todos.repeatWeeklyHint', {
+                day: startAt.toLocaleDateString(i18n.language, { weekday: 'long' }),
+              })}
+            </Typography>
+          )}
+          {repeat === 'monthly' && (
+            <Typography variant="body-12" color="secondary" className="mt-2">
+              {t('todos.repeatMonthlyHint', { day: startAt.getDate() })}
+            </Typography>
+          )}
+          {repeat === 'custom' && (
+            <View className="mt-3">
+              <View className="mb-3 flex-row gap-2">
+                {(['weekly', 'monthly'] as const).map((freq) => {
+                  const selected = customFreq === freq;
+                  return (
+                    <Pressable
+                      key={freq}
+                      onPress={() => setCustomFreq(freq)}
+                      className={`rounded-full px-3.5 py-2 active:opacity-70 ${
+                        selected ? 'bg-primary' : 'bg-black/5 dark:bg-white/5'
+                      }`}>
+                      <Typography variant="body-12" color={selected ? 'white' : 'primary'}>
+                        {t(freq === 'weekly' ? 'todos.repeatOnWeekdays' : 'todos.repeatOnMonthDay')}
+                      </Typography>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {customFreq === 'weekly' ? (
+                // Same weekday-chip pattern as the rest-days picker in settings.
+                <View className="flex-row gap-x-2">
+                  {t('preferences.dayInitials')
+                    .split(',')
+                    .map((label, dayIndex) => {
+                      const isSelected = customWeekdays.includes(dayIndex);
+                      return (
+                        <Pressable
+                          key={dayIndex}
+                          onPress={() =>
+                            setCustomWeekdays((prev) =>
+                              isSelected
+                                ? prev.filter((d) => d !== dayIndex)
+                                : [...prev, dayIndex].sort((a, b) => a - b)
+                            )
+                          }
+                          className={`h-9 w-9 items-center justify-center rounded-full ${
+                            isSelected ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
+                          }`}>
+                          <Typography
+                            variant="body-12"
+                            color={isSelected ? 'white' : 'primary'}
+                            className="font-poppins-medium">
+                            {label}
+                          </Typography>
+                        </Pressable>
+                      );
+                    })}
+                </View>
+              ) : (
+                <Slider
+                  value={customMonthDay}
+                  minimumValue={1}
+                  maximumValue={31}
+                  step={1}
+                  onValueChange={setCustomMonthDay}
+                  label={t('todos.repeatMonthDayLabel')}
+                />
+              )}
+            </View>
+          )}
         </View>
       )}
 
@@ -386,6 +501,17 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
   );
 };
 
+const REPEAT_CHOICES = ['none', 'daily', 'weekly', 'monthly', 'custom'] as const;
+type RepeatChoice = (typeof REPEAT_CHOICES)[number];
+
+const REPEAT_LABEL_KEYS: Record<RepeatChoice, string> = {
+  none: 'todos.repeatNone',
+  daily: 'todos.repeatDaily',
+  weekly: 'todos.repeatWeekly',
+  monthly: 'todos.repeatMonthly',
+  custom: 'todos.repeatCustom',
+};
+
 interface FormState {
   name: string;
   tagId: string;
@@ -398,6 +524,64 @@ interface FormState {
   durationEnabled: boolean;
   duration: number;
   notes: string;
+  repeat: RepeatChoice;
+  customFreq: 'weekly' | 'monthly';
+  customWeekdays: number[];
+  customMonthDay: number;
+}
+
+// The recurrence a Save of this form state would persist (null = none).
+// Presets derive their weekday / month-day from the chosen start date; custom
+// weekly falls back to the start's weekday when no chip is selected.
+function recurrenceOf(s: FormState): TodoRecurrence | null {
+  if (!s.startEnabled || s.repeat === 'none') return null;
+  if (s.repeat === 'daily') return { freq: 'daily' };
+  if (s.repeat === 'weekly') return { freq: 'weekly', weekdays: [s.startAt.getDay()] };
+  if (s.repeat === 'monthly') return { freq: 'monthly', monthDay: s.startAt.getDate() };
+  if (s.customFreq === 'weekly') {
+    const weekdays = s.customWeekdays.length
+      ? [...s.customWeekdays].sort((a, b) => a - b)
+      : [s.startAt.getDay()];
+    return { freq: 'weekly', weekdays };
+  }
+  return { freq: 'monthly', monthDay: s.customMonthDay };
+}
+
+// Map a stored recurrence back onto the form's repeat controls. A weekly rule
+// on exactly the start's weekday (or a monthly rule on the start's day) reads
+// as its preset; anything else opens as Custom.
+function repeatSeed(
+  rec: TodoRecurrence | undefined,
+  startDate: Date
+): Pick<FormState, 'repeat' | 'customFreq' | 'customWeekdays' | 'customMonthDay'> {
+  const seed = {
+    repeat: 'none' as RepeatChoice,
+    customFreq: 'weekly' as 'weekly' | 'monthly',
+    customWeekdays: [] as number[],
+    customMonthDay: startDate.getDate(),
+  };
+  if (!rec) return seed;
+  if (rec.freq === 'daily') {
+    seed.repeat = 'daily';
+  } else if (rec.freq === 'weekly') {
+    const weekdays = rec.weekdays ?? [];
+    if (weekdays.length === 1 && weekdays[0] === startDate.getDay()) {
+      seed.repeat = 'weekly';
+    } else {
+      seed.repeat = 'custom';
+      seed.customWeekdays = weekdays;
+    }
+  } else {
+    const monthDay = rec.monthDay ?? startDate.getDate();
+    if (monthDay === startDate.getDate()) {
+      seed.repeat = 'monthly';
+    } else {
+      seed.repeat = 'custom';
+      seed.customFreq = 'monthly';
+      seed.customMonthDay = monthDay;
+    }
+  }
+  return seed;
 }
 
 // Stable string capturing only what a Save would persist, so two states that
@@ -413,6 +597,7 @@ function formSignature(s: FormState): string {
       : null,
     duration: s.durationEnabled ? s.duration : null,
     notes: s.notes.trim(),
+    recurrence: recurrenceOf(s),
   });
 }
 

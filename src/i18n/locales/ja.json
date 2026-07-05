@@ -31,7 +31,18 @@
     "notifBody": "このタスクを始める時間です",
     "notifPermTitle": "通知をオンにしますか？",
     "notifPermMessage": "設定で通知をオンにすると、タスクの開始時間にお知らせします。",
-    "openSettings": "設定を開く"
+    "openSettings": "設定を開く",
+    "repeatLabel": "繰り返し",
+    "repeatNone": "なし",
+    "repeatDaily": "毎日",
+    "repeatWeekly": "毎週",
+    "repeatMonthly": "毎月",
+    "repeatCustom": "カスタム",
+    "repeatWeeklyHint": "毎週{{day}}に繰り返します",
+    "repeatMonthlyHint": "毎月{{day}}日に繰り返します",
+    "repeatOnWeekdays": "毎週…",
+    "repeatOnMonthDay": "毎月…",
+    "repeatMonthDayLabel": "日にち"
   },
   "goals": {
     "discardTitle": "変更を破棄しますか？",

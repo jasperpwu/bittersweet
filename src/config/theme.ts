@@ -27,6 +27,11 @@ export const colors = {
     // Differs from `border` (#E1E1E1, a grey for white surfaces) — the grey reads
     // too white on cream. Use this for inline-styled borders on the screen.
     screenBorder: '#D4C4A8',
+    // Secondary text on the cream screen (NativeWind `text-light-text-secondary`).
+    // Differs from `textSecondary` (#8A8A8A, a grey for white surfaces, near-
+    // invisible on cream). Use this for inline-styled icons/text that sit next
+    // to Typography color="secondary".
+    screenTextSecondary: '#6B5A42',
   },
 
   // Dark Mode Colors

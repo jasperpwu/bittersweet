@@ -101,6 +101,15 @@ export interface Tag extends BaseEntity {
   activityType?: ActivityType;
 }
 
+// How a recurring todo repeats. The todo's startAt always holds the *current*
+// occurrence; rollRecurringTodos advances it when a new period begins
+// (Google Tasks semantics).
+export interface TodoRecurrence {
+  freq: 'daily' | 'weekly' | 'monthly';
+  weekdays?: number[]; // weekly only: 0=Sun..6=Sat, sorted, non-empty
+  monthDay?: number; // monthly only: 1–31 (29–31 clamp to the last day of shorter months)
+}
+
 // Lightweight task planning, surfaced in the Journal "TODOs" sheet.
 // Synced as a "list" entity, mirroring FocusGoal.
 export interface Todo extends BaseEntity {
@@ -119,6 +128,7 @@ export interface Todo extends BaseEntity {
   completedAt?: Date;
   sortOrder: number;
   deletedAt?: Date; // soft-delete, mirrors Tag
+  recurrence?: TodoRecurrence; // set only when startAt is set
 }
 
 export interface TargetHistoryEntry {

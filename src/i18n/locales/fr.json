@@ -31,7 +31,18 @@
     "notifBody": "C’est l’heure de commencer cette tâche",
     "notifPermTitle": "Activer les notifications ?",
     "notifPermMessage": "Activez les notifications dans les Réglages pour être prévenu au début de vos tâches.",
-    "openSettings": "Ouvrir Réglages"
+    "openSettings": "Ouvrir Réglages",
+    "repeatLabel": "Répéter",
+    "repeatNone": "Jamais",
+    "repeatDaily": "Tous les jours",
+    "repeatWeekly": "Toutes les semaines",
+    "repeatMonthly": "Tous les mois",
+    "repeatCustom": "Personnalisé",
+    "repeatWeeklyHint": "Se répète chaque {{day}}",
+    "repeatMonthlyHint": "Se répète le {{day}} de chaque mois",
+    "repeatOnWeekdays": "Chaque semaine le…",
+    "repeatOnMonthDay": "Chaque mois le…",
+    "repeatMonthDayLabel": "Jour du mois"
   },
   "goals": {
     "discardTitle": "Abandonner les modifications ?",

@@ -17,7 +17,8 @@ import {
 import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
 import { WidgetService } from '../services/WidgetService';
-import { FocusGoal, WeeklyCoachReport, Todo } from './types';
+import { FocusGoal, WeeklyCoachReport, Todo, TodoRecurrence } from './types';
+import { nextOccurrence, startOfDay } from '../utils/todoRecurrence';
 import { persistenceConfig, persistStateNow } from './middleware/persistence';
 import { computeBadgeStats } from '../utils/badgeStats';
 import { fruitsForRating, type RatingSource } from '../utils/focusRating';
@@ -169,6 +170,7 @@ interface AppStore {
       deadlineHasTime?: boolean;
       durationMinutes?: number;
       notes?: string;
+      recurrence?: TodoRecurrence;
     }) => Todo;
     updateTodo: (
       id: string,
@@ -183,6 +185,7 @@ interface AppStore {
           | 'deadlineHasTime'
           | 'durationMinutes'
           | 'notes'
+          | 'recurrence'
         >
       >
     ) => void;
@@ -197,6 +200,11 @@ interface AppStore {
     // todos reordered under the running timer). orderedIds is the visible subset
     // in its new order — other todos are untouched.
     reorderTodos: (orderedIds: string[]) => void;
+    // Google Tasks-style rollover: advance every recurring todo whose current
+    // occurrence day has passed to its next occurrence on/after today. A
+    // completed occurrence is first snapshotted as a plain completed todo so
+    // Journal/Completed history survives the roll. Idempotent.
+    rollRecurringTodos: () => void;
 
     // Badges
     badges: {
@@ -1378,6 +1386,7 @@ export const useAppStore = create<AppStore>()(
               deadlineHasTime: input.deadlineHasTime,
               durationMinutes: input.durationMinutes,
               notes: input.notes?.trim() || undefined,
+              recurrence: input.recurrence,
               completed: false,
               // sortOrder is the single ordering key. Default it from start time so
               // the list reads chronologically out of the box: timed todos sort by
@@ -1423,6 +1432,56 @@ export const useAppStore = create<AppStore>()(
               };
             });
             syncTodosWidget();
+          },
+
+          rollRecurringTodos: () => {
+            const now = new Date();
+            const today = startOfDay(now);
+            let rolled = false;
+            set((state) => {
+              const { todos } = state.focus;
+              const byId = { ...todos.byId };
+              const allIds = [...todos.allIds];
+              for (const id of todos.allIds) {
+                const todo = byId[id];
+                if (!todo?.recurrence || !todo.startAt || todo.deletedAt) continue;
+                const start = new Date(todo.startAt);
+                if (startOfDay(start).getTime() >= today.getTime()) continue;
+                rolled = true;
+                if (todo.completed) {
+                  // Preserve history: the finished occurrence stays behind as a
+                  // plain (non-recurring) completed todo.
+                  const copyId = generateId();
+                  const snapshot: Todo = { ...todo, id: copyId, createdAt: now, updatedAt: now };
+                  delete snapshot.recurrence;
+                  byId[copyId] = snapshot;
+                  allIds.push(copyId);
+                }
+                const nextStart = nextOccurrence(todo.recurrence, start, today);
+                const dayDelta = startOfDay(nextStart).getTime() - startOfDay(start).getTime();
+                byId[id] = {
+                  ...todo,
+                  startAt: nextStart,
+                  deadlineAt: todo.deadlineAt
+                    ? new Date(new Date(todo.deadlineAt).getTime() + dayDelta)
+                    : undefined,
+                  completed: false,
+                  completedAt: undefined,
+                  // Same chronological default as createTodo, so the rolled todo
+                  // sorts into its new day instead of by its old start.
+                  sortOrder: Math.floor(nextStart.getTime() / 60000),
+                  updatedAt: now,
+                };
+              }
+              if (!rolled) return state;
+              return {
+                focus: {
+                  ...state.focus,
+                  todos: { ...todos, byId, allIds, lastUpdated: now },
+                },
+              };
+            });
+            if (rolled) syncTodosWidget();
           },
 
           toggleTodo: (todoId) => {

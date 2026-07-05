@@ -31,7 +31,18 @@
     "notifBody": "该开始这个任务了",
     "notifPermTitle": "开启通知？",
     "notifPermMessage": "在「设置」中开启通知，任务开始时即可收到提醒。",
-    "openSettings": "打开设置"
+    "openSettings": "打开设置",
+    "repeatLabel": "重复",
+    "repeatNone": "不重复",
+    "repeatDaily": "每天",
+    "repeatWeekly": "每周",
+    "repeatMonthly": "每月",
+    "repeatCustom": "自定义",
+    "repeatWeeklyHint": "每{{day}}重复",
+    "repeatMonthlyHint": "每月{{day}}日重复",
+    "repeatOnWeekdays": "每周…",
+    "repeatOnMonthDay": "每月…",
+    "repeatMonthDayLabel": "每月几号"
   },
   "goals": {
     "discardTitle": "放弃更改？",

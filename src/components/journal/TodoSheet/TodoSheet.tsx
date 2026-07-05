@@ -92,6 +92,13 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
   // the pan knows when the list is at its top.
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useSharedValue(0);
+  // List content/viewport heights mirrored to the UI thread so the drag
+  // gesture can tell when the list is scrolled to its bottom.
+  const listContentH = useSharedValue(0);
+  const listLayoutH = useSharedValue(0);
+  // Height of the sheet content below the ScrollView (the filter pills row),
+  // so the bottom spacer compensates only for the truly hidden part of the list.
+  const listBottomGap = useSharedValue(0);
   // Anchors the sheet's position when a top-of-list pull-down takes over, and
   // latches so onEnd knows the pull (not a normal scroll) drove the sheet.
   const listContextY = useSharedValue(0);
@@ -135,6 +142,17 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   // Completed section starts collapsed so finished tasks stay out of the way.
   const [completedCollapsed, setCompletedCollapsed] = useState(true);
+  // Y of the Completed section header within the list content, so expanding it
+  // can scroll the revealed items into view without an extra manual scroll.
+  const completedSectionY = useRef(0);
+  const pendingScrollToCompleted = useRef(false);
+
+  const toggleCompleted = useCallback(() => {
+    // Expanding means the user wants to see the items — scroll to them once
+    // they render (handled in onContentSizeChange, after the height updates).
+    if (completedCollapsed) pendingScrollToCompleted.current = true;
+    setCompletedCollapsed(!completedCollapsed);
+  }, [completedCollapsed]);
 
   const activeTags = useMemo(
     () => tags.allIds.map((id) => tags.byId[id]).filter((tg) => tg && !tg.deletedAt),
@@ -207,53 +225,76 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
       runOnJS(setExpanded)(target !== collapsedY);
     });
 
-  // Drag on the list itself: once it's scrolled to the top, a downward pull
-  // drives the whole sheet down instead of (uselessly) overscrolling the list.
-  // Runs simultaneously with the ScrollView's native gesture so vertical
-  // scrolling within the list is unaffected.
-  const listPanGesture = Gesture.Pan()
-    .onUpdate((event) => {
-      const atTop = scrollY.value <= 0;
-      if (!listDriving.value) {
-        // Only take over when expanded, at the top, and pulling downward.
-        if (atTop && event.translationY > 0 && translateY.value < collapsedY) {
-          listDriving.value = true;
-          // Anchor so the sheet stays put at the moment of takeover (no jump).
-          listContextY.value = translateY.value - event.translationY;
-        } else {
-          return;
-        }
-      }
-      translateY.value = Math.min(
-        collapsedY,
-        Math.max(0, listContextY.value + event.translationY)
-      );
-    })
-    .onEnd((event) => {
-      if (!listDriving.value) return;
-      listDriving.value = false;
-      // A top-of-list pull only drives the sheet downward; snap to the nearest
-      // stop at or below where the throw projects (half or peek).
-      const projected = translateY.value + event.velocityY * 0.08;
-      const points = [0, halfY, collapsedY];
-      let target = points[0];
-      let best = Math.abs(projected - points[0]);
-      for (let i = 1; i < points.length; i++) {
-        const d = Math.abs(projected - points[i]);
-        if (d < best) {
-          best = d;
-          target = points[i];
-        }
-      }
-      translateY.value = withTiming(target, { duration: 250 });
-      runOnJS(setExpanded)(target !== collapsedY);
-    })
-    .onFinalize(() => {
-      listDriving.value = false;
-    })
-    .simultaneousWithExternalGesture(
-      scrollRef as unknown as React.RefObject<React.ComponentType>
-    );
+  // The list ScrollView's native pan, wrapped so the sheet pan can hold a REAL
+  // simultaneous relation with it. Passing the raw ScrollView ref to
+  // simultaneousWithExternalGesture silently no-ops — RNGH resolves relations
+  // via ref.current.handlerTag, which plain RN components don't have.
+  const listNativeGesture = useMemo(() => Gesture.Native(), []);
+
+  // Drag on the list itself: once it's scrolled to an edge, the pull past that
+  // edge drives the whole sheet instead of (uselessly) overscrolling the list —
+  // downward at the top collapses, upward at the bottom expands (same motion
+  // as dragging the handle). Runs simultaneously with the ScrollView's native
+  // gesture so vertical scrolling within the list is unaffected. Activation is
+  // vertical-only (fails once the touch travels 30px horizontally — matching
+  // the rows' SWIPE_ACTIVATION_OFFSET) so it never tangles with the rows'
+  // horizontal Start/Delete swipes, which declare themselves simultaneous with
+  // this pan (see TodoRow) so a pull that starts on a row still moves the sheet.
+  const listPanGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetY([-10, 10])
+        .failOffsetX([-30, 30])
+        .onUpdate((event) => {
+          if (!listDriving.value) {
+            const atTop = scrollY.value <= 0;
+            const atBottom = scrollY.value >= listContentH.value - listLayoutH.value - 1;
+            const pullDown = atTop && event.translationY > 0 && translateY.value < collapsedY;
+            const pullUp = atBottom && event.translationY < 0 && translateY.value > 0;
+            if (pullDown || pullUp) {
+              listDriving.value = true;
+              // Anchor so the sheet stays put at the moment of takeover (no jump).
+              listContextY.value = translateY.value - event.translationY;
+            } else {
+              return;
+            }
+          }
+          translateY.value = Math.min(
+            collapsedY,
+            Math.max(0, listContextY.value + event.translationY)
+          );
+        })
+        .onEnd((event) => {
+          if (!listDriving.value) return;
+          listDriving.value = false;
+          // Project where the throw would land and snap to the nearest of the
+          // three stops (full / half / peek), same as the handle drag.
+          const projected = translateY.value + event.velocityY * 0.08;
+          const points = [0, halfY, collapsedY];
+          let target = points[0];
+          let best = Math.abs(projected - points[0]);
+          for (let i = 1; i < points.length; i++) {
+            const d = Math.abs(projected - points[i]);
+            if (d < best) {
+              best = d;
+              target = points[i];
+            }
+          }
+          translateY.value = withTiming(target, { duration: 250 });
+          runOnJS(setExpanded)(target !== collapsedY);
+        })
+        .onFinalize(() => {
+          listDriving.value = false;
+        })
+        .simultaneousWithExternalGesture(listNativeGesture),
+    // Shared values are stable refs; only the geometry can actually change.
+    [collapsedY, halfY, listNativeGesture, listDriving, listContextY, listContentH, listLayoutH, scrollY, translateY]
+  );
+
+  const listGesture = useMemo(
+    () => Gesture.Simultaneous(listNativeGesture, listPanGesture),
+    [listNativeGesture, listPanGesture]
+  );
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -261,6 +302,16 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: interpolate(translateY.value, [0, collapsedY], [0.5, 0], Extrapolation.CLAMP),
+  }));
+
+  // The list is laid out at the sheet's FULL height even when the sheet is
+  // translated down (half/peek), so its bottom `translateY - listBottomGap` px
+  // are below the visible fold. Without compensation, content that fits the
+  // full-height viewport isn't scrollable at all, leaving those rows stuck
+  // under the tab bar. This spacer extends the content by exactly the hidden
+  // amount so the last row can always be scrolled up to the fold.
+  const listSpacerStyle = useAnimatedStyle(() => ({
+    height: Math.max(0, translateY.value - listBottomGap.value),
   }));
 
   const openCreate = useCallback(() => {
@@ -374,14 +425,36 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
         </View>
 
         {/* Rows */}
-        <GestureDetector gesture={listPanGesture}>
+        <GestureDetector gesture={listGesture}>
           <ScrollView
             ref={scrollRef}
             className="flex-1 px-5"
-            contentContainerStyle={{ paddingTop: 4 }}
+            // Bottom padding keeps the last section slightly elevated above the
+            // fold instead of flush against it.
+            contentContainerStyle={{ paddingTop: 4, paddingBottom: 24 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             onScroll={handleListScroll}
+            onLayout={(e) => {
+              const { y, height } = e.nativeEvent.layout;
+              listLayoutH.value = height;
+              listBottomGap.value = Math.max(0, fullHeight - (y + height));
+            }}
+            onContentSizeChange={(_w, h) => {
+              listContentH.value = h;
+              // Fires right after the Completed rows render on expand — scroll
+              // the section header near the top so the items are in view,
+              // clamped so we never scroll past the end.
+              if (pendingScrollToCompleted.current) {
+                pendingScrollToCompleted.current = false;
+                const maxScroll = Math.max(0, h - listLayoutH.value);
+                const target = Math.max(
+                  0,
+                  Math.min(completedSectionY.current - 8, maxScroll)
+                );
+                scrollRef.current?.scrollTo({ y: target, animated: true });
+              }
+            }}
             scrollEventThrottle={16}
             // No top overscroll bounce — a downward pull at the top drives the
             // sheet (via listPanGesture) rather than rubber-banding the list.
@@ -398,13 +471,18 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
               const collapsed = section.collapsible && completedCollapsed;
               const Header = section.collapsible ? Pressable : View;
               return (
-                <View key={section.key}>
+                <View
+                  key={section.key}
+                  onLayout={
+                    section.collapsible
+                      ? (e) => {
+                          completedSectionY.current = e.nativeEvent.layout.y;
+                        }
+                      : undefined
+                  }
+                >
                   <Header
-                    onPress={
-                      section.collapsible
-                        ? () => setCompletedCollapsed((v) => !v)
-                        : undefined
-                    }
+                    onPress={section.collapsible ? toggleCompleted : undefined}
                     className="flex-row items-center justify-between pt-4 pb-1.5"
                   >
                     <View className="flex-row items-center">
@@ -434,12 +512,15 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
                         onDelete={handleDelete}
                         onStart={handleStart}
                         schedule={schedule}
+                        sheetPan={listPanGesture}
                       />
                     ))}
                 </View>
               );
             })
           )}
+          {/* Bottom spacer — see listSpacerStyle */}
+          <Animated.View style={listSpacerStyle} />
           </ScrollView>
         </GestureDetector>
 
