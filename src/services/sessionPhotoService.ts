@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { supabase } from '../config/supabase';
+import { useAppStore } from '../store';
 
 const PHOTOS_DIR = `${FileSystem.documentDirectory}session-photos/`;
 
@@ -71,6 +72,45 @@ export async function uploadSessionPhoto(
 
   // Append cache-buster to force refresh
   return `${urlData.publicUrl}?t=${Date.now()}`;
+}
+
+/**
+ * Re-upload photos stuck with a local file:// photoUrl. Older builds attached
+ * photos via the journal manual/edit forms without ever uploading them, so the
+ * local path synced to the cloud and friends' feeds couldn't render it.
+ * Sessions whose local copy no longer exists are skipped (nothing to recover).
+ */
+export async function backfillLocalSessionPhotos(): Promise<void> {
+  const { sessions } = useAppStore.getState().focus;
+  const staleIds = sessions.allIds.filter((id) =>
+    sessions.byId[id]?.photoUrl?.startsWith('file://')
+  );
+  if (staleIds.length === 0) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  console.log(`📷 Backfilling ${staleIds.length} local session photo(s) to cloud`);
+  for (const id of staleIds) {
+    // The stored URL embeds the app container UUID, which changes on
+    // reinstall/update — prefer the canonical path derived from the id.
+    const storedUrl = sessions.byId[id].photoUrl!;
+    const canonicalUri = `${PHOTOS_DIR}${id}.jpg`;
+    let sourceUri: string | null = null;
+    if ((await FileSystem.getInfoAsync(canonicalUri)).exists) {
+      sourceUri = canonicalUri;
+    } else if ((await FileSystem.getInfoAsync(storedUrl)).exists) {
+      sourceUri = storedUrl;
+    }
+    if (!sourceUri) continue;
+
+    try {
+      const cloudUrl = await uploadSessionPhoto(sourceUri, id);
+      useAppStore.getState().focus.updateSession(id, { photoUrl: cloudUrl });
+    } catch (error) {
+      console.warn('Failed to backfill photo for session:', id, error);
+    }
+  }
 }
 
 export async function deleteSessionPhoto(sessionId: string): Promise<void> {

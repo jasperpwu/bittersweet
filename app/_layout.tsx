@@ -27,6 +27,7 @@ import { LiveActivityService } from '../src/services/LiveActivityService';
 import { WidgetService } from '../src/services/WidgetService';
 import { syncWidgetTodos } from '../src/services/widgetTodos';
 import { syncHealthKitWorkouts } from '../src/services/health/syncHealthKitWorkouts';
+import { backfillLocalSessionPhotos } from '../src/services/sessionPhotoService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore, clearAllStoreData } from '../src/store';
 import { supabase } from '../src/config/supabase';
@@ -449,6 +450,12 @@ export default function RootLayout() {
             }
 
             // Blocklist sync is handled inside triggerSync() and pullAndApply()
+
+            // Re-upload session photos stuck with a local file:// photoUrl
+            // (journal-attached photos from older builds were never uploaded).
+            backfillLocalSessionPhotos().catch((error) =>
+              console.warn('Session photo backfill failed:', error)
+            );
 
             // Register push token after sign-in
             PushNotificationService.registerPushToken();

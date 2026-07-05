@@ -30,7 +30,7 @@ import { showToast } from '../../src/components/ui/Toast';
 import { isToday } from '../../src/utils/dateUtils';
 import { fruitsForRating, RATING_FRUIT_MULTIPLIER } from '../../src/utils/focusRating';
 import { FocusSession } from '../../src/types/models';
-import { saveSessionPhoto, deleteSessionPhoto } from '../../src/services/sessionPhotoService';
+import { saveSessionPhoto, uploadSessionPhoto, deleteSessionPhoto } from '../../src/services/sessionPhotoService';
 import { EmptyState } from '../../src/components/ui/EmptyState/EmptyState';
 import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
 import { useTranslation } from 'react-i18next';
@@ -234,8 +234,17 @@ export default function JournalScreen() {
     // Upload photo if one was selected
     if (manualPhotoUri && createdSession) {
       try {
+        // Save locally first (fast, works offline)
         const photoUrl = await saveSessionPhoto(manualPhotoUri, createdSession.id);
         updateSession(createdSession.id, { photoUrl });
+
+        // Upload to Supabase for feed visibility, update to cloud URL on success
+        try {
+          const cloudUrl = await uploadSessionPhoto(manualPhotoUri, createdSession.id);
+          updateSession(createdSession.id, { photoUrl: cloudUrl });
+        } catch (uploadError) {
+          console.warn('Failed to upload photo to cloud (local copy saved):', uploadError);
+        }
       } catch (error) {
         console.error('Failed to save session photo:', error);
         showToast(t('journal.failedSavePhoto'), 'error');
@@ -443,8 +452,17 @@ export default function JournalScreen() {
     // Upload photo if selected and session doesn't already have a photo
     if (editPhotoUri && !selectedSession.photoUrl) {
       try {
+        // Save locally first (fast, works offline)
         const photoUrl = await saveSessionPhoto(editPhotoUri, selectedSession.id);
         updateSession(selectedSession.id, { photoUrl });
+
+        // Upload to Supabase for feed visibility, update to cloud URL on success
+        try {
+          const cloudUrl = await uploadSessionPhoto(editPhotoUri, selectedSession.id);
+          updateSession(selectedSession.id, { photoUrl: cloudUrl });
+        } catch (uploadError) {
+          console.warn('Failed to upload photo to cloud (local copy saved):', uploadError);
+        }
       } catch (error) {
         console.error('Failed to save session photo:', error);
         showToast(t('journal.failedSavePhoto'), 'error');
