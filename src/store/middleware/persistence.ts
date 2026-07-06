@@ -500,6 +500,7 @@ export const persistenceConfig = {
       // every cold start rehydrates tasks as undefined → normalizeSetupTasks defaults
       // to claimed:false → the goal/widget reward shows reclaimable again (re-claimable).
       tasks: state.rewards.tasks,
+      purchases: state.rewards.purchases,
     },
     blocklist: {
       settings: state.blocklist.settings,

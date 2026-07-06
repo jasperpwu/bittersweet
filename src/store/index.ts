@@ -13,7 +13,9 @@ import {
   UnlockSession,
   UnlockTransaction,
   BlocklistSettings,
+  Purchase,
 } from '../types/models';
+import { pickTipId } from '../config/tips';
 import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
 import { WidgetService } from '../services/WidgetService';
@@ -291,10 +293,24 @@ interface AppStore {
     unlockHistory: Record<string, number>;
     // One-time setup tasks (set up widget / set a goal), each worth SETUP_TASK_REWARD fruits.
     tasks: SetupTasks;
+    // Fruit-store purchase history (accelerate cards, usage tips). List-synced to
+    // the `purchases` table, same pattern as badges/coach reports.
+    purchases: { byId: Record<string, Purchase>; allIds: string[] };
     earnFruits: (amount: number, source: string, metadata?: any) => void;
     spendFruits: (amount: number, purpose: string, metadata?: any) => void;
     unlockApp: (appId: string) => Promise<boolean>;
     activateAccelerateCard: () => void;
+    // Spend fruits on a usage tip: picks a tip not yet purchased, records the
+    // purchase with its tipId, and returns the tipId so the UI can show that
+    // tip's message. Throws on insufficient balance or when the whole catalog
+    // is already owned (UI should pre-check both).
+    purchaseTip: () => string;
+    // Append a purchase record (internal helper for the product purchase actions).
+    addPurchase: (
+      productId: Purchase['productId'],
+      cost: number,
+      metadata?: { tipId?: string }
+    ) => void;
     isAccelerateActive: () => boolean;
     // Mark a setup task's prerequisite as satisfied (sticky). Does NOT award fruits and
     // does NOT bump updatedAt (see claimTask / sync notes).
@@ -2238,6 +2254,7 @@ export const useAppStore = create<AppStore>()(
           accelerateCard: null,
           unlockHistory: {},
           tasks: defaultSetupTasks(),
+          purchases: { byId: {}, allIds: [] },
           earnFruits: (amount, source, metadata) => {
             set((state) => ({
               rewards: {
@@ -2326,6 +2343,7 @@ export const useAppStore = create<AppStore>()(
             const now = new Date();
             const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 1 day
             get().rewards.spendFruits(cost, 'accelerate_card', { duration: '1 day' });
+            get().rewards.addPurchase('accelerate_card', cost);
             set((state) => ({
               rewards: {
                 ...state.rewards,
@@ -2335,6 +2353,49 @@ export const useAppStore = create<AppStore>()(
                 },
               },
             }));
+          },
+          purchaseTip: () => {
+            const cost = 5;
+            const balance = get().rewards.balance;
+            if (balance < cost) {
+              throw new Error(`Insufficient fruits. Required: ${cost}, Available: ${balance}`);
+            }
+            const purchases = get().rewards.purchases ?? { byId: {}, allIds: [] };
+            const purchasedTipIds = purchases.allIds
+              .map((id) => purchases.byId[id]?.tipId)
+              .filter((tipId): tipId is string => !!tipId);
+            const tipId = pickTipId(purchasedTipIds);
+            // Backstop — the store UI disables the product when the catalog is
+            // exhausted, so this only fires if a caller skips that check.
+            if (!tipId) {
+              throw new Error('All tips already purchased');
+            }
+            get().rewards.spendFruits(cost, 'product_tip', { product: 'usage_tip', tipId });
+            get().rewards.addPurchase('usage_tip', cost, { tipId });
+            return tipId;
+          },
+          addPurchase: (productId, cost, metadata) => {
+            const now = new Date().toISOString();
+            const purchase: Purchase = {
+              id: generateId(),
+              productId,
+              cost,
+              ...(metadata?.tipId ? { tipId: metadata.tipId } : {}),
+              createdAt: now,
+              updatedAt: now,
+            };
+            set((state) => {
+              const purchases = state.rewards.purchases ?? { byId: {}, allIds: [] };
+              return {
+                rewards: {
+                  ...state.rewards,
+                  purchases: {
+                    byId: { ...purchases.byId, [purchase.id]: purchase },
+                    allIds: [...purchases.allIds, purchase.id],
+                  },
+                },
+              };
+            });
           },
           isAccelerateActive: () => {
             const card = get().rewards.accelerateCard;
@@ -3309,6 +3370,7 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
       accelerateCard: null,
       unlockHistory: {},
       tasks: defaultSetupTasks(),
+      purchases: { byId: {}, allIds: [] },
     },
     blocklist: {
       ...s.blocklist,

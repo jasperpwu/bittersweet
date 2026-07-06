@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, SafeAreaView, Pressable, ScrollView, useColorScheme, Text, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,14 @@ import { showToast } from '../src/components/ui/Toast';
 import { SETUP_TASK_REWARD, type SetupTaskId } from '../src/services/sync/SyncMapper';
 import { getInstalledWidgetFamilies } from '../modules/widget-info';
 import { useTranslation } from 'react-i18next';
+import type { Purchase } from '../src/types/models';
+import { TIP_IDS, hasUnpurchasedTips } from '../src/config/tips';
+
+// A history row's tipId is only renderable if it's still in the catalog —
+// retired/unknown ids (see tips.ts contract) fall back to a generic label
+// instead of leaking a raw `store.tips.*` i18n key.
+const isKnownTipId = (tipId: string | undefined): tipId is string =>
+  !!tipId && (TIP_IDS as readonly string[]).includes(tipId);
 
 const SETUP_TASK_META: { id: SetupTaskId; icon: string; titleKey: string; descKey: string }[] = [
   { id: 'widget', icon: '📱', titleKey: 'store.taskWidgetTitle', descKey: 'store.taskWidgetDesc' },
@@ -18,14 +26,33 @@ const SETUP_TASK_META: { id: SetupTaskId; icon: string; titleKey: string; descKe
 ];
 
 export default function FruitStoreScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
   const rewards = useRewards();
-  const [showTipModal, setShowTipModal] = useState(false);
+  // Tip currently shown in the modal (just purchased, or reopened from history).
+  const [activeTipId, setActiveTipId] = useState<string | null>(null);
 
   const [claimedTitle, setClaimedTitle] = useState<string | null>(null);
 
   const isAccelerateActive = useAppStore((s) => s.rewards.isAccelerateActive());
+
+  const purchaseHistory = useMemo(() => {
+    const purchases = rewards.purchases ?? { byId: {}, allIds: [] };
+    return purchases.allIds
+      .map((id) => purchases.byId[id])
+      .filter((p): p is Purchase => !!p)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [rewards.purchases]);
+
+  // Tips are never re-sold: once the whole catalog is owned the product shows a
+  // "come back later" state instead of charging for a repeat.
+  const allTipsOwned = useMemo(
+    () =>
+      !hasUnpurchasedTips(
+        purchaseHistory.map((p) => p.tipId).filter((tipId): tipId is string => !!tipId),
+      ),
+    [purchaseHistory],
+  );
 
   // Only surface tasks that are set up but not yet claimed — claimed tasks disappear.
   const pendingTasks = SETUP_TASK_META.filter(
@@ -77,6 +104,10 @@ export default function FruitStoreScreen() {
   };
 
   const handlePurchaseTip = () => {
+    if (allTipsOwned) {
+      showToast(t('store.tipsExhausted'), 'neutral');
+      return;
+    }
     if (rewards.balance < 5) {
       showToast(t('store.notEnough5'), 'error');
       return;
@@ -90,8 +121,8 @@ export default function FruitStoreScreen() {
           text: t('store.purchase'),
           onPress: () => {
             try {
-              useAppStore.getState().rewards.spendFruits(5, 'product_tip', { product: 'usage_tip' });
-              setShowTipModal(true);
+              const tipId = useAppStore.getState().rewards.purchaseTip();
+              setActiveTipId(tipId);
             } catch {
               showToast(t('store.purchaseFailed'), 'error');
             }
@@ -207,15 +238,15 @@ export default function FruitStoreScreen() {
           </View>
         </Pressable>
 
-        {/* Product Usage Tip */}
+        {/* Product Usage Tip — stays tappable when exhausted so the tap explains why */}
         <Pressable
           onPress={handlePurchaseTip}
-          className="
+          className={`
             bg-light-border/30 dark:bg-[#242540]
             rounded-2xl border border-light-border dark:border-dark-border
             p-5 mb-4
-            active:opacity-80
-          "
+            ${allTipsOwned ? 'opacity-60' : 'active:opacity-80'}
+          `}
         >
           <View className="flex-row items-start justify-between">
             <View className="flex-1 mr-4">
@@ -230,6 +261,13 @@ export default function FruitStoreScreen() {
               <Typography variant="body-14" color="secondary">
                 {t('store.tipDesc')}
               </Typography>
+              {allTipsOwned && (
+                <View className="mt-2">
+                  <Typography variant="body-12" color="success">
+                    {t('store.tipsExhausted')}
+                  </Typography>
+                </View>
+              )}
             </View>
             <View className="bg-primary/15 rounded-xl px-3 py-1.5">
               <Typography variant="subtitle-14-semibold" color="primary">
@@ -238,6 +276,62 @@ export default function FruitStoreScreen() {
             </View>
           </View>
         </Pressable>
+
+        {/* Purchase History — newest first; tapping a tip purchase reopens that tip */}
+        {purchaseHistory.length > 0 && (
+          <>
+            <View className="mt-4 mb-3">
+              <Typography variant="subtitle-14-semibold" color="secondary">
+                {t('store.history')}
+              </Typography>
+            </View>
+
+            <View
+              className="
+                bg-light-border/30 dark:bg-[#242540]
+                rounded-2xl border border-light-border dark:border-dark-border
+                px-5 mb-4
+              "
+            >
+              {purchaseHistory.map((purchase, index) => (
+                <Pressable
+                  key={purchase.id}
+                  disabled={purchase.productId !== 'usage_tip' || !isKnownTipId(purchase.tipId)}
+                  onPress={() => isKnownTipId(purchase.tipId) && setActiveTipId(purchase.tipId)}
+                  className={`
+                    py-4 flex-row items-start
+                    ${index > 0 ? 'border-t border-light-border dark:border-dark-border' : ''}
+                    ${purchase.productId === 'usage_tip' && isKnownTipId(purchase.tipId) ? 'active:opacity-70' : ''}
+                  `}
+                >
+                  <Text style={{ fontSize: 20 }}>
+                    {purchase.productId === 'accelerate_card' ? '🚀' : '💡'}
+                  </Text>
+                  <View className="ml-3 flex-1">
+                    {purchase.productId === 'usage_tip' && isKnownTipId(purchase.tipId) ? (
+                      <Typography variant="body-14">{t(`store.tips.${purchase.tipId}`)}</Typography>
+                    ) : (
+                      <Typography variant="body-14">
+                        {purchase.productId === 'accelerate_card'
+                          ? t('store.accelerateTitle')
+                          : t('store.tipTitle')}
+                      </Typography>
+                    )}
+                    <View className="mt-1">
+                      <Typography variant="body-12" color="secondary">
+                        {new Date(purchase.createdAt).toLocaleDateString(i18n.language, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </Typography>
+                    </View>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* Coming Soon Banner */}
         <View className="bg-primary/10 rounded-2xl p-5 mt-4 items-center">
@@ -260,16 +354,16 @@ export default function FruitStoreScreen() {
       </ScrollView>
 
       {/* Tip Modal */}
-      <Modal isVisible={showTipModal} onClose={() => setShowTipModal(false)} size="small">
+      <Modal isVisible={activeTipId !== null} onClose={() => setActiveTipId(null)} size="small">
         <View className="items-center">
           <Text style={{ fontSize: 40, marginBottom: 16 }}>💡</Text>
           <Typography variant="headline-18" className="text-center mb-3">
             {t('store.proTip')}
           </Typography>
           <Typography variant="body-14" color="secondary" className="text-center mb-6">
-            {t('store.proTipBody')}
+            {activeTipId ? t(`store.tips.${activeTipId}`) : ''}
           </Typography>
-          <Button onPress={() => setShowTipModal(false)} size="medium">
+          <Button onPress={() => setActiveTipId(null)} size="medium">
             {t('store.gotIt')}
           </Button>
         </View>

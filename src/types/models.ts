@@ -186,6 +186,18 @@ export interface UnlockTransaction {
   status: 'completed' | 'cancelled' | 'expired';
 }
 
+// A fruit-store purchase (accelerate card, usage tip, ...). Synced to the
+// `purchases` table as a list entity. tipId is set for usage-tip purchases and
+// records which tip was delivered, so future tip purchases avoid repeats.
+export interface Purchase {
+  id: string;
+  productId: 'accelerate_card' | 'usage_tip';
+  cost: number; // fruits spent
+  tipId?: string;
+  createdAt: string; // ISO
+  updatedAt: string; // ISO
+}
+
 export interface BlocklistSettings {
   blockedApps: FamilyActivitySelectionLegacy; // Use legacy format for storage/display
   unlockCostPerMinute: number; // fruits per minute

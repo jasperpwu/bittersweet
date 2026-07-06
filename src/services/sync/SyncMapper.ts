@@ -322,6 +322,31 @@ export function rowToRewards(row: Record<string, any>): any {
   };
 }
 
+// --- Purchase mapper (fruit-store purchase history) ---
+
+export function purchaseToRow(purchase: any, userId: string): Record<string, any> {
+  return {
+    id: purchase.id,
+    user_id: userId,
+    product_id: purchase.productId,
+    cost: purchase.cost ?? 0,
+    tip_id: purchase.tipId ?? null,
+    created_at: purchase.createdAt,
+    updated_at: purchase.updatedAt ?? purchase.createdAt,
+  };
+}
+
+export function rowToPurchase(row: Record<string, any>): any {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    cost: row.cost ?? 0,
+    ...(row.tip_id ? { tipId: row.tip_id } : {}),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
+  };
+}
+
 // --- Badge mapper ---
 
 export function badgeToRow(badge: any, userId: string): Record<string, any> {
