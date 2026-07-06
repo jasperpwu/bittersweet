@@ -186,18 +186,39 @@ export interface UnlockTransaction {
   status: 'completed' | 'cancelled' | 'expired';
 }
 
-// A fruit-store purchase (accelerate card, usage tip, slider theme, ...).
-// Synced to the `purchases` table as a list entity. tipId is set for usage-tip
-// purchases and records which tip was delivered, so future tip purchases avoid
-// repeats. Slider themes encode their theme id in the productId itself
-// (`theme_<id>`, see config/sliderThemes.ts) — ownership derives from history.
+// A fruit-store purchase (accelerate card, usage tip, slider theme, custom
+// reward, ...). Synced to the `purchases` table as a list entity. tipId is set
+// for usage-tip purchases and records which tip was delivered, so future tip
+// purchases avoid repeats. Slider themes encode their theme id in the productId
+// itself (`theme_<id>`, see config/sliderThemes.ts) and custom rewards likewise
+// (`custom_<id>`, see config/customRewards.ts) — ownership derives from history.
+// Rows are mostly write-once, but photoUrl can be set after the fact (per-row
+// LWW on updatedAt carries the edit through sync).
 export interface Purchase {
   id: string;
-  productId: 'accelerate_card' | 'usage_tip' | `theme_${string}`;
+  productId: 'accelerate_card' | 'usage_tip' | `theme_${string}` | `custom_${string}`;
   cost: number; // fruits spent
   tipId?: string;
+  // Photo the user attached to a bought custom reward: local file:// path
+  // until the Storage upload succeeds, then the public bucket URL.
+  photoUrl?: string;
   createdAt: string; // ISO
   updatedAt: string; // ISO
+}
+
+// A user-defined fruit-store reward (Custom tab): name + cost + optional emoji.
+// Synced to the `custom_rewards` table as a list entity (per-row LWW, soft
+// delete). The definition stays in the store after purchase — the catalog
+// filters out bought ones (ownership derives from purchase history, like
+// themes), while history rows keep resolving their name/emoji from here.
+export interface CustomReward {
+  id: string;
+  name: string;
+  emoji?: string;
+  cost: number; // fruits
+  createdAt: string; // ISO
+  updatedAt: string; // ISO
+  deletedAt?: string; // ISO
 }
 
 export interface BlocklistSettings {

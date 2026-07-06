@@ -501,6 +501,7 @@ export const persistenceConfig = {
       // to claimed:false → the goal/widget reward shows reclaimable again (re-claimable).
       tasks: state.rewards.tasks,
       purchases: state.rewards.purchases,
+      customRewards: state.rewards.customRewards,
     },
     blocklist: {
       settings: state.blocklist.settings,

@@ -27,7 +27,11 @@ import { LiveActivityService } from '../src/services/LiveActivityService';
 import { WidgetService } from '../src/services/WidgetService';
 import { syncWidgetTodos } from '../src/services/widgetTodos';
 import { syncHealthKitWorkouts } from '../src/services/health/syncHealthKitWorkouts';
-import { backfillLocalSessionPhotos } from '../src/services/sessionPhotoService';
+import {
+  backfillLocalSessionPhotos,
+  deleteAllSessionPhotos,
+} from '../src/services/sessionPhotoService';
+import { deleteAllPurchasePhotos } from '../src/services/purchasePhotoService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore, clearAllStoreData } from '../src/store';
 import { supabase } from '../src/config/supabase';
@@ -246,7 +250,15 @@ export default function RootLayout() {
               console.error('Error clearing AsyncStorage on sign-out:', e);
             }
 
-            // 4. Clear/reset all store states
+            // 4. Delete locally saved photo files (session + reward photos)
+            try {
+              await deleteAllSessionPhotos();
+              await deleteAllPurchasePhotos();
+            } catch (e) {
+              console.error('Error deleting local photos on sign-out:', e);
+            }
+
+            // 5. Clear/reset all store states
             clearAllStoreData(false); // keepAuth = false
             clearUnifiedStoreData();
           } else if (event === 'TOKEN_REFRESHED' && session?.user) {
@@ -297,7 +309,15 @@ export default function RootLayout() {
                 console.error('Error clearing AsyncStorage on user switch:', e);
               }
 
-              // 4. Clear/reset all store states (keeping newly signed in auth)
+              // 4. Delete locally saved photo files (session + reward photos)
+              try {
+                await deleteAllSessionPhotos();
+                await deleteAllPurchasePhotos();
+              } catch (e) {
+                console.error('Error deleting local photos on user switch:', e);
+              }
+
+              // 5. Clear/reset all store states (keeping newly signed in auth)
               clearAllStoreData(true);
               clearUnifiedStoreData();
             }
@@ -394,11 +414,19 @@ export default function RootLayout() {
                     console.error('Error clearing AsyncStorage on sign-in:', e);
                   }
 
-                  // 4. Clear/reset all store states (keeping auth)
+                  // 4. Delete locally saved photo files (session + reward photos)
+                  try {
+                    await deleteAllSessionPhotos();
+                    await deleteAllPurchasePhotos();
+                  } catch (e) {
+                    console.error('Error deleting local photos on sign-in:', e);
+                  }
+
+                  // 5. Clear/reset all store states (keeping auth)
                   clearAllStoreData(true);
                   clearUnifiedStoreData();
 
-                  // 5. Restore user auth state
+                  // 6. Restore user auth state
                   useAppStore.setState((state) => ({
                     auth: {
                       ...state.auth,
@@ -413,7 +441,7 @@ export default function RootLayout() {
                     },
                   }));
 
-                  // 6. Pull from cloud and apply directly (no merge)
+                  // 7. Pull from cloud and apply directly (no merge)
                   await useAppStore.getState().sync.pullAndApply();
                 } else {
                   // Brand-new account: keep local data and push it to the cloud.

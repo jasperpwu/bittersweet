@@ -120,3 +120,12 @@ export async function deleteSessionPhoto(sessionId: string): Promise<void> {
     await FileSystem.deleteAsync(fileUri);
   }
 }
+
+/**
+ * Delete every locally saved session photo (the whole directory). Part of the
+ * "wipe all local data" sequence on sign-out/user-switch — no photo may
+ * survive for the next person on the device. Cloud copies are untouched.
+ */
+export async function deleteAllSessionPhotos(): Promise<void> {
+  await FileSystem.deleteAsync(PHOTOS_DIR, { idempotent: true });
+}

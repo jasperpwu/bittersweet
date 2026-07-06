@@ -14,9 +14,11 @@ import {
   UnlockTransaction,
   BlocklistSettings,
   Purchase,
+  CustomReward,
 } from '../types/models';
 import { pickTipId } from '../config/tips';
 import { sliderThemeCostForUser, themeProductId } from '../config/sliderThemes';
+import { customRewardProductId } from '../config/customRewards';
 import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
 import { WidgetService } from '../services/WidgetService';
@@ -297,6 +299,10 @@ interface AppStore {
     // Fruit-store purchase history (accelerate cards, usage tips). List-synced to
     // the `purchases` table, same pattern as badges/coach reports.
     purchases: { byId: Record<string, Purchase>; allIds: string[] };
+    // User-defined rewards for the store's Custom tab. List-synced to the
+    // `custom_rewards` table. Definitions outlive their purchase (history rows
+    // resolve name/emoji from here); the catalog hides bought ones.
+    customRewards: { byId: Record<string, CustomReward>; allIds: string[] };
     earnFruits: (amount: number, source: string, metadata?: any) => void;
     spendFruits: (amount: number, purpose: string, metadata?: any) => void;
     unlockApp: (appId: string) => Promise<boolean>;
@@ -317,6 +323,19 @@ interface AppStore {
       cost: number,
       metadata?: { tipId?: string }
     ) => void;
+    // Create a custom reward for the Custom tab (name trimmed, cost clamped to
+    // a positive integer). Returns the new reward's id.
+    addCustomReward: (name: string, cost: number, emoji?: string) => string;
+    // Remove an un-bought custom reward from the catalog. Dropping the id from
+    // byId/allIds lets the sync middleware enqueue the soft delete.
+    deleteCustomReward: (rewardId: string) => void;
+    // Spend fruits on a custom reward. Ownership derives from purchase history
+    // (product_id `custom_<id>`), which is what hides it from the catalog.
+    // Throws on insufficient balance or when already bought.
+    purchaseCustomReward: (rewardId: string) => void;
+    // Attach/replace the photo on a bought item's purchase row. Bumps
+    // updatedAt so per-row LWW carries the photo through sync.
+    setPurchasePhoto: (purchaseId: string, photoUrl: string) => void;
     isAccelerateActive: () => boolean;
     // Mark a setup task's prerequisite as satisfied (sticky). Does NOT award fruits and
     // does NOT bump updatedAt (see claimTask / sync notes).
@@ -2261,6 +2280,7 @@ export const useAppStore = create<AppStore>()(
           unlockHistory: {},
           tasks: defaultSetupTasks(),
           purchases: { byId: {}, allIds: [] },
+          customRewards: { byId: {}, allIds: [] },
           earnFruits: (amount, source, metadata) => {
             set((state) => ({
               rewards: {
@@ -2415,6 +2435,89 @@ export const useAppStore = create<AppStore>()(
                   purchases: {
                     byId: { ...purchases.byId, [purchase.id]: purchase },
                     allIds: [...purchases.allIds, purchase.id],
+                  },
+                },
+              };
+            });
+          },
+          addCustomReward: (name, cost, emoji) => {
+            const now = new Date().toISOString();
+            const reward: CustomReward = {
+              id: generateId(),
+              name: name.trim(),
+              ...(emoji ? { emoji } : {}),
+              cost: Math.max(1, Math.round(cost)),
+              createdAt: now,
+              updatedAt: now,
+            };
+            set((state) => {
+              const customRewards = state.rewards.customRewards ?? { byId: {}, allIds: [] };
+              return {
+                rewards: {
+                  ...state.rewards,
+                  customRewards: {
+                    byId: { ...customRewards.byId, [reward.id]: reward },
+                    allIds: [...customRewards.allIds, reward.id],
+                  },
+                },
+              };
+            });
+            return reward.id;
+          },
+          deleteCustomReward: (rewardId) => {
+            set((state) => {
+              const customRewards = state.rewards.customRewards ?? { byId: {}, allIds: [] };
+              if (!customRewards.byId[rewardId]) return state;
+              const { [rewardId]: _removed, ...byId } = customRewards.byId;
+              return {
+                rewards: {
+                  ...state.rewards,
+                  customRewards: {
+                    byId,
+                    allIds: customRewards.allIds.filter((id) => id !== rewardId),
+                  },
+                },
+              };
+            });
+          },
+          purchaseCustomReward: (rewardId) => {
+            const reward = get().rewards.customRewards?.byId[rewardId];
+            // Backstop — the store UI only offers rewards that exist in the catalog.
+            if (!reward) {
+              throw new Error(`Custom reward not found: ${rewardId}`);
+            }
+            const balance = get().rewards.balance;
+            if (balance < reward.cost) {
+              throw new Error(`Insufficient fruits. Required: ${reward.cost}, Available: ${balance}`);
+            }
+            const productId = customRewardProductId(rewardId);
+            const purchases = get().rewards.purchases ?? { byId: {}, allIds: [] };
+            // Backstop — bought rewards are filtered out of the catalog.
+            const owned = purchases.allIds.some((id) => purchases.byId[id]?.productId === productId);
+            if (owned) {
+              throw new Error(`Custom reward already bought: ${rewardId}`);
+            }
+            get().rewards.spendFruits(reward.cost, 'custom_reward', { rewardId });
+            get().rewards.addPurchase(productId, reward.cost);
+          },
+          setPurchasePhoto: (purchaseId, photoUrl) => {
+            set((state) => {
+              const purchases = state.rewards.purchases ?? { byId: {}, allIds: [] };
+              const purchase = purchases.byId[purchaseId];
+              if (!purchase) return state;
+              return {
+                rewards: {
+                  ...state.rewards,
+                  purchases: {
+                    ...purchases,
+                    byId: {
+                      ...purchases.byId,
+                      [purchaseId]: {
+                        ...purchase,
+                        photoUrl,
+                        updatedAt: new Date().toISOString(),
+                      },
+                    },
                   },
                 },
               };
@@ -3394,6 +3497,7 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
       unlockHistory: {},
       tasks: defaultSetupTasks(),
       purchases: { byId: {}, allIds: [] },
+      customRewards: { byId: {}, allIds: [] },
     },
     blocklist: {
       ...s.blocklist,

@@ -331,6 +331,7 @@ export function purchaseToRow(purchase: any, userId: string): Record<string, any
     product_id: purchase.productId,
     cost: purchase.cost ?? 0,
     tip_id: purchase.tipId ?? null,
+    photo_url: purchase.photoUrl ?? null,
     created_at: purchase.createdAt,
     updated_at: purchase.updatedAt ?? purchase.createdAt,
   };
@@ -342,8 +343,36 @@ export function rowToPurchase(row: Record<string, any>): any {
     productId: row.product_id,
     cost: row.cost ?? 0,
     ...(row.tip_id ? { tipId: row.tip_id } : {}),
+    ...(row.photo_url ? { photoUrl: row.photo_url } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
+  };
+}
+
+// --- Custom reward mapper (fruit-store Custom tab definitions) ---
+
+export function customRewardToRow(reward: any, userId: string): Record<string, any> {
+  return {
+    id: reward.id,
+    user_id: userId,
+    name: reward.name,
+    emoji: reward.emoji ?? null,
+    cost: reward.cost ?? 0,
+    created_at: reward.createdAt,
+    updated_at: reward.updatedAt ?? reward.createdAt,
+    deleted_at: reward.deletedAt ?? null,
+  };
+}
+
+export function rowToCustomReward(row: Record<string, any>): any {
+  return {
+    id: row.id,
+    name: row.name ?? '',
+    ...(row.emoji ? { emoji: row.emoji } : {}),
+    cost: row.cost ?? 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
+    ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
   };
 }
 

@@ -8,6 +8,7 @@ import {
   badgeToRow,
   coachReportToRow,
   purchaseToRow,
+  customRewardToRow,
   mergeSetupTasks,
 } from '../../services/sync/SyncMapper';
 import { supabase } from '../../config/supabase';
@@ -105,6 +106,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           totalSpent: state.rewards.totalSpent,
           tasks: state.rewards.tasks,
           purchases: state.rewards.purchases ?? { byId: {}, allIds: [] },
+          customRewards: state.rewards.customRewards ?? { byId: {}, allIds: [] },
           unlockHistory: state.rewards.unlockHistory ?? {},
           updatedAt: state.rewards.updatedAt,
         },
@@ -161,6 +163,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           totalSpent: merged.rewards.totalSpent,
           tasks: merged.rewards.tasks,
           purchases: merged.rewards.purchases ?? s.rewards.purchases,
+          customRewards: merged.rewards.customRewards ?? s.rewards.customRewards,
           unlockHistory: merged.rewards.unlockHistory ?? {},
         },
         // Referral: LWW — remote always has authoritative count from DB
@@ -330,6 +333,10 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           purchases: {
             byId: remoteData.rewards.purchases?.byId ?? {},
             allIds: remoteData.rewards.purchases?.allIds ?? [],
+          },
+          customRewards: {
+            byId: remoteData.rewards.customRewards?.byId ?? {},
+            allIds: remoteData.rewards.customRewards?.allIds ?? [],
           },
           unlockHistory: remoteData.rewards.unlockHistory ?? {},
           updatedAt: remoteData.rewards.updatedAt,
@@ -600,6 +607,12 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
       remoteData.rewards?.purchases?.byId ?? {},
       (p) => purchaseToRow(p, userId)
     );
+    const customRewardsPushed = await enqueueLocalWins(
+      'custom_rewards',
+      merged.rewards?.customRewards ?? { byId: {}, allIds: [] },
+      remoteData.rewards?.customRewards?.byId ?? {},
+      (r) => customRewardToRow(r, userId)
+    );
     const mergedDurations = merged.settings?.lastDurationByTagId ?? {};
     const remoteDurations = remoteData.settings?.lastDurationByTagId ?? {};
     const settingsPushed =
@@ -623,6 +636,7 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
         badgesPushed +
         coachReportsPushed +
         purchasesPushed +
+        customRewardsPushed +
         settingsPushed ===
       0
     ) {
@@ -631,7 +645,7 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
     }
 
     console.log(
-      `[triggerSync] Pushing local-wins — tags:${tagsPushed} sessions:${sessionsPushed} goals:${goalsPushed} todos:${todosPushed} badges:${badgesPushed} coachReports:${coachReportsPushed} purchases:${purchasesPushed} settings:${settingsPushed}`
+      `[triggerSync] Pushing local-wins — tags:${tagsPushed} sessions:${sessionsPushed} goals:${goalsPushed} todos:${todosPushed} badges:${badgesPushed} coachReports:${coachReportsPushed} purchases:${purchasesPushed} customRewards:${customRewardsPushed} settings:${settingsPushed}`
     );
     const result = await SyncService.flush();
     console.log(`[triggerSync] Local-wins flush — flushed:${result.flushed} failed:${result.failed}`);

@@ -18,6 +18,8 @@ import {
   rowToCoachReport,
   purchaseToRow,
   rowToPurchase,
+  customRewardToRow,
+  rowToCustomReward,
   settingsToRow,
   rowToSettings,
   referralToRow,
@@ -112,6 +114,16 @@ export class SyncService {
       await SyncService.batchUpsert('purchases', purchaseRows);
     }
 
+    // Upload custom rewards (fruit-store Custom tab definitions)
+    if (localState.rewards?.customRewards?.allIds?.length > 0) {
+      const customRewardRows = normalizedToRows(
+        localState.rewards.customRewards,
+        customRewardToRow,
+        userId
+      );
+      await SyncService.batchUpsert('custom_rewards', customRewardRows);
+    }
+
     // Upload settings (from unified store preferences + main store lastDurationByTagId)
     if (localState.settings) {
       const settingsRow = settingsToRow(localState.settings, userId, localState.focus?.lastDurationByTagId);
@@ -153,7 +165,7 @@ export class SyncService {
   static async pullAll(userId: string): Promise<any> {
     console.log('☁️ Pulling all data from cloud...');
 
-    const [sessionsRes, tagsRes, goalsRes, todosRes, rewardsRes, badgesRes, coachRes, purchasesRes, settingsRes, referralRes] =
+    const [sessionsRes, tagsRes, goalsRes, todosRes, rewardsRes, badgesRes, coachRes, purchasesRes, customRewardsRes, settingsRes, referralRes] =
       await Promise.all([
         supabase
           .from('focus_sessions')
@@ -191,6 +203,11 @@ export class SyncService {
           .select('*')
           .eq('user_id', userId)
           .is('deleted_at', null),
+        supabase
+          .from('custom_rewards')
+          .select('*')
+          .eq('user_id', userId)
+          .is('deleted_at', null),
         supabase.from('user_settings').select('*').eq('user_id', userId).single(),
         supabase.from('referral_tracking').select('*').eq('user_id', userId).maybeSingle(),
       ]);
@@ -212,6 +229,8 @@ export class SyncService {
       : { balance: 0, totalEarned: 0, totalSpent: 0, tasks: defaultSetupTasks(), unlockHistory: {} };
     // Purchase history rides on the rewards blob so merge/apply stay rewards-shaped.
     rewards.purchases = rowsToNormalized(purchasesRes.data ?? [], rowToPurchase);
+    // Custom reward definitions ride along the same way.
+    rewards.customRewards = rowsToNormalized(customRewardsRes.data ?? [], rowToCustomReward);
     const settings = settingsRes.data
       ? rowToSettings(settingsRes.data)
       : null;
@@ -309,11 +328,18 @@ export class SyncService {
         // Setup tasks are monotonic — OR-merge so a claim/setup on either side is never
         // lost to LWW (e.g. local just detected widget setup while remote already claimed).
         tasks: mergeSetupTasks(local.rewards?.tasks, remote.rewards?.tasks),
-        // Purchase history is a list — per-row LWW like badges (rows are immutable,
-        // so this just unions local-only and remote-only purchases).
+        // Purchase history is a list — per-row LWW like badges. Rows are mostly
+        // write-once (union of local-only and remote-only purchases), except
+        // photoUrl edits, which LWW resolves via updatedAt.
         purchases: SyncService.mergeNormalized(
           local.rewards?.purchases ?? { byId: {}, allIds: [] },
           remote.rewards?.purchases ?? { byId: {}, allIds: [] },
+          'updatedAt'
+        ),
+        // Custom reward definitions — same per-row LWW list pattern.
+        customRewards: SyncService.mergeNormalized(
+          local.rewards?.customRewards ?? { byId: {}, allIds: [] },
+          remote.rewards?.customRewards ?? { byId: {}, allIds: [] },
           'updatedAt'
         ),
       },

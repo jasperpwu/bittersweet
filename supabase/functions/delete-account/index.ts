@@ -3,8 +3,9 @@
 // as if the user never existed.
 //
 // What gets removed:
-//   1. Storage objects under `${userId}/` in the `avatars` and
-//      `session-photos` buckets (admin.deleteUser does NOT touch storage).
+//   1. Storage objects under `${userId}/` in the `avatars`,
+//      `session-photos` and `purchase-photos` buckets
+//      (admin.deleteUser does NOT touch storage).
 //   2. The one non-cascading reference to the user
 //      (`grove_invite_links.referred_user_id`), which would otherwise block
 //      the auth-user delete.
@@ -28,7 +29,7 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 };
 
-const STORAGE_BUCKETS = ['avatars', 'session-photos'];
+const STORAGE_BUCKETS = ['avatars', 'session-photos', 'purchase-photos'];
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
