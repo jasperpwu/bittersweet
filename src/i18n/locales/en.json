@@ -805,7 +805,7 @@
   "unlock": {
     "trendTitle": "Unlock time trend",
     "today": "Today",
-    "avgLabel": "Avg {{minutes}}m",
+    "avgLabel": "Past day average",
     "insufficientTitle": "Insufficient Fruits",
     "insufficientBody": "You need {{cost}} 🍎 to unlock for {{minutes}}m, but you only have {{balance}} 🍎.",
     "expiredTitle": "Unlock Expired",

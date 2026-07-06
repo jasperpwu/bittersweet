@@ -805,7 +805,7 @@
   "unlock": {
     "trendTitle": "Tendance de déblocage",
     "today": "Aujourd'hui",
-    "avgLabel": "Moy. {{minutes}} min",
+    "avgLabel": "Moy. jours passés",
     "insufficientTitle": "Fruits insuffisants",
     "insufficientBody": "Il vous faut {{cost}} 🍎 pour débloquer {{minutes}} min, mais vous n'avez que {{balance}} 🍎.",
     "expiredTitle": "Déblocage terminé",

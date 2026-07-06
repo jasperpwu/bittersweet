@@ -805,7 +805,7 @@
   "unlock": {
     "trendTitle": "Freischaltzeit-Verlauf",
     "today": "Heute",
-    "avgLabel": "Ø {{minutes}} Min.",
+    "avgLabel": "Ø letzte Tage",
     "insufficientTitle": "Nicht genug Früchte",
     "insufficientBody": "Du brauchst {{cost}} 🍎, um {{minutes}} Min. freizuschalten, hast aber nur {{balance}} 🍎.",
     "expiredTitle": "Freischaltung abgelaufen",

@@ -805,7 +805,7 @@
   "unlock": {
     "trendTitle": "アンロック時間の推移",
     "today": "今日",
-    "avgLabel": "平均 {{minutes}}分",
+    "avgLabel": "過去の平均",
     "insufficientTitle": "実が足りません",
     "insufficientBody": "{{minutes}}分のアンロックには {{cost}} 🍎 が必要ですが、{{balance}} 🍎 しかありません。",
     "expiredTitle": "アンロック終了",

@@ -805,7 +805,7 @@
   "unlock": {
     "trendTitle": "잠금 해제 시간 추이",
     "today": "오늘",
-    "avgLabel": "평균 {{minutes}}분",
+    "avgLabel": "어제까지 평균",
     "insufficientTitle": "열매 부족",
     "insufficientBody": "{{minutes}}분 잠금 해제에는 {{cost}} 🍎 가 필요하지만 {{balance}} 🍎 만 있어요.",
     "expiredTitle": "잠금 해제 종료",

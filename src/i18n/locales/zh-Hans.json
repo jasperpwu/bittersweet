@@ -805,7 +805,7 @@
   "unlock": {
     "trendTitle": "解锁时长趋势",
     "today": "今天",
-    "avgLabel": "平均 {{minutes}}分钟",
+    "avgLabel": "往日平均",
     "insufficientTitle": "果实不足",
     "insufficientBody": "解锁 {{minutes}} 分钟需要 {{cost}} 🍎，但你只有 {{balance}} 🍎。",
     "expiredTitle": "解锁已结束",

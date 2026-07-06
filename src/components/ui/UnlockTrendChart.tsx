@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Typography } from './Typography';
@@ -14,8 +14,9 @@ interface UnlockTrendChartProps {
 
 const BAR_AREA_HEIGHT = 72; // px available for the tallest bar
 const MIN_BAR_HEIGHT = 4; // sliver so a non-zero day is always visible
-const AVG_GUTTER = 46; // px reserved on the left to label the average line
-const AVG_LABEL_HEIGHT = 16; // approx line-height of the average label, for centering
+const AVG_LABEL_MAX_WIDTH = 80; // cap so long labels wrap to two lines
+const AVG_LABEL_GAP = 8; // space between the label and the first bar
+const AVG_LABEL_HEIGHT = 36; // up to two body-12 lines, used to clamp the label inside the chart
 
 export const UnlockTrendChart: React.FC<UnlockTrendChartProps> = ({
   history,
@@ -52,17 +53,14 @@ export const UnlockTrendChart: React.FC<UnlockTrendChartProps> = ({
     return result;
   }, [history, previewMinutes, days, i18n.language, t]);
 
-  // Average daily unlock minutes over the visible past days — i.e. every day shown
-  // except today, which is still in progress (so with a 7-day window the average is
-  // over the last 6 completed days). Denominator is the full past window so the
-  // baseline is a true windowed average the user can compare each day against;
+  // Average daily unlock minutes over the visible past days that actually had
+  // unlocks — zero days are excluded so the baseline reflects typical usage on
+  // days the user unlocked at all. Today is excluded (still in progress);
   // committed history only, excluding the live slider preview.
   const average = useMemo(() => {
-    const past = bars.filter((b) => !b.isToday);
+    const past = bars.filter((b) => !b.isToday && b.base > 0);
     if (past.length === 0) return 0;
-    const sum = past.reduce((acc, b) => acc + b.base, 0);
-    if (sum <= 0) return 0;
-    return sum / past.length;
+    return past.reduce((acc, b) => acc + b.base, 0) / past.length;
   }, [bars]);
 
   const maxValue = useMemo(
@@ -75,6 +73,11 @@ export const UnlockTrendChart: React.FC<UnlockTrendChartProps> = ({
 
   const averageHeight = (average / maxValue) * BAR_AREA_HEIGHT;
 
+  // The left gutter shrink-wraps the measured label width, so short labels
+  // (e.g. CJK locales) don't waste horizontal space that the bars could use.
+  const [avgLabelWidth, setAvgLabelWidth] = useState(0);
+  const gutterWidth = average > 0 ? avgLabelWidth + AVG_LABEL_GAP : 0;
+
   return (
     <View>
       <Typography variant="body-12" color="secondary" className="mb-2">
@@ -84,17 +87,35 @@ export const UnlockTrendChart: React.FC<UnlockTrendChartProps> = ({
       {/* Bars */}
       <View className="flex-row" style={{ height: BAR_AREA_HEIGHT + 18 }}>
         {/* Left gutter: labels the average line without obstructing the bars */}
-        <View style={{ width: AVG_GUTTER }}>
+        <View style={{ width: gutterWidth }}>
           {average > 0 && (
             <View
               pointerEvents="none"
-              className="absolute right-1.5 items-end"
+              className="absolute items-end"
               style={{
-                bottom: Math.max(0, averageHeight - AVG_LABEL_HEIGHT / 2),
+                // Fixed width so the text lays out (and is measured) at its
+                // intrinsic size, independent of the shrink-wrapped gutter.
+                width: AVG_LABEL_MAX_WIDTH,
+                right: AVG_LABEL_GAP,
+                // Hide the label until measured so it doesn't flash mid-chart
+                opacity: avgLabelWidth > 0 ? 1 : 0,
+                // Sit just above the line, but never poke out of the chart area
+                bottom: Math.min(averageHeight + 2, BAR_AREA_HEIGHT + 18 - AVG_LABEL_HEIGHT),
               }}
             >
-              <Typography variant="body-12" color="secondary">
-                {t('unlock.avgLabel', { minutes: Math.round(average) })}
+              <Typography
+                variant="body-12"
+                numberOfLines={2}
+                className="text-error-light dark:text-error text-right"
+                // onTextLayout (not onLayout): a wrapped Text box reports the
+                // full 80px constraint width, but the gutter should hug the
+                // widest rendered line instead.
+                onTextLayout={(e) => {
+                  const w = Math.ceil(Math.max(0, ...e.nativeEvent.lines.map((l) => l.width)));
+                  setAvgLabelWidth((prev) => (prev === w ? prev : w));
+                }}
+              >
+                {t('unlock.avgLabel')}
               </Typography>
             </View>
           )}
@@ -149,20 +170,28 @@ export const UnlockTrendChart: React.FC<UnlockTrendChartProps> = ({
           );
         })}
 
-        {/* Average reference line, spanning first day to last */}
+        </View>
+
+        {/* Average reference line, striking across the entire chart.
+            iOS only draws dashed borders when all four sides are set, so clip a
+            fully-bordered view down to 1px to get a single dashed line. */}
         {average > 0 && (
           <View
             pointerEvents="none"
-            className="absolute left-0 right-0 border-t border-dashed border-light-text-secondary dark:border-dark-text-secondary"
-            style={{ bottom: averageHeight }}
-          />
+            className="absolute left-0 right-0 overflow-hidden"
+            style={{ bottom: averageHeight, height: 1 }}
+          >
+            <View
+              className="border border-dashed border-error-light dark:border-error"
+              style={{ height: 4 }}
+            />
+          </View>
         )}
-        </View>
       </View>
 
       {/* Day labels */}
       <View className="flex-row mt-1">
-        <View style={{ width: AVG_GUTTER }} />
+        <View style={{ width: gutterWidth }} />
         <View className="flex-1 flex-row">
           {bars.map((bar) => (
             <Typography
