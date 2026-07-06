@@ -186,12 +186,14 @@ export interface UnlockTransaction {
   status: 'completed' | 'cancelled' | 'expired';
 }
 
-// A fruit-store purchase (accelerate card, usage tip, ...). Synced to the
-// `purchases` table as a list entity. tipId is set for usage-tip purchases and
-// records which tip was delivered, so future tip purchases avoid repeats.
+// A fruit-store purchase (accelerate card, usage tip, slider theme, ...).
+// Synced to the `purchases` table as a list entity. tipId is set for usage-tip
+// purchases and records which tip was delivered, so future tip purchases avoid
+// repeats. Slider themes encode their theme id in the productId itself
+// (`theme_<id>`, see config/sliderThemes.ts) — ownership derives from history.
 export interface Purchase {
   id: string;
-  productId: 'accelerate_card' | 'usage_tip';
+  productId: 'accelerate_card' | 'usage_tip' | `theme_${string}`;
   cost: number; // fruits spent
   tipId?: string;
   createdAt: string; // ISO

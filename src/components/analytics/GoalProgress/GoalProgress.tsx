@@ -1,7 +1,7 @@
 import React, { FC, useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { View, Pressable, Share, Platform, useColorScheme } from 'react-native';
+import { View, Text, Pressable, Share, Platform, useColorScheme } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
@@ -29,6 +29,7 @@ import { useAppSettings } from '../../../store/unified-store';
 import { calculateGoalProgress, getHistoricalPeriodRanges, getTargetForDate, getSessionMinutesInPeriod, getGoalCurrentTarget } from '../../../utils/goalProgress';
 import { calculateUrgency, UrgencyLevel } from '../../../utils/goalUrgency';
 import { colors } from '../../../config/theme';
+import { useSliderTheme } from '../../../hooks/useSliderTheme';
 
 interface GoalProgressProps {
   goals: FocusGoal[];
@@ -721,6 +722,13 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   const isHealthy = !urgency.isBehindPace || urgency.level === 'low';
   const trackColor = isHealthy ? TRACK_COLORS.healthy : TRACK_COLORS[urgency.level];
 
+  // Fruit-store slider theme: its emoji (soccer ball) rides the tip of the
+  // progress fill. Bar colors stay as-is — only the tip marker is themed.
+  const sliderTheme = useSliderTheme();
+  // progressWidth caps at the threshold (84%) once exceeded, so the tip is
+  // always progress + overflow, never past 100.
+  const ballTipPercent = Math.min(progressWidth + exceededWidth, 100);
+
   // Shimmer sweep animation — runs once each time the tab is focused
   const isFocused = useIsFocused();
   const shimmerX = useSharedValue(-40);
@@ -803,29 +811,45 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
         </View>
       )}
 
-      {/* Progress bar */}
-      <View className="mt-2 h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden relative">
-        <View
-          className={`h-full ${goal.percentage >= 100 ? '' : 'bg-primary'}`}
-          style={{ width: `${progressWidth}%`, ...(goal.percentage >= 100 && { backgroundColor: COMPLETED_FILL }) }}
-        />
-        {exceededWidth > 0 && (
+      {/* Progress bar — wrapper is relative so the themed tip marker can
+          overflow the clipped track */}
+      <View className="mt-2 relative">
+        <View className="h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden relative">
           <View
-            className="h-full bg-orange-500 absolute top-0"
+            className={`h-full ${goal.percentage >= 100 ? '' : 'bg-primary'}`}
+            style={{ width: `${progressWidth}%`, ...(goal.percentage >= 100 && { backgroundColor: COMPLETED_FILL }) }}
+          />
+          {exceededWidth > 0 && (
+            <View
+              className="h-full bg-orange-500 absolute top-0"
+              style={{
+                left: `${GOAL_THRESHOLD_PERCENT}%`,
+                width: `${exceededWidth}%`,
+              }}
+            />
+          )}
+          <View
+            className="absolute top-0 bottom-0 bg-white"
             style={{
               left: `${GOAL_THRESHOLD_PERCENT}%`,
-              width: `${exceededWidth}%`,
+              width: 2,
+              opacity: 0.9,
             }}
           />
+        </View>
+
+        {/* Soccer-ball tip (fruit-store slider theme) — sits on the end of the fill */}
+        {sliderTheme && (
+          <View
+            pointerEvents="none"
+            className="absolute top-0 bottom-0 justify-center"
+            style={{ left: `${ballTipPercent}%` }}
+          >
+            <Text allowFontScaling={false} style={{ fontSize: 13, marginLeft: -6.5 }}>
+              {sliderTheme.thumbEmoji}
+            </Text>
+          </View>
         )}
-        <View
-          className="absolute top-0 bottom-0 bg-white"
-          style={{
-            left: `${GOAL_THRESHOLD_PERCENT}%`,
-            width: 2,
-            opacity: 0.9,
-          }}
-        />
       </View>
 
       {/* Urgency hint line — only covers the unfilled portion, with forward shimmer */}

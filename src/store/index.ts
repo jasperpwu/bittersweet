@@ -16,6 +16,7 @@ import {
   Purchase,
 } from '../types/models';
 import { pickTipId } from '../config/tips';
+import { sliderThemeCostForUser, themeProductId } from '../config/sliderThemes';
 import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
 import { WidgetService } from '../services/WidgetService';
@@ -305,6 +306,11 @@ interface AppStore {
     // tip's message. Throws on insufficient balance or when the whole catalog
     // is already owned (UI should pre-check both).
     purchaseTip: () => string;
+    // Spend fruits on a slider theme. Ownership derives from purchase history
+    // (product_id `theme_<id>`), so this only records the purchase — applying
+    // the theme is a device-local preference (unified store `sliderThemeId`).
+    // Throws on insufficient balance or when the theme is already owned.
+    purchaseTheme: (themeId: string) => void;
     // Append a purchase record (internal helper for the product purchase actions).
     addPurchase: (
       productId: Purchase['productId'],
@@ -2374,6 +2380,23 @@ export const useAppStore = create<AppStore>()(
             get().rewards.addPurchase('usage_tip', cost, { tipId });
             return tipId;
           },
+          purchaseTheme: (themeId) => {
+            // Dev accounts pay 1 apple (test price); everyone else SLIDER_THEME_COST.
+            const cost = sliderThemeCostForUser(get().auth.user?.id);
+            const balance = get().rewards.balance;
+            if (balance < cost) {
+              throw new Error(`Insufficient fruits. Required: ${cost}, Available: ${balance}`);
+            }
+            const productId = themeProductId(themeId);
+            const purchases = get().rewards.purchases ?? { byId: {}, allIds: [] };
+            // Backstop — the store UI shows owned themes as applyable, not buyable.
+            const owned = purchases.allIds.some((id) => purchases.byId[id]?.productId === productId);
+            if (owned) {
+              throw new Error(`Theme already owned: ${themeId}`);
+            }
+            get().rewards.spendFruits(cost, 'slider_theme', { themeId });
+            get().rewards.addPurchase(productId, cost);
+          },
           addPurchase: (productId, cost, metadata) => {
             const now = new Date().toISOString();
             const purchase: Purchase = {
@@ -3283,7 +3306,7 @@ function populateDefaults() {
  * tag during onboarding. Returning/signed-in users are never seeded here — their
  * tags come from the cloud pull.
  */
-const DEFAULT_TAGS: Array<{ name: string; icon: string; color: string }> = [
+const DEFAULT_TAGS: { name: string; icon: string; color: string }[] = [
   { name: 'Exercise', icon: '🏋️', color: CLASSIC_TAG_COLORS.green },
   { name: 'Study', icon: '📚', color: CLASSIC_TAG_COLORS.amber },
   { name: 'Work', icon: '💼', color: CLASSIC_TAG_COLORS.blue },

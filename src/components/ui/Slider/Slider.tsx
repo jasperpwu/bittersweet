@@ -1,5 +1,5 @@
 import React, { FC, useCallback } from 'react';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedGestureHandler,
@@ -9,6 +9,8 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { Typography } from '../Typography';
+import { DEFAULT_SLIDER_COLORS } from '../../../config/sliderThemes';
+import { useSliderTheme } from '../../../hooks/useSliderTheme';
 
 interface SliderProps {
   value: number;
@@ -48,6 +50,10 @@ export const Slider: FC<SliderProps> = ({
   const isSliding = useSharedValue(false);
   const scale = useSharedValue(1);
 
+  // Fruit-store slider theme: stripes the active track with the theme's colors
+  // and swaps the thumb for its emoji (e.g. a soccer ball). Null = classic look.
+  const sliderTheme = useSliderTheme();
+
   const thumbSize = thumbSizeProp;
   const trackWidth = width - thumbSize; // Account for thumb size
 
@@ -73,15 +79,24 @@ export const Slider: FC<SliderProps> = ({
     translateX.value = percentage * trackWidth;
   }, [value, minimumValue, maximumValue, trackWidth, translateX, snapPoints]);
 
-  const updateValue = useCallback((newValue: number) => {
-    onValueChange(newValue);
-  }, [onValueChange]);
+  const updateValue = useCallback(
+    (newValue: number) => {
+      onValueChange(newValue);
+    },
+    [onValueChange]
+  );
 
-  const completeSliding = useCallback((finalValue: number) => {
-    onSlidingComplete?.(finalValue);
-  }, [onSlidingComplete]);
+  const completeSliding = useCallback(
+    (finalValue: number) => {
+      onSlidingComplete?.(finalValue);
+    },
+    [onSlidingComplete]
+  );
 
-  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent, { startX: number }>({
+  const gestureHandler = useAnimatedGestureHandler<
+    PanGestureHandlerGestureEvent,
+    { startX: number }
+  >({
     onStart: (_, context: { startX: number }) => {
       isSliding.value = true;
       scale.value = withSpring(1.2);
@@ -127,21 +142,19 @@ export const Slider: FC<SliderProps> = ({
   }));
 
   const thumbStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { scale: scale.value },
-    ],
+    transform: [{ translateX: translateX.value }, { scale: scale.value }],
   }));
 
   return (
     <View className="items-center">
       {label && (
-        <View className="flex-row items-center justify-between w-full mb-2">
+        <View className="mb-2 w-full flex-row items-center justify-between">
           <Typography variant="subtitle-14-medium" color="primary">
             {label}
           </Typography>
           <Typography variant="subtitle-14-semibold" color="primary">
-            {value}{unit}
+            {value}
+            {unit}
           </Typography>
         </View>
       )}
@@ -149,15 +162,15 @@ export const Slider: FC<SliderProps> = ({
       <View style={{ width }} className="h-12 justify-center">
         <Animated.View style={[trackStyle, { justifyContent: 'center' }]}>
           {/* Track Background */}
-          <View 
-            className="bg-light-border dark:bg-dark-border rounded-full"
-            style={{ 
-              width: width, 
+          <View
+            className="rounded-full bg-light-border dark:bg-dark-border"
+            style={{
+              width: width,
               height: 4,
-            }} 
+            }}
           />
 
-          {/* Active Track */}
+          {/* Active Track — themed: fixed full-width stripes clipped by the animated width */}
           <Animated.View
             style={[
               activeTrackStyle,
@@ -165,13 +178,24 @@ export const Slider: FC<SliderProps> = ({
                 position: 'absolute',
                 height: 4,
                 borderRadius: 2,
-                backgroundColor: '#6592E9',
+                overflow: 'hidden',
+                backgroundColor: sliderTheme ? undefined : DEFAULT_SLIDER_COLORS.activeTrack,
               },
-            ]}
-          />
+            ]}>
+            {sliderTheme && (
+              <View style={{ flexDirection: 'row', width, height: 4 }}>
+                {sliderTheme.trackColors.map((color, i) => (
+                  <View key={i} style={{ flex: 1, backgroundColor: color }} />
+                ))}
+              </View>
+            )}
+          </Animated.View>
 
           {/* Thumb - outer view provides a larger 44pt hit area */}
-          <PanGestureHandler onGestureEvent={gestureHandler} enabled={!disabled} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
+          <PanGestureHandler
+            onGestureEvent={gestureHandler}
+            enabled={!disabled}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
             <Animated.View
               style={[
                 thumbStyle,
@@ -180,26 +204,37 @@ export const Slider: FC<SliderProps> = ({
                   width: thumbSize,
                   height: thumbSize,
                   borderRadius: thumbSize / 2,
-                  backgroundColor: '#FFFFFF',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: sliderTheme ? 'transparent' : DEFAULT_SLIDER_COLORS.thumb,
                   shadowColor: '#000',
                   shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
+                  shadowOpacity: sliderTheme ? 0 : 0.3,
                   shadowRadius: 4,
-                  elevation: 5,
+                  elevation: sliderTheme ? 0 : 5,
                 },
-              ]}
-            />
+              ]}>
+              {sliderTheme && (
+                <Text
+                  allowFontScaling={false}
+                  style={{ fontSize: thumbSize - 4, lineHeight: thumbSize }}>
+                  {sliderTheme.thumbEmoji}
+                </Text>
+              )}
+            </Animated.View>
           </PanGestureHandler>
         </Animated.View>
       </View>
 
       {/* Value Labels */}
-      <View className="flex-row justify-between w-full mt-2">
+      <View className="mt-2 w-full flex-row justify-between">
         <Typography variant="body-12" color="secondary">
-          {minimumValue}{unit}
+          {minimumValue}
+          {unit}
         </Typography>
         <Typography variant="body-12" color="secondary">
-          {maximumValue}{unit}
+          {maximumValue}
+          {unit}
         </Typography>
       </View>
     </View>

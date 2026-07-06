@@ -33,6 +33,7 @@ import { FocusSession } from '../../src/types/models';
 import { saveSessionPhoto, uploadSessionPhoto, deleteSessionPhoto } from '../../src/services/sessionPhotoService';
 import { EmptyState } from '../../src/components/ui/EmptyState/EmptyState';
 import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
+import { isDevUser } from '../../src/config/devUsers';
 import { useTranslation } from 'react-i18next';
 
 
@@ -756,7 +757,7 @@ export default function JournalScreen() {
       )}
 
       {/* Sync Status Banner (dev-only) */}
-      {(syncBannerUserId === '9c931ba0-39e9-4597-b691-4b941b0c7118' || syncBannerUserId === 'b022d7ab-fd25-4bbc-9ebc-1df65e87248a') && (() => {
+      {isDevUser(syncBannerUserId) && (() => {
         let bannerBg = 'bg-green-800/80';
         let bannerText = 'All sessions synced';
         let bannerTextColor = '#4ADE80';

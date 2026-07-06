@@ -471,6 +471,7 @@ export function settingsToRow(
     healthkit_enabled: preferences.healthKit?.enabled ?? false,
     healthkit_linked_tag_id: preferences.healthKit?.linkedTagId ?? null,
     last_duration_by_tag: lastDurationByTagId ?? {},
+    slider_theme_id: preferences.sliderThemeId ?? null,
     has_seen_onboarding: preferences.hasSeenOnboarding ?? false,
     has_seen_fruit_coach_mark: preferences.hasSeenFruitCoachMark ?? false,
     has_seen_tag_swipe_hint: preferences.hasSeenTagSwipeHint ?? false,
@@ -511,6 +512,7 @@ export function rowToSettings(row: Record<string, any>): any {
       linkedTagId: row.healthkit_linked_tag_id ?? null,
     },
     lastDurationByTagId: row.last_duration_by_tag ?? {},
+    sliderThemeId: row.slider_theme_id ?? null,
     updatedAt: row.updated_at ?? null,
   };
 }

@@ -48,6 +48,10 @@ interface AppPreferences {
   rawAccelRatingEnabled: boolean;
   // Whether the one-time motion-permission priming pop-up has been shown on the summary.
   hasSeenMotionPrimer: boolean;
+  // Applied fruit-store slider theme (see config/sliderThemes.ts); null = classic look.
+  // Cloud-synced via user_settings.slider_theme_id (ownership syncs separately via
+  // purchase history). Wiped by clearUnifiedStoreData.
+  sliderThemeId: string | null;
 }
 
 interface NotificationSettings {
@@ -164,6 +168,7 @@ const createDefaultPreferences = (): AppPreferences => ({
   },
   rawAccelRatingEnabled: false,
   hasSeenMotionPrimer: false,
+  sliderThemeId: null,
 });
 
 const createDefaultStats = (): AppStats => ({

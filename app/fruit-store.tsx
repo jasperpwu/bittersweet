@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, SafeAreaView, Pressable, ScrollView, useColorScheme, Text, Alert } from 'react-native';
+import {
+  View,
+  SafeAreaView,
+  Pressable,
+  ScrollView,
+  useColorScheme,
+  Text,
+  Alert,
+} from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../src/components/ui/Typography';
@@ -13,12 +21,45 @@ import { getInstalledWidgetFamilies } from '../modules/widget-info';
 import { useTranslation } from 'react-i18next';
 import type { Purchase } from '../src/types/models';
 import { TIP_IDS, hasUnpurchasedTips } from '../src/config/tips';
+import {
+  SLIDER_THEMES,
+  sliderThemeCostForUser,
+  DEFAULT_SLIDER_COLORS,
+  getSliderTheme,
+  themeIdFromProductId,
+  type SliderTheme,
+} from '../src/config/sliderThemes';
+import { useUnifiedStore } from '../src/store/unified-store';
 
 // A history row's tipId is only renderable if it's still in the catalog —
 // retired/unknown ids (see tips.ts contract) fall back to a generic label
 // instead of leaking a raw `store.tips.*` i18n key.
 const isKnownTipId = (tipId: string | undefined): tipId is string =>
   !!tipId && (TIP_IDS as readonly string[]).includes(tipId);
+
+// History-row icon/title for any purchase, including theme purchases. A theme
+// whose id was retired from the catalog falls back to a generic label — same
+// contract as retired tips.
+const purchaseIcon = (purchase: Purchase): string => {
+  if (purchase.productId === 'accelerate_card') return '🚀';
+  const themeId = themeIdFromProductId(purchase.productId);
+  if (themeId) return getSliderTheme(themeId)?.flag ?? '⚽';
+  return '💡';
+};
+
+const purchaseTitle = (
+  purchase: Purchase,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string => {
+  if (purchase.productId === 'accelerate_card') return t('store.accelerateTitle');
+  const themeId = themeIdFromProductId(purchase.productId);
+  if (themeId) {
+    return getSliderTheme(themeId)
+      ? t('store.themeItemTitle', { country: t(`store.themes.${themeId}`) })
+      : t('store.themeGenericTitle');
+  }
+  return t('store.tipTitle');
+};
 
 const SETUP_TASK_META: { id: SetupTaskId; icon: string; titleKey: string; descKey: string }[] = [
   { id: 'widget', icon: '📱', titleKey: 'store.taskWidgetTitle', descKey: 'store.taskWidgetDesc' },
@@ -34,7 +75,16 @@ export default function FruitStoreScreen() {
 
   const [claimedTitle, setClaimedTitle] = useState<string | null>(null);
 
+  const [activeTab, setActiveTab] = useState<'all' | 'products' | 'themes'>('all');
+
   const isAccelerateActive = useAppStore((s) => s.rewards.isAccelerateActive());
+
+  const sliderThemeId = useUnifiedStore((s) => s.preferences.sliderThemeId);
+  const updatePreferences = useUnifiedStore((s) => s.updatePreferences);
+
+  // Dev accounts pay a 1-apple test price (see config/devUsers.ts).
+  const authUserId = useAppStore((s) => s.auth.user?.id);
+  const themeCost = sliderThemeCostForUser(authUserId);
 
   const purchaseHistory = useMemo(() => {
     const purchases = rewards.purchases ?? { byId: {}, allIds: [] };
@@ -44,19 +94,39 @@ export default function FruitStoreScreen() {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [rewards.purchases]);
 
+  // Each tab shows only its own slice of the history: Products ↔ accelerate/tip
+  // purchases, Themes ↔ theme purchases, All ↔ everything.
+  const visibleHistory = useMemo(() => {
+    if (activeTab === 'all') return purchaseHistory;
+    return purchaseHistory.filter(
+      (p) => !!themeIdFromProductId(p.productId) === (activeTab === 'themes')
+    );
+  }, [purchaseHistory, activeTab]);
+
   // Tips are never re-sold: once the whole catalog is owned the product shows a
   // "come back later" state instead of charging for a repeat.
   const allTipsOwned = useMemo(
     () =>
       !hasUnpurchasedTips(
-        purchaseHistory.map((p) => p.tipId).filter((tipId): tipId is string => !!tipId),
+        purchaseHistory.map((p) => p.tipId).filter((tipId): tipId is string => !!tipId)
       ),
-    [purchaseHistory],
+    [purchaseHistory]
+  );
+
+  // Theme ownership derives from purchase history (product_id `theme_<id>`).
+  const ownedThemeIds = useMemo(
+    () =>
+      new Set(
+        purchaseHistory
+          .map((p) => themeIdFromProductId(p.productId))
+          .filter((id): id is string => !!id)
+      ),
+    [purchaseHistory]
   );
 
   // Only surface tasks that are set up but not yet claimed — claimed tasks disappear.
   const pendingTasks = SETUP_TASK_META.filter(
-    (meta) => rewards.tasks[meta.id].everSetup && !rewards.tasks[meta.id].claimed,
+    (meta) => rewards.tasks[meta.id].everSetup && !rewards.tasks[meta.id].claimed
   );
 
   // Re-detect setup on entry so a widget/goal added since launch becomes claimable
@@ -83,24 +153,20 @@ export default function FruitStoreScreen() {
       showToast(t('store.notEnough50'), 'error');
       return;
     }
-    Alert.alert(
-      t('store.purchaseAccelTitle'),
-      t('store.purchaseAccelBody'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('store.purchase'),
-          onPress: () => {
-            try {
-              useAppStore.getState().rewards.activateAccelerateCard();
-              showToast(t('store.accelActivated'), 'success');
-            } catch {
-              showToast(t('store.purchaseFailed'), 'error');
-            }
-          },
+    Alert.alert(t('store.purchaseAccelTitle'), t('store.purchaseAccelBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('store.purchase'),
+        onPress: () => {
+          try {
+            useAppStore.getState().rewards.activateAccelerateCard();
+            showToast(t('store.accelActivated'), 'success');
+          } catch {
+            showToast(t('store.purchaseFailed'), 'error');
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   const handlePurchaseTip = () => {
@@ -112,23 +178,53 @@ export default function FruitStoreScreen() {
       showToast(t('store.notEnough5'), 'error');
       return;
     }
+    Alert.alert(t('store.purchaseTipTitle'), t('store.purchaseTipBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('store.purchase'),
+        onPress: () => {
+          try {
+            const tipId = useAppStore.getState().rewards.purchaseTip();
+            setActiveTipId(tipId);
+          } catch {
+            showToast(t('store.purchaseFailed'), 'error');
+          }
+        },
+      },
+    ]);
+  };
+
+  // Applying a theme is instant and free; the preference change is picked up by
+  // the sync middleware and pushed to user_settings.slider_theme_id.
+  const handleApplyTheme = (themeId: string | null) => {
+    updatePreferences({ sliderThemeId: themeId });
+  };
+
+  const handlePurchaseTheme = (theme: SliderTheme) => {
+    const country = t(`store.themes.${theme.id}`);
+    if (rewards.balance < themeCost) {
+      showToast(t('store.notEnough50'), 'error');
+      return;
+    }
     Alert.alert(
-      t('store.purchaseTipTitle'),
-      t('store.purchaseTipBody'),
+      t('store.purchaseThemeTitle', { country }),
+      t('store.purchaseThemeBody', { country, cost: themeCost }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('store.purchase'),
           onPress: () => {
             try {
-              const tipId = useAppStore.getState().rewards.purchaseTip();
-              setActiveTipId(tipId);
+              useAppStore.getState().rewards.purchaseTheme(theme.id);
+              // A just-bought theme applies right away (the confirm dialog says so).
+              updatePreferences({ sliderThemeId: theme.id });
+              showToast(t('store.themeActivated', { country }), 'success');
             } catch {
               showToast(t('store.purchaseFailed'), 'error');
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -147,12 +243,11 @@ export default function FruitStoreScreen() {
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-5 pt-3 pb-4">
+      <View className="flex-row items-center justify-between px-5 pb-4 pt-3">
         <Pressable
           onPress={() => router.back()}
           className="flex-row items-center active:opacity-70"
-          hitSlop={8}
-        >
+          hitSlop={8}>
           <Ionicons
             name="chevron-back"
             size={24}
@@ -164,8 +259,7 @@ export default function FruitStoreScreen() {
               fontSize: 16,
               fontWeight: '500',
               marginLeft: 2,
-            }}
-          >
+            }}>
             {t('store.back')}
           </Text>
         </Pressable>
@@ -175,11 +269,37 @@ export default function FruitStoreScreen() {
         <FruitCounter fruitCount={rewards.balance} size="small" />
       </View>
 
+      {/* All / Products / Themes tabs (same pill style as grove's PeriodToggle) */}
+      <View className="px-5 pb-2">
+        <View className="flex-row rounded-xl bg-light-border/30 p-1 dark:bg-[#242540]">
+          {(
+            [
+              { tab: 'all', labelKey: 'store.tabAll' },
+              { tab: 'products', labelKey: 'store.products' },
+              { tab: 'themes', labelKey: 'store.tabThemes' },
+            ] as const
+          ).map(({ tab, labelKey }) => (
+            <Pressable
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              className={`flex-1 items-center rounded-lg py-2 ${
+                activeTab === tab ? 'bg-primary' : ''
+              }`}>
+              <Typography
+                variant="subtitle-14-medium"
+                color={activeTab === tab ? 'white' : 'secondary'}>
+                {t(labelKey)}
+              </Typography>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
       <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
         {/* Tasks Section — one-time setup rewards, only shown while claimable */}
-        {pendingTasks.length > 0 && (
+        {activeTab === 'all' && pendingTasks.length > 0 && (
           <>
-            <View className="mt-4 mb-3">
+            <View className="mb-3 mt-4">
               <Typography variant="subtitle-14-semibold" color="secondary">
                 {t('store.tasks')}
               </Typography>
@@ -192,95 +312,138 @@ export default function FruitStoreScreen() {
         )}
 
         {/* Products Section */}
-        <View className="mt-4 mb-3">
-          <Typography variant="subtitle-14-semibold" color="secondary">
-            {t('store.products')}
-          </Typography>
-        </View>
-
-        {/* Accelerate Card */}
-        <Pressable
-          onPress={handlePurchaseAccelerate}
-          disabled={isAccelerateActive}
-          className={`
-            bg-light-border/30 dark:bg-[#242540]
-            rounded-2xl border border-light-border dark:border-dark-border
-            p-5 mb-4
-            ${isAccelerateActive ? 'opacity-60' : 'active:opacity-80'}
-          `}
-        >
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 mr-4">
-              <View className="flex-row items-center mb-2">
-                <Text style={{ fontSize: 28 }}>🚀</Text>
-                <View className="ml-3 flex-1">
-                  <Typography variant="subtitle-14-semibold">
-                    {t('store.accelerateTitle')}
-                  </Typography>
-                </View>
-              </View>
-              <Typography variant="body-14" color="secondary">
-                {t('store.accelerateDesc')}
-              </Typography>
-              {isAccelerateActive && (
-                <View className="mt-2">
-                  <Typography variant="body-12" color="success">
-                    {t('store.accelerateActive', { time: accelerateTimeRemaining() })}
-                  </Typography>
-                </View>
-              )}
-            </View>
-            <View className="bg-primary/15 rounded-xl px-3 py-1.5">
-              <Typography variant="subtitle-14-semibold" color="primary">
-                🍎 50
-              </Typography>
-            </View>
-          </View>
-        </Pressable>
-
-        {/* Product Usage Tip — stays tappable when exhausted so the tap explains why */}
-        <Pressable
-          onPress={handlePurchaseTip}
-          className={`
-            bg-light-border/30 dark:bg-[#242540]
-            rounded-2xl border border-light-border dark:border-dark-border
-            p-5 mb-4
-            ${allTipsOwned ? 'opacity-60' : 'active:opacity-80'}
-          `}
-        >
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 mr-4">
-              <View className="flex-row items-center mb-2">
-                <Text style={{ fontSize: 28 }}>💡</Text>
-                <View className="ml-3 flex-1">
-                  <Typography variant="subtitle-14-semibold">
-                    {t('store.tipTitle')}
-                  </Typography>
-                </View>
-              </View>
-              <Typography variant="body-14" color="secondary">
-                {t('store.tipDesc')}
-              </Typography>
-              {allTipsOwned && (
-                <View className="mt-2">
-                  <Typography variant="body-12" color="success">
-                    {t('store.tipsExhausted')}
-                  </Typography>
-                </View>
-              )}
-            </View>
-            <View className="bg-primary/15 rounded-xl px-3 py-1.5">
-              <Typography variant="subtitle-14-semibold" color="primary">
-                🍎 5
-              </Typography>
-            </View>
-          </View>
-        </Pressable>
-
-        {/* Purchase History — newest first; tapping a tip purchase reopens that tip */}
-        {purchaseHistory.length > 0 && (
+        {activeTab !== 'themes' && (
           <>
-            <View className="mt-4 mb-3">
+            <View className="mb-3 mt-4">
+              <Typography variant="subtitle-14-semibold" color="secondary">
+                {t('store.products')}
+              </Typography>
+            </View>
+
+            {/* Accelerate Card */}
+            <Pressable
+              onPress={handlePurchaseAccelerate}
+              disabled={isAccelerateActive}
+              className={`
+            mb-4 rounded-2xl
+            border border-light-border bg-light-border/30 p-5
+            dark:border-dark-border dark:bg-[#242540]
+            ${isAccelerateActive ? 'opacity-60' : 'active:opacity-80'}
+          `}>
+              <View className="flex-row items-start justify-between">
+                <View className="mr-4 flex-1">
+                  <View className="mb-2 flex-row items-center">
+                    <Text style={{ fontSize: 28 }}>🚀</Text>
+                    <View className="ml-3 flex-1">
+                      <Typography variant="subtitle-14-semibold">
+                        {t('store.accelerateTitle')}
+                      </Typography>
+                    </View>
+                  </View>
+                  <Typography variant="body-14" color="secondary">
+                    {t('store.accelerateDesc')}
+                  </Typography>
+                  {isAccelerateActive && (
+                    <View className="mt-2">
+                      <Typography variant="body-12" color="success">
+                        {t('store.accelerateActive', { time: accelerateTimeRemaining() })}
+                      </Typography>
+                    </View>
+                  )}
+                </View>
+                <View className="rounded-xl bg-primary/15 px-3 py-1.5">
+                  <Typography variant="subtitle-14-semibold" color="primary">
+                    🍎 50
+                  </Typography>
+                </View>
+              </View>
+            </Pressable>
+
+            {/* Product Usage Tip — stays tappable when exhausted so the tap explains why */}
+            <Pressable
+              onPress={handlePurchaseTip}
+              className={`
+            mb-4 rounded-2xl
+            border border-light-border bg-light-border/30 p-5
+            dark:border-dark-border dark:bg-[#242540]
+            ${allTipsOwned ? 'opacity-60' : 'active:opacity-80'}
+          `}>
+              <View className="flex-row items-start justify-between">
+                <View className="mr-4 flex-1">
+                  <View className="mb-2 flex-row items-center">
+                    <Text style={{ fontSize: 28 }}>💡</Text>
+                    <View className="ml-3 flex-1">
+                      <Typography variant="subtitle-14-semibold">{t('store.tipTitle')}</Typography>
+                    </View>
+                  </View>
+                  <Typography variant="body-14" color="secondary">
+                    {t('store.tipDesc')}
+                  </Typography>
+                  {allTipsOwned && (
+                    <View className="mt-2">
+                      <Typography variant="body-12" color="success">
+                        {t('store.tipsExhausted')}
+                      </Typography>
+                    </View>
+                  )}
+                </View>
+                <View className="rounded-xl bg-primary/15 px-3 py-1.5">
+                  <Typography variant="subtitle-14-semibold" color="primary">
+                    🍎 5
+                  </Typography>
+                </View>
+              </View>
+            </Pressable>
+          </>
+        )}
+
+        {/* Themes Section — shown in the All and Themes tabs */}
+        {activeTab !== 'products' && (
+          <>
+            <View className="mb-1 mt-4">
+              <Typography variant="subtitle-14-semibold" color="secondary">
+                {t('store.tabThemes')}
+              </Typography>
+            </View>
+            <View className="mb-3">
+              <Typography variant="body-12" color="secondary">
+                {t('store.themesSubtitle')}
+              </Typography>
+            </View>
+
+            {/* Classic — the default look, always owned, free to re-apply */}
+            <ThemeCard
+              flag="🍎"
+              name={t('store.themeClassic')}
+              trackColors={[DEFAULT_SLIDER_COLORS.activeTrack]}
+              owned
+              applied={sliderThemeId === null}
+              onBuy={() => {}}
+              onApply={() => handleApplyTheme(null)}
+            />
+
+            {SLIDER_THEMES.map((theme) => (
+              <ThemeCard
+                key={theme.id}
+                flag={theme.flag}
+                name={t(`store.themes.${theme.id}`)}
+                trackColors={theme.trackColors}
+                thumbEmoji={theme.thumbEmoji}
+                cost={themeCost}
+                owned={ownedThemeIds.has(theme.id)}
+                applied={sliderThemeId === theme.id}
+                onBuy={() => handlePurchaseTheme(theme)}
+                onApply={() => handleApplyTheme(theme.id)}
+              />
+            ))}
+          </>
+        )}
+
+        {/* Purchase History — newest first, filtered to the active tab; tapping a
+            tip purchase reopens that tip */}
+        {visibleHistory.length > 0 && (
+          <>
+            <View className="mb-3 mt-4">
               <Typography variant="subtitle-14-semibold" color="secondary">
                 {t('store.history')}
               </Typography>
@@ -288,34 +451,26 @@ export default function FruitStoreScreen() {
 
             <View
               className="
-                bg-light-border/30 dark:bg-[#242540]
-                rounded-2xl border border-light-border dark:border-dark-border
-                px-5 mb-4
-              "
-            >
-              {purchaseHistory.map((purchase, index) => (
+                mb-4 rounded-2xl
+                border border-light-border bg-light-border/30 px-5
+                dark:border-dark-border dark:bg-[#242540]
+              ">
+              {visibleHistory.map((purchase, index) => (
                 <Pressable
                   key={purchase.id}
                   disabled={purchase.productId !== 'usage_tip' || !isKnownTipId(purchase.tipId)}
                   onPress={() => isKnownTipId(purchase.tipId) && setActiveTipId(purchase.tipId)}
                   className={`
-                    py-4 flex-row items-start
+                    flex-row items-start py-4
                     ${index > 0 ? 'border-t border-light-border dark:border-dark-border' : ''}
                     ${purchase.productId === 'usage_tip' && isKnownTipId(purchase.tipId) ? 'active:opacity-70' : ''}
-                  `}
-                >
-                  <Text style={{ fontSize: 20 }}>
-                    {purchase.productId === 'accelerate_card' ? '🚀' : '💡'}
-                  </Text>
+                  `}>
+                  <Text style={{ fontSize: 20 }}>{purchaseIcon(purchase)}</Text>
                   <View className="ml-3 flex-1">
                     {purchase.productId === 'usage_tip' && isKnownTipId(purchase.tipId) ? (
                       <Typography variant="body-14">{t(`store.tips.${purchase.tipId}`)}</Typography>
                     ) : (
-                      <Typography variant="body-14">
-                        {purchase.productId === 'accelerate_card'
-                          ? t('store.accelerateTitle')
-                          : t('store.tipTitle')}
-                      </Typography>
+                      <Typography variant="body-14">{purchaseTitle(purchase, t)}</Typography>
                     )}
                     <View className="mt-1">
                       <Typography variant="body-12" color="secondary">
@@ -334,21 +489,19 @@ export default function FruitStoreScreen() {
         )}
 
         {/* Coming Soon Banner */}
-        <View className="bg-primary/10 rounded-2xl p-5 mt-4 items-center">
-          <Text style={{ fontSize: 24, marginBottom: 8 }}>🏪</Text>
-          <Typography variant="subtitle-14-semibold" color="primary">
-            {t('store.comingSoon')}
-          </Typography>
-          <View className="mt-2">
-            <Typography
-              variant="body-14"
-              color="secondary"
-              className="text-center"
-            >
-              {t('store.comingSoonDesc')}
+        {activeTab === 'all' && (
+          <View className="mt-4 items-center rounded-2xl bg-primary/10 p-5">
+            <Text style={{ fontSize: 24, marginBottom: 8 }}>🏪</Text>
+            <Typography variant="subtitle-14-semibold" color="primary">
+              {t('store.comingSoon')}
             </Typography>
+            <View className="mt-2">
+              <Typography variant="body-14" color="secondary" className="text-center">
+                {t('store.comingSoonDesc')}
+              </Typography>
+            </View>
           </View>
-        </View>
+        )}
 
         <View className="mb-8" />
       </ScrollView>
@@ -357,10 +510,10 @@ export default function FruitStoreScreen() {
       <Modal isVisible={activeTipId !== null} onClose={() => setActiveTipId(null)} size="small">
         <View className="items-center">
           <Text style={{ fontSize: 40, marginBottom: 16 }}>💡</Text>
-          <Typography variant="headline-18" className="text-center mb-3">
+          <Typography variant="headline-18" className="mb-3 text-center">
             {t('store.proTip')}
           </Typography>
-          <Typography variant="body-14" color="secondary" className="text-center mb-6">
+          <Typography variant="body-14" color="secondary" className="mb-6 text-center">
             {activeTipId ? t(`store.tips.${activeTipId}`) : ''}
           </Typography>
           <Button onPress={() => setActiveTipId(null)} size="medium">
@@ -373,10 +526,10 @@ export default function FruitStoreScreen() {
       <Modal isVisible={claimedTitle !== null} onClose={() => setClaimedTitle(null)} size="small">
         <View className="items-center">
           <Text style={{ fontSize: 40, marginBottom: 16 }}>🎉</Text>
-          <Typography variant="headline-18" className="text-center mb-3">
+          <Typography variant="headline-18" className="mb-3 text-center">
             {t('store.claimedTitle', { count: SETUP_TASK_REWARD })}
           </Typography>
-          <Typography variant="body-14" color="secondary" className="text-center mb-6">
+          <Typography variant="body-14" color="secondary" className="mb-6 text-center">
             {t('store.claimedBody', { count: SETUP_TASK_REWARD, title: claimedTitle })}
           </Typography>
           <Button onPress={() => setClaimedTitle(null)} size="medium">
@@ -385,6 +538,100 @@ export default function FruitStoreScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+// A purchasable slider theme (or the always-owned Classic look). Card states:
+// unowned → tap to buy; owned → tap to apply; applied → highlighted, inert.
+function ThemeCard({
+  flag,
+  name,
+  trackColors,
+  thumbEmoji,
+  cost,
+  owned,
+  applied,
+  onBuy,
+  onApply,
+}: {
+  flag: string;
+  name: string;
+  trackColors: string[];
+  thumbEmoji?: string;
+  /** Price badge for unowned themes; omit for the always-owned Classic card. */
+  cost?: number;
+  owned: boolean;
+  applied: boolean;
+  onBuy: () => void;
+  onApply: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Pressable
+      onPress={owned ? onApply : onBuy}
+      disabled={applied}
+      className={`
+        mb-4 rounded-2xl
+        border bg-light-border/30 p-5 dark:bg-[#242540]
+        ${applied ? 'border-primary' : 'border-light-border active:opacity-80 dark:border-dark-border'}
+      `}>
+      <View className="flex-row items-center justify-between">
+        <View className="mr-4 flex-1">
+          <View className="flex-row items-center">
+            <Text style={{ fontSize: 28 }}>{flag}</Text>
+            <View className="ml-3 flex-1">
+              <Typography variant="subtitle-14-semibold">{name}</Typography>
+            </View>
+          </View>
+
+          {/* Mini slider preview: theme stripes + thumb */}
+          <View style={{ height: 20, justifyContent: 'center', marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', height: 4, borderRadius: 2, overflow: 'hidden' }}>
+              {trackColors.map((color, i) => (
+                <View key={i} style={{ flex: 1, backgroundColor: color }} />
+              ))}
+            </View>
+            {thumbEmoji ? (
+              <Text
+                allowFontScaling={false}
+                style={{ position: 'absolute', left: '60%', fontSize: 14 }}>
+                {thumbEmoji}
+              </Text>
+            ) : (
+              <View
+                className="border border-light-border dark:border-dark-border"
+                style={{
+                  position: 'absolute',
+                  left: '60%',
+                  width: 14,
+                  height: 14,
+                  borderRadius: 7,
+                  backgroundColor: DEFAULT_SLIDER_COLORS.thumb,
+                }}
+              />
+            )}
+          </View>
+        </View>
+
+        {applied ? (
+          <View className="rounded-xl bg-primary/15 px-3 py-1.5">
+            <Typography variant="subtitle-14-semibold" color="primary">
+              ✓ {t('store.applied')}
+            </Typography>
+          </View>
+        ) : owned ? (
+          <Button size="small" onPress={onApply}>
+            {t('store.apply')}
+          </Button>
+        ) : (
+          <View className="rounded-xl bg-primary/15 px-3 py-1.5">
+            <Typography variant="subtitle-14-semibold" color="primary">
+              🍎 {cost}
+            </Typography>
+          </View>
+        )}
+      </View>
+    </Pressable>
   );
 }
 
@@ -402,13 +649,12 @@ function SetupTaskCard({
   return (
     <View
       className="
-        bg-light-border/30 dark:bg-[#242540]
-        rounded-2xl border border-light-border dark:border-dark-border
-        p-5 mb-4
-      "
-    >
+        mb-4 rounded-2xl
+        border border-light-border bg-light-border/30 p-5
+        dark:border-dark-border dark:bg-[#242540]
+      ">
       <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1 mr-4">
+        <View className="mr-4 flex-1 flex-row items-center">
           <Text style={{ fontSize: 28 }}>{meta.icon}</Text>
           <View className="ml-3 flex-1">
             <Typography variant="subtitle-14-semibold">{title}</Typography>
