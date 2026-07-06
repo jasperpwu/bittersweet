@@ -820,6 +820,13 @@
     "unlockCta": "잠금 해제 ({{amount}} 🍎)",
     "unlockedToast": "{{minutes}}분 동안 잠금 해제됨"
   },
+  "shield": {
+    "title": "{applicationOrDomainDisplayName}은(는) 차단됨",
+    "focusSubtitle": "집중 세션 진행 중\n계속 집중해 봐요!",
+    "balanceSubtitle": "🍎 {{balance}}개 보유 중\n열매를 사용해 잠시 잠금 해제할 수 있어요",
+    "unlockButton": "앱 잠금 해제",
+    "closeButton": "닫기"
+  },
   "datePicker": {
     "selectDate": "날짜 선택",
     "a11yLabel": "날짜 선택, 현재 {{date}}",

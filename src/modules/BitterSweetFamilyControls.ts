@@ -2,6 +2,7 @@ import { FamilyActivitySelection } from '../types/models';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WidgetService } from '../services/WidgetService';
 import Constants from 'expo-constants';
+import i18n from '../i18n';
 
 // Import react-native-device-activity with proper types
 import * as ReactNativeDeviceActivity from 'react-native-device-activity';
@@ -17,10 +18,12 @@ import type {
 
 const SHIELD_CONFIGURATION_KEY = 'shieldConfiguration';
 const SHIELD_ACTIONS_KEY = 'shieldActions';
+// Localized shield string templates for native writers (WidgetDataManager.swift),
+// which rewrite the shield config from widget intents while JS isn't running
+const SHIELD_STRINGS_KEY = 'shieldStrings';
 const APP_GROUP_ID =
   Constants.expoConfig?.extra?.appGroupId ?? 'group.com.path2us.bittersweet.appblocker';
-const MAIN_APP_BUNDLE_ID =
-  Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.path2us.bittersweet';
+const MAIN_APP_BUNDLE_ID = Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.path2us.bittersweet';
 
 // MARK: - Custom Data Types (for events only, not shield config)
 
@@ -66,9 +69,9 @@ class BitterSweetFamilyControlsModule {
       // Configure shield appearance (using official library interface)
       const shieldConfig: ShieldConfiguration = focusSessionActive
         ? {
-            title: '{applicationOrDomainDisplayName} is Blocked',
-            subtitle: 'Focus session in progress\nStay focused!',
-            primaryButtonLabel: 'Close',
+            title: i18n.t('shield.title'),
+            subtitle: i18n.t('shield.focusSubtitle'),
+            primaryButtonLabel: i18n.t('shield.closeButton'),
             iconSystemName: 'hand.raised.fill',
             backgroundBlurStyle: 18, // UIBlurEffect.Style.systemMaterialDark - force dark material in light mode
             backgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Dark red
@@ -78,10 +81,10 @@ class BitterSweetFamilyControlsModule {
             primaryButtonBackgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Red (not green)
           }
         : {
-            title: '{applicationOrDomainDisplayName} is Blocked',
-            subtitle: `You have ${fruitBalance} 🍎\nSpend fruits to unlock temporarily`,
-            primaryButtonLabel: 'Unlock App',
-            secondaryButtonLabel: 'Close',
+            title: i18n.t('shield.title'),
+            subtitle: i18n.t('shield.balanceSubtitle', { balance: fruitBalance }),
+            primaryButtonLabel: i18n.t('shield.unlockButton'),
+            secondaryButtonLabel: i18n.t('shield.closeButton'),
             iconSystemName: 'hand.raised.fill',
             backgroundBlurStyle: 18, // UIBlurEffect.Style.systemMaterialDark - force dark material in light mode
             backgroundColor: { red: 178, green: 25, blue: 25, alpha: 1.0 }, // Dark red
@@ -120,6 +123,17 @@ class BitterSweetFamilyControlsModule {
       // Store configuration in UserDefaults for the shield extensions
       ReactNativeDeviceActivity.userDefaultsSet(SHIELD_CONFIGURATION_KEY, shieldConfig);
       ReactNativeDeviceActivity.userDefaultsSet(SHIELD_ACTIONS_KEY, shieldActions);
+
+      // Sync localized templates so native shield writers (widget start/stop
+      // intents) produce text in the user's language. `{balance}` is a literal
+      // token substituted by WidgetDataManager.swift at write time.
+      ReactNativeDeviceActivity.userDefaultsSet(SHIELD_STRINGS_KEY, {
+        title: i18n.t('shield.title'),
+        focusSubtitle: i18n.t('shield.focusSubtitle'),
+        balanceSubtitle: i18n.t('shield.balanceSubtitle', { balance: '{balance}' }),
+        unlockButton: i18n.t('shield.unlockButton'),
+        closeButton: i18n.t('shield.closeButton'),
+      });
 
       // Sync balance to app group so native widget/intent code can write
       // accurate shield config when stopping a session without JS running
@@ -160,6 +174,7 @@ class BitterSweetFamilyControlsModule {
     try {
       ReactNativeDeviceActivity.userDefaultsRemove(SHIELD_CONFIGURATION_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(SHIELD_ACTIONS_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(SHIELD_STRINGS_KEY);
 
       console.log('✅ Shield configuration cleared');
       return true;

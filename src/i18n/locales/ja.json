@@ -820,6 +820,13 @@
     "unlockCta": "アンロック（{{amount}} 🍎）",
     "unlockedToast": "{{minutes}}分間アンロックしました"
   },
+  "shield": {
+    "title": "{applicationOrDomainDisplayName} はブロックされています",
+    "focusSubtitle": "集中セッション中\nこのまま集中を続けましょう！",
+    "balanceSubtitle": "{{balance}} 🍎 を持っています\n実を使うと一時的にアンロックできます",
+    "unlockButton": "アプリをアンロック",
+    "closeButton": "閉じる"
+  },
   "datePicker": {
     "selectDate": "日付を選択",
     "a11yLabel": "日付を選択、現在 {{date}}",

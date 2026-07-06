@@ -820,6 +820,13 @@
     "unlockCta": "Freischalten ({{amount}} 🍎)",
     "unlockedToast": "Für {{minutes}} Min. freigeschaltet"
   },
+  "shield": {
+    "title": "{applicationOrDomainDisplayName} ist blockiert",
+    "focusSubtitle": "Fokus-Sitzung läuft\nBleib konzentriert!",
+    "balanceSubtitle": "Du hast {{balance}} 🍎\nGib Früchte aus, um vorübergehend freizuschalten",
+    "unlockButton": "App freischalten",
+    "closeButton": "Schließen"
+  },
   "datePicker": {
     "selectDate": "Datum auswählen",
     "a11yLabel": "Datum auswählen, aktuell {{date}}",

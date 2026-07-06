@@ -820,6 +820,13 @@
     "unlockCta": "Unlock ({{amount}} 🍎)",
     "unlockedToast": "Unlocked for {{minutes}}m"
   },
+  "shield": {
+    "title": "{applicationOrDomainDisplayName} is Blocked",
+    "focusSubtitle": "Focus session in progress\nStay focused!",
+    "balanceSubtitle": "You have {{balance}} 🍎\nSpend fruits to unlock temporarily",
+    "unlockButton": "Unlock App",
+    "closeButton": "Close"
+  },
   "datePicker": {
     "selectDate": "Select Date",
     "a11yLabel": "Select date, currently {{date}}",

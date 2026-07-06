@@ -820,6 +820,13 @@
     "unlockCta": "Desbloquear ({{amount}} 🍎)",
     "unlockedToast": "Desbloqueado por {{minutes}} min"
   },
+  "shield": {
+    "title": "{applicationOrDomainDisplayName} está bloqueada",
+    "focusSubtitle": "Sesión de concentración en curso\n¡Sigue concentrado!",
+    "balanceSubtitle": "Tienes {{balance}} 🍎\nUsa fruta para desbloquear temporalmente",
+    "unlockButton": "Desbloquear app",
+    "closeButton": "Cerrar"
+  },
   "datePicker": {
     "selectDate": "Seleccionar fecha",
     "a11yLabel": "Seleccionar fecha, actualmente {{date}}",

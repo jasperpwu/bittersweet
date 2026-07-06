@@ -40,6 +40,9 @@ enum WidgetKeys {
 private enum ShieldKeys {
   static let shieldConfiguration = "shieldConfiguration"
   static let shieldActions = "shieldActions"
+  // Localized string templates synced from JS (configureShield); values follow
+  // the in-app language preference, English fallbacks below if never synced
+  static let shieldStrings = "shieldStrings"
 }
 
 // MARK: - Data Models
@@ -465,17 +468,26 @@ struct WidgetDataManager {
 
   // MARK: - Shield Configuration
 
+  /// Localized shield strings synced from JS, keyed by template name.
+  private func getShieldStrings() -> [String: String] {
+    return userDefaults?.dictionary(forKey: ShieldKeys.shieldStrings) as? [String: String] ?? [:]
+  }
+
   /// Restore the shield to non-focus-session mode so users can unlock apps with fruits.
   /// Called from StopSessionIntent when a session is stopped from the widget,
   /// since JS won't run until the app foregrounds.
   func restoreShieldForNonFocusMode() {
     let balance = getFruitBalance()
+    let strings = getShieldStrings()
+    let subtitle = (strings["balanceSubtitle"]
+      ?? "You have {balance} 🍎\nSpend fruits to unlock temporarily")
+      .replacingOccurrences(of: "{balance}", with: "\(balance)")
 
     let shieldConfig: [String: Any] = [
-      "title": "{applicationOrDomainDisplayName} is Blocked",
-      "subtitle": "You have \(balance) 🍎\nSpend fruits to unlock temporarily",
-      "primaryButtonLabel": "Unlock App",
-      "secondaryButtonLabel": "Close",
+      "title": strings["title"] ?? "{applicationOrDomainDisplayName} is Blocked",
+      "subtitle": subtitle,
+      "primaryButtonLabel": strings["unlockButton"] ?? "Unlock App",
+      "secondaryButtonLabel": strings["closeButton"] ?? "Close",
       "iconSystemName": "hand.raised.fill",
       "backgroundBlurStyle": 18, // UIBlurEffect.Style.systemMaterialDark
       "backgroundColor": ["red": 178.0, "green": 25.0, "blue": 25.0, "alpha": 1.0],
@@ -506,10 +518,12 @@ struct WidgetDataManager {
   /// Set the shield to focus-session mode (block unlocking during focus).
   /// Called from StartSessionIntent when a session is started from the widget.
   func setShieldForFocusMode() {
+    let strings = getShieldStrings()
+
     let shieldConfig: [String: Any] = [
-      "title": "{applicationOrDomainDisplayName} is Blocked",
-      "subtitle": "Focus session in progress\nStay focused!",
-      "primaryButtonLabel": "Close",
+      "title": strings["title"] ?? "{applicationOrDomainDisplayName} is Blocked",
+      "subtitle": strings["focusSubtitle"] ?? "Focus session in progress\nStay focused!",
+      "primaryButtonLabel": strings["closeButton"] ?? "Close",
       "iconSystemName": "hand.raised.fill",
       "backgroundBlurStyle": 18, // UIBlurEffect.Style.systemMaterialDark
       "backgroundColor": ["red": 178.0, "green": 25.0, "blue": 25.0, "alpha": 1.0],

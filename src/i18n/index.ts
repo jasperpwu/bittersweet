@@ -51,9 +51,9 @@ i18n.use(initReactI18next).init({
 });
 
 /** Switch the active UI language. No-op if already active. */
-export function setLanguage(code: string): void {
+export async function setLanguage(code: string): Promise<void> {
   if (i18n.language !== code) {
-    i18n.changeLanguage(code);
+    await i18n.changeLanguage(code);
   }
 }
 
