@@ -188,6 +188,10 @@ export default function RootLayout() {
         const data = response.notification.request.content.data;
         if (data?.type === 'weekly-coach') {
           router.push('/(modals)/ai-coach');
+        } else if (data?.type === 'gift') {
+          // Gifts (incoming + sent-gift history) live in the fruit store's
+          // Custom tab — land the tap there for every gift event.
+          router.push('/fruit-store?tab=custom');
         }
       }
     );

@@ -129,13 +129,17 @@ $$;
 -- a duplicate-object error means the other party already captured it.
 --
 -- Storage policy (run after creating the bucket):
+-- NOTE: the file path must be qualified as storage.objects.name. gift_rewards
+-- also has a `name` column, so an unqualified `name` in the subquery binds to
+-- g.name (the gift's display name) and the predicate never matches — uploads
+-- then fail with "new row violates row-level security policy".
 -- CREATE POLICY "Gift parties can manage gift photos"
 -- ON storage.objects FOR ALL
 -- USING (
 --   bucket_id = 'gift-photos'
 --   AND EXISTS (
 --     SELECT 1 FROM public.gift_rewards g
---     WHERE name = g.id::text || '.jpg'
+--     WHERE storage.objects.name = g.id::text || '.jpg'
 --       AND auth.uid() IN (g.sender_id, g.recipient_id)
 --   )
 -- )
@@ -143,7 +147,7 @@ $$;
 --   bucket_id = 'gift-photos'
 --   AND EXISTS (
 --     SELECT 1 FROM public.gift_rewards g
---     WHERE name = g.id::text || '.jpg'
+--     WHERE storage.objects.name = g.id::text || '.jpg'
 --       AND auth.uid() IN (g.sender_id, g.recipient_id)
 --   )
 -- );

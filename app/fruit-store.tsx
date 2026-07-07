@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   SafeAreaView,
@@ -14,8 +14,10 @@ import {
   Linking,
   Modal as RNModal,
   Platform,
+  type LayoutChangeEvent,
+  type GestureResponderEvent,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -120,7 +122,11 @@ export default function FruitStoreScreen() {
 
   const [claimedTitle, setClaimedTitle] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'all' | 'products' | 'themes' | 'custom'>('all');
+  // `tab=custom` deep link (from a gift notification tap) opens the Custom tab.
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const [activeTab, setActiveTab] = useState<'all' | 'products' | 'themes' | 'custom'>(
+    tab === 'custom' ? 'custom' : 'all'
+  );
 
   // Create-custom-reward modal, and the bought purchase whose photo is being
   // viewed/added (photo modal is open while non-null).
@@ -147,6 +153,34 @@ export default function FruitStoreScreen() {
   // Dev accounts pay a 1-apple test price (see config/devUsers.ts).
   const authUserId = useAppStore((s) => s.auth.user?.id);
   const themeCost = sliderThemeCostForUser(authUserId);
+
+  // Themes tab: 48 countries, sorted alphabetically by localized name with an
+  // A-Z fast-scroll index (like iOS Contacts). `themeRows` flags the first card
+  // of each letter — those cards report their y so the index can scroll to them.
+  const scrollRef = useRef<ScrollView>(null);
+  const themeOffsets = useRef<Record<string, number>>({});
+  const themeRows = useMemo(() => {
+    const sorted = SLIDER_THEMES.map((theme) => ({
+      theme,
+      name: t(`store.themes.${theme.id}`),
+    })).sort((a, b) => a.name.localeCompare(b.name, i18n.language));
+    let lastLetter = '';
+    return sorted.map(({ theme, name }) => {
+      const letter = name.charAt(0).toUpperCase();
+      const sectionStart = letter !== lastLetter;
+      lastLetter = letter;
+      return { theme, name, letter, sectionStart };
+    });
+  }, [t, i18n.language]);
+  const indexLetters = useMemo(() => {
+    const letters: string[] = [];
+    for (const row of themeRows) if (row.sectionStart) letters.push(row.letter);
+    return letters;
+  }, [themeRows]);
+  const jumpToThemeLetter = (letter: string) => {
+    const y = themeOffsets.current[letter];
+    if (y != null) scrollRef.current?.scrollTo({ y: Math.max(y - 8, 0), animated: false });
+  };
 
   const purchaseHistory = useMemo(() => {
     const purchases = rewards.purchases ?? { byId: {}, allIds: [] };
@@ -645,7 +679,7 @@ export default function FruitStoreScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} className="flex-1 px-5" showsVerticalScrollIndicator={false}>
         {/* Gift pending actions — bought gifts still missing their photo; shown
             to both sender and receiver until either captures the moment */}
         {(activeTab === 'all' || activeTab === 'custom') && pendingPhotoGifts.length > 0 && (
@@ -818,11 +852,11 @@ export default function FruitStoreScreen() {
               onApply={() => handleApplyTheme(null)}
             />
 
-            {SLIDER_THEMES.map((theme) => (
+            {themeRows.map(({ theme, name, letter, sectionStart }) => (
               <ThemeCard
                 key={theme.id}
                 flag={theme.flag}
-                name={t(`store.themes.${theme.id}`)}
+                name={name}
                 trackColors={theme.trackColors}
                 thumbEmoji={theme.thumbEmoji}
                 cost={themeCost}
@@ -830,6 +864,15 @@ export default function FruitStoreScreen() {
                 applied={sliderThemeId === theme.id}
                 onBuy={() => handlePurchaseTheme(theme)}
                 onApply={() => handleApplyTheme(theme.id)}
+                // Only the first card of each letter reports its y — that's the
+                // scroll target for the A-Z index.
+                onLayout={
+                  sectionStart
+                    ? (e) => {
+                        themeOffsets.current[letter] = e.nativeEvent.layout.y;
+                      }
+                    : undefined
+                }
               />
             ))}
           </>
@@ -1104,6 +1147,12 @@ export default function FruitStoreScreen() {
 
         <View className="mb-8" />
       </ScrollView>
+
+      {/* A-Z fast-scroll index — Themes tab only (the only long, purely
+          alphabetical list). Floats in the right screen margin. */}
+      {activeTab === 'themes' && (
+        <AlphabetIndex letters={indexLetters} onSelect={jumpToThemeLetter} />
+      )}
 
       {/* Tip Modal */}
       <Modal isVisible={activeTipId !== null} onClose={() => setActiveTipId(null)} size="small">
@@ -1554,6 +1603,7 @@ function ThemeCard({
   applied,
   onBuy,
   onApply,
+  onLayout,
 }: {
   flag: string;
   name: string;
@@ -1565,10 +1615,13 @@ function ThemeCard({
   applied: boolean;
   onBuy: () => void;
   onApply: () => void;
+  /** Reports the card's y within the scroll content (used by the A-Z index). */
+  onLayout?: (e: LayoutChangeEvent) => void;
 }) {
   const { t } = useTranslation();
   return (
     <Pressable
+      onLayout={onLayout}
       onPress={owned ? onApply : onBuy}
       disabled={applied}
       className={`
@@ -1633,6 +1686,83 @@ function ThemeCard({
         )}
       </View>
     </Pressable>
+  );
+}
+
+// iOS-Contacts-style A-Z fast-scroll index for the Themes tab. Floats in the
+// right margin; touching/dragging a letter jumps the list to the first country
+// under that letter (offsets reported by the section-start ThemeCards). Letters
+// are derived from the localized names, so the index adapts per language.
+const LETTER_ROW_HEIGHT = 16;
+
+function AlphabetIndex({
+  letters,
+  onSelect,
+}: {
+  letters: string[];
+  onSelect: (letter: string) => void;
+}) {
+  const colorScheme = useColorScheme();
+  const lastLetter = useRef<string | null>(null);
+  const [active, setActive] = useState<string | null>(null);
+
+  const pick = (e: GestureResponderEvent) => {
+    if (letters.length === 0) return;
+    const idx = Math.min(
+      letters.length - 1,
+      Math.max(0, Math.floor(e.nativeEvent.locationY / LETTER_ROW_HEIGHT))
+    );
+    const letter = letters[idx];
+    if (letter && letter !== lastLetter.current) {
+      lastLetter.current = letter;
+      setActive(letter);
+      Haptics.selectionAsync().catch(() => {});
+      onSelect(letter);
+    }
+  };
+
+  const release = () => {
+    lastLetter.current = null;
+    setActive(null);
+  };
+
+  if (letters.length === 0) return null;
+  const inactiveColor =
+    colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary;
+
+  return (
+    <View
+      pointerEvents="box-none"
+      style={{ position: 'absolute', right: 0, top: 0, bottom: 0, justifyContent: 'center' }}>
+      <View
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={pick}
+        onResponderMove={pick}
+        onResponderRelease={release}
+        onResponderTerminate={release}
+        style={{ paddingHorizontal: 6 }}>
+        {letters.map((letter) => (
+          <View
+            key={letter}
+            style={{
+              height: LETTER_ROW_HEIGHT,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+            <Text
+              allowFontScaling={false}
+              style={{
+                fontSize: 11,
+                fontWeight: active === letter ? '800' : '600',
+                color: active === letter ? colors.primary : inactiveColor,
+              }}>
+              {letter}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 

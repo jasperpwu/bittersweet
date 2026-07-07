@@ -444,7 +444,23 @@
       "argentina": "阿根廷",
       "cape_verde": "佛得角",
       "colombia": "哥伦比亚",
-      "ghana": "加纳"
+      "ghana": "加纳",
+      "uruguay": "乌拉圭",
+      "south_korea": "韩国",
+      "iran": "伊朗",
+      "iraq": "伊拉克",
+      "saudi_arabia": "沙特阿拉伯",
+      "qatar": "卡塔尔",
+      "jordan": "约旦",
+      "uzbekistan": "乌兹别克斯坦",
+      "tunisia": "突尼斯",
+      "curacao": "库拉索",
+      "haiti": "海地",
+      "panama": "巴拿马",
+      "new_zealand": "新西兰",
+      "czechia": "捷克",
+      "scotland": "苏格兰",
+      "turkey": "土耳其"
     }
   },
   "badge": {

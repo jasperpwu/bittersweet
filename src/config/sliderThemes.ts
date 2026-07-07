@@ -46,8 +46,10 @@ export interface SliderTheme {
   thumbEmoji: string;
 }
 
-// First collection: the 32 nations of the 2026 World Cup knockout rounds
-// (round of 32), in bracket/fixture order. Track = flag colors, thumb = ⚽.
+// First collection: all 48 nations of the 2026 World Cup. Track = flag colors,
+// thumb = ⚽. The store sorts these alphabetically by localized name at render
+// time (see the Themes tab A-Z index), so array order here is not significant —
+// but ids are a persistence contract (see header): only ever append.
 export const SLIDER_THEMES: SliderTheme[] = [
   { id: 'canada', flag: '🇨🇦', trackColors: ['#D80621', '#FFFFFF', '#D80621'], thumbEmoji: '⚽' },
   {
@@ -116,6 +118,48 @@ export const SLIDER_THEMES: SliderTheme[] = [
   },
   { id: 'colombia', flag: '🇨🇴', trackColors: ['#FCD116', '#003893', '#CE1126'], thumbEmoji: '⚽' },
   { id: 'ghana', flag: '🇬🇭', trackColors: ['#CE1126', '#FCD116', '#006B3F'], thumbEmoji: '⚽' },
+  // Remaining 2026 qualifiers, appended (order irrelevant — sorted at render):
+  { id: 'uruguay', flag: '🇺🇾', trackColors: ['#0038A8', '#FFFFFF', '#0038A8'], thumbEmoji: '⚽' },
+  {
+    id: 'south_korea',
+    flag: '🇰🇷',
+    trackColors: ['#FFFFFF', '#CD2E3A', '#0047A0'],
+    thumbEmoji: '⚽',
+  },
+  { id: 'iran', flag: '🇮🇷', trackColors: ['#239F40', '#FFFFFF', '#DA0000'], thumbEmoji: '⚽' },
+  { id: 'iraq', flag: '🇮🇶', trackColors: ['#CE1126', '#FFFFFF', '#000000'], thumbEmoji: '⚽' },
+  {
+    id: 'saudi_arabia',
+    flag: '🇸🇦',
+    trackColors: ['#006C35', '#FFFFFF', '#006C35'],
+    thumbEmoji: '⚽',
+  },
+  { id: 'qatar', flag: '🇶🇦', trackColors: ['#8A1538', '#FFFFFF', '#8A1538'], thumbEmoji: '⚽' },
+  { id: 'jordan', flag: '🇯🇴', trackColors: ['#000000', '#FFFFFF', '#007A3D'], thumbEmoji: '⚽' },
+  {
+    id: 'uzbekistan',
+    flag: '🇺🇿',
+    trackColors: ['#0099B5', '#FFFFFF', '#1EB53A'],
+    thumbEmoji: '⚽',
+  },
+  { id: 'tunisia', flag: '🇹🇳', trackColors: ['#E70013', '#FFFFFF', '#E70013'], thumbEmoji: '⚽' },
+  { id: 'curacao', flag: '🇨🇼', trackColors: ['#002B7F', '#F9E814', '#002B7F'], thumbEmoji: '⚽' },
+  { id: 'haiti', flag: '🇭🇹', trackColors: ['#00209F', '#D21034'], thumbEmoji: '⚽' },
+  { id: 'panama', flag: '🇵🇦', trackColors: ['#D21034', '#FFFFFF', '#005293'], thumbEmoji: '⚽' },
+  {
+    id: 'new_zealand',
+    flag: '🇳🇿',
+    trackColors: ['#00247D', '#FFFFFF', '#CC142B'],
+    thumbEmoji: '⚽',
+  },
+  { id: 'czechia', flag: '🇨🇿', trackColors: ['#FFFFFF', '#D7141A', '#11457E'], thumbEmoji: '⚽' },
+  {
+    id: 'scotland',
+    flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+    trackColors: ['#005EB8', '#FFFFFF', '#005EB8'],
+    thumbEmoji: '⚽',
+  },
+  { id: 'turkey', flag: '🇹🇷', trackColors: ['#E30A17', '#FFFFFF', '#E30A17'], thumbEmoji: '⚽' },
 ];
 
 export function getSliderTheme(id: string | null | undefined): SliderTheme | null {

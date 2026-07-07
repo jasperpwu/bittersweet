@@ -48,6 +48,10 @@ export function GiftRewardModal({
   const cost = parseInt(costText, 10);
   const canCreate = !!recipientId && !!name.trim() && Number.isFinite(cost) && cost >= 1;
 
+  // Matches the modal background (bg-light-bg / bg-dark-bg) so the checkmark
+  // badge reads as a cutout ring around the corner of the selected avatar.
+  const avatarBadgeBorder = colorScheme === 'dark' ? colors.dark.screen : colors.light.screen;
+
   const reset = () => {
     setRecipientId(null);
     setName('');
@@ -126,16 +130,22 @@ export function GiftRewardModal({
                     contentContainerStyle={{ gap: 12, paddingVertical: 4 }}>
                     {friends.map((friend: FriendItem) => {
                       const isSelected = recipientId === friend.profile.user_id;
+                      // Once a friend is picked, fade the rest so the selection
+                      // reads at a glance even when avatars share similar colors.
+                      const hasSelection = !!recipientId;
                       return (
                         <Pressable
                           key={friend.profile.user_id}
                           onPress={() => setRecipientId(friend.profile.user_id)}
                           className="items-center active:opacity-70"
-                          style={{ width: 64 }}>
+                          style={{ width: 64, opacity: hasSelection && !isSelected ? 0.4 : 1 }}>
                           <View
                             className={`rounded-full ${
-                              isSelected ? 'border-2 border-primary' : 'border-2 border-transparent'
-                            }`}>
+                              isSelected
+                                ? 'border-[3px] border-primary bg-primary/20'
+                                : 'border-[3px] border-transparent'
+                            }`}
+                            style={{ padding: 2 }}>
                             {friend.profile.avatar_url ? (
                               <Image
                                 source={{ uri: friend.profile.avatar_url }}
@@ -148,12 +158,26 @@ export function GiftRewardModal({
                                 size={48}
                               />
                             )}
+                            {isSelected && (
+                              <View
+                                className="absolute items-center justify-center rounded-full bg-primary"
+                                style={{
+                                  bottom: -2,
+                                  right: -2,
+                                  width: 22,
+                                  height: 22,
+                                  borderWidth: 2,
+                                  borderColor: avatarBadgeBorder,
+                                }}>
+                                <Ionicons name="checkmark" size={13} color={colors.white} />
+                              </View>
+                            )}
                           </View>
                           <Typography
                             variant="body-12"
                             color={isSelected ? 'primary' : 'secondary'}
                             numberOfLines={1}
-                            className="mt-1">
+                            className={`mt-1 ${isSelected ? 'font-semibold' : ''}`}>
                             {friend.profile.display_name}
                           </Typography>
                         </Pressable>

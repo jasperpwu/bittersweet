@@ -444,7 +444,23 @@
       "argentina": "Argentine",
       "cape_verde": "Cap-Vert",
       "colombia": "Colombie",
-      "ghana": "Ghana"
+      "ghana": "Ghana",
+      "uruguay": "Uruguay",
+      "south_korea": "Corée du Sud",
+      "iran": "Iran",
+      "iraq": "Irak",
+      "saudi_arabia": "Arabie saoudite",
+      "qatar": "Qatar",
+      "jordan": "Jordanie",
+      "uzbekistan": "Ouzbékistan",
+      "tunisia": "Tunisie",
+      "curacao": "Curaçao",
+      "haiti": "Haïti",
+      "panama": "Panama",
+      "new_zealand": "Nouvelle-Zélande",
+      "czechia": "Tchéquie",
+      "scotland": "Écosse",
+      "turkey": "Türkiye"
     }
   },
   "badge": {
