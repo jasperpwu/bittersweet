@@ -812,7 +812,10 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
       )}
 
       {/* Progress bar — wrapper is relative so the themed tip marker can
-          overflow the clipped track */}
+          overflow the clipped track. The urgency hint line and the ball tip are
+          BOTH absolute children here (not later siblings) so the ball, rendered
+          last, paints on top of the hint line — otherwise the red/amber line
+          overlays the soccer ball as the goal falls behind. */}
       <View className="mt-2 relative">
         <View className="h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden relative">
           <View
@@ -838,67 +841,83 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
           />
         </View>
 
-        {/* Soccer-ball tip (fruit-store slider theme) — sits on the end of the fill */}
+        {/* Urgency hint line — only covers the unfilled portion, with forward
+            shimmer. Absolutely positioned over the lower half of the track
+            (top: 3 ≈ the old 8px-track + -5 margin) so it can't push layout. */}
+        {goal.percentage < 100 && (
+          <View
+            style={{
+              position: 'absolute',
+              left: `${progressWidth}%`,
+              right: 0,
+              top: 3,
+              height: 6,
+              overflow: 'hidden',
+              borderTopRightRadius: 999,
+              borderBottomRightRadius: 999,
+            }}
+          >
+            {/* Static base line */}
+            <View
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: 2,
+                height: 2,
+                backgroundColor: trackColor,
+                opacity: 0.5,
+                borderTopRightRadius: 999,
+                borderBottomRightRadius: 999,
+              }}
+            />
+            {/* Sweeping highlight */}
+            <Reanimated.View
+              style={[
+                {
+                  position: 'absolute',
+                  top: 1,
+                  width: 40,
+                  height: 4,
+                  borderRadius: 999,
+                  backgroundColor: trackColor,
+                  shadowColor: trackColor,
+                  shadowOpacity: 1,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 2 },
+                  elevation: 10,
+                },
+                shimmerStyle,
+              ]}
+            />
+          </View>
+        )}
+
+        {/* Soccer-ball tip (fruit-store slider theme) — sits on the end of the fill.
+            Rendered LAST so it's the top-most layer of the bar (above the urgency
+            hint line). Mirrors the Slider thumb: a fixed-size box (explicit width
+            AND height, so neither the parent's remaining space nor the 8px track
+            height can squeeze/clip the emoji) centered on the track via 50% +
+            half-size offsets, with lineHeight pinned so the glyph isn't clipped. */}
         {sliderTheme && (
           <View
             pointerEvents="none"
-            className="absolute top-0 bottom-0 justify-center"
-            style={{ left: `${ballTipPercent}%` }}
+            className="absolute items-center justify-center"
+            style={{
+              left: `${ballTipPercent}%`,
+              top: '50%',
+              width: 18,
+              height: 18,
+              marginLeft: -9,
+              marginTop: -9,
+            }}
           >
-            <Text allowFontScaling={false} style={{ fontSize: 13, marginLeft: -6.5 }}>
+            <Text allowFontScaling={false} style={{ fontSize: 13, lineHeight: 18 }}>
               {sliderTheme.thumbEmoji}
             </Text>
           </View>
         )}
       </View>
-
-      {/* Urgency hint line — only covers the unfilled portion, with forward shimmer */}
-      {goal.percentage < 100 && (
-        <View
-          style={{
-            marginLeft: `${progressWidth}%`,
-            marginTop: -5,
-            height: 6,
-            overflow: 'hidden',
-            borderTopRightRadius: 999,
-            borderBottomRightRadius: 999,
-          }}
-        >
-          {/* Static base line */}
-          <View
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: 2,
-              height: 2,
-              backgroundColor: trackColor,
-              opacity: 0.5,
-              borderTopRightRadius: 999,
-              borderBottomRightRadius: 999,
-            }}
-          />
-          {/* Sweeping highlight */}
-          <Reanimated.View
-            style={[
-              {
-                position: 'absolute',
-                top: 1,
-                width: 40,
-                height: 4,
-                borderRadius: 999,
-                backgroundColor: trackColor,
-                shadowColor: trackColor,
-                shadowOpacity: 1,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 10,
-              },
-              shimmerStyle,
-            ]}
-          />
-        </View>
-      )}
     </View>
   );
 };
