@@ -217,11 +217,27 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
     }
 
     // Pop confetti as the bar lands, only if the goal was just reached — with a
-    // heavy "boom" tap to punctuate the burst.
+    // Duolingo-style "boom" to punctuate the burst. A single iOS Heavy tap is the
+    // strongest one-shot impact available, so to land harder we fire a tight
+    // rumble: a rapid Heavy triple capped by a Success notification. The stacked
+    // taps read as one big celebratory thud rather than a single flick.
+    const burstTimers: ReturnType<typeof setTimeout>[] = [];
     const celebrateTimer = computed.reachedNow
       ? setTimeout(() => {
           setCelebrate(true);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+          [70, 140].forEach((dt) => {
+            burstTimers.push(
+              setTimeout(() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+              }, dt),
+            );
+          });
+          burstTimers.push(
+            setTimeout(() => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+            }, 230),
+          );
         }, 900)
       : undefined;
 
@@ -281,6 +297,7 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
       clearTimeout(fadeTimer);
       streakTimers.forEach(clearTimeout);
       fillTimers.forEach(clearTimeout);
+      burstTimers.forEach(clearTimeout);
     };
     // Runs once — `computed` is stable for a given session/goal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
