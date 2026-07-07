@@ -1,0 +1,265 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Pressable,
+  Text,
+  TextInput,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal as RNModal,
+  Platform,
+  ScrollView,
+  useColorScheme,
+} from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { Typography } from '../ui/Typography';
+import { EmojiPickerOverlay } from '../ui/EmojiPicker/EmojiPicker';
+import { DefaultAvatar } from '../grove/DefaultAvatar';
+import { useAppStore } from '../../store';
+import { colors } from '../../config/theme';
+import type { FriendItem } from '../../services/grove/GroveFriendService';
+
+// Create-gift form: pick a Grove friend, then name + fruit cost + optional
+// emoji — same RN Modal + KeyboardAvoidingView structure as CreateRewardModal
+// (the shared Modal doesn't handle the keyboard). The cost is what the
+// RECIPIENT pays from their own fruits; the sender pays nothing.
+export function GiftRewardModal({
+  visible,
+  onClose,
+  onCreate,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onCreate: (recipientId: string, name: string, cost: number, emoji?: string) => void;
+}) {
+  const { t } = useTranslation();
+  const colorScheme = useColorScheme();
+  const friends = useAppStore((s) => s.grove.friends);
+
+  const [recipientId, setRecipientId] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [emoji, setEmoji] = useState('');
+  const [costText, setCostText] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const cost = parseInt(costText, 10);
+  const canCreate = !!recipientId && !!name.trim() && Number.isFinite(cost) && cost >= 1;
+
+  const reset = () => {
+    setRecipientId(null);
+    setName('');
+    setEmoji('');
+    setCostText('');
+    setShowEmojiPicker(false);
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
+  const handleCreate = () => {
+    if (!canCreate || !recipientId) return;
+    onCreate(recipientId, name.trim(), cost, emoji || undefined);
+    reset();
+  };
+
+  if (!visible) return null;
+
+  return (
+    <RNModal visible transparent animationType="fade" onRequestClose={handleClose}>
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable
+          className="flex-1 items-center justify-center bg-black/50 px-4"
+          onPress={handleClose}>
+          <Pressable
+            onPress={() => {}}
+            className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
+            {/* Header */}
+            <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
+              <Typography variant="headline-20" color="primary">
+                {t('store.giftModalTitle')}
+              </Typography>
+              <Pressable
+                onPress={handleClose}
+                className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700">
+                <Ionicons
+                  name="close"
+                  size={20}
+                  color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+                />
+              </Pressable>
+            </View>
+
+            <View className="p-6">
+              {friends.length === 0 ? (
+                <View className="items-center py-6">
+                  <Typography variant="body-14" color="secondary" className="mb-4 text-center">
+                    {t('store.giftNoFriends')}
+                  </Typography>
+                  <Pressable
+                    onPress={() => {
+                      handleClose();
+                      router.push('/(modals)/add-friends');
+                    }}
+                    className="rounded-2xl bg-primary px-6 py-3 active:opacity-80">
+                    <Typography variant="subtitle-14-semibold" color="white">
+                      {t('store.giftAddFriends')}
+                    </Typography>
+                  </Pressable>
+                </View>
+              ) : (
+                <>
+                  {/* Recipient picker (single-select) */}
+                  <Typography variant="body-14" color="primary" className="mb-2">
+                    {t('store.giftPickFriend')}
+                  </Typography>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="mb-4"
+                    contentContainerStyle={{ gap: 12, paddingVertical: 4 }}>
+                    {friends.map((friend: FriendItem) => {
+                      const isSelected = recipientId === friend.profile.user_id;
+                      return (
+                        <Pressable
+                          key={friend.profile.user_id}
+                          onPress={() => setRecipientId(friend.profile.user_id)}
+                          className="items-center active:opacity-70"
+                          style={{ width: 64 }}>
+                          <View
+                            className={`rounded-full ${
+                              isSelected ? 'border-2 border-primary' : 'border-2 border-transparent'
+                            }`}>
+                            {friend.profile.avatar_url ? (
+                              <Image
+                                source={{ uri: friend.profile.avatar_url }}
+                                style={{ width: 48, height: 48, borderRadius: 24 }}
+                              />
+                            ) : (
+                              <DefaultAvatar
+                                displayName={friend.profile.display_name}
+                                color={friend.profile.avatar_color}
+                                size={48}
+                              />
+                            )}
+                          </View>
+                          <Typography
+                            variant="body-12"
+                            color={isSelected ? 'primary' : 'secondary'}
+                            numberOfLines={1}
+                            className="mt-1">
+                            {friend.profile.display_name}
+                          </Typography>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {/* Emoji (optional) + name row — same layout as CreateRewardModal */}
+                  <View className="mb-4 flex-row items-center" style={{ gap: 12 }}>
+                    <Pressable
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowEmojiPicker(true);
+                      }}
+                      className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-gray-500 dark:bg-gray-700">
+                      {emoji ? (
+                        <Text className="text-2xl">{emoji}</Text>
+                      ) : (
+                        <Ionicons name="happy-outline" size={24} color={colors.primary} />
+                      )}
+                    </Pressable>
+                    <TextInput
+                      value={name}
+                      onChangeText={setName}
+                      placeholder={t('store.giftNamePlaceholder')}
+                      placeholderTextColor="#666"
+                      className="flex-1"
+                      style={{
+                        backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                        borderRadius: 12,
+                        padding: 14,
+                        fontSize: 16,
+                        color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                        borderWidth: 1,
+                        borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                      }}
+                    />
+                  </View>
+
+                  {/* Cost in fruits — what the recipient pays */}
+                  <Typography variant="body-14" color="primary" className="mb-2">
+                    {t('store.giftCostLabel')}
+                  </Typography>
+                  <View className="flex-row items-center" style={{ gap: 12 }}>
+                    <Text style={{ fontSize: 24 }}>🍎</Text>
+                    <TextInput
+                      value={costText}
+                      onChangeText={(text) => setCostText(text.replace(/[^0-9]/g, ''))}
+                      placeholder={t('store.customCostPlaceholder')}
+                      placeholderTextColor="#666"
+                      keyboardType="number-pad"
+                      className="flex-1"
+                      style={{
+                        backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                        borderRadius: 12,
+                        padding: 14,
+                        fontSize: 16,
+                        color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                        borderWidth: 1,
+                        borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                      }}
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+
+            {/* Actions */}
+            {friends.length > 0 && (
+              <View
+                className="flex-row border-t border-light-border p-4 dark:border-gray-700"
+                style={{ gap: 12 }}>
+                <Pressable
+                  onPress={handleClose}
+                  className="flex-1 items-center rounded-2xl bg-gray-600 py-4 active:opacity-80">
+                  <Typography variant="subtitle-16" color="white">
+                    {t('common.cancel')}
+                  </Typography>
+                </Pressable>
+                <Pressable
+                  onPress={handleCreate}
+                  disabled={!canCreate}
+                  className={`flex-1 items-center rounded-2xl py-4 ${
+                    canCreate ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'
+                  }`}>
+                  <Typography variant="subtitle-16" color="white" className="font-semibold">
+                    {t('store.giftCreateAction')}
+                  </Typography>
+                </Pressable>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+
+      {/* Emoji Picker Overlay (optional emoji) */}
+      {showEmojiPicker && (
+        <EmojiPickerOverlay
+          title={t('store.customEmojiTitle')}
+          onClose={() => setShowEmojiPicker(false)}
+          onEmojiSelect={(picked) => {
+            setEmoji(picked);
+            setShowEmojiPicker(false);
+          }}
+        />
+      )}
+    </RNModal>
+  );
+}

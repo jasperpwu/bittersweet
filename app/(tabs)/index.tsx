@@ -723,6 +723,10 @@ export default function FocusScreen() {
   const hasUnclaimedRewards = SETUP_TASK_IDS.some(
     (id) => rewards.tasks?.[id]?.everSetup && !rewards.tasks?.[id]?.claimed
   );
+  // Bought gift still missing its photo — the "capture the moment" pending
+  // action in the fruit store (shown to both gift parties).
+  const groveGifts = useAppStore((s) => s.grove.gifts);
+  const hasPendingGiftAction = groveGifts.some((g) => g.purchasedAt && !g.photoUrl);
   const { settings: blocklistSettings, activeSessions } = useBlocklist();
   const { checkAuthorizationStatus, requestAuthorization } = useBlocklistActions();
   const currentSession = useAppStore((s) => s.focus.currentSession);
@@ -2353,7 +2357,7 @@ export default function FocusScreen() {
             <FruitCounter
               fruitCount={rewards.balance}
               size="small"
-              showBadge={hasUnclaimedRewards}
+              showBadge={hasUnclaimedRewards || hasPendingGiftAction}
               onPress={() => {
                 AnalyticsTracker.track('store_opened');
                 router.push('/fruit-store');

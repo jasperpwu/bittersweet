@@ -10,7 +10,10 @@ import {
   GroveRankingService,
   GroveChallengeService,
   GroveHeartbeatService,
+  GiftRewardService,
 } from '../../services/grove';
+import type { GiftItem, CreateGiftInput } from '../../services/grove/GiftRewardService';
+import { giftProductId } from '../../config/giftRewards';
 import type { FriendItem, FriendRequest } from '../../services/grove/GroveFriendService';
 import type { FeedItem } from '../../services/grove/GroveFeedService';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
@@ -62,6 +65,10 @@ export interface GroveSlice {
   challengesLoading: boolean;
   pendingChallengeCount: number;
 
+  // Gift rewards (cross-user, server-authoritative — see GiftRewardService)
+  gifts: GiftItem[];
+  giftsLoading: boolean;
+
   // Phase 1 actions
   fetchProfile: () => Promise<void>;
   createProfile: (input: CreateProfileInput, privacy: UpdatePrivacyInput) => Promise<void>;
@@ -108,6 +115,13 @@ export interface GroveSlice {
   fetchChallengePeriodDetails: (challengeId: string) => Promise<ChallengePeriodDetailsResult>;
   deleteChallenge: (challengeId: string) => Promise<void>;
   claimChallengeReward: (challengeId: string) => Promise<{ claimed: boolean; fruitReward: number }>;
+
+  // Gift reward actions
+  fetchGifts: () => Promise<void>;
+  createGift: (input: CreateGiftInput) => Promise<void>;
+  cancelGift: (giftId: string) => Promise<void>;
+  purchaseGift: (giftId: string) => Promise<void>;
+  setGiftPhoto: (giftId: string, imageUri: string) => Promise<void>;
 
   // Phase 4 — Heartbeat / Inner Circle
   heartbeatSettings: HeartbeatSettings | null;
@@ -171,6 +185,9 @@ const initialState = {
   challenges: [],
   challengesLoading: false,
   pendingChallengeCount: 0,
+  // Gift rewards
+  gifts: [] as GiftItem[],
+  giftsLoading: false,
   // Phase 4
   heartbeatSettings: null,
   heartbeatLoading: false,
@@ -981,6 +998,111 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     await get().grove.fetchChallenges();
 
     return result;
+  },
+
+  // ========== Gift Reward Actions ==========
+
+  fetchGifts: async () => {
+    set((state: any) => ({
+      grove: { ...state.grove, giftsLoading: true },
+    }));
+
+    try {
+      const gifts = await GiftRewardService.fetchGifts();
+      set((state: any) => ({
+        grove: { ...state.grove, gifts, giftsLoading: false },
+      }));
+    } catch (error: any) {
+      console.error('Failed to fetch gifts:', error);
+      set((state: any) => ({
+        grove: { ...state.grove, giftsLoading: false },
+      }));
+    }
+  },
+
+  createGift: async (input: CreateGiftInput) => {
+    const giftId = await GiftRewardService.createGift(input);
+    GiftRewardService.notify(giftId, 'created');
+    await get().grove.fetchGifts();
+  },
+
+  cancelGift: async (giftId: string) => {
+    await GiftRewardService.cancelGift(giftId);
+    set((state: any) => ({
+      grove: {
+        ...state.grove,
+        gifts: state.grove.gifts.filter((g: GiftItem) => g.id !== giftId),
+      },
+    }));
+  },
+
+  purchaseGift: async (giftId: string) => {
+    const gift = get().grove.gifts.find((g: GiftItem) => g.id === giftId);
+    // Backstop — the store UI only offers gifts it fetched.
+    if (!gift) {
+      throw new Error(`Gift not found: ${giftId}`);
+    }
+    const balance = get().rewards.balance;
+    if (balance < gift.cost) {
+      throw new Error(`Insufficient fruits. Required: ${gift.cost}, Available: ${balance}`);
+    }
+
+    // The server's purchased_at column is the exactly-once guard (conditional
+    // UPDATE, same trust model as claim_challenge_reward): only the first call
+    // reports purchased=true, so fruits are debited exactly once.
+    const result = await GiftRewardService.purchaseGift(giftId);
+    if (!result.purchased) {
+      await get().grove.fetchGifts();
+      throw new Error('ALREADY_PURCHASED');
+    }
+
+    get().rewards.spendFruits(gift.cost, 'gift_reward', { giftId });
+    get().rewards.addPurchase(giftProductId(giftId), gift.cost);
+
+    set((state: any) => ({
+      grove: {
+        ...state.grove,
+        gifts: state.grove.gifts.map((g: GiftItem) =>
+          g.id === giftId ? { ...g, purchasedAt: new Date().toISOString() } : g
+        ),
+      },
+    }));
+
+    GiftRewardService.notify(giftId, 'purchased');
+  },
+
+  setGiftPhoto: async (giftId: string, imageUri: string) => {
+    // First photo wins, guarded twice: the bucket upload is upsert:false (a
+    // duplicate-object error means the other party's file already landed) and
+    // the RPC only fills photo_url while it is NULL.
+    let photoUrl: string;
+    try {
+      photoUrl = await GiftRewardService.uploadGiftPhoto(imageUri, giftId);
+    } catch (error: any) {
+      if (GiftRewardService.isDuplicateUploadError(error)) {
+        await get().grove.fetchGifts();
+        throw new Error('PHOTO_ALREADY_SET');
+      }
+      throw error;
+    }
+
+    const result = await GiftRewardService.setGiftPhotoUrl(giftId, photoUrl);
+    const finalUrl = result.set ? photoUrl : result.photo_url;
+
+    set((state: any) => ({
+      grove: {
+        ...state.grove,
+        gifts: state.grove.gifts.map((g: GiftItem) =>
+          g.id === giftId ? { ...g, photoUrl: finalUrl } : g
+        ),
+      },
+    }));
+
+    if (!result.set) {
+      throw new Error('PHOTO_ALREADY_SET');
+    }
+
+    GiftRewardService.notify(giftId, 'photo_set');
   },
 
   // ========== Phase 4 Actions — Heartbeat / Inner Circle ==========

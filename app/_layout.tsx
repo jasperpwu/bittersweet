@@ -504,6 +504,7 @@ export default function RootLayout() {
                 groveState.fetchFeed();
                 groveState.fetchFriendRequests();
                 groveState.fetchChallenges();
+                groveState.fetchGifts();
                 groveState.fetchHeartbeatSettings();
                 groveState.fetchIncomingCircleInvites();
                 groveState.fetchHeartbeatAlerts();

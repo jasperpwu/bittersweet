@@ -35,6 +35,9 @@ import {
   customRewardIdFromProductId,
   DEFAULT_CUSTOM_REWARD_EMOJI,
 } from '../src/config/customRewards';
+import { giftIdFromProductId, DEFAULT_GIFT_EMOJI } from '../src/config/giftRewards';
+import type { GiftItem } from '../src/services/grove/GiftRewardService';
+import { GiftRewardModal } from '../src/components/rewards/GiftRewardModal';
 import { savePurchasePhoto, uploadPurchasePhoto } from '../src/services/purchasePhotoService';
 import { colors } from '../src/config/theme';
 import {
@@ -53,22 +56,30 @@ import { useUnifiedStore } from '../src/store/unified-store';
 const isKnownTipId = (tipId: string | undefined): tipId is string =>
   !!tipId && (TIP_IDS as readonly string[]).includes(tipId);
 
-// History-row icon/title for any purchase, including theme and custom-reward
-// purchases. A theme/custom-reward whose definition was retired/deleted falls
-// back to a generic label — same contract as retired tips.
-const purchaseIcon = (purchase: Purchase, customRewards: Record<string, CustomReward>): string => {
+// History-row icon/title for any purchase, including theme, custom-reward and
+// gift purchases. A theme/custom-reward/gift whose definition was retired,
+// deleted or not yet fetched falls back to a generic label — same contract as
+// retired tips.
+const purchaseIcon = (
+  purchase: Purchase,
+  customRewards: Record<string, CustomReward>,
+  gifts: Record<string, GiftItem>
+): string => {
   if (purchase.productId === 'accelerate_card') return '🚀';
   const themeId = themeIdFromProductId(purchase.productId);
   if (themeId) return getSliderTheme(themeId)?.flag ?? '⚽';
   const rewardId = customRewardIdFromProductId(purchase.productId);
   if (rewardId) return customRewards[rewardId]?.emoji ?? DEFAULT_CUSTOM_REWARD_EMOJI;
+  const giftId = giftIdFromProductId(purchase.productId);
+  if (giftId) return gifts[giftId]?.emoji ?? DEFAULT_GIFT_EMOJI;
   return '💡';
 };
 
 const purchaseTitle = (
   purchase: Purchase,
   t: (key: string, opts?: Record<string, unknown>) => string,
-  customRewards: Record<string, CustomReward>
+  customRewards: Record<string, CustomReward>,
+  gifts: Record<string, GiftItem>
 ): string => {
   if (purchase.productId === 'accelerate_card') return t('store.accelerateTitle');
   const themeId = themeIdFromProductId(purchase.productId);
@@ -79,8 +90,17 @@ const purchaseTitle = (
   }
   const rewardId = customRewardIdFromProductId(purchase.productId);
   if (rewardId) return customRewards[rewardId]?.name ?? t('store.customGenericTitle');
+  const giftId = giftIdFromProductId(purchase.productId);
+  if (giftId) return gifts[giftId]?.name ?? t('store.giftGenericTitle');
   return t('store.tipTitle');
 };
+
+// The purchase history interleaves the user's own purchase rows with gifts
+// they SENT that got bought (the sender has no local purchase row — the
+// recipient paid — so their history entry renders straight from the gift row).
+type HistoryEntry =
+  | { kind: 'purchase'; purchase: Purchase; date: string }
+  | { kind: 'sentGift'; gift: GiftItem; date: string };
 
 // Success buzz for every completed purchase (accelerate, tip, theme, custom).
 const purchaseSuccessHaptic = () =>
@@ -107,6 +127,18 @@ export default function FruitStoreScreen() {
   const [showCreateReward, setShowCreateReward] = useState(false);
   const [photoPurchaseId, setPhotoPurchaseId] = useState<string | null>(null);
 
+  // Gift creation modal, the gift whose photo modal is open, and an in-flight
+  // flag for the gift photo upload (it hits the network, unlike the local-first
+  // custom-reward photo flow).
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [photoGiftId, setPhotoGiftId] = useState<string | null>(null);
+  const [giftPhotoSaving, setGiftPhotoSaving] = useState(false);
+
+  // Gifts are cross-user grove state (see GiftRewardService), not the rewards slice.
+  const groveGifts = useAppStore((s) => s.grove.gifts);
+  const groveProfile = useAppStore((s) => s.grove.profile);
+  const groveActive = useAppStore((s) => s.grove.isActive);
+
   const isAccelerateActive = useAppStore((s) => s.rewards.isAccelerateActive());
 
   const sliderThemeId = useUnifiedStore((s) => s.preferences.sliderThemeId);
@@ -124,18 +156,46 @@ export default function FruitStoreScreen() {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [rewards.purchases]);
 
+  const giftsById = useMemo(() => {
+    const map: Record<string, GiftItem> = {};
+    for (const g of groveGifts) map[g.id] = g;
+    return map;
+  }, [groveGifts]);
+
+  // History = own purchase rows (incl. bought incoming gifts, product_id
+  // `gift_<id>`) + synthesized entries for sent gifts that were bought. The
+  // sender/recipient split prevents double entries: recipients render from
+  // their purchase row, senders from the gift row.
+  const historyEntries = useMemo<HistoryEntry[]>(() => {
+    const entries: HistoryEntry[] = purchaseHistory.map((p) => ({
+      kind: 'purchase',
+      purchase: p,
+      date: p.createdAt,
+    }));
+    for (const g of groveGifts) {
+      if (!g.isIncoming && g.purchasedAt) {
+        entries.push({ kind: 'sentGift', gift: g, date: g.purchasedAt });
+      }
+    }
+    return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [purchaseHistory, groveGifts]);
+
   // Each tab shows only its own slice of the history: Products ↔ accelerate/tip
-  // purchases, Themes ↔ theme purchases, Custom ↔ custom rewards, All ↔ everything.
+  // purchases, Themes ↔ theme purchases, Custom ↔ custom rewards + gifts,
+  // All ↔ everything.
   const visibleHistory = useMemo(() => {
-    if (activeTab === 'all') return purchaseHistory;
-    return purchaseHistory.filter((p) => {
+    if (activeTab === 'all') return historyEntries;
+    return historyEntries.filter((entry) => {
+      if (entry.kind === 'sentGift') return activeTab === 'custom';
+      const p = entry.purchase;
       const isTheme = !!themeIdFromProductId(p.productId);
-      const isCustom = !!customRewardIdFromProductId(p.productId);
+      const isCustom =
+        !!customRewardIdFromProductId(p.productId) || !!giftIdFromProductId(p.productId);
       if (activeTab === 'themes') return isTheme;
       if (activeTab === 'custom') return isCustom;
       return !isTheme && !isCustom;
     });
-  }, [purchaseHistory, activeTab]);
+  }, [historyEntries, activeTab]);
 
   // Tips are never re-sold: once the whole catalog is owned the product shows a
   // "come back later" state instead of charging for a repeat.
@@ -177,8 +237,27 @@ export default function FruitStoreScreen() {
       .filter((r): r is CustomReward => !!r && !boughtCustomRewardIds.has(r.id));
   }, [rewards.customRewards, boughtCustomRewardIds]);
 
+  // Gift lifecycle buckets: incoming unbought → recipient's catalog (gift band
+  // card); sent unbought → sender's cancellable list; purchased without a
+  // photo → the "capture the moment" pending action shown to BOTH parties.
+  const incomingGifts = useMemo(
+    () => groveGifts.filter((g) => g.isIncoming && !g.purchasedAt),
+    [groveGifts]
+  );
+  const sentUnboughtGifts = useMemo(
+    () => groveGifts.filter((g) => !g.isIncoming && !g.purchasedAt),
+    [groveGifts]
+  );
+  const pendingPhotoGifts = useMemo(
+    () => groveGifts.filter((g) => g.purchasedAt && !g.photoUrl),
+    [groveGifts]
+  );
+
   // Purchase whose photo modal is open (null when closed).
   const photoPurchase = photoPurchaseId ? (rewards.purchases?.byId[photoPurchaseId] ?? null) : null;
+
+  // Gift whose photo modal is open (null when closed).
+  const photoGift = photoGiftId ? (giftsById[photoGiftId] ?? null) : null;
 
   // Only surface tasks that are set up but not yet claimed — claimed tasks disappear.
   const pendingTasks = SETUP_TASK_META.filter(
@@ -192,6 +271,13 @@ export default function FruitStoreScreen() {
     getInstalledWidgetFamilies().then((families) => {
       if (families.length > 0) useAppStore.getState().rewards.markTaskSetup('widget');
     });
+  }, []);
+
+  // Refresh gifts on entry — they're server state another user can change at
+  // any time (a friend sending/buying a gift), unlike the local-only catalog.
+  useEffect(() => {
+    const grove = useAppStore.getState().grove;
+    if (grove.profile && grove.isActive) grove.fetchGifts();
   }, []);
 
   const handleClaimTask = (taskId: SetupTaskId, title: string) => {
@@ -324,6 +410,113 @@ export default function FruitStoreScreen() {
     ]);
   };
 
+  // Gifting requires an active Grove profile — the recipient picker is the
+  // friends list. Without one, the button routes to Grove setup instead.
+  const handleGiftButtonPress = () => {
+    if (!groveProfile || !groveActive) {
+      Alert.alert(t('store.giftSetupGroveTitle'), t('store.giftSetupGroveBody'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('store.giftSetupGroveAction'),
+          onPress: () => router.push('/(modals)/grove-setup'),
+        },
+      ]);
+      return;
+    }
+    // Refresh the recipient picker — the store can be reached without ever
+    // visiting the Grove tab, so the friends list may be stale or unfetched.
+    useAppStore.getState().grove.fetchFriends();
+    setShowGiftModal(true);
+  };
+
+  const handleCreateGift = async (
+    recipientId: string,
+    name: string,
+    cost: number,
+    emoji?: string
+  ) => {
+    setShowGiftModal(false);
+    try {
+      await useAppStore.getState().grove.createGift({ recipientId, name, cost, emoji });
+      showToast(t('store.giftCreated'), 'success');
+    } catch (error) {
+      console.error('Failed to create gift:', error);
+      showToast(t('store.giftActionFailed'), 'error');
+    }
+  };
+
+  const handlePurchaseGift = (gift: GiftItem) => {
+    if (rewards.balance < gift.cost) {
+      showToast(t('store.notEnoughN', { cost: gift.cost }), 'error');
+      return;
+    }
+    Alert.alert(
+      t('store.purchaseGiftTitle', { name: gift.name }),
+      t('store.purchaseGiftBody', {
+        name: gift.name,
+        cost: gift.cost,
+        sender: gift.otherProfile?.display_name ?? '',
+      }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('store.purchase'),
+          onPress: async () => {
+            try {
+              await useAppStore.getState().grove.purchaseGift(gift.id);
+              purchaseSuccessHaptic();
+              showToast(t('store.giftPurchased', { name: gift.name }), 'success');
+            } catch (error: any) {
+              if (error?.message === 'ALREADY_PURCHASED') {
+                showToast(t('store.giftAlreadyPurchased'), 'error');
+              } else {
+                showToast(t('store.purchaseFailed'), 'error');
+              }
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCancelGift = (gift: GiftItem) => {
+    Alert.alert(t('store.giftCancelTitle'), t('store.giftCancelBody', { name: gift.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await useAppStore.getState().grove.cancelGift(gift.id);
+          } catch (error) {
+            console.error('Failed to cancel gift:', error);
+            showToast(t('store.giftActionFailed'), 'error');
+          }
+        },
+      },
+    ]);
+  };
+
+  // Gift photos are shared state (either party may capture, first wins), so
+  // there is no local-first fallback — the pending action only clears once the
+  // upload + RPC succeed. PHOTO_ALREADY_SET means the other party won the race;
+  // the store already adopted their photo.
+  const handleGiftPhotoPicked = async (giftId: string, uri: string) => {
+    setGiftPhotoSaving(true);
+    try {
+      await useAppStore.getState().grove.setGiftPhoto(giftId, uri);
+    } catch (error: any) {
+      if (error?.message === 'PHOTO_ALREADY_SET') {
+        showToast(t('store.giftPhotoAlreadySet'), 'neutral');
+      } else {
+        console.error('Failed to set gift photo:', error);
+        showToast(t('journal.failedSavePhoto'), 'error');
+      }
+    } finally {
+      setGiftPhotoSaving(false);
+    }
+  };
+
   // Same permission + picker flow as the journal's photo attach.
   const pickImage = async (source: 'library' | 'camera', onPicked: (uri: string) => void) => {
     try {
@@ -453,6 +646,52 @@ export default function FruitStoreScreen() {
       </View>
 
       <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
+        {/* Gift pending actions — bought gifts still missing their photo; shown
+            to both sender and receiver until either captures the moment */}
+        {(activeTab === 'all' || activeTab === 'custom') && pendingPhotoGifts.length > 0 && (
+          <>
+            <View className="mb-3 mt-4">
+              <Typography variant="subtitle-14-semibold" color="secondary">
+                {t('store.giftPendingSection')}
+              </Typography>
+            </View>
+
+            {pendingPhotoGifts.map((gift) => (
+              <View
+                key={gift.id}
+                className="
+                  mb-4 rounded-2xl
+                  border border-primary bg-light-border/30 p-5
+                  dark:bg-[#242540]
+                ">
+                <View className="flex-row items-center justify-between">
+                  <View className="mr-4 flex-1 flex-row items-center">
+                    <Text style={{ fontSize: 28 }}>📸</Text>
+                    <View className="ml-3 flex-1">
+                      <Typography variant="subtitle-14-semibold">{gift.name}</Typography>
+                      <View className="mt-1">
+                        <Typography variant="body-12" color="secondary">
+                          {gift.isIncoming
+                            ? t('store.giftPendingDescReceiver', {
+                                name: gift.otherProfile?.display_name ?? '',
+                              })
+                            : t('store.giftPendingDescSender', {
+                                name: gift.otherProfile?.display_name ?? '',
+                              })}
+                        </Typography>
+                      </View>
+                    </View>
+                  </View>
+
+                  <Button size="small" onPress={() => setPhotoGiftId(gift.id)}>
+                    {t('store.giftAddPhoto')}
+                  </Button>
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
         {/* Tasks Section — one-time setup rewards, only shown while claimable */}
         {activeTab === 'all' && pendingTasks.length > 0 && (
           <>
@@ -610,6 +849,11 @@ export default function FruitStoreScreen() {
               </Typography>
             </View>
 
+            {/* Incoming gifts — sit above the user's own rewards with a gift band */}
+            {incomingGifts.map((gift) => (
+              <GiftRewardCard key={gift.id} gift={gift} onBuy={() => handlePurchaseGift(gift)} />
+            ))}
+
             {catalogCustomRewards.map((reward) => (
               <CustomRewardCard
                 key={reward.id}
@@ -636,6 +880,74 @@ export default function FruitStoreScreen() {
                 </View>
               </View>
             </Pressable>
+
+            {/* Gift card — dashed outline like Create; prompts Grove setup if needed */}
+            <Pressable
+              onPress={handleGiftButtonPress}
+              className="
+                mb-4 items-center rounded-2xl border border-dashed
+                border-light-border bg-light-border/30 p-5
+                active:opacity-80 dark:border-dark-border dark:bg-[#242540]
+              ">
+              <View className="flex-row items-center">
+                <Ionicons name="gift-outline" size={22} color={colors.primary} />
+                <View className="ml-2">
+                  <Typography variant="subtitle-14-semibold" color="primary">
+                    {t('store.giftCreate')}
+                  </Typography>
+                </View>
+              </View>
+            </Pressable>
+
+            {/* Sent gifts — unbought, still cancellable */}
+            {sentUnboughtGifts.length > 0 && (
+              <>
+                <View className="mb-3 mt-2">
+                  <Typography variant="subtitle-14-semibold" color="secondary">
+                    {t('store.giftSentSection')}
+                  </Typography>
+                </View>
+
+                {sentUnboughtGifts.map((gift) => (
+                  <View
+                    key={gift.id}
+                    className="
+                      mb-4 rounded-2xl
+                      border border-light-border bg-light-border/30 p-5
+                      dark:border-dark-border dark:bg-[#242540]
+                    ">
+                    <View className="flex-row items-center justify-between">
+                      <View className="mr-4 flex-1 flex-row items-center">
+                        <Text style={{ fontSize: 28 }}>{gift.emoji ?? DEFAULT_GIFT_EMOJI}</Text>
+                        <View className="ml-3 flex-1">
+                          <Typography variant="subtitle-14-semibold">{gift.name}</Typography>
+                          <View className="mt-1">
+                            <Typography variant="body-12" color="secondary">
+                              {t('store.giftForRecipient', {
+                                name: gift.otherProfile?.display_name ?? '',
+                              })}
+                            </Typography>
+                          </View>
+                        </View>
+                      </View>
+                      <View className="flex-row items-center">
+                        <View className="rounded-xl bg-primary/15 px-3 py-1.5">
+                          <Typography variant="subtitle-14-semibold" color="primary">
+                            🍎 {gift.cost}
+                          </Typography>
+                        </View>
+                        <Pressable
+                          onPress={() => handleCancelGift(gift)}
+                          hitSlop={8}
+                          className="ml-3 active:opacity-60">
+                          <Ionicons name="trash-outline" size={18} color={colors.error} />
+                        </Pressable>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
           </>
         )}
 
@@ -655,24 +967,76 @@ export default function FruitStoreScreen() {
                 border border-light-border bg-light-border/30 px-5
                 dark:border-dark-border dark:bg-[#242540]
               ">
-              {visibleHistory.map((purchase, index) => {
+              {visibleHistory.map((entry, index) => {
+                const rowDate = new Date(entry.date).toLocaleDateString(i18n.language, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                });
+
+                // Sent gift that was bought — rendered straight from the gift
+                // row (the recipient paid; the sender has no purchase row).
+                if (entry.kind === 'sentGift') {
+                  const gift = entry.gift;
+                  return (
+                    <Pressable
+                      key={`gift-${gift.id}`}
+                      onPress={() => setPhotoGiftId(gift.id)}
+                      className={`
+                        flex-row items-center py-4
+                        ${index > 0 ? 'border-t border-light-border dark:border-dark-border' : ''}
+                        active:opacity-70
+                      `}>
+                      <Text style={{ fontSize: 20 }}>{gift.emoji ?? DEFAULT_GIFT_EMOJI}</Text>
+                      <View className="ml-3 flex-1">
+                        <Typography variant="body-14">{gift.name}</Typography>
+                        <View className="mt-1">
+                          <Typography variant="body-12" color="secondary">
+                            {t('store.giftForRecipient', {
+                              name: gift.otherProfile?.display_name ?? '',
+                            })}{' '}
+                            · {rowDate}
+                          </Typography>
+                        </View>
+                      </View>
+                      {gift.photoUrl ? (
+                        <Image
+                          source={{ uri: gift.photoUrl }}
+                          style={{ width: 44, height: 44, borderRadius: 8 }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Ionicons name="camera-outline" size={20} color={colors.primary} />
+                      )}
+                    </Pressable>
+                  );
+                }
+
+                const purchase = entry.purchase;
                 const isTipRow = purchase.productId === 'usage_tip' && isKnownTipId(purchase.tipId);
                 const isCustomRow = !!customRewardIdFromProductId(purchase.productId);
+                // Bought incoming gift: the local purchase row carries the debit,
+                // but name/emoji/photo resolve from the gift row (single source
+                // of truth for the shared photo). Not tappable until fetched.
+                const giftId = giftIdFromProductId(purchase.productId);
+                const gift = giftId ? (giftsById[giftId] ?? null) : null;
+                const isGiftRow = !!gift;
                 return (
                   <Pressable
                     key={purchase.id}
-                    disabled={!isTipRow && !isCustomRow}
+                    disabled={!isTipRow && !isCustomRow && !isGiftRow}
                     onPress={() => {
                       if (isTipRow) setActiveTipId(purchase.tipId!);
                       else if (isCustomRow) setPhotoPurchaseId(purchase.id);
+                      else if (gift) setPhotoGiftId(gift.id);
                     }}
                     className={`
                       flex-row items-center py-4
                       ${index > 0 ? 'border-t border-light-border dark:border-dark-border' : ''}
-                      ${isTipRow || isCustomRow ? 'active:opacity-70' : ''}
+                      ${isTipRow || isCustomRow || isGiftRow ? 'active:opacity-70' : ''}
                     `}>
                     <Text style={{ fontSize: 20 }}>
-                      {purchaseIcon(purchase, customRewardsById)}
+                      {purchaseIcon(purchase, customRewardsById, giftsById)}
                     </Text>
                     <View className="ml-3 flex-1">
                       {isTipRow ? (
@@ -681,16 +1045,16 @@ export default function FruitStoreScreen() {
                         </Typography>
                       ) : (
                         <Typography variant="body-14">
-                          {purchaseTitle(purchase, t, customRewardsById)}
+                          {purchaseTitle(purchase, t, customRewardsById, giftsById)}
                         </Typography>
                       )}
                       <View className="mt-1">
                         <Typography variant="body-12" color="secondary">
-                          {new Date(purchase.createdAt).toLocaleDateString(i18n.language, {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          })}
+                          {gift
+                            ? `${t('store.giftFromSender', {
+                                name: gift.otherProfile?.display_name ?? '',
+                              })} · ${rowDate}`
+                            : rowDate}
                         </Typography>
                       </View>
                     </View>
@@ -699,6 +1063,17 @@ export default function FruitStoreScreen() {
                       (purchase.photoUrl ? (
                         <Image
                           source={{ uri: purchase.photoUrl }}
+                          style={{ width: 44, height: 44, borderRadius: 8 }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Ionicons name="camera-outline" size={20} color={colors.primary} />
+                      ))}
+                    {/* Gift purchases: shared photo from the gift row */}
+                    {isGiftRow &&
+                      (gift?.photoUrl ? (
+                        <Image
+                          source={{ uri: gift.photoUrl }}
                           style={{ width: 44, height: 44, borderRadius: 8 }}
                           resizeMode="cover"
                         />
@@ -767,10 +1142,10 @@ export default function FruitStoreScreen() {
         {photoPurchase && (
           <View className="items-center">
             <Text style={{ fontSize: 40, marginBottom: 12 }}>
-              {purchaseIcon(photoPurchase, customRewardsById)}
+              {purchaseIcon(photoPurchase, customRewardsById, giftsById)}
             </Text>
             <Typography variant="headline-18" className="mb-1 text-center">
-              {purchaseTitle(photoPurchase, t, customRewardsById)}
+              {purchaseTitle(photoPurchase, t, customRewardsById, giftsById)}
             </Typography>
             <Typography variant="body-12" color="secondary" className="mb-4 text-center">
               {new Date(photoPurchase.createdAt).toLocaleDateString(i18n.language, {
@@ -822,6 +1197,80 @@ export default function FruitStoreScreen() {
         )}
       </Modal>
 
+      {/* Gift photo — view or capture the gifting moment. Either party can add
+          the photo (first wins); once set, it's locked and the buttons hide. */}
+      <Modal isVisible={photoGift !== null} onClose={() => setPhotoGiftId(null)}>
+        {photoGift && (
+          <View className="items-center">
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>
+              {photoGift.emoji ?? DEFAULT_GIFT_EMOJI}
+            </Text>
+            <Typography variant="headline-18" className="mb-1 text-center">
+              {photoGift.name}
+            </Typography>
+            <Typography variant="body-12" color="secondary" className="mb-4 text-center">
+              {photoGift.isIncoming
+                ? t('store.giftFromSender', { name: photoGift.otherProfile?.display_name ?? '' })
+                : t('store.giftForRecipient', { name: photoGift.otherProfile?.display_name ?? '' })}
+              {photoGift.purchasedAt
+                ? ` · ${new Date(photoGift.purchasedAt).toLocaleDateString(i18n.language, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}`
+                : ''}
+            </Typography>
+
+            {photoGift.photoUrl ? (
+              <Image
+                source={{ uri: photoGift.photoUrl }}
+                style={{ width: '100%', height: 200, borderRadius: 12, marginBottom: 16 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Typography variant="body-14" color="secondary" className="mb-4 text-center">
+                {t('store.giftAddPhotoHint')}
+              </Typography>
+            )}
+
+            {!photoGift.photoUrl && (
+              <View className="mb-5 flex-row gap-x-3">
+                <Pressable
+                  disabled={giftPhotoSaving}
+                  onPress={() =>
+                    pickImage('library', (uri) => handleGiftPhotoPicked(photoGift.id, uri))
+                  }
+                  className={`flex-row items-center rounded-xl bg-primary/20 px-4 py-2.5 ${
+                    giftPhotoSaving ? 'opacity-50' : 'active:opacity-70'
+                  }`}>
+                  <Ionicons name="images-outline" size={16} color={colors.primary} />
+                  <Typography variant="body-12" className="ml-1.5 text-primary">
+                    {t('journal.library')}
+                  </Typography>
+                </Pressable>
+                <Pressable
+                  disabled={giftPhotoSaving}
+                  onPress={() =>
+                    pickImage('camera', (uri) => handleGiftPhotoPicked(photoGift.id, uri))
+                  }
+                  className={`flex-row items-center rounded-xl bg-primary/20 px-4 py-2.5 ${
+                    giftPhotoSaving ? 'opacity-50' : 'active:opacity-70'
+                  }`}>
+                  <Ionicons name="camera-outline" size={16} color={colors.primary} />
+                  <Typography variant="body-12" className="ml-1.5 text-primary">
+                    {t('journal.camera')}
+                  </Typography>
+                </Pressable>
+              </View>
+            )}
+
+            <Button onPress={() => setPhotoGiftId(null)} size="medium">
+              {t('common.done')}
+            </Button>
+          </View>
+        )}
+      </Modal>
+
       {/* Create custom reward */}
       <CreateRewardModal
         visible={showCreateReward}
@@ -831,7 +1280,53 @@ export default function FruitStoreScreen() {
           setShowCreateReward(false);
         }}
       />
+
+      {/* Create gift for a Grove friend */}
+      <GiftRewardModal
+        visible={showGiftModal}
+        onClose={() => setShowGiftModal(false)}
+        onCreate={handleCreateGift}
+      />
     </SafeAreaView>
+  );
+}
+
+// An incoming, un-bought gift in the recipient's catalog: same card layout as
+// CustomRewardCard plus the "gift band" — a 🎀 ribbon tab and primary border —
+// and a "from {sender}" note. No delete affordance: only the sender can cancel.
+function GiftRewardCard({ gift, onBuy }: { gift: GiftItem; onBuy: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Pressable
+      onPress={onBuy}
+      className="
+        mb-4 rounded-2xl
+        border border-primary bg-light-border/30 p-5
+        active:opacity-80 dark:bg-[#242540]
+      ">
+      {/* Gift band — ribbon tab hanging from the card's top edge */}
+      <View className="absolute rounded-b-lg bg-primary px-2 py-0.5" style={{ top: 0, left: 16 }}>
+        <Text style={{ fontSize: 12 }}>🎀</Text>
+      </View>
+      <View className="flex-row items-center justify-between">
+        <View className="mr-4 flex-1 flex-row items-center">
+          <Text style={{ fontSize: 28 }}>{gift.emoji ?? DEFAULT_GIFT_EMOJI}</Text>
+          <View className="ml-3 flex-1">
+            <Typography variant="subtitle-14-semibold">{gift.name}</Typography>
+            <View className="mt-1">
+              <Typography variant="body-12" color="secondary">
+                {t('store.giftFromSender', { name: gift.otherProfile?.display_name ?? '' })}
+              </Typography>
+            </View>
+          </View>
+        </View>
+        <View className="rounded-xl bg-primary/15 px-3 py-1.5">
+          <Typography variant="subtitle-14-semibold" color="primary">
+            🍎 {gift.cost}
+          </Typography>
+        </View>
+      </View>
+    </Pressable>
   );
 }
 

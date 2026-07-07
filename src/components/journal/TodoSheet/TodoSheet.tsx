@@ -304,14 +304,25 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
     opacity: interpolate(translateY.value, [0, collapsedY], [0.5, 0], Extrapolation.CLAMP),
   }));
 
+  // The filter pills live at the bottom of the FULL-height sheet, which puts
+  // them below the screen at the half/peek positions. Counter-translating by
+  // up to halfY pins them to the visible fold from full down to half — so
+  // they're on screen from the initial (half) expansion — while past half they
+  // ride down with the sheet and slide off screen naturally.
+  const pillsStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -Math.min(translateY.value, halfY) }],
+  }));
+
   // The list is laid out at the sheet's FULL height even when the sheet is
-  // translated down (half/peek), so its bottom `translateY - listBottomGap` px
-  // are below the visible fold. Without compensation, content that fits the
-  // full-height viewport isn't scrollable at all, leaving those rows stuck
-  // under the tab bar. This spacer extends the content by exactly the hidden
-  // amount so the last row can always be scrolled up to the fold.
+  // translated down (half/peek), so part of it sits below the visible fold —
+  // and, now that the pills are pinned to the fold, under the pills too.
+  // Without compensation, content that fits the full-height viewport isn't
+  // scrollable at all, leaving those rows stuck under the tab bar/pills. This
+  // spacer extends the content by exactly the covered amount (translateY while
+  // the pills are pinned; translateY - listBottomGap vs halfY past that) so
+  // the last row can always be scrolled up into view.
   const listSpacerStyle = useAnimatedStyle(() => ({
-    height: Math.max(0, translateY.value - listBottomGap.value),
+    height: Math.max(translateY.value - listBottomGap.value, Math.min(translateY.value, halfY)),
   }));
 
   const openCreate = useCallback(() => {
@@ -524,8 +535,9 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
           </ScrollView>
         </GestureDetector>
 
-        {/* Tag filter pills */}
-        <View className="py-2">
+        {/* Tag filter pills — pinned to the visible fold (see pillsStyle); the
+            solid background masks the list rows that scroll beneath them */}
+        <Animated.View style={pillsStyle} className="py-2 bg-light-bg dark:bg-dark-bg">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -546,7 +558,7 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
               />
             ))}
           </ScrollView>
-        </View>
+        </Animated.View>
       </Animated.View>
 
       <TodoEditModal

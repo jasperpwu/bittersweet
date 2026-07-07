@@ -31,6 +31,7 @@ export default function GroveScreen() {
   const fetchFriendRequests = useAppStore((s) => s.grove.fetchFriendRequests);
   const fetchRankings = useAppStore((s) => s.grove.fetchRankings);
   const fetchChallenges = useAppStore((s) => s.grove.fetchChallenges);
+  const fetchGifts = useAppStore((s) => s.grove.fetchGifts);
   const setRankingsPeriod = useAppStore((s) => s.grove.setRankingsPeriod);
   const updateLastGroveVisit = useAppStore((s) => s.grove.updateLastGroveVisit);
   const addReaction = useAppStore((s) => s.grove.addReaction);
@@ -61,6 +62,7 @@ export default function GroveScreen() {
         fetchFriendRequests(),
         fetchRankings(),
         fetchChallenges(),
+        fetchGifts(),
         fetchHeartbeatSettings(),
         fetchHeartbeatAlerts(),
         fetchIncomingCircleInvites(),
@@ -68,7 +70,7 @@ export default function GroveScreen() {
     } finally {
       if (showSpinner) setRefreshing(false);
     }
-  }, [fetchFriends, fetchFeed, fetchFriendRequests, fetchRankings, fetchChallenges, fetchHeartbeatSettings, fetchHeartbeatAlerts, fetchIncomingCircleInvites]);
+  }, [fetchFriends, fetchFeed, fetchFriendRequests, fetchRankings, fetchChallenges, fetchGifts, fetchHeartbeatSettings, fetchHeartbeatAlerts, fetchIncomingCircleInvites]);
 
   // Fetch data on tab focus
   useFocusEffect(

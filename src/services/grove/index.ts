@@ -33,6 +33,13 @@ export type {
   ParticipantPeriodData,
 } from './GroveChallengeService';
 
+export { GiftRewardService } from './GiftRewardService';
+export type {
+  GiftItem,
+  GiftProfile,
+  CreateGiftInput,
+} from './GiftRewardService';
+
 export { GroveHeartbeatService } from './GroveHeartbeatService';
 export type {
   HeartbeatSettings,

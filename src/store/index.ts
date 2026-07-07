@@ -3564,6 +3564,8 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
       rankingsWeek: [],
       rankingsMonth: [],
       challenges: [],
+      gifts: [],
+      giftsLoading: false,
     },
     referral: {
       ...s.referral,

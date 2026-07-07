@@ -190,13 +190,19 @@ export interface UnlockTransaction {
 // reward, ...). Synced to the `purchases` table as a list entity. tipId is set
 // for usage-tip purchases and records which tip was delivered, so future tip
 // purchases avoid repeats. Slider themes encode their theme id in the productId
-// itself (`theme_<id>`, see config/sliderThemes.ts) and custom rewards likewise
-// (`custom_<id>`, see config/customRewards.ts) — ownership derives from history.
+// itself (`theme_<id>`, see config/sliderThemes.ts), custom rewards likewise
+// (`custom_<id>`, see config/customRewards.ts) and gift rewards too
+// (`gift_<id>`, see config/giftRewards.ts) — ownership derives from history.
 // Rows are mostly write-once, but photoUrl can be set after the fact (per-row
 // LWW on updatedAt carries the edit through sync).
 export interface Purchase {
   id: string;
-  productId: 'accelerate_card' | 'usage_tip' | `theme_${string}` | `custom_${string}`;
+  productId:
+    | 'accelerate_card'
+    | 'usage_tip'
+    | `theme_${string}`
+    | `custom_${string}`
+    | `gift_${string}`;
   cost: number; // fruits spent
   tipId?: string;
   // Photo the user attached to a bought custom reward: local file:// path
