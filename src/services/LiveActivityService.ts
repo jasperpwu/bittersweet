@@ -1,14 +1,6 @@
 import * as LiveActivity from 'expo-live-activity';
 import { Appearance, Platform } from 'react-native';
 import * as Device from 'expo-device';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Persists the idle focus Live Activity's ID + tag info across app process
-// death. The activity ID is otherwise tracked only in the in-memory static
-// `lastFocusActivityId`, which is lost on a cold start while iOS keeps the
-// idle LA on screen for hours — so without this, the next session start can't
-// reuse the on-screen idle LA and creates a duplicate instead.
-const IDLE_ACTIVITY_KEY = 'idle-focus-activity';
 
 // Color palettes for Live Activity based on system appearance
 const LA_COLORS = {
@@ -37,11 +29,12 @@ export interface UnlockCountdownState {
  * Service for managing iOS Live Activities for unlock countdown
  */
 export class LiveActivityService {
-  // Track activity IDs and end times so we can clean up expired ones from
-  // _layout.tsx on app foreground (JS timers don't run in background).
+  // Unlock countdown activity tracking. Focus activities are deliberately NOT
+  // tracked by ID: the widget extension and app intents mutate them outside
+  // this process, so any JS-side ID goes stale. Focus paths instead use the
+  // ID-free native primitives (startOrUpdateActivity / updateAllActivities),
+  // which query ActivityKit directly.
   private static lastUnlockActivityId: string | undefined;
-  private static lastFocusActivityId: string | undefined;
-  private static focusEndTimestamp: number | undefined;
   private static unlockEndTimestamp: number | undefined;
 
   // Track last tag info for idle state after session ends
@@ -241,30 +234,11 @@ export class LiveActivityService {
         endTimestamp: endTimestamp,
         currentTime: now,
         timeUntilEnd: Math.round((endTimestamp - now) / 1000),
-        existingActivityId: this.lastFocusActivityId,
       });
 
-      if (!LiveActivity?.startActivity) {
-        console.log('❌ LiveActivity.startActivity is not available - app may need rebuild after adding plugin');
+      if (!LiveActivity?.startOrUpdateActivity) {
+        console.log('❌ LiveActivity.startOrUpdateActivity is not available - app may need rebuild after patching');
         return undefined;
-      }
-
-      // Reuse existing live activity if one is still around (e.g. previous
-      // session completed but iOS hasn't dismissed it yet). This ensures at
-      // most one focus live activity is shown at any time.
-      if (this.lastFocusActivityId) {
-        try {
-          await LiveActivity.updateActivity(this.lastFocusActivityId, state);
-          this.focusEndTimestamp = endTimestamp;
-          this.clearPersistedIdleActivity();
-          console.log('♻️ Reused existing Live Activity:', this.lastFocusActivityId);
-          return this.lastFocusActivityId;
-        } catch (e: any) {
-          // Activity was already dismissed by iOS — fall through to create a new one
-          console.log('ℹ️ Could not reuse existing activity, creating new one:', e?.message);
-          this.lastFocusActivityId = undefined;
-          this.focusEndTimestamp = undefined;
-        }
       }
 
       // Configuration for Live Activity — pick colors based on current system appearance
@@ -280,13 +254,13 @@ export class LiveActivityService {
         timerType: 'digital',
       };
 
-      const activityId = await LiveActivity.startActivity(state, config);
+      // Atomic native update-or-create: reuses the on-screen idle activity if
+      // it is still updatable, dismisses ended/duplicate leftovers, and creates
+      // a fresh activity otherwise. No JS-side activity ID bookkeeping.
+      const activityId = await LiveActivity.startOrUpdateActivity(state, config);
 
       if (activityId) {
-        this.lastFocusActivityId = activityId;
-        this.focusEndTimestamp = endTimestamp;
-        this.clearPersistedIdleActivity();
-        console.log('✅ Live Activity started with ID:', activityId);
+        console.log('✅ Live Activity started/reused with ID:', activityId);
         return activityId;
       } else {
         console.log('❌ Failed to start Live Activity - returned undefined');
@@ -327,21 +301,8 @@ export class LiveActivityService {
         dynamicIslandText: labelName,
       };
 
-      if (!LiveActivity?.startActivity) {
+      if (!LiveActivity?.startOrUpdateActivity) {
         return undefined;
-      }
-
-      // Reuse existing live activity if one is still around
-      if (this.lastFocusActivityId) {
-        try {
-          await LiveActivity.updateActivity(this.lastFocusActivityId, state);
-          this.focusEndTimestamp = undefined;
-          this.clearPersistedIdleActivity();
-          return this.lastFocusActivityId;
-        } catch (e) {
-          this.lastFocusActivityId = undefined;
-          this.focusEndTimestamp = undefined;
-        }
       }
 
       const palette = Appearance.getColorScheme() === 'dark' ? LA_COLORS.dark : LA_COLORS.light;
@@ -356,15 +317,9 @@ export class LiveActivityService {
         timerType: 'digital',
       };
 
-      const activityId = await LiveActivity.startActivity(state, config);
-
-      if (activityId) {
-        this.lastFocusActivityId = activityId;
-        this.focusEndTimestamp = undefined; // No end time for infinite
-        this.clearPersistedIdleActivity();
-        return activityId;
-      }
-      return undefined;
+      // Atomic native update-or-create — see startFocusTimer.
+      const activityId = await LiveActivity.startOrUpdateActivity(state, config);
+      return activityId || undefined;
     } catch (error) {
       console.error('Error starting infinite focus Live Activity:', error);
       return undefined;
@@ -372,11 +327,13 @@ export class LiveActivityService {
   }
 
   /**
-   * Stop a focus timer Live Activity
-   * @param activityId - The ID of the activity to stop
-   * @param reason - Optional reason for stopping (for final state)
+   * Transition the focus Live Activity to its idle state (shows a "Start"
+   * button). ID-free: updates whatever updatable focus activity is on screen
+   * via ActivityKit, so it works no matter which process (app or widget
+   * intent) created the activity. No-op when nothing updatable is on screen.
+   * @param reason - Why the session stopped (logging only)
    */
-  static async stopFocusTimer(activityId: string, reason: 'completed' | 'cancelled' = 'completed'): Promise<void> {
+  static async stopFocusTimer(reason: 'completed' | 'cancelled' = 'completed'): Promise<void> {
     if (!this.isAvailable()) {
       return;
     }
@@ -398,28 +355,14 @@ export class LiveActivityService {
         durationMinutes: this.lastDurationMinutes,
       };
 
-      // Transition to idle via updateActivity so the activity stays alive
-      // and can be updated when the user changes tag/duration.
-      console.log('🛑 Transitioning Focus Timer Live Activity to idle:', activityId, 'Reason:', reason);
-      await LiveActivity.updateActivity(activityId, idleState);
-      // Keep lastFocusActivityId so subsequent tag/duration changes can
-      // update this activity via showIdleFocusActivity / hasFocusActivity.
-      this.lastFocusActivityId = activityId;
-      this.focusEndTimestamp = undefined;
-      // Persist so the idle LA can be re-adopted after a cold start.
-      this.persistIdleActivity();
-      console.log('✅ Focus Timer Live Activity transitioned to idle');
+      // Transition to idle via update (not end) so the activity stays alive
+      // and can be updated when the user changes tag/duration or starts the
+      // next session.
+      console.log('🛑 Transitioning focus Live Activity to idle, reason:', reason);
+      await LiveActivity.updateAllActivities(idleState);
+      console.log('✅ Focus Live Activity transitioned to idle');
     } catch (error: any) {
-      const errorCode = error?.code || error?.cause?.code;
-      if (errorCode === 'ERR_ACTIVITY_NOT_FOUND') {
-        console.log('ℹ️ Focus Timer Live Activity already ended (likely expired naturally)');
-      } else {
-        console.error('❌ Error stopping Focus Timer Live Activity:', error);
-      }
-      if (this.lastFocusActivityId === activityId) {
-        this.lastFocusActivityId = undefined;
-      }
-      this.focusEndTimestamp = undefined;
+      console.error('❌ Error stopping Focus Timer Live Activity:', error);
     }
   }
 
@@ -453,25 +396,6 @@ export class LiveActivityService {
   }
 
   /**
-   * Check if a focus session is currently tracked (activity ID exists).
-   * Used by the focus screen to avoid double-stopping.
-   */
-  static get hasFocusActivity(): boolean {
-    return !!this.lastFocusActivityId;
-  }
-
-  /**
-   * Adopt a Live Activity that was started by the widget extension.
-   * Sets the internal tracking state so stopFocusTimer() works correctly
-   * when the app eventually stops the session.
-   */
-  static adoptWidgetActivity(activityId: string, endTimestamp?: number): void {
-    this.lastFocusActivityId = activityId;
-    this.focusEndTimestamp = endTimestamp;
-    console.log('📱 [LiveActivity] Adopted widget activity:', activityId);
-  }
-
-  /**
    * Store tag info for later use in idle state transitions.
    * Called before starting a focus session so that stopFocusTimer and
    * showIdleFocusActivity know what tag/duration to display.
@@ -480,58 +404,6 @@ export class LiveActivityService {
     this.lastTagId = tagId;
     this.lastTagName = tagName;
     this.lastDurationMinutes = durationMinutes;
-  }
-
-  /**
-   * Persist the currently-tracked idle focus Live Activity so it can be
-   * re-adopted after the JS process is killed. Only writes when we actually
-   * have an activity ID to track. Call right after transitioning an activity
-   * to its idle state.
-   */
-  private static persistIdleActivity(): void {
-    if (!this.lastFocusActivityId) return;
-    AsyncStorage.setItem(
-      IDLE_ACTIVITY_KEY,
-      JSON.stringify({
-        activityId: this.lastFocusActivityId,
-        tagId: this.lastTagId,
-        tagName: this.lastTagName,
-        durationMinutes: this.lastDurationMinutes,
-      })
-    ).catch((e) => console.warn('📱 [LiveActivity] Failed to persist idle activity:', e));
-  }
-
-  /**
-   * Drop the persisted idle record. Call when the activity is no longer idle
-   * (a session became active) or was fully dismissed.
-   */
-  private static clearPersistedIdleActivity(): void {
-    AsyncStorage.removeItem(IDLE_ACTIVITY_KEY).catch(() => {});
-  }
-
-  /**
-   * Restore idle Live Activity tracking from persisted storage on cold start.
-   * Call from the session-recovery path when there is NO active session, so a
-   * subsequent session start reuses the on-screen idle LA (via updateActivity)
-   * instead of creating a duplicate. If iOS already dismissed the idle LA, the
-   * stale ID is harmless — startFocusTimer's ERR_ACTIVITY_NOT_FOUND fallback
-   * creates a fresh activity.
-   */
-  static async restoreIdleActivity(): Promise<void> {
-    try {
-      const raw = await AsyncStorage.getItem(IDLE_ACTIVITY_KEY);
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      if (!data?.activityId) return;
-      this.lastFocusActivityId = data.activityId;
-      this.lastTagId = data.tagId ?? undefined;
-      this.lastTagName = data.tagName ?? undefined;
-      this.lastDurationMinutes = data.durationMinutes ?? undefined;
-      this.focusEndTimestamp = undefined;
-      console.log('📱 [LiveActivity] Restored idle activity:', data.activityId);
-    } catch (e) {
-      console.warn('📱 [LiveActivity] Failed to restore idle activity:', e);
-    }
   }
 
   /**
@@ -562,45 +434,9 @@ export class LiveActivityService {
       this.lastTagName = tagName;
       this.lastTagId = tagId;
       this.lastDurationMinutes = durationMinutes;
-      this.focusEndTimestamp = undefined;
-      // Persist so the idle LA can be re-adopted after a cold start (no-op when
-      // we don't have a tracked activity ID, e.g. the unlock-expiry path).
-      this.persistIdleActivity();
       console.log('✅ Updated all idle focus LAs with tag:', tagName, 'duration:', durationMinutes);
     } catch (error: any) {
       console.error('❌ Error updating all idle focus LAs:', error);
-    }
-  }
-
-  /**
-   * Truly end the focus Live Activity (dismiss it completely).
-   * Used when the user explicitly dismisses or in rare cleanup cases.
-   */
-  static async endFocusActivity(activityId?: string): Promise<void> {
-    if (!this.isAvailable()) return;
-
-    const id = activityId || this.lastFocusActivityId;
-    if (!id) return;
-
-    try {
-      const finalState: LiveActivity.LiveActivityState = {
-        title: 'Session Ended',
-      };
-      await LiveActivity.stopActivity(id, finalState);
-      if (this.lastFocusActivityId === id) {
-        this.lastFocusActivityId = undefined;
-      }
-      this.focusEndTimestamp = undefined;
-      this.clearPersistedIdleActivity();
-      console.log('✅ Ended focus Live Activity:', id);
-    } catch (error: any) {
-      const errorCode = error?.code || error?.cause?.code;
-      if (errorCode === 'ERR_ACTIVITY_NOT_FOUND') {
-        if (this.lastFocusActivityId === id) {
-          this.lastFocusActivityId = undefined;
-        }
-      }
-      this.focusEndTimestamp = undefined;
     }
   }
 

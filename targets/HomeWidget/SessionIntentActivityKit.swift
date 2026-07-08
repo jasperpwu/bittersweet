@@ -216,11 +216,14 @@ class WidgetActivityKitLoader: NSObject {
             tagId: tag?.id,
             durationMinutes: tag?.lastDuration
           )
-          await activity.end(
-            ActivityContent(state: idleState, staleDate: nil),
-            dismissalPolicy: .default
+          // Update (not end) so the activity stays alive and updatable — the
+          // system silently ignores updates to ended activities, so an ended
+          // "idle" card could never be reloaded when the next session starts.
+          // This matches the JS-side idle transition (stopFocusTimer).
+          await activity.update(
+            ActivityContent(state: idleState, staleDate: nil)
           )
-          print("✅ [Widget] Ended Live Activity to idle (removed from Dynamic Island): \(id)")
+          print("✅ [Widget] Updated Live Activity to idle: \(id)")
         }
       }
     }

@@ -1,5 +1,5 @@
 diff --git a/node_modules/expo-live-activity/build/index.d.ts b/node_modules/expo-live-activity/build/index.d.ts
-index bdcae0f..613f76b 100644
+index bdcae0f..9ce40d5 100644
 --- a/node_modules/expo-live-activity/build/index.d.ts
 +++ b/node_modules/expo-live-activity/build/index.d.ts
 @@ -15,6 +15,10 @@ export type LiveActivityState = {
@@ -32,7 +32,22 @@ index bdcae0f..613f76b 100644
  };
  export type ActivityTokenReceivedEvent = {
      activityID: string;
-@@ -63,7 +72,7 @@ export declare function startActivity(state: LiveActivityState, config?: LiveAct
+@@ -59,11 +68,22 @@ export type LiveActivityModuleEvents = {
+  * @returns {string} The identifier of the started activity or undefined if creating live activity failed.
+  */
+ export declare function startActivity(state: LiveActivityState, config?: LiveActivityConfig): Voidable<string>;
++/**
++ * Atomically reuse-or-create: updates the first still-updatable (non-unlock)
++ * Live Activity with the given state, dismisses every other leftover activity
++ * (including ended-but-still-visible ones), and creates a fresh activity only
++ * if none is reusable. ActivityKit is queried directly, so no activity ID
++ * bookkeeping is needed on the JS side.
++ * @param {LiveActivityState} state The state for the live activity.
++ * @param {LiveActivityConfig} config Live activity config object (used only when a new activity is created).
++ * @returns {string} The identifier of the reused or started activity.
++ */
++export declare function startOrUpdateActivity(state: LiveActivityState, config?: LiveActivityConfig): Voidable<string>;
+ /**
   * @param {string} id The identifier of the activity to stop.
   * @param {LiveActivityState} state The updated state for the live activity.
   */
@@ -41,7 +56,7 @@ index bdcae0f..613f76b 100644
  /**
   * @param {string} id The identifier of the activity to update.
   * @param {LiveActivityState} state The updated state for the live activity.
-@@ -72,5 +81,16 @@ export declare function updateActivity(id: string, state: LiveActivityState): an
+@@ -72,5 +92,16 @@ export declare function updateActivity(id: string, state: LiveActivityState): an
  export declare function addActivityTokenListener(listener: (event: ActivityTokenReceivedEvent) => void): Voidable<EventSubscription>;
  export declare function addActivityPushToStartTokenListener(listener: (event: ActivityPushToStartTokenReceivedEvent) => void): Voidable<EventSubscription>;
  export declare function addActivityUpdatesListener(listener: (event: ActivityUpdateEvent) => void): Voidable<EventSubscription>;
@@ -60,10 +75,28 @@ index bdcae0f..613f76b 100644
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 diff --git a/node_modules/expo-live-activity/build/index.js b/node_modules/expo-live-activity/build/index.js
-index 6b32c30..44859ea 100644
+index 6b32c30..070a870 100644
 --- a/node_modules/expo-live-activity/build/index.js
 +++ b/node_modules/expo-live-activity/build/index.js
-@@ -19,9 +19,9 @@ export function startActivity(state, config) {
+@@ -15,13 +15,27 @@ export function startActivity(state, config) {
+     if (assertIOS('startActivity'))
+         return ExpoLiveActivityModule.startActivity(state, config);
+ }
++/**
++ * Atomically reuse-or-create: updates the first still-updatable (non-unlock)
++ * Live Activity with the given state, dismisses every other leftover activity
++ * (including ended-but-still-visible ones), and creates a fresh activity only
++ * if none is reusable. ActivityKit is queried directly, so no activity ID
++ * bookkeeping is needed on the JS side.
++ * @param {LiveActivityState} state The state for the live activity.
++ * @param {LiveActivityConfig} config Live activity config object (used only when a new activity is created).
++ * @returns {string} The identifier of the reused or started activity.
++ */
++export function startOrUpdateActivity(state, config) {
++    if (assertIOS('startOrUpdateActivity'))
++        return ExpoLiveActivityModule.startOrUpdateActivity(state, config);
++}
+ /**
   * @param {string} id The identifier of the activity to stop.
   * @param {LiveActivityState} state The updated state for the live activity.
   */
@@ -75,7 +108,7 @@ index 6b32c30..44859ea 100644
  }
  /**
   * @param {string} id The identifier of the activity to update.
-@@ -43,4 +43,17 @@ export function addActivityUpdatesListener(listener) {
+@@ -43,4 +57,17 @@ export function addActivityUpdatesListener(listener) {
      if (assertIOS('addActivityUpdatesListener'))
          return ExpoLiveActivityModule.addListener('onStateChange', listener);
  }
@@ -335,7 +368,7 @@ index fd8eea7..c7f19e9 100644
  
    private func circularTimer(endDate: Double) -> some View {
 diff --git a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
-index a222928..b67f710 100644
+index a222928..c0848ce 100644
 --- a/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 +++ b/node_modules/expo-live-activity/ios/ExpoLiveActivityModule.swift
 @@ -1,5 +1,6 @@
@@ -428,7 +461,7 @@ index a222928..b67f710 100644
          }
  
          let activity = try Activity.request(
-@@ -230,32 +266,6 @@ public class ExpoLiveActivityModule: Module {
+@@ -230,32 +266,111 @@ public class ExpoLiveActivityModule: Module {
            await activity.update(ActivityContent(state: newState, staleDate: timerEndDate))
          }
  
@@ -437,7 +470,45 @@ index a222928..b67f710 100644
 -        // when the app returns to foreground — so this acts as a reliable
 -        // cleanup that doesn't depend on JS state.
 -        if let endDate = timerEndDate {
--          Task {
++
++        return activity.id
++      } catch {
++        throw UnexpectedErrorException(error)
++      }
++    }
++
++    Function("startOrUpdateActivity") {
++      (state: LiveActivityState, maybeConfig: LiveActivityConfig?) -> String in
++      guard #available(iOS 16.2, *) else { throw UnsupportedOSException("16.2") }
++
++      guard ActivityAuthorizationInfo().areActivitiesEnabled else {
++        throw LiveActivitiesNotEnabledException()
++      }
++
++      // Skip staleDate when the date is in the past (infinite/count-up mode) —
++      // otherwise iOS considers the activity immediately stale and won't show it.
++      let timerEndDate: Date? = state.progressBar?.date.flatMap { ms -> Date? in
++        let d = Date(timeIntervalSince1970: ms / 1000)
++        return d > Date() ? d : nil
++      }
++
++      // ActivityKit is the source of truth: reuse the first activity that is
++      // still updatable (the system silently ignores updates to ended
++      // activities) and is not an unlock countdown. Every other leftover —
++      // ended-but-still-visible banners, duplicates, unlock cards — is
++      // dismissed so exactly one activity remains on screen.
++      var reusable: Activity<LiveActivityAttributes>?
++      for activity in Activity<LiveActivityAttributes>.activities {
++        let isUpdatable: Bool
++        switch activity.activityState {
++        case .active, .stale: isUpdatable = true
++        default: isUpdatable = false
++        }
++        if reusable == nil && isUpdatable && activity.attributes.sessionType != "unlock" {
++          reusable = activity
++        } else {
++          let id = activity.id
+           Task {
 -            let delay = endDate.timeIntervalSinceNow + 1 // 1s buffer
 -            if delay > 0 {
 -              try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
@@ -456,12 +527,76 @@ index a222928..b67f710 100644
 -              dismissalPolicy: .immediate
 -            )
 -            print("🧹 Auto-ended live activity: \(activity.id)")
--          }
--        }
++            await activity.end(nil, dismissalPolicy: .immediate)
++            print("🧹 Dismissed leftover activity in startOrUpdateActivity: \(id)")
+           }
+         }
++      }
++
++      if let activity = reusable {
++        Task {
++          var newState = LiveActivityAttributes.ContentState(
++            title: state.title,
++            subtitle: state.subtitle,
++            timerEndDateInMilliseconds: state.progressBar?.date,
++            timerStartDateInMilliseconds: state.timerStartDateInMilliseconds,
++            progress: state.progressBar?.progress,
++            imageName: nil,
++            dynamicIslandImageName: nil,
++            dynamicIslandText: state.dynamicIslandText,
++            isIdle: state.isIdle,
++            tagId: state.tagId,
++            durationMinutes: state.durationMinutes
++          )
++          try await updateImages(state: state, newState: &newState)
++          await activity.update(ActivityContent(state: newState, staleDate: timerEndDate))
++          print("♻️ Reused activity via startOrUpdateActivity: \(activity.id)")
++        }
++        return activity.id
++      }
++
++      do {
++        let config = maybeConfig ?? LiveActivityConfig()
++        let attributes = LiveActivityAttributes(
++          name: "ExpoLiveActivity",
++          backgroundColor: config.backgroundColor,
++          titleColor: config.titleColor,
++          subtitleColor: config.subtitleColor,
++          progressViewTint: config.progressViewTint,
++          progressViewLabelColor: config.progressViewLabelColor,
++          deepLinkUrl: config.deepLinkUrl,
++          timerType: config.timerType == .digital ? .digital : .circular,
++          sessionType: config.sessionType
++        )
++        let initialState = LiveActivityAttributes.ContentState(
++          title: state.title,
++          subtitle: state.subtitle,
++          timerEndDateInMilliseconds: state.progressBar?.date,
++          timerStartDateInMilliseconds: state.timerStartDateInMilliseconds,
++          progress: state.progressBar?.progress,
++          imageName: state.imageName,
++          dynamicIslandImageName: state.dynamicIslandImageName,
++          dynamicIslandText: state.dynamicIslandText,
++          isIdle: state.isIdle,
++          tagId: state.tagId,
++          durationMinutes: state.durationMinutes
++        )
++
++        let activity = try Activity.request(
++          attributes: attributes,
++          content: .init(state: initialState, staleDate: timerEndDate),
++          pushType: pushNotificationsEnabled ? .token : nil
++        )
++
++        Task {
++          var newState = activity.content.state
++          try await updateImages(state: state, newState: &newState)
++          await activity.update(ActivityContent(state: newState, staleDate: timerEndDate))
++        }
  
          return activity.id
        } catch {
-@@ -263,7 +273,7 @@ public class ExpoLiveActivityModule: Module {
+@@ -263,7 +378,7 @@ public class ExpoLiveActivityModule: Module {
        }
      }
  
@@ -470,7 +605,7 @@ index a222928..b67f710 100644
        guard #available(iOS 16.2, *) else { throw UnsupportedOSException("16.2") }
  
        guard
-@@ -278,15 +288,19 @@ public class ExpoLiveActivityModule: Module {
+@@ -278,15 +393,19 @@ public class ExpoLiveActivityModule: Module {
            title: state.title,
            subtitle: state.subtitle,
            timerEndDateInMilliseconds: state.progressBar?.date,
@@ -492,7 +627,7 @@ index a222928..b67f710 100644
          )
        }
      }
-@@ -308,14 +322,50 @@ public class ExpoLiveActivityModule: Module {
+@@ -308,14 +427,59 @@ public class ExpoLiveActivityModule: Module {
            title: state.title,
            subtitle: state.subtitle,
            timerEndDateInMilliseconds: state.progressBar?.date,
@@ -516,6 +651,15 @@ index a222928..b67f710 100644
 +
 +      let activities = Activity<LiveActivityAttributes>.activities
 +      for activity in activities {
++        // Skip activities that can't be meaningfully updated: the system
++        // silently ignores updates to ended activities, and unlock countdowns
++        // must not be overwritten with focus state.
++        let isUpdatable: Bool
++        switch activity.activityState {
++        case .active, .stale: isUpdatable = true
++        default: isUpdatable = false
++        }
++        guard isUpdatable, activity.attributes.sessionType != "unlock" else { continue }
 +        Task {
 +          var newState = LiveActivityAttributes.ContentState(
 +            title: state.title,
@@ -572,7 +716,7 @@ index e96360d..c332a38 100644
    enum DynamicIslandTimerType: String, Codable {
      case circular
 diff --git a/node_modules/expo-live-activity/src/index.ts b/node_modules/expo-live-activity/src/index.ts
-index 2b58e20..e387a1c 100644
+index 2b58e20..1810498 100644
 --- a/node_modules/expo-live-activity/src/index.ts
 +++ b/node_modules/expo-live-activity/src/index.ts
 @@ -24,6 +24,10 @@ export type LiveActivityState = {
@@ -605,7 +749,25 @@ index 2b58e20..e387a1c 100644
  }
  
  export type ActivityTokenReceivedEvent = {
-@@ -91,8 +100,8 @@ export function startActivity(state: LiveActivityState, config?: LiveActivityCon
+@@ -87,12 +96,26 @@ export function startActivity(state: LiveActivityState, config?: LiveActivityCon
+   if (assertIOS('startActivity')) return ExpoLiveActivityModule.startActivity(state, config)
+ }
+ 
++/**
++ * Atomically reuse-or-create: updates the first still-updatable (non-unlock)
++ * Live Activity with the given state, dismisses every other leftover activity
++ * (including ended-but-still-visible ones), and creates a fresh activity only
++ * if none is reusable. ActivityKit is queried directly, so no activity ID
++ * bookkeeping is needed on the JS side.
++ * @param {LiveActivityState} state The state for the live activity.
++ * @param {LiveActivityConfig} config Live activity config object (used only when a new activity is created).
++ * @returns {string} The identifier of the reused or started activity.
++ */
++export function startOrUpdateActivity(state: LiveActivityState, config?: LiveActivityConfig): Voidable<string> {
++  if (assertIOS('startOrUpdateActivity')) return ExpoLiveActivityModule.startOrUpdateActivity(state, config)
++}
++
+ /**
   * @param {string} id The identifier of the activity to stop.
   * @param {LiveActivityState} state The updated state for the live activity.
   */
@@ -616,7 +778,7 @@ index 2b58e20..e387a1c 100644
  }
  
  /**
-@@ -121,3 +130,20 @@ export function addActivityUpdatesListener(
+@@ -121,3 +144,20 @@ export function addActivityUpdatesListener(
  ): Voidable<EventSubscription> {
    if (assertIOS('addActivityUpdatesListener')) return ExpoLiveActivityModule.addListener('onStateChange', listener)
  }

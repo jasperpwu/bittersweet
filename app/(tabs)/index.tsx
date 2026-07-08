@@ -1548,10 +1548,8 @@ export default function FocusScreen() {
     stoppedSessionStartTimeRef.current = sessionStartTimeRef.current;
     stoppedSessionTargetDurationRef.current = sessionTargetDurationRef.current;
 
-    const activityId = teardownSession();
-    if (activityId) {
-      LiveActivityService.stopFocusTimer(activityId, wasBonusTime ? 'completed' : 'cancelled');
-    }
+    teardownSession();
+    LiveActivityService.stopFocusTimer(wasBonusTime ? 'completed' : 'cancelled');
 
     Animated.parallel([
       Animated.timing(timerOpacity, {
@@ -1681,12 +1679,11 @@ export default function FocusScreen() {
       if (timerRef.current) clearInterval(timerRef.current as any);
       if (unlockTimerRef.current) clearInterval(unlockTimerRef.current as any);
       // Clean up Live Activity when component unmounts
-      const activityId = liveActivityIdRef.current;
-      if (activityId) {
+      if (liveActivityIdRef.current) {
         liveActivityIdRef.current = undefined;
         sessionEndTimeRef.current = null;
         sessionStartTimeRef.current = null;
-        LiveActivityService.stopFocusTimer(activityId, 'cancelled');
+        LiveActivityService.stopFocusTimer('cancelled');
       }
       // Cancel scheduled notification on unmount
       if (scheduledNotificationRef.current) {
@@ -1818,15 +1815,6 @@ export default function FocusScreen() {
 
         const existingSession = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
         if (!existingSession) {
-          // Adopt the Live Activity so JS can manage it (even if expired — it's
-          // still running in bonus-time / count-up mode on the Dynamic Island)
-          if (startedSession.liveActivityId) {
-            LiveActivityService.adoptWidgetActivity(
-              startedSession.liveActivityId,
-              startedSession.isInfinite ? undefined : startedSession.endTime
-            );
-          }
-
           // Write to AsyncStorage so the recovery phase below picks it up.
           // If the timer already expired, recovery will enter bonus-time mode.
           const tagIcon = startedSession.tagIcon || '🎯';
@@ -1858,11 +1846,9 @@ export default function FocusScreen() {
 
     const raw = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
     if (!raw) {
-      // No active session, but an idle focus Live Activity may still be on
-      // screen from a previous session that ended before this cold start.
-      // Re-adopt its tracked ID so the next session start reuses it instead of
-      // creating a duplicate (the in-memory ID is lost on process death).
-      await LiveActivityService.restoreIdleActivity();
+      // No active session. Any idle focus Live Activity still on screen needs
+      // no re-adoption: session start queries ActivityKit directly and reuses
+      // or replaces whatever is there (startOrUpdateActivity).
       return;
     }
     try {
