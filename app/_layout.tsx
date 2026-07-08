@@ -36,6 +36,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore, clearAllStoreData } from '../src/store';
 import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
+import { storeHydrationSettled } from '../src/store/middleware/persistence';
 
 import { calculateGoalProgress, getTargetForDate } from '../src/utils/goalProgress';
 import { configureCrisp, openChat } from '../src/services/crisp';
@@ -100,7 +101,21 @@ export const unstable_settings = {
 export default function RootLayout() {
   const { fontsLoaded } = useFonts();
   const { isHydrated, initializeApp } = useAppState();
-  const mainStoreHydrated = useAppStore((s) => s.ui.isHydrated);
+  // Main-store hydration gate. Not the `s.ui.isHydrated` selector: that flag is set
+  // by an in-place mutation in onRehydrateStorage that never notifies subscribers,
+  // so a render gated on it can miss the transition and hang.
+  const [mainStoreHydrated, setMainStoreHydrated] = useState(() =>
+    useAppStore.persist.hasHydrated()
+  );
+  useEffect(() => {
+    let cancelled = false;
+    storeHydrationSettled.then(() => {
+      if (!cancelled) setMainStoreHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const [showUnlockSheet, setShowUnlockSheet] = useState(false);
 
@@ -239,12 +254,15 @@ export default function RootLayout() {
     // that supabase-js would otherwise replay as INITIAL_SESSION the instant we
     // register — before restoreSession()'s signOut clears it — driving the
     // signed-in flow (grove.fetchProfile → getUser) against a dead token.
+    // Both are additionally gated on main-store hydration settling: the
+    // INITIAL_SESSION/SIGNED_IN handlers read local state and apply sync results
+    // to the store, and anything read from or written to a not-yet-hydrated store
+    // is wrong — writes get erased by the hydration apply, reads see empty slices.
     let authListener: { subscription: { unsubscribe: () => void } } | undefined;
     let authListenerCancelled = false;
 
-    useAppStore
-      .getState()
-      .auth.restoreSession()
+    storeHydrationSettled
+      .then(() => useAppStore.getState().auth.restoreSession())
       .then(() => {
         if (authListenerCancelled) return;
         const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -786,12 +804,13 @@ export default function RootLayout() {
     // Cold-start Apple Health sync. The foreground handler only fires on a
     // background→active transition, which never happens on a fresh launch, so
     // a cold start would otherwise miss workouts recorded while the app was
-    // killed. Gated on hydration so prefs/subscription are loaded first;
-    // no-ops cleanly when disconnected.
-    if (isHydrated) {
+    // killed. Gated on BOTH stores' hydration: it writes imported sessions into
+    // the main store (erased if hydration applies afterwards) and validates the
+    // linked tag against focus.tags (empty before hydration → import skipped).
+    if (isHydrated && mainStoreHydrated) {
       syncHealthKitWorkouts();
     }
-  }, [fontsLoaded, isHydrated]);
+  }, [fontsLoaded, isHydrated, mainStoreHydrated]);
 
   // Check when app comes to foreground
   useEffect(() => {
@@ -887,7 +906,11 @@ export default function RootLayout() {
     useAppStore.getState().rewards.reconcileSetupTasks();
   }, [fontsLoaded, isHydrated]);
 
-  const isReady = fontsLoaded && isHydrated;
+  // The app must not become interactive before the MAIN store's hydration settles.
+  // The running-timer UI restores from AsyncStorage independently of the store, so
+  // without this gate the user can end a session whose store write is then erased
+  // when hydration applies the pre-write disk snapshot ("Session not found").
+  const isReady = fontsLoaded && isHydrated && mainStoreHydrated;
   const pathname = usePathname();
   const systemColorScheme = useColorScheme();
 

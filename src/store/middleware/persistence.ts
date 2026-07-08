@@ -9,6 +9,21 @@ import { createJSONStorage } from 'zustand/middleware';
 
 export const STORAGE_KEY = 'bittersweet-store';
 
+/**
+ * Resolves once persist hydration has SETTLED: the disk snapshot has been applied
+ * to the store (success path) or hydration gave up (error path — no apply will
+ * ever come). Until then, any store write is silently erased when the hydration
+ * apply replaces every persisted slice key wholesale with the disk snapshot that
+ * was read at module load — e.g. a focus session completed in the first seconds
+ * after cold start vanishes ("Session not found") and its fruits revert. Gate UI
+ * interactivity and the auth/sync bootstrap on this. Prefer it over
+ * `persist.onFinishHydration`, which never fires if the storage read throws.
+ */
+let settleStoreHydration: () => void;
+export const storeHydrationSettled: Promise<void> = new Promise((resolve) => {
+  settleStoreHydration = resolve;
+});
+
 // Optimized storage implementation with empty-state write guard
 class OptimizedStorage {
   private batchWrites = new Map<string, string>();
@@ -548,6 +563,10 @@ export const persistenceConfig = {
 
   // Hydration callback
   onRehydrateStorage: () => (state: any, error: any) => {
+    // Runs after the hydration apply (success) or after hydration aborted (error)
+    // — in both cases no future apply can stomp store writes anymore.
+    settleStoreHydration();
+
     if (error) {
       console.error('❌ Store rehydration error:', error);
       // Do NOT delete storage here — the data may still be valid on next launch.
