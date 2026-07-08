@@ -16,6 +16,8 @@ import {
   Platform,
   type LayoutChangeEvent,
   type GestureResponderEvent,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -180,6 +182,38 @@ export default function FruitStoreScreen() {
   const jumpToThemeLetter = (letter: string) => {
     const y = themeOffsets.current[letter];
     if (y != null) scrollRef.current?.scrollTo({ y: Math.max(y - 8, 0), animated: false });
+  };
+
+  // While the user drags the theme list itself, the index shows a bubble with
+  // the letter currently at the top of the viewport. Only tracked during an
+  // active finger drag (not momentum) — the bubble hides the moment the finger
+  // lifts, per the iOS fast-scroll convention.
+  const [scrollLetter, setScrollLetter] = useState<string | null>(null);
+  const listDragging = useRef(false);
+  const letterForOffset = (y: number): string | null => {
+    let current: string | null = null;
+    for (const letter of indexLetters) {
+      const offset = themeOffsets.current[letter];
+      if (offset == null) continue;
+      // +8 mirrors the -8 slack in jumpToThemeLetter so a just-jumped-to
+      // section reports its own letter.
+      if (offset <= y + 8) current = letter;
+      else break;
+    }
+    return current ?? indexLetters[0] ?? null;
+  };
+  const handleScrollBeginDrag = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (activeTab !== 'themes') return;
+    listDragging.current = true;
+    setScrollLetter(letterForOffset(e.nativeEvent.contentOffset.y));
+  };
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!listDragging.current || activeTab !== 'themes') return;
+    setScrollLetter(letterForOffset(e.nativeEvent.contentOffset.y));
+  };
+  const handleScrollEndDrag = () => {
+    listDragging.current = false;
+    setScrollLetter(null);
   };
 
   const purchaseHistory = useMemo(() => {
@@ -679,7 +713,14 @@ export default function FruitStoreScreen() {
         </View>
       </View>
 
-      <ScrollView ref={scrollRef} className="flex-1 px-5" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        className="flex-1 px-5"
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onScrollEndDrag={handleScrollEndDrag}>
         {/* Gift pending actions — bought gifts still missing their photo; shown
             to both sender and receiver until either captures the moment */}
         {(activeTab === 'all' || activeTab === 'custom') && pendingPhotoGifts.length > 0 && (
@@ -1151,7 +1192,11 @@ export default function FruitStoreScreen() {
       {/* A-Z fast-scroll index — Themes tab only (the only long, purely
           alphabetical list). Floats in the right screen margin. */}
       {activeTab === 'themes' && (
-        <AlphabetIndex letters={indexLetters} onSelect={jumpToThemeLetter} />
+        <AlphabetIndex
+          letters={indexLetters}
+          onSelect={jumpToThemeLetter}
+          scrollLetter={scrollLetter}
+        />
       )}
 
       {/* Tip Modal */}
@@ -1694,17 +1739,25 @@ function ThemeCard({
 // under that letter (offsets reported by the section-start ThemeCards). Letters
 // are derived from the localized names, so the index adapts per language.
 const LETTER_ROW_HEIGHT = 16;
+const BUBBLE_SIZE = 32;
 
 function AlphabetIndex({
   letters,
   onSelect,
+  scrollLetter,
 }: {
   letters: string[];
   onSelect: (letter: string) => void;
+  /** Letter at the top of the viewport while the list itself is being dragged. */
+  scrollLetter?: string | null;
 }) {
   const colorScheme = useColorScheme();
   const lastLetter = useRef<string | null>(null);
   const [active, setActive] = useState<string | null>(null);
+
+  // Bubble letter: an index scrub wins over a list drag; null hides the bubble.
+  const bubbleLetter = active ?? scrollLetter ?? null;
+  const bubbleIndex = bubbleLetter ? letters.indexOf(bubbleLetter) : -1;
 
   const pick = (e: GestureResponderEvent) => {
     if (letters.length === 0) return;
@@ -1754,13 +1807,42 @@ function AlphabetIndex({
               allowFontScaling={false}
               style={{
                 fontSize: 11,
-                fontWeight: active === letter ? '800' : '600',
-                color: active === letter ? colors.primary : inactiveColor,
+                fontWeight: bubbleLetter === letter ? '800' : '600',
+                color: bubbleLetter === letter ? colors.primary : inactiveColor,
               }}>
               {letter}
             </Text>
           </View>
         ))}
+
+        {/* Magnifier bubble — floats just left of the current letter while the
+            finger is down (index scrub or list drag), gone on release. */}
+        {bubbleIndex >= 0 && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              right: 34,
+              top: bubbleIndex * LETTER_ROW_HEIGHT + LETTER_ROW_HEIGHT / 2 - BUBBLE_SIZE / 2,
+              width: BUBBLE_SIZE,
+              height: BUBBLE_SIZE,
+              borderRadius: BUBBLE_SIZE / 2,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: colors.dark.background,
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 4,
+            }}>
+            <Text
+              allowFontScaling={false}
+              style={{ fontSize: 16, fontWeight: '700', color: colors.white }}>
+              {bubbleLetter}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
