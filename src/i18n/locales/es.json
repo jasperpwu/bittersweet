@@ -84,7 +84,8 @@
     "share": "Compartir",
     "delete": "Eliminar",
     "you": "Tú",
-    "remove": "Eliminar"
+    "remove": "Eliminar",
+    "offlineSyncPending": "Sin conexión: tus cambios se sincronizarán cuando vuelvas a estar en línea"
   },
   "onboarding": {
     "slide1": {

@@ -33,6 +33,17 @@ enum WidgetActivityKit {
   }
 }
 
+// Compact time-ordered id matching the JS generateId() in store/index.ts:
+// base36 ms timestamp + "-" + 10 random base36 chars. All focus_sessions ids
+// share this format so the text PK stays small and inserts land at the right
+// edge of the Postgres B-tree. Keep in sync with the JS generator.
+func generateCompactId() -> String {
+  let timestamp = String(Int64(Date().timeIntervalSince1970 * 1000), radix: 36)
+  let alphabet = Array("0123456789abcdefghijklmnopqrstuvwxyz")
+  let random = String((0..<10).map { _ in alphabet.randomElement()! })
+  return "\(timestamp)-\(random)"
+}
+
 @available(iOS 17.0, *)
 struct StartSessionIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Start Focus Session"
@@ -241,7 +252,7 @@ struct StopSessionIntent: LiveActivityIntent {
     // One id for this completed session, shared by the native Supabase write and
     // the JS adoption write (passed via the stop marker). focus_sessions upserts
     // by id, so both writes collapse to a single row instead of duplicating.
-    let sessionId = UUID().uuidString
+    let sessionId = generateCompactId()
 
     // Reflect the finished session in the goal widget immediately. Floor to match
     // the minutes the session is actually recorded with, so the bump equals what

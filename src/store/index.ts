@@ -424,9 +424,18 @@ const getWeekStart = () => {
   return weekStart;
 };
 
+// Compact time-ordered id: base36 ms timestamp + 10 random base36 chars.
+// The timestamp prefix keeps ids lexicographically chronological (right-edge
+// B-tree inserts in Postgres); 10 random chars (~3.6e15) rules out cross-user
+// collisions within a millisecond at any realistic scale. The Swift widget
+// stop path (SessionIntent.swift generateCompactId) mirrors this format —
+// keep the two in sync.
 const generateId = () => {
   const timestamp = Date.now().toString(36);
-  const randomStr = Math.random().toString(36).substring(2, 8);
+  let randomStr = '';
+  for (let i = 0; i < 10; i++) {
+    randomStr += Math.floor(Math.random() * 36).toString(36);
+  }
   return `${timestamp}-${randomStr}`;
 };
 
@@ -464,6 +473,30 @@ const syncTodosWidget = () => {
  * unauthenticated (e.g. widget adoption racing ahead of onAuthStateChange) — the
  * triggerSync reconcile then pushes it once auth lands.
  */
+/**
+ * Tell the user their change is safely queued when an immediate sync attempt
+ * couldn't reach the cloud because the device is offline. The write is already
+ * persisted (AsyncStorage sync queue) and the connectivity-restore / foreground /
+ * cold-start flush paths deliver it once online — this toast just makes that
+ * visible instead of failing silently. Only fires when NetInfo confirms we're
+ * offline: other flush failures (RLS, FK) would make "no connection" a lie, and
+ * those are already logged by flush. Lazy requires keep the store module free of
+ * UI/i18n imports at init time.
+ */
+async function notifySyncPendingOffline(): Promise<void> {
+  try {
+    const NetInfo = require('@react-native-community/netinfo').default;
+    const net = await NetInfo.fetch();
+    const online = net.isConnected === true && net.isInternetReachable !== false;
+    if (online) return;
+    const { showToast } = require('../components/ui/Toast');
+    const i18n = require('../i18n').default;
+    showToast(i18n.t('common.offlineSyncPending'), 'neutral', undefined, 3500);
+  } catch (error) {
+    console.warn('[notifySyncPendingOffline] failed:', error);
+  }
+}
+
 function enqueueSessionNow(state: any, session: FocusSession): void {
   if (!state.auth?.isAuthenticated || !state.auth?.user?.id) return;
   const userId = state.auth.user.id;
@@ -484,8 +517,14 @@ function enqueueSessionNow(state: any, session: FocusSession): void {
       console.log(
         `[enqueueSessionNow] ${session.id} — flushed:${result.flushed} failed:${result.failed}`
       );
+      // flushed === 0 covers the skipped-flush case (no auth session available,
+      // e.g. offline with an expired access token) — the rows are still queued.
+      if (result.failed > 0 || result.flushed === 0) {
+        void notifySyncPendingOffline();
+      }
     } catch (error) {
       console.error('[enqueueSessionNow] failed:', error);
+      void notifySyncPendingOffline();
     }
   })();
 }
@@ -508,8 +547,12 @@ function enqueueSessionDeleteNow(state: any, sessionId: string): void {
       console.log(
         `[enqueueSessionDeleteNow] ${sessionId} — flushed:${result.flushed} failed:${result.failed}`
       );
+      if (result.failed > 0 || result.flushed === 0) {
+        void notifySyncPendingOffline();
+      }
     } catch (error) {
       console.error('[enqueueSessionDeleteNow] failed:', error);
+      void notifySyncPendingOffline();
     }
   })();
 }

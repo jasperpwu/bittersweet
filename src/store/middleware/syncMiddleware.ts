@@ -329,6 +329,20 @@ async function diffAndEnqueue(
   // Deleted items (present in old, missing in new)
   for (const id of Object.keys(oldById)) {
     if (!newById[id]) {
+      // Never derive a focus_sessions soft_delete from the diff. Every legitimate
+      // session deletion already pushes its own soft_delete (enqueueSessionDeleteNow
+      // in deleteSession), so a session missing here means a store APPLY dropped it —
+      // e.g. a cold-start merge built from a local snapshot captured before the user
+      // created the session. Turning that into a cloud soft_delete permanently
+      // destroyed just-created sessions (deleted_at set, filtered from every future
+      // pull). Log loudly instead so the racing apply is visible in diagnostics.
+      if (table === 'focus_sessions') {
+        console.error(
+          `[SyncMW] ⚠️ Session ${id} vanished from the store without deleteSession — ` +
+            'a stale apply removed it; NOT propagating a cloud soft_delete'
+        );
+        continue;
+      }
       await SyncService.enqueue(table, 'soft_delete', { id });
       deleteCount++;
     }

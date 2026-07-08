@@ -3,11 +3,17 @@
  */
 
 /**
- * Generate a unique ID using timestamp and random string
+ * Generate a unique ID using timestamp and random string.
+ * Format: base36 ms timestamp + "-" + 10 random base36 chars — time-ordered
+ * and compact. Must stay in sync with generateId in store/index.ts and
+ * generateCompactId in SessionIntent.swift.
  */
 export function generateId(): string {
   const timestamp = Date.now().toString(36);
-  const randomStr = Math.random().toString(36).substring(2, 8);
+  let randomStr = '';
+  for (let i = 0; i < 10; i++) {
+    randomStr += Math.floor(Math.random() * 36).toString(36);
+  }
   return `${timestamp}-${randomStr}`;
 }
 

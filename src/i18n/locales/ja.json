@@ -84,7 +84,8 @@
     "share": "シェア",
     "delete": "削除",
     "you": "あなた",
-    "remove": "削除"
+    "remove": "削除",
+    "offlineSyncPending": "オフラインです。接続が回復したら自動的に同期されます"
   },
   "onboarding": {
     "slide1": {

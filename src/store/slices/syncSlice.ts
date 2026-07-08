@@ -87,32 +87,40 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
 
       const remoteData = await SyncService.pullAll(userId);
 
+      // Re-read local state AFTER the network pull. The pull can take seconds, and
+      // anything the user created while it was in flight (e.g. a manual session)
+      // exists only in the CURRENT store — merging against the stale entry-time
+      // capture would build a merged map without it, and the apply below would
+      // erase it locally. From here to the set() everything is synchronous, so
+      // `local` cannot go stale.
+      const local = get();
+
       // Build local settings from unified store
       const { useUnifiedStore } = require('../unified-store');
       const localPrefs = useUnifiedStore.getState().preferences;
 
       const localData = {
         focus: {
-          sessions: state.focus.sessions,
-          tags: state.focus.tags,
-          goals: state.focus.goals,
-          todos: state.focus.todos ?? { byId: {}, allIds: [] },
-          badges: state.focus.badges ?? { byId: {}, allIds: [] },
-          coachReports: state.focus.coachReports ?? { byId: {}, allIds: [] },
+          sessions: local.focus.sessions,
+          tags: local.focus.tags,
+          goals: local.focus.goals,
+          todos: local.focus.todos ?? { byId: {}, allIds: [] },
+          badges: local.focus.badges ?? { byId: {}, allIds: [] },
+          coachReports: local.focus.coachReports ?? { byId: {}, allIds: [] },
         },
         rewards: {
-          balance: state.rewards.balance,
-          totalEarned: state.rewards.totalEarned,
-          totalSpent: state.rewards.totalSpent,
-          tasks: state.rewards.tasks,
-          purchases: state.rewards.purchases ?? { byId: {}, allIds: [] },
-          customRewards: state.rewards.customRewards ?? { byId: {}, allIds: [] },
-          unlockHistory: state.rewards.unlockHistory ?? {},
-          updatedAt: state.rewards.updatedAt,
+          balance: local.rewards.balance,
+          totalEarned: local.rewards.totalEarned,
+          totalSpent: local.rewards.totalSpent,
+          tasks: local.rewards.tasks,
+          purchases: local.rewards.purchases ?? { byId: {}, allIds: [] },
+          customRewards: local.rewards.customRewards ?? { byId: {}, allIds: [] },
+          unlockHistory: local.rewards.unlockHistory ?? {},
+          updatedAt: local.rewards.updatedAt,
         },
         settings: localPrefs ? {
           ...localPrefs,
-          lastDurationByTagId: state.focus.lastDurationByTagId ?? {},
+          lastDurationByTagId: local.focus.lastDurationByTagId ?? {},
           updatedAt: localPrefs.updatedAt ?? null,
         } : null,
       };

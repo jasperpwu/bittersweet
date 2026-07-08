@@ -84,7 +84,8 @@
     "share": "공유",
     "delete": "삭제",
     "you": "나",
-    "remove": "제거"
+    "remove": "제거",
+    "offlineSyncPending": "인터넷 연결이 없어요. 다시 연결되면 자동으로 동기화돼요"
   },
   "onboarding": {
     "slide1": {

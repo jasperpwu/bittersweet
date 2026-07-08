@@ -38,16 +38,42 @@ import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
 
 import { calculateGoalProgress, getTargetForDate } from '../src/utils/goalProgress';
-import { configureCrisp } from '../src/services/crisp';
+import { configureCrisp, openChat } from '../src/services/crisp';
 import { useDeepLinkHandler } from '../src/hooks/useDeepLinkHandler';
 import { useQuickActionHandler } from '../src/hooks/useQuickActionHandler';
 import { PushNotificationService } from '../src/services/notifications/push';
+import { ActivityPingService } from '../src/services/notifications/activity';
 import { AnalyticsTracker } from '../src/services/analytics';
 import { getInstalledWidgetFamilies } from '../modules/widget-info';
 import { installNavigationGuard } from '../src/utils/navigationGuard';
 
 // Dedupe duplicate navigations from fast double-taps (router.push/navigate/replace).
 installNavigationGuard();
+
+// Where each re-engagement nudge (data.feature from reengagement-cron) lands
+// when tapped. 'suggest' is handled separately (opens the support chat), and
+// anything unknown falls back to the focus tab.
+const REENGAGE_ROUTES: Record<string, string> = {
+  goals: '/(tabs)/insights',
+  todos: '/(tabs)/journal',
+  grove: '/(tabs)/grove',
+  store: '/fruit-store',
+  blocklist: '/(modals)/app-selection',
+  health: '/settings/health',
+  focus: '/(tabs)',
+};
+
+function handleReengageTap(feature: unknown) {
+  if (feature === 'suggest') {
+    // Mirror the "Chat with us" button: open Support, then the chat overlay.
+    router.navigate('/settings/support');
+    openChat();
+    return;
+  }
+  const route =
+    (typeof feature === 'string' && REENGAGE_ROUTES[feature]) || REENGAGE_ROUTES.focus;
+  router.push(route as never);
+}
 
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
@@ -192,6 +218,9 @@ export default function RootLayout() {
           // Gifts (incoming + sent-gift history) live in the fruit store's
           // Custom tab — land the tap there for every gift event.
           router.push('/fruit-store?tab=custom');
+        } else if (data?.type === 'reengage') {
+          // Re-engagement nudge → deep-link straight to the promoted feature.
+          handleReengageTap(data.feature);
         }
       }
     );
@@ -393,6 +422,14 @@ export default function RootLayout() {
                     '🔄 SIGNED_IN (existing account) — clearing local data, pulling cloud clean'
                   );
 
+                  // Drop the sync baseline + queue BEFORE wiping, like the sign-out and
+                  // user-switch paths do. Without this, clearAllStoreData below fires the
+                  // sync middleware with the old baseline while auth is still valid, and
+                  // its 2s debounced diff races pullAndApply's network pull — if the pull
+                  // is slower, the diff sees every wiped row as locally deleted and
+                  // soft-deletes the user's cloud data.
+                  resetSyncSnapshot();
+
                   // 1. Unblock any current selection and clear shield configuration
                   try {
                     const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
@@ -491,6 +528,10 @@ export default function RootLayout() {
 
             // Register push token after sign-in
             PushNotificationService.registerPushToken();
+
+            // Record activity immediately on sign-in (captures timezone for the
+            // re-engagement cron even if the app is never backgrounded).
+            ActivityPingService.ping(true);
 
             // Fetch grove profile and social data after sign-in
             try {
@@ -779,6 +820,10 @@ export default function RootLayout() {
 
         // Flush any pending offline sync operations
         useAppStore.getState().sync.flushOfflineQueue();
+
+        // Record app activity (debounced) so the re-engagement cron knows the
+        // user is still around and resets any inactivity streak.
+        ActivityPingService.ping();
 
         // Pull any new Apple Health workouts as sessions (no-ops if disconnected)
         syncHealthKitWorkouts();
