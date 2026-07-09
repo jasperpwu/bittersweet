@@ -8,4 +8,5 @@ export * from './GoalProgressBanner';
 export * from './ActivityTypePicker/ActivityTypePicker';
 export * from './FocusRatingBlock';
 export * from './CreateTagModal/CreateTagModal';
+export * from './EditTagSheet/EditTagSheet';
 export * from './RunningTodoList';

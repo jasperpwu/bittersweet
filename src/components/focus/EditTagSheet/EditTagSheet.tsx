@@ -1,5 +1,14 @@
 import React, { FC, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, TextInput, Keyboard, useColorScheme, useWindowDimensions } from 'react-native';
+import {
+  Alert,
+  View,
+  Text,
+  Pressable,
+  TextInput,
+  Keyboard,
+  useColorScheme,
+  useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui/Typography';
@@ -7,38 +16,31 @@ import { BottomSheet } from '../../ui/BottomSheet';
 import { EmojiPickerOverlay } from '../../ui/EmojiPicker/EmojiPicker';
 import { ColorPickerOverlay } from '../TagColorPicker/TagColorPicker';
 import { ActivityTypePicker } from '../ActivityTypePicker/ActivityTypePicker';
-import { useAppStore } from '../../../store';
-import { useSubscriptionGate } from '../../../hooks/useSubscriptionGate';
+import { useAppStore, useFocus } from '../../../store';
 import { inferActivityType } from '../../../utils/inferActivityType';
 import type { ActivityType } from '../../../utils/focusRating';
-import type { SessionTag } from '../../../types/models';
 
-interface CreateTagModalProps {
+interface EditTagSheetProps {
   visible: boolean;
+  /** Id of the tag being edited; null when nothing is open. */
+  tagId: string | null;
   onClose: () => void;
-  /** Called with the freshly created tag after a successful create. */
-  onCreated?: (tag: SessionTag) => void;
-  /** Called when the subscription gate blocks tag creation. */
-  onUpgradeNeeded?: () => void;
 }
 
 /**
- * Self-contained "Create New Tag" bottom sheet — emoji + name + color + optional
- * activity type. Built on the shared BottomSheet (grab handle, drag-to-dismiss)
- * so it matches EditTagSheet; the emoji/color pickers ride the sheet's `overlay`
- * slot so they cover the full screen without a second native modal.
+ * Edit-tag bottom sheet — the same emoji + name + color + activity-type form as
+ * CreateTagModal, but seeded from an existing tag and saved via updateTag. Built
+ * on the shared BottomSheet (grab handle, drag-to-dismiss) and stacks on top of
+ * the home tag picker, mirroring how TodoEditModal stacks on TodoSheet. The
+ * emoji/color pickers ride the sheet's `overlay` slot so they cover the full
+ * screen without a second native modal (matches CreateTagModal's overlays).
  */
-export const CreateTagModal: FC<CreateTagModalProps> = ({
-  visible,
-  onClose,
-  onCreated,
-  onUpgradeNeeded,
-}) => {
+export const EditTagSheet: FC<EditTagSheetProps> = ({ visible, tagId, onClose }) => {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { height: screenHeight } = useWindowDimensions();
-  const createTag = useAppStore((s) => s.focus.createTag);
-  const { canCreateTag } = useSubscriptionGate();
+  const { tags } = useFocus();
+  const updateTag = useAppStore((s) => s.focus.updateTag);
 
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('');
@@ -50,23 +52,41 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
   // Tracks whether the user has manually picked an activity type this session;
   // once they have, name-based inference stops overriding their choice.
   const activityTouched = useRef(false);
+  // Snapshot of the tag as seeded, so a Save writes only changed fields and a
+  // dismiss can confirm before discarding unsaved edits.
+  const initialRef = useRef({
+    name: '',
+    emoji: '',
+    color: '#6592E9',
+    activityType: undefined as ActivityType | undefined,
+  });
 
-  const reset = () => {
-    setName('');
-    setEmoji('');
-    setColor('#6592E9');
-    setActivityType(undefined);
+  // Re-seed the form each time the sheet opens (or the target tag changes).
+  useEffect(() => {
+    if (!visible || !tagId) return;
+    const tag = tags.byId[tagId];
+    if (!tag) return;
+    const seeded = {
+      name: tag.name ?? '',
+      emoji: tag.icon ?? '',
+      color: tag.color ?? '#6592E9',
+      activityType: tag.activityType,
+    };
+    setName(seeded.name);
+    setEmoji(seeded.emoji);
+    setColor(seeded.color);
+    setActivityType(seeded.activityType);
     setShowEmojiPicker(false);
     setShowColorPicker(false);
-  };
+    // Respect an already-set type; only auto-infer when the tag had none.
+    activityTouched.current = !!tag.activityType;
+    initialRef.current = seeded;
+    // Seed only on open / tag change — pulling in `tags` would reset mid-edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, tagId]);
 
-  // Reset the "touched" flag each time the modal opens.
-  useEffect(() => {
-    if (visible) activityTouched.current = false;
-  }, [visible]);
-
-  // Debounced inference of the activity type from the tag name. Only fills the
-  // picker until the user makes their own choice.
+  // Debounced inference of the activity type from the name, until the user
+  // makes their own choice.
   useEffect(() => {
     if (!visible || activityTouched.current) return;
     const current = name;
@@ -77,48 +97,60 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
     return () => clearTimeout(timer);
   }, [name, visible]);
 
-  const handleClose = () => {
-    reset();
+  const isDirty = () => {
+    const init = initialRef.current;
+    return (
+      name.trim() !== init.name ||
+      emoji !== init.emoji ||
+      color !== init.color ||
+      activityType !== init.activityType
+    );
+  };
+
+  // Prompt before throwing away unsaved edits; Discard drives the actual close.
+  const promptDiscard = () => {
+    Alert.alert(t('home.discardTitle'), t('home.discardMessage'), [
+      { text: t('home.keepEditing'), style: 'cancel' },
+      { text: t('home.discard'), style: 'destructive', onPress: onClose },
+    ]);
+  };
+
+  // Guard for BottomSheet (swipe / backdrop / hardware back).
+  const handleBeforeClose = (): boolean => {
+    if (!isDirty()) return true;
+    promptDiscard();
+    return false;
+  };
+
+  const handleSave = () => {
+    if (!tagId || !name.trim()) return;
+    const init = initialRef.current;
+    const updates: Record<string, unknown> = {};
+    if (name.trim() !== init.name) updates.name = name.trim();
+    if (emoji !== init.emoji) updates.icon = emoji;
+    if (color !== init.color) updates.color = color;
+    if (activityType !== init.activityType) updates.activityType = activityType ?? null;
+    if (Object.keys(updates).length > 0) updateTag(tagId, updates);
     onClose();
   };
-
-  const handleCreate = () => {
-    if (!canCreateTag) {
-      handleClose();
-      onUpgradeNeeded?.();
-      return;
-    }
-    if (name.trim() && emoji) {
-      const newTag = createTag({
-        name: name.trim(),
-        icon: emoji,
-        color,
-        activityType,
-      });
-      reset();
-      onClose();
-      onCreated?.(newTag);
-    }
-  };
-
-  const canSubmit = !!name.trim() && !!emoji;
 
   return (
     <BottomSheet
       isVisible={visible}
-      onClose={handleClose}
+      onClose={onClose}
       height={screenHeight * 0.58}
       scrollable
+      beforeClose={handleBeforeClose}
       footer={
         <View className="border-t border-light-border px-6 pb-2 pt-3 dark:border-gray-700">
           <Pressable
-            onPress={handleCreate}
-            disabled={!canSubmit}
+            onPress={handleSave}
+            disabled={!name.trim()}
             className={`items-center rounded-2xl py-4 ${
-              canSubmit ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'
+              name.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'
             }`}>
             <Typography variant="subtitle-16" color="white" className="font-semibold">
-              {t('home.createTag')}
+              {t('common.save')}
             </Typography>
           </Pressable>
         </View>
@@ -127,7 +159,7 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
         <>
           {showEmojiPicker && (
             <EmojiPickerOverlay
-              title={t('home.chooseEmojiNewTag')}
+              title={t('home.chooseEmojiTag')}
               onClose={() => setShowEmojiPicker(false)}
               onEmojiSelect={(picked) => {
                 setEmoji(picked);
@@ -148,7 +180,7 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
       {/* Header */}
       <View className="mb-6">
         <Typography variant="headline-20" color="primary">
-          {t('home.createNewTagTitle')}
+          {t('home.editTag')}
         </Typography>
       </View>
 

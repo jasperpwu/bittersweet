@@ -34,6 +34,13 @@ interface BottomSheetProps {
   // Return false to veto the close — the sheet snaps back open and the caller is
   // expected to drive the actual close itself (e.g. after a confirm dialog).
   beforeClose?: () => boolean;
+  // Full-screen content rendered inside the sheet's Modal, above the sheet
+  // itself — for nested pickers/overlays (e.g. emoji/color) that must cover the
+  // whole screen without stacking a second native modal. The caller gates it.
+  overlay?: ReactNode;
+  // Content pinned to the bottom of the sheet, below the scroll area, so it
+  // stays visible while the content scrolls (e.g. primary action buttons).
+  footer?: ReactNode;
 }
 
 const DISMISS_THRESHOLD = 100;
@@ -45,6 +52,8 @@ export const BottomSheet: FC<BottomSheetProps> = ({
   height: heightProp,
   scrollable = false,
   beforeClose,
+  overlay,
+  footer,
 }) => {
   const { height: screenHeight } = useWindowDimensions();
   const height = heightProp ?? screenHeight * 0.8;
@@ -222,6 +231,9 @@ export const BottomSheet: FC<BottomSheetProps> = ({
                     {children}
                   </ScrollView>
                 </GestureDetector>
+
+                {/* Pinned footer (stays put while the list scrolls) */}
+                {footer}
               </View>
             </GestureDetector>
           ) : (
@@ -234,10 +246,16 @@ export const BottomSheet: FC<BottomSheetProps> = ({
 
                 {/* Content */}
                 <View className="flex-1 px-6">{children}</View>
+
+                {/* Pinned footer */}
+                {footer}
               </View>
             </GestureDetector>
           )}
         </Animated.View>
+
+        {/* Full-screen overlay above the sheet (nested pickers, etc.) */}
+        {overlay}
       </GestureHandlerRootView>
     </Modal>
   );

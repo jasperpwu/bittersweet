@@ -1,7 +1,8 @@
 import React, { FC } from 'react';
-import { View, Pressable, ScrollView, useColorScheme } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../ui';
+import { SheetOverlay } from '../../ui/BottomSheet';
 import { TAG_COLOR_FAMILIES, isLightColor } from '../../../config/tagColors';
 
 interface TagColorPickerProps {
@@ -72,11 +73,12 @@ interface ColorPickerOverlayProps {
 }
 
 /**
- * Overlay variant of the color picker — an absolute-positioned `View` (not a
- * native `<Modal>`) so it can render on top of content already inside a
- * presented Modal (the New Tag / Edit Tag overlays inside the tag picker Modal)
- * without stacking two native modals, which is unreliable on iOS. Mirrors
- * `EmojiPickerOverlay`. The caller gates rendering (`{visible && <ColorPickerOverlay .../>}`).
+ * Overlay variant of the color picker — an in-place bottom sheet (SheetOverlay),
+ * not a native `<Modal>`, so it can render on top of content already inside a
+ * presented Modal (the New Tag / Edit Tag sheets) without stacking two native
+ * modals, which is unreliable on iOS. Slides up with a grab handle and
+ * drag-to-dismiss to match the surrounding sheets. Mirrors `EmojiPickerOverlay`.
+ * The caller gates rendering (`{visible && <ColorPickerOverlay .../>}`).
  */
 export const ColorPickerOverlay: FC<ColorPickerOverlayProps> = ({
   selectedColor,
@@ -84,41 +86,25 @@ export const ColorPickerOverlay: FC<ColorPickerOverlayProps> = ({
   onClose,
   title = 'Choose Color',
 }) => {
-  const colorScheme = useColorScheme();
-  const closeIconColor = colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37';
-
   return (
-    <View className="absolute inset-0 bg-black/50 justify-center items-center">
-      {/* Backdrop tap closes */}
-      <Pressable
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        onPress={onClose}
-      />
-      <View className="bg-light-bg dark:bg-dark-bg rounded-3xl w-11/12" style={{ maxHeight: '60%' }}>
-        {/* Header */}
-        <View className="flex-row items-center justify-between p-6 border-b border-light-border dark:border-dark-border">
-          <Typography variant="headline-20" color="primary">
-            {title}
-          </Typography>
-          <Pressable
-            onPress={onClose}
-            className="w-8 h-8 rounded-full bg-light-border/30 dark:bg-gray-700 items-center justify-center"
-          >
-            <Ionicons name="close" size={20} color={closeIconColor} />
-          </Pressable>
-        </View>
-
-        {/* Color Grid */}
-        <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
-          <TagColorPicker
-            selectedColor={selectedColor}
-            onSelectColor={(color) => {
-              onSelectColor(color);
-              onClose();
-            }}
-          />
-        </ScrollView>
+    <SheetOverlay onClose={onClose} heightRatio={0.55}>
+      {/* Header */}
+      <View className="px-6 pb-4 pt-1">
+        <Typography variant="headline-20" color="primary">
+          {title}
+        </Typography>
       </View>
-    </View>
+
+      {/* Color Grid */}
+      <View className="px-6 pb-4">
+        <TagColorPicker
+          selectedColor={selectedColor}
+          onSelectColor={(color) => {
+            onSelectColor(color);
+            onClose();
+          }}
+        />
+      </View>
+    </SheetOverlay>
   );
 };

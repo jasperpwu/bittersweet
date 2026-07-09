@@ -9,14 +9,13 @@ import {
   Image,
   Text,
   TextInput,
-  ScrollView,
   AppState,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Alert,
   LayoutChangeEvent,
   useColorScheme,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -29,18 +28,15 @@ import Reanimated, {
   LinearTransition,
 } from 'react-native-reanimated';
 import { Typography } from '../../src/components/ui';
-import { EmojiPickerOverlay } from '../../src/components/ui/EmojiPicker/EmojiPicker';
+import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import {
   TimeScroller,
   DurationPicker,
-  ColorPickerOverlay,
-  ActivityTypePicker,
   RunningTodoList,
   CreateTagModal,
+  EditTagSheet,
 } from '../../src/components/focus';
 import { TodoEditModal } from '../../src/components/journal/TodoSheet/TodoEditModal';
-import type { ActivityType } from '../../src/utils/focusRating';
-import { inferActivityType } from '../../src/utils/inferActivityType';
 import { useThrottledPress } from '../../src/hooks/common';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
@@ -297,10 +293,10 @@ function DraggableTagRow({
           animatedStyle,
           isBeingDragged && {
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.4,
-            shadowRadius: 12,
-            elevation: 12,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 6,
           },
         ]}>
         <Swipeable
@@ -330,10 +326,10 @@ function DraggableTagRow({
                 },
                 isSelected && {
                   shadowColor: tag.color || '#6592E9',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.35,
-                  shadowRadius: 8,
-                  elevation: 8,
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.18,
+                  shadowRadius: 6,
+                  elevation: 4,
                   transform: [{ scale: 1.02 }],
                 },
               ]}>
@@ -392,7 +388,7 @@ function DraggableTagRow({
                   className="ml-3 rounded-full px-3 py-1.5"
                   style={{ backgroundColor: 'rgba(101, 146, 233, 0.18)' }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
-                    {`${todoCount} TODOs`}
+                    {t('home.todoCountPill', { count: todoCount })}
                   </Text>
                 </View>
               )}
@@ -689,6 +685,7 @@ function JoinTagModal({
 export default function FocusScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
+  const { height: screenHeight } = useWindowDimensions();
   // Get tags from store
   // Narrow subscription: this screen reads only these focus fields. Selecting
   // the whole `state.focus` slice (via useFocus) re-rendered this 3k-line screen
@@ -705,7 +702,6 @@ export default function FocusScreen() {
     }))
   );
   const {
-    updateTag,
     deleteTag,
     reorderTags,
     startSession,
@@ -790,43 +786,12 @@ export default function FocusScreen() {
   const [showNewTagModal, setShowNewTagModal] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
+  // Edit-tag flow: the EditTagSheet (stacked on the picker) owns the form; the
+  // home screen only tracks which tag is open.
   const [showEditTagModal, setShowEditTagModal] = useState(false);
-  const [editingTag, setEditingTag] = useState<{
-    id: string;
-    name: string;
-    icon: string;
-    color: string;
-    activityType?: ActivityType;
-  } | null>(null);
-  const [editTagName, setEditTagName] = useState('');
-  const [editTagEmoji, setEditTagEmoji] = useState('');
-  const [editTagColor, setEditTagColor] = useState('#6592E9');
-  const [editTagActivityType, setEditTagActivityType] = useState<ActivityType | undefined>(
-    undefined
-  );
-  // Tracks whether the user has manually picked an activity type this modal
-  // session; once they have, name-based inference stops overriding their choice.
-  const editTagActivityTouched = useRef(false);
-  const [showEditEmojiGrid, setShowEditEmojiGrid] = useState(false);
-  const [showEditColorPicker, setShowEditColorPicker] = useState(false);
-
-  // Debounced inference for the edit tag modal — only when the tag had no
-  // activity type set (handleEditTag marks existing values as already chosen).
-  useEffect(() => {
-    if (!showEditTagModal || editTagActivityTouched.current) return;
-    const name = editTagName;
-    const t = setTimeout(() => {
-      if (editTagActivityTouched.current) return;
-      setEditTagActivityType(inferActivityType(name) ?? undefined);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [editTagName, showEditTagModal]);
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
   // Resolved shared tag awaiting the map-or-clone choice (step 2 of joining)
   const [resolvedSharedTag, setResolvedSharedTag] = useState<SharedTagResolveResult | null>(null);
-
-  // Delete functionality
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [tagToDelete, setTagToDelete] = useState<any>(null);
 
   // Shared tag modals
   const [showShareModal, setShowShareModal] = useState(false);
@@ -1092,50 +1057,9 @@ export default function FocusScreen() {
 
   const handleEditTag = (tag: any, event: any) => {
     event?.stopPropagation();
-    setEditingTag({
-      id: tag.id,
-      name: tag.name,
-      icon: tag.icon,
-      color: tag.color,
-      activityType: tag.activityType,
-    });
-    setEditTagName(tag.name);
-    setEditTagEmoji(tag.icon || '');
-    setEditTagColor(tag.color || '#6592E9');
-    setEditTagActivityType(tag.activityType);
-    // Respect an already-set type; only auto-infer when the tag had none.
-    editTagActivityTouched.current = !!tag.activityType;
-    setShowEditColorPicker(false);
+    // The EditTagSheet stacks on top of the picker, which stays open behind it.
+    setEditingTagId(tag.id);
     setShowEditTagModal(true);
-    // Keep tag modal open - edit appears as overlay within it
-  };
-
-  const handleEditTagEmojiPress = () => {
-    Keyboard.dismiss();
-    setShowEditEmojiGrid(true);
-  };
-
-  const handleEditTagColorPress = () => {
-    Keyboard.dismiss();
-    setShowEditColorPicker(true);
-  };
-
-  const handleSaveEditTag = () => {
-    if (editingTag && editTagName.trim()) {
-      const updates: any = {};
-      if (editTagName.trim() !== editingTag.name) updates.name = editTagName.trim();
-      if (editTagEmoji !== editingTag.icon) updates.icon = editTagEmoji;
-      if (editTagColor !== editingTag.color) updates.color = editTagColor;
-      if (editTagActivityType !== editingTag.activityType)
-        updates.activityType = editTagActivityType ?? null;
-      if (Object.keys(updates).length > 0) {
-        updateTag(editingTag.id, updates);
-      }
-      setShowEditTagModal(false);
-      setEditingTag(null);
-      setShowEditEmojiGrid(false);
-      // Tag modal remains open
-    }
   };
 
   const tagHasActiveGoal = (tagId: string) =>
@@ -1169,33 +1093,39 @@ export default function FocusScreen() {
   };
 
   const handleDeleteTag = (tag: any, event: any) => {
-    event?.stopPropagation(); // Prevent tag selection when clicking delete
-    setTagToDelete(tag);
-    setShowDeleteModal(true);
-    // Keep tag modal open - don't call setShowTagModal(false)
-  };
-
-  const handleConfirmDelete = () => {
-    if (tagToDelete) {
-      deleteTag(tagToDelete.id);
-      // If deleted tag was selected, reset selection
-      if (selectedTag === tagToDelete.id) {
-        const remainingTags = availableTags.filter((t) => t.id !== tagToDelete.id);
-        const fallbackId = remainingTags.length > 0 ? remainingTags[0].id : null;
-        setSelectedTag(fallbackId);
-        setLastSelectedTagId(fallbackId);
-        WidgetService.syncSelectedTagId(fallbackId);
-      }
-      setShowDeleteModal(false);
-      setTagToDelete(null);
-      // Tag modal remains open after deletion
+    event?.stopPropagation(); // Prevent tag selection when tapping delete
+    const blockReason = tagDeletionBlockReason(tag);
+    if (blockReason) {
+      Alert.alert(t('home.cannotDeleteTag'), blockReason, [{ text: t('common.ok') }]);
+      return;
     }
+    Alert.alert(
+      t('home.deleteTag'),
+      t('home.deleteConfirm', {
+        name: tag?.name ? `"${tag.name}"` : t('home.deleteThisTag'),
+      }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: () => performDeleteTag(tag),
+        },
+      ]
+    );
+    // The picker sheet stays open behind the native alert.
   };
 
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false);
-    setTagToDelete(null);
-    // Tag modal remains open
+  const performDeleteTag = (tag: any) => {
+    deleteTag(tag.id);
+    // If the deleted tag was selected, reset selection to the next available tag.
+    if (selectedTag === tag.id) {
+      const remainingTags = availableTags.filter((tg) => tg.id !== tag.id);
+      const fallbackId = remainingTags.length > 0 ? remainingTags[0].id : null;
+      setSelectedTag(fallbackId);
+      setLastSelectedTagId(fallbackId);
+      WidgetService.syncSelectedTagId(fallbackId);
+    }
   };
 
   const handleShareTag = (tag: any) => {
@@ -2524,361 +2454,143 @@ export default function FocusScreen() {
           )}
         </View>
 
-        {/* Tag Selection Modal */}
-        <Modal
-          visible={showTagModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => {
-            if (!showEditTagModal && !showDeleteModal && !showShareModal && !showNewTagModal)
-              setShowTagModal(false);
-          }}>
-          <View className="flex-1 items-center justify-center bg-black/50 px-4">
-            <Pressable
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              onPress={() => {
-                if (!showEditTagModal && !showDeleteModal && !showShareModal && !showNewTagModal)
+        {/* Tag picker — slide-up sheet (grab handle + drag-to-dismiss). Share
+            overlay + coach mark ride the sheet's overlay slot so they cover the
+            full screen without a second native modal. */}
+        <BottomSheet
+          isVisible={showTagModal}
+          onClose={() => setShowTagModal(false)}
+          scrollable
+          height={Math.max(
+            360,
+            Math.min(screenHeight * 0.85, 240 + orderedTags.length * ROW_HEIGHT)
+          )}
+          footer={
+            <View className="flex-row gap-3 border-t border-light-border px-6 pb-2 pt-3 dark:border-gray-700">
+              <Pressable
+                onPress={() => {
                   setShowTagModal(false);
-              }}
-            />
-            <View className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
-              {/* Modal Header */}
-              <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
-                <Typography variant="headline-20" color="primary">
-                  {t('home.selectFocus')}
+                  setShowJoinModal(true);
+                }}
+                className="flex-1 items-center rounded-2xl border border-blue-600 py-4 active:opacity-80">
+                <Typography
+                  variant="subtitle-16"
+                  className="font-semibold"
+                  style={{ color: '#3B82F6' }}>
+                  {t('home.joinTag')}
                 </Typography>
-                <Pressable
-                  onPress={() => setShowTagModal(false)}
-                  className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700"
-                  hitSlop={8}>
-                  <Ionicons
-                    name="close"
-                    size={20}
-                    color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
-                  />
-                </Pressable>
-              </View>
-
-              {/* Tags List */}
-              <ScrollView className="p-4" style={{ maxHeight: 400 }} scrollEnabled={!isDragging}>
-                {orderedTags.length === 0 && (
-                  <View className="items-center px-2 py-6">
-                    <Typography
-                      variant="body-14"
-                      color="secondary"
-                      className="text-center leading-5">
-                      {t('home.emptyTagsHint')}
-                    </Typography>
-                  </View>
-                )}
-                {orderedTags.map((tag, index) => (
-                  <View
-                    key={tag.id}
-                    ref={index === 0 ? firstTagRef : undefined}
-                    collapsable={false}>
-                    <DraggableTagRow
-                      tag={tag}
-                      index={index}
-                      selectedTag={selectedTag}
-                      lastDuration={lastDurationByTagId[tag.id] ?? 15}
-                      todoCount={openTodoCountByTagId[tag.id] ?? 0}
-                      isDragging={isDragging}
-                      dragOriginalIndex={dragOriginalIdx}
-                      dragTargetIndex={dragTargetIdx}
-                      isChallenge={'isChallenge' in tag && tag.isChallenge === true}
-                      onSelect={handleTagSelect}
-                      onEdit={handleEditTag}
-                      onDelete={handleDeleteTag}
-                      onUnlink={handleUnlinkTag}
-                      onShare={handleShareTag}
-                      onSwipeOpen={handleSwipeOpen}
-                      onDragStart={handleDragStart}
-                      onDragMove={handleDragMove}
-                      onDragEnd={handleDragEnd}
-                    />
-                  </View>
-                ))}
-              </ScrollView>
-
-              {/* New Tag & Join Tag Buttons */}
-              <View className="border-t border-light-border p-4 dark:border-gray-700">
-                <View className="flex-row gap-3">
-                  <Pressable
-                    onPress={() => {
-                      setShowTagModal(false);
-                      setShowJoinModal(true);
-                    }}
-                    className="flex-1 items-center rounded-2xl border border-blue-600 py-4 active:opacity-80">
-                    <Typography
-                      variant="subtitle-16"
-                      className="font-semibold"
-                      style={{ color: '#3B82F6' }}>
-                      {t('home.joinTag')}
-                    </Typography>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      if (!canCreateTag) {
-                        setShowTagModal(false);
-                        setShowUpgradePrompt(true);
-                        return;
-                      }
-                      setShowNewTagModal(true);
-                    }}
-                    className="flex-1 items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
-                    <Typography variant="subtitle-16" color="white" className="font-semibold">
-                      {t('home.newTag')}
-                    </Typography>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Tag Swipe Coach Mark */}
-          <CoachMark
-            targetRef={firstTagRef as React.RefObject<View>}
-            title={t('home.coachTitle')}
-            message={t('home.coachMessage')}
-            visible={showTagSwipeCoachMark && !preferences.hasSeenTagSwipeHint}
-            onDismiss={() => {
-              setShowTagSwipeCoachMark(false);
-              updatePreferences({ hasSeenTagSwipeHint: true });
-            }}
-          />
-
-          {/* Edit Tag Overlay - covers entire screen including tag picker */}
-          {showEditTagModal && (
-            <View className="absolute inset-0 items-center justify-center bg-black/50 p-4">
-              <View className="w-full max-w-xs overflow-hidden rounded-2xl bg-light-bg dark:bg-dark-bg">
-                {/* Edit Header */}
-                <View className="border-b border-light-border p-4 dark:border-gray-700">
-                  <Typography variant="headline-18" color="primary">
-                    {t('home.editTag')}
-                  </Typography>
-                </View>
-
-                {/* Edit Form */}
-                <View className="p-4">
-                  {/* Emoji + Name row */}
-                  <View className="mb-4 flex-row items-center" style={{ gap: 12 }}>
-                    <Pressable
-                      onPress={handleEditTagEmojiPress}
-                      className="h-12 w-12 items-center justify-center rounded-xl border border-gray-500 bg-gray-700 active:opacity-80">
-                      <Text className="text-2xl">{editTagEmoji || '🏷️'}</Text>
-                    </Pressable>
-                    <TextInput
-                      value={editTagName}
-                      onChangeText={setEditTagName}
-                      placeholder={t('home.tagNamePlaceholder')}
-                      placeholderTextColor="#666"
-                      className="flex-1"
-                      style={{
-                        backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
-                        borderRadius: 12,
-                        padding: 14,
-                        fontSize: 16,
-                        color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
-                        borderWidth: 1,
-                        borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
-                      }}
-                    />
-                  </View>
-
-                  {/* Color Selection */}
-                  <View>
-                    <Typography variant="body-14" color="primary" className="mb-3">
-                      {t('home.color')}
-                    </Typography>
-                    <Pressable
-                      onPress={handleEditTagColorPress}
-                      className="flex-row items-center justify-between rounded-xl border border-gray-500 bg-gray-700 px-4 py-3 active:opacity-80">
-                      <View
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 14,
-                          backgroundColor: editTagColor,
-                        }}
-                      />
-                      <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-                    </Pressable>
-                  </View>
-
-                  {/* Activity type (optional) — improves focus-rating accuracy */}
-                  <View className="mt-4">
-                    <Typography variant="body-14" color="primary" className="mb-1">
-                      {t('home.activityType')}
-                    </Typography>
-                    <Typography variant="body-12" color="secondary" className="mb-3">
-                      {t('home.activityTypeHint')}
-                    </Typography>
-                    <ActivityTypePicker
-                      value={editTagActivityType}
-                      onChange={(v) => {
-                        editTagActivityTouched.current = true;
-                        setEditTagActivityType(v);
-                      }}
-                    />
-                    {editTagActivityType && !editTagActivityTouched.current && (
-                      <Typography variant="body-12" color="secondary" className="mt-2">
-                        {t('home.suggestedFromName')}
-                      </Typography>
-                    )}
-                  </View>
-                </View>
-
-                {/* Action buttons */}
-                <View
-                  className="flex-row border-t border-light-border p-3 dark:border-gray-700"
-                  style={{ gap: 8 }}>
-                  <Pressable
-                    onPress={() => {
-                      setShowEditTagModal(false);
-                      setEditingTag(null);
-                      setShowEditEmojiGrid(false);
-                    }}
-                    className="flex-1 items-center rounded-xl bg-gray-600 py-3 active:opacity-80">
-                    <Typography variant="body-14" color="white">
-                      {t('common.cancel')}
-                    </Typography>
-                  </Pressable>
-                  <Pressable
-                    onPress={handleSaveEditTag}
-                    disabled={!editTagName.trim()}
-                    className={`flex-1 items-center rounded-xl py-3 ${editTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}>
-                    <Typography variant="body-14" color="white" className="font-semibold">
-                      {t('common.save')}
-                    </Typography>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Edit Tag — Emoji Picker Overlay (on top of the Edit Tag overlay) */}
-          {showEditTagModal && showEditEmojiGrid && (
-            <EmojiPickerOverlay
-              title={t('home.chooseEmojiTag')}
-              onClose={() => setShowEditEmojiGrid(false)}
-              onEmojiSelect={(emoji) => {
-                setEditTagEmoji(emoji);
-                setShowEditEmojiGrid(false);
-              }}
-            />
-          )}
-
-          {/* Edit Tag — Color Picker Overlay (on top of the Edit Tag overlay) */}
-          {showEditTagModal && showEditColorPicker && (
-            <ColorPickerOverlay
-              title={t('home.chooseColor')}
-              selectedColor={editTagColor}
-              onSelectColor={setEditTagColor}
-              onClose={() => setShowEditColorPicker(false)}
-            />
-          )}
-
-          {/* Delete Confirmation Popup - covers entire screen including tag picker */}
-          {showDeleteModal && (
-            <View className="absolute inset-0 items-center justify-center bg-black/50 p-4">
-              <Pressable className="w-full max-w-xs rounded-2xl bg-light-bg dark:bg-dark-bg">
-                {tagToDelete && tagDeletionBlockReason(tagToDelete) ? (
-                  <>
-                    {/* Cannot Delete Header */}
-                    <View className="border-b border-light-border p-4 dark:border-gray-700">
-                      <Typography variant="headline-18" color="primary" className="text-center">
-                        {t('home.cannotDeleteTag')}
-                      </Typography>
-                    </View>
-
-                    {/* Explanation */}
-                    <View className="p-4">
-                      <Typography variant="body-14" color="primary" className="leading-5">
-                        {tagDeletionBlockReason(tagToDelete)}
-                      </Typography>
-                    </View>
-
-                    {/* OK button */}
-                    <View className="border-t border-light-border p-3 dark:border-gray-700">
-                      <Pressable
-                        onPress={handleCancelDelete}
-                        className="w-full items-center rounded-xl bg-gray-600 py-3 active:opacity-80">
-                        <Typography variant="body-14" color="white">
-                          {t('common.ok')}
-                        </Typography>
-                      </Pressable>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    {/* Delete Popup Header */}
-                    <View className="border-b border-light-border p-4 dark:border-gray-700">
-                      <Typography variant="headline-18" color="primary" className="text-center">
-                        {t('home.deleteTag')}
-                      </Typography>
-                    </View>
-
-                    {/* Warning content */}
-                    <View className="p-4">
-                      <Typography variant="body-14" color="primary" className="leading-5">
-                        {t('home.deleteConfirm', {
-                          name: tagToDelete?.name
-                            ? `"${tagToDelete.name}"`
-                            : t('home.deleteThisTag'),
-                        })}
-                      </Typography>
-                    </View>
-
-                    {/* Action buttons */}
-                    <View
-                      className="flex-row border-t border-light-border p-3 dark:border-gray-700"
-                      style={{ gap: 8 }}>
-                      <Pressable
-                        onPress={handleCancelDelete}
-                        className="flex-1 items-center rounded-xl bg-gray-600 py-3 active:opacity-80">
-                        <Typography variant="body-14" color="white">
-                          {t('common.cancel')}
-                        </Typography>
-                      </Pressable>
-                      <Pressable
-                        onPress={handleConfirmDelete}
-                        className="flex-1 items-center rounded-xl bg-red-600 py-3 active:opacity-80">
-                        <Typography variant="body-14" color="white" className="font-semibold">
-                          {t('common.delete')}
-                        </Typography>
-                      </Pressable>
-                    </View>
-                  </>
-                )}
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (!canCreateTag) {
+                    setShowTagModal(false);
+                    setShowUpgradePrompt(true);
+                    return;
+                  }
+                  setShowNewTagModal(true);
+                }}
+                className="flex-1 items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
+                <Typography variant="subtitle-16" color="white" className="font-semibold">
+                  {t('home.newTag')}
+                </Typography>
               </Pressable>
             </View>
-          )}
+          }
+          overlay={
+            <>
+              {/* Tag Swipe Coach Mark */}
+              <CoachMark
+                targetRef={firstTagRef as React.RefObject<View>}
+                title={t('home.coachTitle')}
+                message={t('home.coachMessage')}
+                visible={showTagSwipeCoachMark && !preferences.hasSeenTagSwipeHint}
+                onDismiss={() => {
+                  setShowTagSwipeCoachMark(false);
+                  updatePreferences({ hasSeenTagSwipeHint: true });
+                }}
+              />
 
-          {/* Share Tag Overlay - covers entire screen including tag picker */}
-          {showShareModal && sharingTag && (
-            <ShareTagOverlay
-              tag={sharingTag}
-              onClose={() => {
-                setShowShareModal(false);
-                setSharingTag(null);
-              }}
-              onShareTag={shareTag}
-              onStopSharing={stopSharingTag}
-            />
-          )}
+              {/* Share Tag Overlay */}
+              {showShareModal && sharingTag && (
+                <ShareTagOverlay
+                  tag={sharingTag}
+                  onClose={() => {
+                    setShowShareModal(false);
+                    setSharingTag(null);
+                  }}
+                  onShareTag={shareTag}
+                  onStopSharing={stopSharingTag}
+                />
+              )}
 
-          {/* New Tag Creation — shared modal (emoji + name + color + activity type) */}
-          <CreateTagModal
-            visible={showNewTagModal}
-            onClose={() => setShowNewTagModal(false)}
-            onUpgradeNeeded={() => setShowUpgradePrompt(true)}
-            onCreated={(newTag) => {
-              setSelectedTag(newTag.id);
-              setLastSelectedTagId(newTag.id);
-              WidgetService.syncSelectedTagId(newTag.id);
-            }}
-          />
-        </Modal>
+              {/* Edit Tag — stacked sheet. Nested inside the picker's Modal (not
+                  a sibling) so iOS actually presents it on top; sibling modals
+                  over an already-presented modal fail silently. */}
+              <EditTagSheet
+                visible={showEditTagModal}
+                tagId={editingTagId}
+                onClose={() => {
+                  setShowEditTagModal(false);
+                  setEditingTagId(null);
+                }}
+              />
+
+              {/* New Tag Creation — shared modal, also nested on the picker. */}
+              <CreateTagModal
+                visible={showNewTagModal}
+                onClose={() => setShowNewTagModal(false)}
+                onUpgradeNeeded={() => setShowUpgradePrompt(true)}
+                onCreated={(newTag) => {
+                  setSelectedTag(newTag.id);
+                  setLastSelectedTagId(newTag.id);
+                  WidgetService.syncSelectedTagId(newTag.id);
+                }}
+              />
+            </>
+          }>
+          {/* Header */}
+          <View className="mb-4">
+            <Typography variant="headline-20" color="primary">
+              {t('home.selectFocus')}
+            </Typography>
+          </View>
+
+          {/* Tags list */}
+          {orderedTags.length === 0 && (
+            <View className="items-center px-2 py-6">
+              <Typography variant="body-14" color="secondary" className="text-center leading-5">
+                {t('home.emptyTagsHint')}
+              </Typography>
+            </View>
+          )}
+          {orderedTags.map((tag, index) => (
+            <View
+              key={tag.id}
+              ref={index === 0 ? firstTagRef : undefined}
+              collapsable={false}>
+              <DraggableTagRow
+                tag={tag}
+                index={index}
+                selectedTag={selectedTag}
+                lastDuration={lastDurationByTagId[tag.id] ?? 15}
+                todoCount={openTodoCountByTagId[tag.id] ?? 0}
+                isDragging={isDragging}
+                dragOriginalIndex={dragOriginalIdx}
+                dragTargetIndex={dragTargetIdx}
+                isChallenge={'isChallenge' in tag && tag.isChallenge === true}
+                onSelect={handleTagSelect}
+                onEdit={handleEditTag}
+                onDelete={handleDeleteTag}
+                onUnlink={handleUnlinkTag}
+                onShare={handleShareTag}
+                onSwipeOpen={handleSwipeOpen}
+                onDragStart={handleDragStart}
+                onDragMove={handleDragMove}
+                onDragEnd={handleDragEnd}
+              />
+            </View>
+          ))}
+        </BottomSheet>
 
         {/* Blocklist Tip Modal */}
         <Modal
