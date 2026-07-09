@@ -1,9 +1,10 @@
 import React, { FC, useState } from 'react';
-import { View, Modal, Pressable, ScrollView } from 'react-native';
+import { Pressable, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
 import { Typography } from '../ui/Typography';
+import { BottomSheet } from '../ui/BottomSheet';
 import { useUnifiedStore } from '../../store/unified-store';
 import { useAppStore } from '../../store';
 import { setLanguage } from '../../i18n';
@@ -28,9 +29,10 @@ interface LanguageSelectorSheetProps {
   onClose: () => void;
 }
 
-/** Bottom-anchored modal listing every shipped language. */
+/** Slide-up bottom sheet (grab handle, drag-to-dismiss) listing every shipped language. */
 export const LanguageSelectorSheet: FC<LanguageSelectorSheetProps> = ({ visible, onClose }) => {
   const { t } = useTranslation();
+  const { height: screenHeight } = useWindowDimensions();
   const current = useUnifiedStore((state) => state.preferences.language) ?? DEFAULT_LANGUAGE;
 
   const handleSelect = (code: string) => {
@@ -39,35 +41,29 @@ export const LanguageSelectorSheet: FC<LanguageSelectorSheetProps> = ({ visible,
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      <Pressable className="flex-1 bg-black/60 justify-center items-center px-6" onPress={onClose}>
-        <Pressable className="w-full max-w-sm" onPress={(e) => e.stopPropagation()}>
-          <View className="bg-light-bg dark:bg-dark-bg rounded-3xl p-6 border border-light-border dark:border-dark-border">
-            <Typography variant="headline-20" color="primary" className="mb-5 text-center font-semibold">
-              {t('settings.language.title')}
-            </Typography>
+    <BottomSheet isVisible={visible} onClose={onClose} height={screenHeight * 0.6} scrollable>
+      <Typography
+        variant="headline-20"
+        color="primary"
+        className="mb-5 text-center font-semibold">
+        {t('settings.language.title')}
+      </Typography>
 
-            <ScrollView className="max-h-96" showsVerticalScrollIndicator={false}>
-              {SUPPORTED_LANGUAGES.map((lang) => {
-                const selected = lang.code === current;
-                return (
-                  <Pressable
-                    key={lang.code}
-                    onPress={() => handleSelect(lang.code)}
-                    className="flex-row items-center justify-between py-3.5 px-2 active:opacity-70"
-                  >
-                    <Typography variant="subtitle-16" color={selected ? 'primary' : 'secondary'}>
-                      {lang.nativeName}
-                    </Typography>
-                    {selected && <Ionicons name="checkmark" size={22} color="#51BC6F" />}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
+      {SUPPORTED_LANGUAGES.map((lang) => {
+        const selected = lang.code === current;
+        return (
+          <Pressable
+            key={lang.code}
+            onPress={() => handleSelect(lang.code)}
+            className="flex-row items-center justify-between py-3.5 px-2 active:opacity-70">
+            <Typography variant="subtitle-16" color={selected ? 'primary' : 'secondary'}>
+              {lang.nativeName}
+            </Typography>
+            {selected && <Ionicons name="checkmark" size={22} color="#51BC6F" />}
+          </Pressable>
+        );
+      })}
+    </BottomSheet>
   );
 };
 

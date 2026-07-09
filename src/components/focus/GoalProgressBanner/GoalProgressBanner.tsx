@@ -1,5 +1,5 @@
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
-import { View, useColorScheme } from 'react-native';
+import { View, useColorScheme, TextStyle } from 'react-native';
 import LottieView from 'lottie-react-native';
 import Svg, { Defs, LinearGradient as SvgGradient, Stop, Rect, Path } from 'react-native-svg';
 import Animated, {
@@ -12,6 +12,7 @@ import Animated, {
   withRepeat,
   runOnJS,
   Easing,
+  SharedValue,
 } from 'react-native-reanimated';
 import { Typography } from '../../ui/Typography';
 import { FocusSession } from '../../../types/models';
@@ -71,6 +72,47 @@ const formatTime = (minutes: number): string => {
   if (h > 0 && m > 0) return `${h}h ${m}m`;
   if (h > 0) return `${h}h`;
   return `${m}m`;
+};
+
+/**
+ * Odometer-style rolling number. Renders the `from` and `to` values stacked
+ * vertically inside a one-line-tall clipped window; as `progress` runs 0→1 the
+ * old number rolls up and out of view while the new number rolls up into place,
+ * so the streak count "shuffles" from the previous value to the new one.
+ */
+interface RollingNumberProps {
+  from: number;
+  to: number;
+  progress: SharedValue<number>;
+  className?: string;
+  style?: TextStyle;
+}
+
+const RollingNumber: FC<RollingNumberProps> = ({ from, to, progress, className, style }) => {
+  const [lineHeight, setLineHeight] = useState(0);
+  const rollStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -lineHeight * progress.value }],
+  }));
+  return (
+    <View style={{ height: lineHeight || undefined, overflow: lineHeight ? 'hidden' : 'visible' }}>
+      <Animated.View style={rollStyle}>
+        <Typography
+          variant="headline-18"
+          className={className}
+          style={style}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0) setLineHeight(h);
+          }}
+        >
+          {from}
+        </Typography>
+        <Typography variant="headline-18" className={className} style={style}>
+          {to}
+        </Typography>
+      </Animated.View>
+    </View>
+  );
 };
 
 interface GoalProgressBannerProps {
@@ -158,15 +200,14 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
 
   const [visible, setVisible] = useState(true);
   const [celebrate, setCelebrate] = useState(false);
-  // The streak number currently shown — starts at the previous streak and ticks
-  // up to the new value so the user sees today's period get added.
-  const [displayStreak, setDisplayStreak] = useState(0);
   const celebrationRef = useRef<LottieView>(null);
 
   const opacity = useSharedValue(0);
   const fill = useSharedValue(computed?.beforePct ?? 0);
   const streakScale = useSharedValue(0.7);
   const streakOpacity = useSharedValue(0);
+  // Drives the streak number's odometer roll (0 = previous streak, 1 = new).
+  const streakRoll = useSharedValue(0);
   // Gentle pulse driving the shiny tip's glow while the bar fills.
   const shimmer = useSharedValue(0);
 
@@ -248,7 +289,6 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
     if (computed.reachedNow && computed.streak > 0) {
       const finalStreak = computed.streak;
       const hasIncrement = finalStreak > 1;
-      setDisplayStreak(hasIncrement ? finalStreak - 1 : finalStreak);
 
       const appearAt = 1100;
       streakTimers.push(
@@ -269,10 +309,12 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
         );
       });
 
-      // The "+1 day" moment: tick the number up, punch the scale, strong haptic.
+      // The "+1 day" moment: roll the number up, punch the scale, strong haptic.
       streakTimers.push(
         setTimeout(() => {
-          if (hasIncrement) setDisplayStreak(finalStreak);
+          if (hasIncrement) {
+            streakRoll.value = withTiming(1, { duration: 480, easing: Easing.out(Easing.cubic) });
+          }
           streakScale.value = withSequence(
             withSpring(1.28, { damping: 8, stiffness: 200 }),
             withSpring(1, { damping: 12, stiffness: 200 }),
@@ -488,13 +530,23 @@ export const GoalProgressBanner: FC<GoalProgressBannerProps> = ({ session }) => 
             ]}
           >
             <Ionicons name="flame" size={28} color={FLAME} />
-            <Typography
-              variant="headline-18"
-              className="font-poppins-semibold ml-2"
-              style={{ color: ON_BANNER }}
-            >
-              {displayStreak} {periodNoun} streak!
-            </Typography>
+            <View className="flex-row items-center ml-2">
+              <RollingNumber
+                from={computed.streak > 1 ? computed.streak - 1 : computed.streak}
+                to={computed.streak}
+                progress={streakRoll}
+                className="font-poppins-semibold"
+                style={{ color: ON_BANNER }}
+              />
+              <Typography
+                variant="headline-18"
+                className="font-poppins-semibold"
+                style={{ color: ON_BANNER }}
+              >
+                {' '}
+                {periodNoun} streak!
+              </Typography>
+            </View>
           </Animated.View>
         )}
       </View>
