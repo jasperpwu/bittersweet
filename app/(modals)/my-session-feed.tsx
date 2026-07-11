@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 import { useFocus } from '../../src/store';
 import i18n from '../../src/i18n';
 
@@ -52,7 +53,7 @@ export default function MySessionFeedModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color="#6592E9" />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
           {t('gm.feedMySessions')}
@@ -74,7 +75,7 @@ export default function MySessionFeedModal() {
               return (
                 <View
                   key={session.id}
-                  className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mb-3"
+                  className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 mb-3"
                 >
                   {/* Tag + duration */}
                   <View className="flex-row items-center mb-2">

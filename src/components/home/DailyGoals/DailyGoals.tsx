@@ -9,6 +9,7 @@ import Animated, {
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Card } from '../../ui/Card';
 import { Typography } from '../../ui/Typography';
+import { colors } from '../../../config/theme';
 
 interface DailyGoalsProgress {
   completed: number;
@@ -70,8 +71,8 @@ export const DailyGoals: FC<DailyGoalsProps> = ({ progress }) => {
             <Svg width={size} height={size} className="transform -rotate-90">
               <Defs>
                 <LinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%" stopColor="#FFFFFF" />
-                  <Stop offset="100%" stopColor="#FFFFFF" />
+                  <Stop offset="0%" stopColor={colors.white} />
+                  <Stop offset="100%" stopColor={colors.white} />
                 </LinearGradient>
               </Defs>
               
@@ -90,7 +91,7 @@ export const DailyGoals: FC<DailyGoalsProps> = ({ progress }) => {
                 cx={size / 2}
                 cy={size / 2}
                 r={radius}
-                stroke="#FFFFFF"
+                stroke={colors.white}
                 strokeWidth={strokeWidth}
                 fill="transparent"
                 strokeDasharray={circumference}

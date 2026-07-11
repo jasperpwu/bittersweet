@@ -1,5 +1,6 @@
 import React, { FC, useState } from 'react';
 import { View, Alert, Pressable, useColorScheme } from 'react-native';
+import { colors } from '../../../config/theme';
 import { Typography } from '../../ui/Typography';
 import { BadgeCard } from './BadgeCard';
 import { BadgeSummarySheet } from './BadgeSummarySheet';
@@ -60,7 +61,7 @@ export const BadgeCollection: FC<BadgeCollectionProps> = ({ badges, onDeleteBadg
         <Ionicons 
           name={isCollapsed ? "chevron-down" : "chevron-up"} 
           size={16} 
-          color={isDark ? '#CACACA' : '#8B7355'} 
+          color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
         />
       </Pressable>
 

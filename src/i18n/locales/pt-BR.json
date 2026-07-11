@@ -74,6 +74,7 @@
     "skip": "Pular",
     "getStarted": "Vamos lá",
     "cancel": "Cancelar",
+    "close": "Fechar",
     "save": "Salvar",
     "done": "Concluir",
     "continueWithApple": "Entrar com a Apple",
@@ -649,7 +650,13 @@
     "perkUnlimitedGoals": "Metas ilimitadas",
     "perkCloudSync": "Backup e sincronização na nuvem",
     "seePlans": "Ver planos",
-    "maybeLater": "Talvez depois"
+    "maybeLater": "Talvez depois",
+    "perkHealthSync": "Sincronização de treinos do Apple Health",
+    "perkMultiTask": "Modo multitarefa (duas tags por sessão)",
+    "savePercent": "Economize {{percent}}%",
+    "perMonth": "{{price}}/mês",
+    "billedAnnually": "{{price}} cobrado por ano",
+    "continue": "Continuar"
   },
   "groveSettings": {
     "profile": "Perfil",

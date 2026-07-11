@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Pressable, Text, Alert, useColorScheme, ActivityIndicator } from 'react-native';
+import { colors } from '../../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../ui/Typography';
 import { SessionTag } from '../../../types/models';
@@ -104,7 +105,7 @@ function JoinerCard({
         {/* Avatar */}
         <View
           className="w-8 h-8 rounded-full items-center justify-center mr-3"
-          style={{ backgroundColor: joiner.avatar_color || '#6592E9' }}
+          style={{ backgroundColor: joiner.avatar_color || colors.primary }}
         >
           <Text className="text-white text-xs font-bold">
             {joiner.display_name.charAt(0).toUpperCase()}
@@ -144,7 +145,7 @@ function JoinerCard({
             className="mt-3 py-2 items-center rounded-lg active:opacity-60"
             style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
           >
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.danger }}>
               {t('sharedStats.removeMember')}
             </Text>
           </Pressable>
@@ -207,7 +208,7 @@ export function SharedTagStats({ sharingTags, sharedTagStats, onFetchStats, onRe
         <Ionicons
           name={isCollapsed ? 'chevron-down' : 'chevron-up'}
           size={16}
-          color={isDark ? '#CACACA' : '#8B7355'}
+          color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
         />
       </Pressable>
 

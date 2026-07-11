@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../../../config/theme';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../Typography';
 import { WheelColumn } from '../WheelColumn';
@@ -135,7 +136,7 @@ export const TimePicker: FC<TimePickerProps> = ({
           {formatTime(value)}
         </Typography>
 
-        <Ionicons name="time-outline" size={20} color="#6592E9" />
+        <Ionicons name="time-outline" size={20} color={colors.primary} />
       </Pressable>
 
       {error && (
@@ -187,7 +188,7 @@ export const TimePicker: FC<TimePickerProps> = ({
                   </Pressable>
                   <Pressable
                     onPress={handleConfirm}
-                    className="flex-1 bg-[#6592E9] rounded-xl py-3 items-center justify-center active:opacity-80">
+                    className="flex-1 bg-primary rounded-xl py-3 items-center justify-center active:opacity-80">
                     <Typography variant="subtitle-14-semibold" color="white">
                       Confirm
                     </Typography>

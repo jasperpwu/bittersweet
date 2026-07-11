@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import i18n from '../../src/i18n';
 import { FocusingBadge } from '../../src/components/grove/FocusingBadge';
@@ -195,8 +196,8 @@ export default function FriendFeedModal() {
 
   const emptyMessage = isCurrentUser ? t('gm.feedEmptyOwn') : t('gm.feedEmptyFriend');
 
-  const chipBg = colorScheme === 'dark' ? '#242540' : 'rgba(0,0,0,0.06)';
-  const chipActiveBg = '#6592E9';
+  const chipBg = colorScheme === 'dark' ? colors.dark.card : 'rgba(0,0,0,0.06)';
+  const chipActiveBg = colors.primary;
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
@@ -208,7 +209,7 @@ export default function FriendFeedModal() {
             className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
             hitSlop={8}
           >
-            <Ionicons name="arrow-back" size={24} color="#6592E9" />
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </Pressable>
           <Typography variant="headline-18" color="primary" className="ml-2" numberOfLines={1}>
             {headerTitle}
@@ -222,7 +223,7 @@ export default function FriendFeedModal() {
           <Ionicons
             name={showFilters ? 'filter' : 'filter-outline'}
             size={22}
-            color={hasActiveFilters ? '#6592E9' : (colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37')}
+            color={hasActiveFilters ? colors.primary : (colorScheme === 'dark' ? colors.white : colors.light.screenTextPrimary)}
           />
         </Pressable>
       </View>
@@ -251,11 +252,11 @@ export default function FriendFeedModal() {
               <Ionicons
                 name="image-outline"
                 size={14}
-                color={activeFilters.has('has-photo') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666')}
+                color={activeFilters.has('has-photo') ? colors.white : (colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary)}
               />
               <Typography
                 variant="body-12"
-                style={{ color: activeFilters.has('has-photo') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666') }}
+                style={{ color: activeFilters.has('has-photo') ? colors.white : (colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary) }}
               >
                 {t('gm.feedPhoto')}
               </Typography>
@@ -277,11 +278,11 @@ export default function FriendFeedModal() {
               <Ionicons
                 name="document-text-outline"
                 size={14}
-                color={activeFilters.has('has-notes') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666')}
+                color={activeFilters.has('has-notes') ? colors.white : (colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary)}
               />
               <Typography
                 variant="body-12"
-                style={{ color: activeFilters.has('has-notes') ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666') }}
+                style={{ color: activeFilters.has('has-notes') ? colors.white : (colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary) }}
               >
                 {t('gm.feedNotes')}
               </Typography>
@@ -302,12 +303,12 @@ export default function FriendFeedModal() {
                   gap: 4,
                 }}
               >
-                <Typography variant="body-12" style={{ color: selectedTagId === tag.id ? '#FFFFFF' : undefined }}>
+                <Typography variant="body-12" style={{ color: selectedTagId === tag.id ? colors.white : undefined }}>
                   {tag.icon}
                 </Typography>
                 <Typography
                   variant="body-12"
-                  style={{ color: selectedTagId === tag.id ? '#FFFFFF' : (colorScheme === 'dark' ? '#AAAAAA' : '#666666') }}
+                  style={{ color: selectedTagId === tag.id ? colors.white : (colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary) }}
                 >
                   {tag.name}
                 </Typography>
@@ -327,8 +328,8 @@ export default function FriendFeedModal() {
                   gap: 4,
                 }}
               >
-                <Ionicons name="close-circle-outline" size={14} color="#FF3B30" />
-                <Typography variant="body-12" style={{ color: '#FF3B30' }}>
+                <Ionicons name="close-circle-outline" size={14} color={colors.danger} />
+                <Typography variant="body-12" style={{ color: colors.danger }}>
                   {t('gm.feedClear')}
                 </Typography>
               </Pressable>
@@ -340,7 +341,7 @@ export default function FriendFeedModal() {
       {/* Friend profile header (only for friend view) */}
       {friendProfile && (
         <View className="px-5 mb-4">
-          <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4">
+          <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4">
             <View className="flex-row items-center">
               <View style={{ position: 'relative', marginRight: 12 }}>
                 {friendProfile.avatar_url ? (
@@ -363,8 +364,8 @@ export default function FriendFeedModal() {
                     {friendProfile.display_name}
                   </Typography>
                   {friendProfile.is_focusing && (
-                    <View className="ml-2 bg-[#34D399]/20 rounded-full px-2 py-0.5">
-                      <Typography variant="body-12" style={{ color: '#34D399' }}>
+                    <View className="ml-2 bg-success/20 rounded-full px-2 py-0.5">
+                      <Typography variant="body-12" style={{ color: colors.success }}>
                         {t('gm.feedFocusingNow')}
                       </Typography>
                     </View>
@@ -381,7 +382,7 @@ export default function FriendFeedModal() {
 
       {isLoading ? (
         <View className="py-12 items-center">
-          <ActivityIndicator size="large" color="#6592E9" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
@@ -396,7 +397,7 @@ export default function FriendFeedModal() {
               {filteredFeed.map((item: FeedItem) => (
                 <View
                   key={item.session.id}
-                  className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mb-3"
+                  className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 mb-3"
                 >
                   {/* Tag + duration */}
                   <View className="flex-row items-center mb-2">

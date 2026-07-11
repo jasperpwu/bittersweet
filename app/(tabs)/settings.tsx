@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, SafeAreaView, Pressable, useColorScheme, Image, ActivityIndicator, Linking } from 'react-native';
+import {
+  View,
+  ScrollView,
+  SafeAreaView,
+  Pressable,
+  useColorScheme,
+  Image,
+  ActivityIndicator,
+  Linking,
+} from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
+import { Button } from '../../src/components/ui/Button';
+import { colors } from '../../src/config/theme';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
 import { AccountActions } from '../../src/components/auth/AccountSection';
@@ -25,19 +36,24 @@ interface CategoryCardProps {
   premiumBadge?: boolean;
 }
 
-const CategoryCard: React.FC<CategoryCardProps> = ({ icon, iconColor, title, subtitle, onPress, premiumBadge = false }) => {
+const CategoryCard: React.FC<CategoryCardProps> = ({
+  icon,
+  iconColor,
+  title,
+  subtitle,
+  onPress,
+  premiumBadge = false,
+}) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   return (
     <Pressable
       onPress={onPress}
-      className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-4 flex-row items-center active:opacity-80"
-    >
+      className="flex-row items-center rounded-2xl bg-light-border/30 px-4 py-4 active:opacity-80 dark:bg-dark-card">
       <View
-        className="w-10 h-10 rounded-xl items-center justify-center mr-3"
-        style={{ backgroundColor: iconColor + '20' }}
-      >
+        className="mr-3 h-10 w-10 items-center justify-center rounded-xl"
+        style={{ backgroundColor: iconColor + '20' }}>
         <Ionicons name={icon} size={22} color={iconColor} />
       </View>
       <View className="flex-1">
@@ -46,9 +62,9 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ icon, iconColor, title, sub
             {title}
           </Typography>
           {premiumBadge && (
-            <View className="ml-2 px-2 py-0.5 rounded-full bg-primary/15 flex-row items-center">
-              <Ionicons name="diamond" size={9} color="#8B7FFF" />
-              <Typography variant="tiny-10" className="ml-1 text-primary font-poppins-semibold">
+            <View className="ml-2 flex-row items-center rounded-full bg-primary-soft px-2 py-0.5">
+              <Ionicons name="diamond" size={9} color={colors.primary} />
+              <Typography variant="tiny-10" className="ml-1 font-poppins-semibold text-primary">
                 PREMIUM
               </Typography>
             </View>
@@ -58,7 +74,11 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ icon, iconColor, title, sub
           {subtitle}
         </Typography>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+      <Ionicons
+        name="chevron-forward"
+        size={16}
+        color={isDark ? colors.dark.border : colors.light.screenBorder}
+      />
     </Pressable>
   );
 };
@@ -72,7 +92,12 @@ export default function SettingsScreen() {
   const [showHealthUpgrade, setShowHealthUpgrade] = useState(false);
   const { isPremium } = useSubscriptionGate();
 
-  const { user, isAuthenticated, isLoading: authLoading, error: authError } = useAppStore((state) => state.auth);
+  const {
+    user,
+    isAuthenticated,
+    isLoading: authLoading,
+    error: authError,
+  } = useAppStore((state) => state.auth);
   const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
   const profile = useAppStore((s) => s.grove.profile);
   const profileLoaded = useAppStore((s) => s.grove.profileLoaded);
@@ -97,230 +122,215 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
-    <SwipeableTabWrapper currentTab="settings">
-      {/* Header */}
-      <View className="h-[56px] px-5 flex-row items-center">
-        <Typography variant="headline-24" color="primary">
-          {t('settings.tab.header')}
-        </Typography>
-      </View>
-
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Motivational Quote */}
-        <View className="px-5 pt-2 pb-2">
-          <Typography variant="headline-20" color="primary">
-            {t('settings.tab.quoteTitle')}
-          </Typography>
-          <Typography variant="body-14" color="secondary" className="mt-1">
-            {t('settings.tab.quoteSubtitle')}
+      <SwipeableTabWrapper currentTab="settings">
+        {/* Header */}
+        <View className="h-[56px] flex-row items-center px-5">
+          <Typography variant="headline-24" color="primary">
+            {t('settings.tab.header')}
           </Typography>
         </View>
 
-        {/* Sign In Section (unauthenticated) */}
-        {!isAuthenticated && (
-          <View className="px-5 mt-4">
-            <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-4">
-              <Typography variant="body-14" color="secondary" className="mb-4">
-                {t('settings.tab.signInPrompt')}
-              </Typography>
-              {authLoading ? (
-                <View className="items-center py-3">
-                  <ActivityIndicator size="small" color="#8B7FFF" />
-                </View>
-              ) : (
-                <AppleAuthentication.AppleAuthenticationButton
-                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-                  cornerRadius={12}
-                  style={{ width: '100%', height: 48 }}
-                  onPress={signInWithApple}
-                />
-              )}
-              {authError && (
-                <Typography variant="body-12" className="text-[#FF6B6B] mt-2">
-                  {authError}
-                </Typography>
-              )}
-              <View className="flex-row justify-center items-center mt-3">
-                <Pressable onPress={() => Linking.openURL('https://example.com/terms')}>
-                  <Typography variant="body-12" color="secondary" className="underline">
-                    {t('settings.tab.terms')}
-                  </Typography>
-                </Pressable>
-                <Typography variant="body-12" color="secondary" className="mx-2">
-                  ·
-                </Typography>
-                <Pressable onPress={() => Linking.openURL('https://example.com/privacy')}>
-                  <Typography variant="body-12" color="secondary" className="underline">
-                    {t('settings.tab.privacy')}
-                  </Typography>
-                </Pressable>
-              </View>
-            </View>
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          {/* Motivational line — folded under the Settings header as a quiet
+            subtitle, not a competing second title. */}
+          <View className="px-5 pb-2 pt-1">
+            <Typography variant="body-14" color="secondary">
+              {t('settings.tab.quoteTitle')} {t('settings.tab.quoteSubtitle')}
+            </Typography>
           </View>
-        )}
 
-        {/* Profile Hero Section */}
-        {isAuthenticated && user && (
-          <View className="px-5 mt-4">
-            <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-4">
-              <View className="flex-row items-center">
-                {profile?.avatar_url ? (
-                  <Image
-                    source={{ uri: profile.avatar_url }}
-                    style={{ width: 56, height: 56, borderRadius: 28, marginRight: 14 }}
-                  />
-                ) : profile ? (
-                  <View className="mr-3.5">
-                    <DefaultAvatar
-                      displayName={profile.display_name}
-                      color={profile.avatar_color}
-                      size={56}
-                    />
+          {/* Sign In Section (unauthenticated) */}
+          {!isAuthenticated && (
+            <View className="mt-4 px-5">
+              <View className="rounded-2xl bg-light-border/30 px-4 py-4 dark:bg-dark-card">
+                <Typography variant="body-14" color="secondary" className="mb-4">
+                  {t('settings.tab.signInPrompt')}
+                </Typography>
+                {authLoading ? (
+                  <View className="items-center py-3">
+                    <ActivityIndicator size="small" color={colors.primary} />
                   </View>
                 ) : (
-                  <View className="w-14 h-14 rounded-full bg-primary/20 items-center justify-center mr-3.5">
-                    <Ionicons name="person" size={28} color="#8B7FFF" />
-                  </View>
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                    cornerRadius={12}
+                    style={{ width: '100%', height: 48 }}
+                    onPress={signInWithApple}
+                  />
                 )}
-                <View className="flex-1">
-                  <Typography variant="subtitle-16" color="primary" className="font-semibold">
-                    {profile?.display_name || user.fullName || t('settings.tab.appleUser')}
+                {authError && (
+                  <Typography variant="body-12" color="error" className="mt-2">
+                    {authError}
                   </Typography>
-                  {profile?.handle && (
-                    <Typography variant="body-12" color="secondary">
-                      @{profile.handle}
+                )}
+                <View className="mt-3 flex-row items-center justify-center">
+                  <Pressable onPress={() => Linking.openURL('https://example.com/terms')}>
+                    <Typography variant="body-12" color="secondary" className="underline">
+                      {t('settings.tab.terms')}
                     </Typography>
-                  )}
-                  {userSinceLabel && (
-                    <Typography variant="body-12" color="secondary" className="mt-0.5">
-                      {userSinceLabel}
+                  </Pressable>
+                  <Typography variant="body-12" color="secondary" className="mx-2">
+                    ·
+                  </Typography>
+                  <Pressable onPress={() => Linking.openURL('https://example.com/privacy')}>
+                    <Typography variant="body-12" color="secondary" className="underline">
+                      {t('settings.tab.privacy')}
                     </Typography>
-                  )}
+                  </Pressable>
                 </View>
               </View>
-
-              {/* Edit Profile button */}
-              {profile && (
-                <Pressable
-                  onPress={() => router.push('/(modals)/grove-edit')}
-                  className="mt-3 border border-light-border dark:border-dark-border rounded-xl py-2 items-center active:opacity-70"
-                >
-                  <Typography variant="subtitle-14-medium" color="primary">
-                    {t('settings.tab.editProfile')}
-                  </Typography>
-                </Pressable>
-              )}
-              {!profile && profileLoaded && (
-                <Pressable
-                  onPress={() => router.push('/(modals)/grove-setup')}
-                  className="mt-3 bg-primary/10 rounded-xl py-2.5 items-center active:opacity-70"
-                >
-                  <Typography variant="subtitle-14-medium" className="text-primary">
-                    {t('settings.tab.setupGrove')}
-                  </Typography>
-                </Pressable>
-              )}
             </View>
+          )}
+
+          {/* Profile Hero Section */}
+          {isAuthenticated && user && (
+            <View className="mt-4 px-5">
+              <View className="rounded-2xl bg-light-border/30 px-4 py-4 dark:bg-dark-card">
+                <View className="flex-row items-center">
+                  {profile?.avatar_url ? (
+                    <Image
+                      source={{ uri: profile.avatar_url }}
+                      style={{ width: 56, height: 56, borderRadius: 28, marginRight: 14 }}
+                    />
+                  ) : profile ? (
+                    <View className="mr-3.5">
+                      <DefaultAvatar
+                        displayName={profile.display_name}
+                        color={profile.avatar_color}
+                        size={56}
+                      />
+                    </View>
+                  ) : (
+                    <View className="mr-3.5 h-14 w-14 items-center justify-center rounded-full bg-primary-soft-20">
+                      <Ionicons name="person" size={28} color={colors.primary} />
+                    </View>
+                  )}
+                  <View className="flex-1">
+                    <Typography variant="subtitle-16" color="primary" className="font-semibold">
+                      {profile?.display_name || user.fullName || t('settings.tab.appleUser')}
+                    </Typography>
+                    {profile?.handle && (
+                      <Typography variant="body-12" color="secondary">
+                        @{profile.handle}
+                      </Typography>
+                    )}
+                    {userSinceLabel && (
+                      <Typography variant="body-12" color="secondary" className="mt-0.5">
+                        {userSinceLabel}
+                      </Typography>
+                    )}
+                  </View>
+                </View>
+
+                {/* Edit Profile button */}
+                {profile && (
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    fullWidth
+                    textVariant="subtitle-14-medium"
+                    className="mt-3 py-2"
+                    onPress={() => router.push('/(modals)/grove-edit')}>
+                    {t('settings.tab.editProfile')}
+                  </Button>
+                )}
+                {!profile && profileLoaded && (
+                  <Button
+                    variant="soft"
+                    size="small"
+                    fullWidth
+                    textVariant="subtitle-14-medium"
+                    className="mt-3 bg-primary-soft-10 py-2.5"
+                    onPress={() => router.push('/(modals)/grove-setup')}>
+                    {t('settings.tab.setupGrove')}
+                  </Button>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Category Cards */}
+          <View className="mt-6 px-5" style={{ gap: 12 }}>
+            <CategoryCard
+              icon="options-outline"
+              iconColor="#6592E9"
+              title={t('settings.tab.preferences')}
+              subtitle={t('settings.tab.preferencesSub')}
+              onPress={() => {
+                triggerHaptic('light');
+                router.push('/settings/preferences' as any);
+              }}
+            />
+
+            <CategoryCard
+              icon="diamond-outline"
+              iconColor="#9C27B0"
+              title={t('settings.tab.subscription')}
+              subtitle={t('settings.tab.subscriptionSub')}
+              onPress={() => {
+                triggerHaptic('light');
+                router.push('/settings/subscription' as any);
+              }}
+            />
+
+            <CategoryCard
+              icon="people-outline"
+              iconColor="#51BC6F"
+              title={t('settings.tab.grove')}
+              subtitle={t('settings.tab.groveSub')}
+              onPress={() => {
+                triggerHaptic('light');
+                router.push('/settings/grove-settings' as any);
+              }}
+            />
+
+            <CategoryCard
+              icon="heart-outline"
+              iconColor="#FF6B6B"
+              title={t('settings.tab.health')}
+              subtitle={t('settings.tab.healthSub')}
+              premiumBadge
+              onPress={() => {
+                triggerHaptic('light');
+                // Premium gate: non-subscribers see the upgrade prompt instead of the screen.
+                if (!isPremium) {
+                  setShowHealthUpgrade(true);
+                  return;
+                }
+                router.push('/settings/health' as any);
+              }}
+            />
+
+            <CategoryCard
+              icon="help-circle-outline"
+              iconColor="#F5A623"
+              title={t('settings.tab.support')}
+              subtitle={t('settings.tab.supportSub')}
+              onPress={() => {
+                triggerHaptic('light');
+                router.push('/settings/support' as any);
+              }}
+            />
           </View>
-        )}
 
-        {/* Category Cards */}
-        <View className="px-5 mt-6" style={{ gap: 12 }}>
-          <CategoryCard
-            icon="options-outline"
-            iconColor="#6592E9"
-            title={t('settings.tab.preferences')}
-            subtitle={t('settings.tab.preferencesSub')}
-            onPress={() => {
-              triggerHaptic('light');
-              router.push('/settings/preferences' as any);
-            }}
-          />
-
-          <CategoryCard
-            icon="diamond-outline"
-            iconColor="#9C27B0"
-            title={t('settings.tab.subscription')}
-            subtitle={t('settings.tab.subscriptionSub')}
-            onPress={() => {
-              triggerHaptic('light');
-              router.push('/settings/subscription' as any);
-            }}
-          />
-
-          <CategoryCard
-            icon="people-outline"
-            iconColor="#51BC6F"
-            title={t('settings.tab.grove')}
-            subtitle={t('settings.tab.groveSub')}
-            onPress={() => {
-              triggerHaptic('light');
-              router.push('/settings/grove-settings' as any);
-            }}
-          />
-
-          <CategoryCard
-            icon="heart-outline"
-            iconColor="#FF6B6B"
-            title={t('settings.tab.health')}
-            subtitle={t('settings.tab.healthSub')}
-            premiumBadge
-            onPress={() => {
-              triggerHaptic('light');
-              // Premium gate: non-subscribers see the upgrade prompt instead of the screen.
-              if (!isPremium) {
-                setShowHealthUpgrade(true);
-                return;
-              }
-              router.push('/settings/health' as any);
-            }}
-          />
-
-          <CategoryCard
-            icon="help-circle-outline"
-            iconColor="#F5A623"
-            title={t('settings.tab.support')}
-            subtitle={t('settings.tab.supportSub')}
-            onPress={() => {
-              triggerHaptic('light');
-              router.push('/settings/support' as any);
-            }}
-          />
-        </View>
-
-        {/* Referral Card */}
-        {isAuthenticated && (
-          <View className="px-5 mt-6">
-            <Pressable
-              onPress={() => router.push('/(modals)/referral-details' as any)}
-              className="overflow-hidden rounded-2xl active:opacity-90"
-            >
-              <View
-                style={{
-                  backgroundColor: isDark ? '#1E1A3A' : '#FFF8F0',
-                  borderWidth: 1,
-                  borderColor: isDark ? '#6592E940' : '#F5A62330',
-                  borderRadius: 16,
-                  padding: 20,
-                }}
-              >
-                <View className="flex-row items-center mb-3">
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
-                      backgroundColor: isDark ? '#F5A62320' : '#F5A62315',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 12,
-                    }}
-                  >
-                    <Typography variant="body-14" style={{ fontSize: 20 }}>🍎</Typography>
+          {/* Referral Card */}
+          {isAuthenticated && (
+            <View className="mt-6 px-5">
+              <Pressable
+                onPress={() => router.push('/(modals)/referral-details' as any)}
+                className="rounded-2xl bg-light-border/30 p-4 active:opacity-80 dark:bg-dark-card">
+                <View className="mb-3 flex-row items-center">
+                  <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-primary-soft">
+                    <Typography variant="body-14" style={{ fontSize: 20 }}>
+                      🍎
+                    </Typography>
                   </View>
                   <View className="flex-1">
-                    <Typography variant="subtitle-16" color="primary" className="font-poppins-semibold">
+                    <Typography
+                      variant="subtitle-16"
+                      color="primary"
+                      className="font-poppins-semibold">
                       {t('settings.tab.referralTitle')}
                     </Typography>
                   </View>
@@ -333,27 +343,21 @@ export default function SettingsScreen() {
                 </Typography>
 
                 <View className="flex-row items-center" style={{ gap: 10 }}>
-                  <Pressable
+                  <Button
+                    variant="primary"
+                    size="small"
+                    haptic
+                    disabled={isGenerating}
+                    className="flex-row px-5 py-2.5"
                     onPress={(e) => {
                       e.stopPropagation();
                       shareLink();
-                    }}
-                    disabled={isGenerating}
-                    style={{
-                      backgroundColor: '#F5A623',
-                      borderRadius: 12,
-                      paddingHorizontal: 20,
-                      paddingVertical: 10,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                    }}
-                    className="active:opacity-80"
-                  >
-                    <Ionicons name="share-outline" size={16} color="#FFFFFF" />
+                    }}>
+                    <Ionicons name="share-outline" size={16} color={colors.white} />
                     <Typography variant="subtitle-14-medium" className="ml-1.5 text-white">
                       {t('settings.tab.shareLink')}
                     </Typography>
-                  </Pressable>
+                  </Button>
 
                   <View className="flex-row items-center">
                     <Typography variant="body-12" color="secondary">
@@ -362,74 +366,76 @@ export default function SettingsScreen() {
                     <Ionicons
                       name="chevron-forward"
                       size={14}
-                      color={isDark ? '#575757' : '#D4C4A8'}
+                      color={isDark ? colors.dark.border : colors.light.screenBorder}
                       style={{ marginLeft: 2 }}
                     />
                   </View>
                 </View>
-              </View>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Account Actions */}
-        <AccountActions />
-
-        {/* Developer (dev only) */}
-        {__DEV__ && (
-          <View className="px-5 mt-6">
-            <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
-              Developer
-            </Typography>
-
-            <Pressable
-              onPress={() => router.push('/(modals)/dev-tools')}
-              className="bg-light-border/30 dark:bg-[#242540] rounded-2xl py-3 px-4 mb-4 active:opacity-80"
-            >
-              <Typography variant="subtitle-14-semibold" color="primary">
-                Open Dev Tools
-              </Typography>
-            </Pressable>
-
-            <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4">
-              <Typography variant="body-12" color="secondary">
-                Device: {deviceInfo.brand} {deviceInfo.modelName}
-              </Typography>
-              <Typography variant="body-12" color="secondary" className="mt-1">
-                OS: {deviceInfo.osName} {deviceInfo.osVersion}
-              </Typography>
+              </Pressable>
             </View>
+          )}
+
+          {/* Account Actions */}
+          <AccountActions />
+
+          {/* Developer (dev only) */}
+          {__DEV__ && (
+            <View className="mt-6 px-5">
+              <Typography
+                variant="subtitle-14-medium"
+                className="mb-3 text-primary-light dark:text-primary">
+                Developer
+              </Typography>
+
+              <Button
+                variant="ghost"
+                fullWidth
+                className="mb-4 items-start rounded-2xl bg-light-border/30 px-4 py-3 dark:bg-dark-card"
+                onPress={() => router.push('/(modals)/dev-tools')}>
+                <Typography variant="subtitle-14-semibold" color="primary">
+                  Open Dev Tools
+                </Typography>
+              </Button>
+
+              <View className="rounded-2xl bg-light-border/30 p-4 dark:bg-dark-card">
+                <Typography variant="body-12" color="secondary">
+                  Device: {deviceInfo.brand} {deviceInfo.modelName}
+                </Typography>
+                <Typography variant="body-12" color="secondary" className="mt-1">
+                  OS: {deviceInfo.osName} {deviceInfo.osVersion}
+                </Typography>
+              </View>
+            </View>
+          )}
+
+          {/* Footer */}
+          <View className="mb-6 mt-10 items-center">
+            <Typography variant="tiny-10" color="secondary">
+              Bittersweet v1.0.0
+            </Typography>
+            <Typography variant="tiny-10" color="secondary" className="mt-1">
+              Per aspera ad astra
+            </Typography>
           </View>
-        )}
 
-        {/* Footer */}
-        <View className="items-center mt-10 mb-6">
-          <Typography variant="tiny-10" color="secondary">
-            Bittersweet v1.0.0
-          </Typography>
-          <Typography variant="tiny-10" color="secondary" className="mt-1">
-            Per aspera ad astra
-          </Typography>
-        </View>
+          {/* Bottom spacing for tab bar */}
+          <View className="h-20" />
+        </ScrollView>
 
-        {/* Bottom spacing for tab bar */}
-        <View className="h-20" />
-      </ScrollView>
+        {/* Upgrade Sheet */}
+        <UpgradeSheet
+          isVisible={upgradeSheetVisible}
+          onClose={() => setUpgradeSheetVisible(false)}
+        />
 
-      {/* Upgrade Sheet */}
-      <UpgradeSheet
-        isVisible={upgradeSheetVisible}
-        onClose={() => setUpgradeSheetVisible(false)}
-      />
-
-      {/* Apple Health premium gate */}
-      <UpgradePrompt
-        isVisible={showHealthUpgrade}
-        onClose={() => setShowHealthUpgrade(false)}
-        onUpgrade={() => router.push('/settings/subscription' as any)}
-        limitType="health"
-      />
-    </SwipeableTabWrapper>
+        {/* Apple Health premium gate */}
+        <UpgradePrompt
+          isVisible={showHealthUpgrade}
+          onClose={() => setShowHealthUpgrade(false)}
+          onUpgrade={() => router.push('/settings/subscription' as any)}
+          limitType="health"
+        />
+      </SwipeableTabWrapper>
     </SafeAreaView>
   );
 }

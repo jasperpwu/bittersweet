@@ -69,7 +69,7 @@ export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({ item, maxMinutes
         >
           {item.isCurrentUser ? t('common.you') : item.displayName}
         </Typography>
-        <View className="h-1.5 bg-light-border/50 dark:bg-[#2A2B45] rounded-full mt-1">
+        <View className="h-1.5 bg-light-border/50 dark:bg-dark-card rounded-full mt-1">
           <View
             className="h-1.5 bg-primary rounded-full"
             style={{ width: `${Math.max(progressWidth, 2)}%` }}

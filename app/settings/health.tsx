@@ -3,6 +3,8 @@ import { View, ScrollView, SafeAreaView, Pressable, Alert, Text, TextInput, useC
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
+import { Button } from '../../src/components/ui/Button';
+import { colors } from '../../src/config/theme';
 import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsItem';
 import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { TagColorPicker } from '../../src/components/focus';
@@ -129,7 +131,7 @@ export default function HealthScreen() {
       {/* Header */}
       <View className="h-[56px] flex-row items-center px-5">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
-          <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
+          <Ionicons name="chevron-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
           {t('settings.tab.health')}
@@ -189,7 +191,7 @@ export default function HealthScreen() {
           <View className="px-5 pb-6">
             <View className="mb-4 flex-row items-center">
               <Pressable onPress={() => setCreatingTag(false)} className="mr-2 active:opacity-70">
-                <Ionicons name="chevron-back" size={22} color={isDark ? '#FFFFFF' : '#5D4E37'} />
+                <Ionicons name="chevron-back" size={22} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
               </Pressable>
               <Typography variant="headline-20" color="primary">
                 {t('health.newWorkoutTag')}
@@ -209,12 +211,10 @@ export default function HealthScreen() {
                   style={{
                     backgroundColor:
                       newTagEmoji === emoji
-                        ? isDark
-                          ? '#3A3A4E'
-                          : '#E0D4C0'
+                        ? colors.primary + '1A'
                         : isDark
-                          ? '#2A2A2A'
-                          : '#F0E0CC',
+                          ? colors.dark.input
+                          : colors.light.input,
                     borderWidth: newTagEmoji === emoji ? 2 : 0,
                     borderColor: newTagColor,
                   }}>
@@ -231,17 +231,17 @@ export default function HealthScreen() {
               value={newTagName}
               onChangeText={setNewTagName}
               placeholder={t('health.tagNamePlaceholder')}
-              placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
+              placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
               maxLength={30}
               className="mb-5"
               style={{
-                backgroundColor: isDark ? '#2A2A2A' : '#F0E0CC',
+                backgroundColor: isDark ? colors.dark.input : colors.light.input,
                 borderRadius: 12,
                 padding: 14,
                 fontSize: 16,
-                color: isDark ? '#FFFFFF' : '#5D4E37',
+                color: isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                 borderWidth: 1,
-                borderColor: isDark ? '#444' : '#D4C4A8',
+                borderColor: isDark ? colors.dark.border : colors.light.screenBorder,
               }}
             />
 
@@ -257,14 +257,17 @@ export default function HealthScreen() {
               <TagColorPicker selectedColor={newTagColor} onSelectColor={setNewTagColor} swatchSize={32} />
             </ScrollView>
 
-            <Pressable
-              onPress={handleCreateAndLinkTag}
+            <Button
+              variant="primary"
+              size="large"
+              fullWidth
               disabled={!newTagName.trim()}
-              className={`items-center rounded-2xl py-4 ${newTagName.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'}`}>
+              className="rounded-2xl py-4"
+              onPress={handleCreateAndLinkTag}>
               <Typography variant="subtitle-16" color="white" className="font-semibold">
                 {t('health.createLink')}
               </Typography>
-            </Pressable>
+            </Button>
           </View>
         ) : (
           <View className="px-5 pb-6">
@@ -280,7 +283,7 @@ export default function HealthScreen() {
                   {tag.icon} {tag.name}
                 </Typography>
                 {hk.linkedTagId === tag.id && (
-                  <Ionicons name="checkmark" size={20} color={isDark ? '#FFFFFF' : '#5D4E37'} />
+                  <Ionicons name="checkmark" size={20} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
                 )}
               </Pressable>
             ))}
@@ -289,8 +292,8 @@ export default function HealthScreen() {
             <Pressable
               onPress={openCreateTagForm}
               className="flex-row items-center py-3 active:opacity-70">
-              <Ionicons name="add-circle-outline" size={20} color="#6592E9" />
-              <Typography variant="subtitle-14-medium" className="ml-2" style={{ color: '#6592E9' }}>
+              <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+              <Typography variant="subtitle-14-medium" className="ml-2" style={{ color: colors.primary }}>
                 {t('health.createNewTag')}
               </Typography>
             </Pressable>

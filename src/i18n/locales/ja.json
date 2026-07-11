@@ -74,6 +74,7 @@
     "skip": "スキップ",
     "getStarted": "はじめる",
     "cancel": "キャンセル",
+    "close": "閉じる",
     "save": "保存",
     "done": "完了",
     "continueWithApple": "Appleでサインイン",
@@ -648,7 +649,13 @@
     "perkUnlimitedGoals": "無制限の目標",
     "perkCloudSync": "クラウドバックアップと同期",
     "seePlans": "プランを見る",
-    "maybeLater": "あとで"
+    "maybeLater": "あとで",
+    "perkHealthSync": "Apple Health ワークアウト同期",
+    "perkMultiTask": "マルチタスクモード（2つのタグ）",
+    "savePercent": "{{percent}}%お得",
+    "perMonth": "{{price}}/月",
+    "billedAnnually": "年額 {{price}} で請求",
+    "continue": "続ける"
   },
   "groveSettings": {
     "profile": "プロフィール",

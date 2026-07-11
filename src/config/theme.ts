@@ -8,7 +8,11 @@ export const colors = {
   // Status Colors
   success: '#51BC6F',
   error: '#EF786C',
-  
+  // Destructive actions (delete/remove) — brighter than the soft `error` coral.
+  // Single source for what used to be #DC2626 / #EF4444 / #E57373 / #FF3B30.
+  danger: '#EF4444',
+  warning: '#FCD34D',
+
   // Neutral Colors
   white: '#FFFFFF',
   textGrey: '#CACACA',
@@ -32,6 +36,13 @@ export const colors = {
     // invisible on cream). Use this for inline-styled icons/text that sit next
     // to Typography color="secondary".
     screenTextSecondary: '#6B5A42',
+    // Primary text on the cream screen (NativeWind `text-light-text-primary`).
+    // Differs from `textPrimary` (#4C4C4C, a grey for white surfaces) — the cream
+    // screen uses this warmer brown. Use for inline-styled text/icons that sit
+    // next to Typography color="primary" on the app screen.
+    screenTextPrimary: '#5D4E37',
+    // Text input / editor surface on the cream screen (NativeWind `bg-light-input`).
+    input: '#F0E0CC',
   },
 
   // Dark Mode Colors
@@ -44,6 +55,10 @@ export const colors = {
     screen: '#1B1C30',
     // Border on the dark screen (NativeWind `border-dark-border`); same as `border`.
     screenBorder: '#575757',
+    // Elevated card/surface on the dark screen (NativeWind `bg-dark-card`).
+    card: '#242540',
+    // Text input / editor surface on the dark screen (NativeWind `bg-dark-input`).
+    input: '#2A2A2A',
   },
 } as const;
 

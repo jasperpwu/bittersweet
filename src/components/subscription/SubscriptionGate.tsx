@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
+import { Button } from '../ui/Button';
 import { UpgradeSheet } from './UpgradeSheet';
 import { useAppStore } from '../../store';
+import { colors } from '../../config/theme';
 
 interface SubscriptionGateProps {
   children: React.ReactNode;
@@ -31,18 +32,19 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({
 
   return (
     <>
-      <Pressable
+      <Button
+        variant="ghost"
+        fullWidth
         onPress={() => setShowUpgrade(true)}
-        className="bg-[#242540] rounded-2xl p-4 items-center active:opacity-80"
-      >
-        <Ionicons name="lock-closed" size={20} color="#8B7FFF" />
+        className="rounded-2xl bg-light-border/20 p-4 dark:bg-white/[0.03]">
+        <Ionicons name="lock-closed" size={20} color={colors.primary} />
         <Typography variant="subtitle-14-medium" color="primary" className="mt-2">
           Premium Feature
         </Typography>
         <Typography variant="body-12" color="secondary" className="mt-1 text-center">
           Upgrade to unlock this feature
         </Typography>
-      </Pressable>
+      </Button>
 
       <UpgradeSheet
         isVisible={showUpgrade}

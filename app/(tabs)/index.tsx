@@ -27,7 +27,7 @@ import Reanimated, {
   runOnJS,
   LinearTransition,
 } from 'react-native-reanimated';
-import { Typography } from '../../src/components/ui';
+import { Typography, Button } from '../../src/components/ui';
 import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import {
   TimeScroller,
@@ -235,7 +235,7 @@ function DraggableTagRow({
         <Ionicons
           name="pencil-outline"
           size={16}
-          color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+          color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
         />
         <Typography variant="tiny-10" color="secondary" className="mt-0.5">
           {t('common.edit')}
@@ -248,9 +248,9 @@ function DraggableTagRow({
             onShare(tag);
           }}
           className="mr-2 h-full w-16 items-center justify-center rounded-lg"
-          style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
-          <Ionicons name="share-outline" size={16} color="#3B82F6" />
-          <Typography variant="tiny-10" style={{ color: '#3B82F6' }} className="mt-0.5">
+          style={{ backgroundColor: colors.link + '33' }}>
+          <Ionicons name="share-outline" size={16} color={colors.link} />
+          <Typography variant="tiny-10" style={{ color: colors.link }} className="mt-0.5">
             {t('common.share')}
           </Typography>
         </Pressable>
@@ -263,8 +263,8 @@ function DraggableTagRow({
             swipeableRef.current?.close();
             onUnlink?.(tag);
           }}
-          className="h-full w-16 items-center justify-center rounded-lg bg-red-500">
-          <Ionicons name="unlink-outline" size={16} color="#FFFFFF" />
+          className="h-full w-16 items-center justify-center rounded-lg bg-danger">
+          <Ionicons name="unlink-outline" size={16} color={colors.white} />
           <Typography variant="tiny-10" color="white" className="mt-0.5">
             {t('home.unlink')}
           </Typography>
@@ -275,8 +275,8 @@ function DraggableTagRow({
             swipeableRef.current?.close();
             onDelete(tag, null);
           }}
-          className="h-full w-16 items-center justify-center rounded-lg bg-red-500">
-          <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+          className="h-full w-16 items-center justify-center rounded-lg bg-danger">
+          <Ionicons name="trash-outline" size={16} color={colors.white} />
           <Typography variant="tiny-10" color="white" className="mt-0.5">
             {t('common.delete')}
           </Typography>
@@ -314,18 +314,18 @@ function DraggableTagRow({
           }}>
           <Pressable onPress={handleRowPress}>
             <View
-              className={`flex-row items-center rounded-2xl p-4 ${isSelected ? 'border border-primary bg-primary bg-opacity-20' : 'dark:bg-gray-700'}`}
+              className={`flex-row items-center rounded-2xl p-4 ${isSelected ? 'border border-primary bg-primary/20' : 'dark:bg-dark-card'}`}
               style={[
                 {
                   borderLeftWidth: 4,
-                  borderLeftColor: tag.color || '#6592E9',
+                  borderLeftColor: tag.color || colors.primary,
                   // Opaque background so swipe-to-reveal buttons don't bleed through
                   ...(!isSelected
-                    ? { backgroundColor: colorScheme === 'dark' ? '#374151' : '#E8D9C4' }
+                    ? { backgroundColor: colorScheme === 'dark' ? colors.dark.card : colors.light.input }
                     : {}),
                 },
                 isSelected && {
-                  shadowColor: tag.color || '#6592E9',
+                  shadowColor: tag.color || colors.primary,
                   shadowOffset: { width: 0, height: 3 },
                   shadowOpacity: 0.18,
                   shadowRadius: 6,
@@ -357,7 +357,7 @@ function DraggableTagRow({
                     <View
                       className="ml-2 rounded-full px-2 py-0.5"
                       style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#3B82F6' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: colors.link }}>
                         {t('home.badgeSharing')}
                       </Text>
                     </View>
@@ -481,18 +481,18 @@ function ShareTagOverlay({
     <View className="absolute inset-0 items-center justify-center bg-black/50 p-4">
       <View className="w-full max-w-xs overflow-hidden rounded-2xl bg-light-bg dark:bg-dark-bg">
         {/* Header */}
-        <View className="flex-row items-center justify-between border-b border-light-border p-4 dark:border-gray-700">
+        <View className="flex-row items-center justify-between border-b border-light-border p-4 dark:border-dark-border">
           <Typography variant="headline-18" color="primary">
             {tag?.isSharing ? t('home.sharingTagTitle') : t('home.shareTagTitle')}
           </Typography>
           <Pressable
             onPress={onClose}
-            className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700"
+            className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-dark-card"
             hitSlop={8}>
             <Ionicons
               name="close"
               size={20}
-              color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+              color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
             />
           </Pressable>
         </View>
@@ -514,50 +514,59 @@ function ShareTagOverlay({
               <Typography variant="body-14" color="secondary" className="mb-3">
                 {t('home.shareCodePrompt')}
               </Typography>
-              <View className="mb-4 flex-row items-center justify-center rounded-xl bg-light-border/30 py-4 dark:bg-gray-700">
+              <View className="mb-4 flex-row items-center justify-center rounded-xl bg-light-border/30 py-4 dark:bg-dark-card">
                 <Text
                   style={{
                     fontSize: 28,
                     fontWeight: '700',
                     letterSpacing: 4,
-                    color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                    color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                   }}>
                   {shareCode || '...'}
                 </Text>
               </View>
 
-              <Pressable
-                onPress={handleCopy}
-                className="mb-3 items-center rounded-2xl bg-blue-600 py-3 active:opacity-80">
+              <Button
+                variant="primary"
+                size="large"
+                fullWidth
+                className="mb-3 rounded-2xl py-3"
+                onPress={handleCopy}>
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
                   {copied ? t('home.copied') : t('home.copyCode')}
                 </Typography>
-              </Pressable>
+              </Button>
 
-              <Pressable
-                onPress={handleStop}
-                className="items-center rounded-2xl border border-red-500 py-3 active:opacity-80">
+              <Button
+                variant="ghost"
+                size="large"
+                fullWidth
+                className="rounded-2xl border border-danger py-3"
+                onPress={handleStop}>
                 <Typography
                   variant="subtitle-16"
-                  style={{ color: '#EF4444' }}
+                  style={{ color: colors.danger }}
                   className="font-semibold">
                   {t('home.stopSharing')}
                 </Typography>
-              </Pressable>
+              </Button>
             </View>
           ) : (
             <View>
               <Typography variant="body-14" color="secondary" className="mb-4">
                 {t('home.shareGeneratePrompt')}
               </Typography>
-              <Pressable
-                onPress={handleGenerate}
+              <Button
+                variant="primary"
+                size="large"
+                fullWidth
                 disabled={loading}
-                className="items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
+                className="rounded-2xl py-4"
+                onPress={handleGenerate}>
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
                   {loading ? t('home.generating') : t('home.shareThisTag')}
                 </Typography>
-              </Pressable>
+              </Button>
             </View>
           )}
         </View>
@@ -621,18 +630,18 @@ function JoinTagModal({
             onPress={onClose}
           />
           <View className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
-            <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
+            <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-dark-border">
               <Typography variant="headline-20" color="primary">
                 {t('home.joinSharedTag')}
               </Typography>
               <Pressable
                 onPress={onClose}
-                className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700"
+                className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-dark-card"
                 hitSlop={8}>
                 <Ionicons
                   name="close"
                   size={20}
-                  color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+                  color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
                 />
               </Pressable>
             </View>
@@ -649,31 +658,34 @@ function JoinTagModal({
                   setError(null);
                 }}
                 placeholder={t('home.enterCode')}
-                placeholderTextColor={colorScheme === 'dark' ? '#888' : '#AAA'}
+                placeholderTextColor={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 maxLength={6}
-                className="mb-4 rounded-xl bg-light-border/30 px-4 py-4 text-center text-light-text-primary dark:bg-gray-700 dark:text-dark-text-primary"
+                className="mb-4 rounded-xl bg-light-border/30 px-4 py-4 text-center text-light-text-primary dark:bg-dark-card dark:text-dark-text-primary"
                 style={{ fontSize: 24, fontWeight: '700', letterSpacing: 4 }}
               />
 
               {error && (
                 <Typography
                   variant="body-12"
-                  style={{ color: '#EF4444' }}
+                  style={{ color: colors.danger }}
                   className="mb-3 text-center">
                   {error}
                 </Typography>
               )}
 
-              <Pressable
-                onPress={handleJoin}
+              <Button
+                variant="primary"
+                size="large"
+                fullWidth
                 disabled={loading || code.trim().length < 4}
-                className={`items-center rounded-2xl py-4 active:opacity-80 ${code.trim().length >= 4 ? 'bg-blue-600' : 'bg-gray-400'}`}>
+                className="rounded-2xl py-4"
+                onPress={handleJoin}>
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
                   {loading ? t('home.joining') : t('home.join')}
                 </Typography>
-              </Pressable>
+              </Button>
             </View>
           </View>
         </View>
@@ -2166,7 +2178,7 @@ export default function FocusScreen() {
       : formatTime(remainingSeconds);
   const timerDisplayTime = isUnlockActive ? formatTime(unlockRemainingSeconds) : displayTime;
   const timerTextColor =
-    isBonusTime && !isUnlockActive ? '#4CAF7C' : colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37';
+    isBonusTime && !isUnlockActive ? colors.success : colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary;
 
   const selectedTagObj = selectedTag
     ? tags.byId[selectedTag] || challengeTags.find((ct) => ct.id === selectedTag) || null
@@ -2247,11 +2259,11 @@ export default function FocusScreen() {
               <Ionicons
                 name="ban-outline"
                 size={22}
-                color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'}
+                color={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
               />
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? '#CACACA' : '#8B7355',
+                  color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
                   fontSize: 13,
                   fontWeight: '500',
                   marginLeft: 6,
@@ -2260,7 +2272,7 @@ export default function FocusScreen() {
               </Text>
               {blockedCount > 0 && (
                 <View className="ml-1.5 min-w-[20px] items-center rounded-full bg-primary px-1.5 py-0.5">
-                  <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '600' }}>
+                  <Text style={{ color: colors.white, fontSize: 11, fontWeight: '600' }}>
                     {blockedCount}
                   </Text>
                 </View>
@@ -2334,7 +2346,7 @@ export default function FocusScreen() {
                   {selectedTagName && (
                     <Text
                       style={{
-                        color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                        color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                         fontSize: 24,
                         lineHeight: 28,
                         fontFamily: 'Poppins-SemiBold',
@@ -2347,7 +2359,7 @@ export default function FocusScreen() {
                   )}
                   <Text
                     style={{
-                      color: colorScheme === 'dark' ? '#CACACA' : '#8B7355',
+                      color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
                       fontSize: 12,
                       lineHeight: 18,
                       fontFamily: 'Poppins-Regular',
@@ -2361,7 +2373,7 @@ export default function FocusScreen() {
                 <View style={{ alignItems: 'center', marginBottom: 4, paddingHorizontal: 16 }}>
                   <Text
                     style={{
-                      color: '#4CAF7C',
+                      color: colors.success,
                       fontSize: 20,
                       lineHeight: 26,
                       fontFamily: 'Poppins-SemiBold',
@@ -2403,7 +2415,7 @@ export default function FocusScreen() {
                     Haptics.selectionAsync();
                     setShowTagModal(true);
                   }}
-                  className="flex-row items-center justify-between rounded-2xl bg-light-border/30 px-6 py-4 active:opacity-80 dark:bg-gray-700">
+                  className="flex-row items-center justify-between rounded-2xl bg-light-border/30 px-6 py-4 active:opacity-80 dark:bg-dark-card">
                   <View className="flex-row items-center">
                     <Typography variant="subtitle-16" color="primary">
                       {availableTags.length === 0
@@ -2414,7 +2426,7 @@ export default function FocusScreen() {
                   <Ionicons
                     name="chevron-forward"
                     size={20}
-                    color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+                    color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
                   />
                 </Pressable>
               </Animated.View>
@@ -2437,7 +2449,7 @@ export default function FocusScreen() {
             <Typography
               variant="subtitle-16"
               className="font-semibold"
-              style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}>
+              style={{ color: colorScheme === 'dark' ? colors.dark.background : colors.light.screenTextPrimary }}>
               {isUnlockActive
                 ? t('home.stopUnlocked')
                 : isSessionActive
@@ -2466,21 +2478,26 @@ export default function FocusScreen() {
             Math.min(screenHeight * 0.85, 240 + orderedTags.length * ROW_HEIGHT)
           )}
           footer={
-            <View className="flex-row gap-3 border-t border-light-border px-6 pb-2 pt-3 dark:border-gray-700">
-              <Pressable
+            <View className="flex-row gap-3 border-t border-light-border px-6 pb-2 pt-3 dark:border-dark-border">
+              <Button
+                variant="ghost"
+                size="large"
+                className="flex-1 rounded-2xl border border-link py-4"
                 onPress={() => {
                   setShowTagModal(false);
                   setShowJoinModal(true);
-                }}
-                className="flex-1 items-center rounded-2xl border border-blue-600 py-4 active:opacity-80">
+                }}>
                 <Typography
                   variant="subtitle-16"
                   className="font-semibold"
-                  style={{ color: '#3B82F6' }}>
+                  style={{ color: colors.link }}>
                   {t('home.joinTag')}
                 </Typography>
-              </Pressable>
-              <Pressable
+              </Button>
+              <Button
+                variant="primary"
+                size="large"
+                className="flex-1 rounded-2xl py-4"
                 onPress={() => {
                   if (!canCreateTag) {
                     setShowTagModal(false);
@@ -2488,12 +2505,11 @@ export default function FocusScreen() {
                     return;
                   }
                   setShowNewTagModal(true);
-                }}
-                className="flex-1 items-center rounded-2xl bg-blue-600 py-4 active:opacity-80">
+                }}>
                 <Typography variant="subtitle-16" color="white" className="font-semibold">
                   {t('home.newTag')}
                 </Typography>
-              </Pressable>
+              </Button>
             </View>
           }
           overlay={
@@ -2606,7 +2622,7 @@ export default function FocusScreen() {
               className="w-full max-w-sm overflow-hidden rounded-2xl bg-light-bg p-6 dark:bg-dark-bg">
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                   fontSize: 17,
                   fontWeight: '600',
                   marginBottom: 12,
@@ -2615,7 +2631,7 @@ export default function FocusScreen() {
               </Text>
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355',
+                  color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
                   fontSize: 14,
                   lineHeight: 20,
                   marginBottom: 24,
@@ -2628,7 +2644,7 @@ export default function FocusScreen() {
                   style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
                   <Text
                     style={{
-                      color: colorScheme === 'dark' ? '#888888' : '#8B7355',
+                      color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
                       fontSize: 15,
                       fontWeight: '500',
                     }}>
@@ -2641,9 +2657,9 @@ export default function FocusScreen() {
                     paddingHorizontal: 20,
                     paddingVertical: 10,
                     borderRadius: 8,
-                    backgroundColor: '#6592E9',
+                    backgroundColor: colors.primary,
                   }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
+                  <Text style={{ color: colors.white, fontSize: 15, fontWeight: '600' }}>
                     {t('home.understood')}
                   </Text>
                 </Pressable>
@@ -2666,7 +2682,7 @@ export default function FocusScreen() {
               className="w-full max-w-sm overflow-hidden rounded-2xl bg-light-bg p-6 dark:bg-dark-bg">
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                   fontSize: 17,
                   fontWeight: '600',
                   marginBottom: 8,
@@ -2675,7 +2691,7 @@ export default function FocusScreen() {
               </Text>
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355',
+                  color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
                   fontSize: 14,
                   lineHeight: 20,
                   marginBottom: 16,
@@ -2706,10 +2722,10 @@ export default function FocusScreen() {
                   marginTop: 4,
                   marginBottom: 20,
                 }}>
-                <Ionicons name="arrow-up" size={18} color="#6592E9" />
+                <Ionicons name="arrow-up" size={18} color={colors.primary} />
                 <Text
                   style={{
-                    color: '#6592E9',
+                    color: colors.primary,
                     fontSize: 13,
                     fontWeight: '600',
                     marginLeft: 6,
@@ -2724,7 +2740,7 @@ export default function FocusScreen() {
                   style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
                   <Text
                     style={{
-                      color: colorScheme === 'dark' ? '#888888' : '#8B7355',
+                      color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
                       fontSize: 15,
                       fontWeight: '500',
                     }}>
@@ -2740,9 +2756,9 @@ export default function FocusScreen() {
                     paddingHorizontal: 20,
                     paddingVertical: 10,
                     borderRadius: 8,
-                    backgroundColor: '#6592E9',
+                    backgroundColor: colors.primary,
                   }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
+                  <Text style={{ color: colors.white, fontSize: 15, fontWeight: '600' }}>
                     {t('home.screenTimeGuideConfirm')}
                   </Text>
                 </Pressable>
@@ -2765,7 +2781,7 @@ export default function FocusScreen() {
               className="w-full max-w-sm overflow-hidden rounded-2xl bg-light-bg p-6 dark:bg-dark-bg">
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                   fontSize: 17,
                   fontWeight: '600',
                   marginBottom: 12,
@@ -2774,7 +2790,7 @@ export default function FocusScreen() {
               </Text>
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? '#AAAAAA' : '#8B7355',
+                  color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
                   fontSize: 14,
                   lineHeight: 20,
                   marginBottom: 15,
@@ -2783,7 +2799,7 @@ export default function FocusScreen() {
               </Text>
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                   fontSize: 15,
                   fontWeight: '500',
                   marginBottom: 15,
@@ -2791,7 +2807,7 @@ export default function FocusScreen() {
                 {t('home.editCostAmount', { cost: blocklistEditCost.cost })}
               </Text>
               {!blocklistEditCost.canAfford && (
-                <Text style={{ color: '#E57373', fontSize: 13, marginBottom: 24 }}>
+                <Text style={{ color: colors.danger, fontSize: 13, marginBottom: 24 }}>
                   {t('home.notEnoughFruits')}
                 </Text>
               )}
@@ -2801,7 +2817,7 @@ export default function FocusScreen() {
                   style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
                   <Text
                     style={{
-                      color: colorScheme === 'dark' ? '#888888' : '#8B7355',
+                      color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
                       fontSize: 15,
                       fontWeight: '500',
                     }}>
@@ -2818,10 +2834,10 @@ export default function FocusScreen() {
                     paddingHorizontal: 20,
                     paddingVertical: 10,
                     borderRadius: 8,
-                    backgroundColor: '#6592E9',
+                    backgroundColor: colors.primary,
                     opacity: blocklistEditCost.canAfford ? 1 : 0.5,
                   }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
+                  <Text style={{ color: colors.white, fontSize: 15, fontWeight: '600' }}>
                     {t('common.confirm')}
                   </Text>
                 </Pressable>

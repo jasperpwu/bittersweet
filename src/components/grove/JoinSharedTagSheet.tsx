@@ -2,13 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
+import { Button } from '../ui/Button';
+import { colors } from '../../config/theme';
 import { BottomSheet } from '../ui/BottomSheet';
 import { showToast } from '../ui/Toast';
 import { useAppStore } from '../../store';
 import { tagMatchesChallenge } from '../../utils/challengeTag';
 import type { SharedTagResolveResult } from '../../services/sharedTag/types';
 
-const ACCENT = '#3B82F6';
+const ACCENT = colors.link;
 
 type Mode = 'existing' | 'create';
 
@@ -135,7 +137,7 @@ export const JoinSharedTagSheet: React.FC<JoinSharedTagSheetProps> = ({
 
       {/* Explain why "Use my tag" is unavailable */}
       {!hasMatch && (
-        <View className="flex-row items-start bg-[#3B82F6]/10 rounded-xl px-3 py-2.5 mb-4">
+        <View className="flex-row items-start bg-link/10 rounded-xl px-3 py-2.5 mb-4">
           <Ionicons name="information-circle-outline" size={16} color={ACCENT} style={{ marginTop: 1 }} />
           <Typography variant="body-12" color="secondary" className="ml-2 flex-1">
             You have no tag named &quot;{resolved.tag_name}&quot;. Create one to join — you can edit, share, or
@@ -155,7 +157,7 @@ export const JoinSharedTagSheet: React.FC<JoinSharedTagSheetProps> = ({
                 onPress={() => setSelectedTagId(tag.id)}
                 className="flex-row items-center py-3 active:opacity-70"
               >
-                <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-[#2A2B45] items-center justify-center mr-3">
+                <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-dark-card items-center justify-center mr-3">
                   <Typography variant="body-14">{tag.icon || ''}</Typography>
                 </View>
                 <Typography variant="subtitle-14-medium" color="primary" className="flex-1">
@@ -165,10 +167,10 @@ export const JoinSharedTagSheet: React.FC<JoinSharedTagSheetProps> = ({
                   className="w-6 h-6 rounded-full border-2 items-center justify-center"
                   style={{
                     backgroundColor: selected ? ACCENT : 'transparent',
-                    borderColor: selected ? ACCENT : '#8A8A8A',
+                    borderColor: selected ? ACCENT : colors.light.textSecondary,
                   }}
                 >
-                  {selected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                  {selected && <Ionicons name="checkmark" size={14} color={colors.white} />}
                 </View>
               </Pressable>
             );
@@ -179,7 +181,7 @@ export const JoinSharedTagSheet: React.FC<JoinSharedTagSheetProps> = ({
       {/* Create tag preview */}
       {mode === 'create' && (
         <View className="flex-row items-center py-3">
-          <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-[#2A2B45] items-center justify-center mr-3">
+          <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-dark-card items-center justify-center mr-3">
             <Typography variant="body-14">{resolved.tag_icon || ''}</Typography>
           </View>
           <View className="flex-1">
@@ -194,20 +196,23 @@ export const JoinSharedTagSheet: React.FC<JoinSharedTagSheetProps> = ({
       )}
 
       {/* Join button */}
-      <Pressable
-        onPress={handleJoin}
+      <Button
+        variant="ghost"
+        size="large"
+        fullWidth
         disabled={isSubmitting || !canJoin}
-        className="rounded-2xl py-4 items-center mt-4 active:opacity-80"
-        style={{ backgroundColor: ACCENT, opacity: isSubmitting || !canJoin ? 0.5 : 1 }}
+        className="rounded-2xl py-4 mt-4"
+        style={{ backgroundColor: ACCENT }}
+        onPress={handleJoin}
       >
         {isSubmitting ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
+          <ActivityIndicator size="small" color={colors.white} />
         ) : (
-          <Typography variant="subtitle-16" style={{ color: '#FFFFFF' }}>
+          <Typography variant="subtitle-16" style={{ color: colors.white }}>
             Join Tag
           </Typography>
         )}
-      </Pressable>
+      </Button>
     </BottomSheet>
   );
 };

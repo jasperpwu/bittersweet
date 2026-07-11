@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
+import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +14,7 @@ export const EmptyGroveState: React.FC<EmptyGroveStateProps> = ({ onAddFriend })
   return (
     <View className="flex-1 items-center justify-center px-8 mt-12">
       <View className="w-16 h-16 rounded-full bg-primary/10 items-center justify-center mb-4">
-        <Ionicons name="people-outline" size={32} color="#6592E9" />
+        <Ionicons name="people-outline" size={32} color={colors.primary} />
       </View>
       <Typography variant="subtitle-16" color="primary" className="text-center mb-2">
         {t('groveUI.emptyTitle')}
@@ -25,7 +26,7 @@ export const EmptyGroveState: React.FC<EmptyGroveStateProps> = ({ onAddFriend })
         onPress={onAddFriend}
         className="bg-primary rounded-xl px-6 py-3 active:opacity-80"
       >
-        <Typography variant="subtitle-14-medium" style={{ color: '#FFFFFF' }}>
+        <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>
           {t('groveUI.addFriends')}
         </Typography>
       </Pressable>

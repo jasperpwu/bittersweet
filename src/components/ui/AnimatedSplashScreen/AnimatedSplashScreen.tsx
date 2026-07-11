@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, useColorScheme } from 'react-native';
+import { colors } from '../../../config/theme';
 import Animated, {
   useSharedValue,
   withTiming,
@@ -86,7 +87,7 @@ const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: isLight ? '#F5E6D3' : '#1B1C30',
+              backgroundColor: isLight ? colors.light.screen : colors.dark.background,
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 1000,

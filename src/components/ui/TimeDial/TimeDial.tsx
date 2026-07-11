@@ -1,5 +1,6 @@
 import { FC, useEffect, useRef } from 'react';
 import { View, ScrollView, TouchableOpacity } from 'react-native';
+import { colors } from '../../../config/theme';
 import { Typography } from '../Typography';
 
 interface TimeDialProps {
@@ -351,7 +352,7 @@ export const TimeDial: FC<TimeDialProps> = ({
           flexDirection: 'row',
           height,
           width: 320,
-          backgroundColor: '#2A2A2A',
+          backgroundColor: colors.dark.input,
           borderRadius: 12,
           overflow: 'hidden',
           position: 'relative',
@@ -368,7 +369,7 @@ export const TimeDial: FC<TimeDialProps> = ({
             backgroundColor: 'rgba(101, 146, 233, 0.2)',
             borderTopWidth: 1,
             borderBottomWidth: 1,
-            borderColor: '#6592E9',
+            borderColor: colors.primary,
             zIndex: 1,
           }}
         />
@@ -459,7 +460,7 @@ export const TimeDial: FC<TimeDialProps> = ({
             marginTop: 20,
             paddingHorizontal: 40,
             paddingVertical: 12,
-            backgroundColor: '#6592E9',
+            backgroundColor: colors.primary,
             borderRadius: 25,
           }}
         >

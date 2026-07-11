@@ -3,6 +3,7 @@ import { View, ScrollView, SafeAreaView, Pressable, Alert, Linking, useColorSche
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 import { Toggle } from '../../src/components/ui/Toggle';
 import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsItem';
 import { BottomSheet } from '../../src/components/ui/BottomSheet';
@@ -140,7 +141,7 @@ export default function PreferencesScreen() {
       {/* Header */}
       <View className="h-[56px] px-5 flex-row items-center">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
-          <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
+          <Ionicons name="chevron-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
           {t('settings.tab.preferences')}
@@ -283,11 +284,11 @@ export default function PreferencesScreen() {
           {t('preferences.notifications')}
         </Typography>
 
-        <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+        <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4">
           <View className="flex-row items-center justify-between py-3 border-b border-light-border dark:border-dark-border">
             <View className="flex-row items-center flex-1">
               <View className="w-8 items-center mr-3">
-                <Ionicons name="volume-high-outline" size={20} color={isDark ? '#CACACA' : '#8B7355'} />
+                <Ionicons name="volume-high-outline" size={20} color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
               </View>
               <Typography variant="subtitle-14-medium" color="primary">
                 {t('preferences.sound')}
@@ -304,7 +305,7 @@ export default function PreferencesScreen() {
           <View className="flex-row items-center justify-between py-3 border-b border-light-border dark:border-dark-border">
             <View className="flex-row items-center flex-1">
               <View className="w-8 items-center mr-3">
-                <Ionicons name="phone-portrait-outline" size={20} color={isDark ? '#CACACA' : '#8B7355'} />
+                <Ionicons name="phone-portrait-outline" size={20} color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
               </View>
               <Typography variant="subtitle-14-medium" color="primary">
                 {t('preferences.vibrate')}
@@ -322,7 +323,7 @@ export default function PreferencesScreen() {
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
                 <View className="w-8 items-center mr-3">
-                  <Ionicons name="flag-outline" size={20} color={isDark ? '#CACACA' : '#8B7355'} />
+                  <Ionicons name="flag-outline" size={20} color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
                 </View>
                 <View className="flex-1">
                   <Typography variant="subtitle-14-medium" color="primary">

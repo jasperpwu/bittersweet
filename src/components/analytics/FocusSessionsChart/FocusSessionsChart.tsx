@@ -1,5 +1,6 @@
 import React, { FC, useState } from 'react';
 import { View, Pressable, Modal, useColorScheme, useWindowDimensions } from 'react-native';
+import { colors } from '../../../config/theme';
 import Svg, { Rect, Line, Text, Path, G } from 'react-native-svg';
 import { Typography } from '../../ui/Typography';
 import { Button } from '../../ui/Button';
@@ -175,7 +176,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
                   y1={y}
                   x2={CHART_WIDTH + Y_AXIS_WIDTH}
                   y2={y}
-                  stroke={colorScheme === 'dark' ? '#575757' : '#D4C4A8'}
+                  stroke={colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder}
                   strokeOpacity="0.5"
                   strokeWidth="1"
                 />
@@ -230,7 +231,7 @@ export const FocusSessionsChart: FC<FocusSessionsChartProps> = ({
                     y={chartBottom - (point.value / maxValue) * chartHeight}
                     width={barWidth}
                     height={(point.value / maxValue) * chartHeight}
-                    fill="#6592E9"
+                    fill={colors.primary}
                     rx={BAR_RADIUS}
                     ry={BAR_RADIUS}
                     opacity={0.9}

@@ -74,6 +74,7 @@
     "skip": "건너뛰기",
     "getStarted": "시작하기",
     "cancel": "취소",
+    "close": "닫기",
     "save": "저장",
     "done": "완료",
     "continueWithApple": "Apple로 로그인",
@@ -648,7 +649,13 @@
     "perkUnlimitedGoals": "무제한 목표",
     "perkCloudSync": "클라우드 백업 및 동기화",
     "seePlans": "요금제 보기",
-    "maybeLater": "나중에"
+    "maybeLater": "나중에",
+    "perkHealthSync": "Apple Health 운동 동기화",
+    "perkMultiTask": "멀티태스크 모드 (태그 2개)",
+    "savePercent": "{{percent}}% 절약",
+    "perMonth": "{{price}}/월",
+    "billedAnnually": "연 {{price}} 청구",
+    "continue": "계속"
   },
   "groveSettings": {
     "profile": "프로필",

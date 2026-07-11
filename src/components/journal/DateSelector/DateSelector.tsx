@@ -1,5 +1,6 @@
 import { FC, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, Pressable, FlatList, useWindowDimensions, useColorScheme } from 'react-native';
+import { colors } from '../../../config/theme';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -68,7 +69,7 @@ const DateItem: FC<{
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: withSpring(scale.value, { damping: 15, stiffness: 300 }) }],
     backgroundColor: withTiming(
-      backgroundColor.value === 1 ? '#6592E9' : unselectedBg,
+      backgroundColor.value === 1 ? colors.primary : unselectedBg,
       { duration: 200 }
     ),
   }));

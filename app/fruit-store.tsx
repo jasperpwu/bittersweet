@@ -668,11 +668,11 @@ export default function FruitStoreScreen() {
           <Ionicons
             name="chevron-back"
             size={24}
-            color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'}
+            color={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
           />
           <Text
             style={{
-              color: colorScheme === 'dark' ? '#CACACA' : '#8B7355',
+              color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
               fontSize: 16,
               fontWeight: '500',
               marginLeft: 2,
@@ -688,7 +688,7 @@ export default function FruitStoreScreen() {
 
       {/* All / Products / Themes / Custom tabs (same pill style as grove's PeriodToggle) */}
       <View className="px-5 pb-2">
-        <View className="flex-row rounded-xl bg-light-border/30 p-1 dark:bg-[#242540]">
+        <View className="flex-row rounded-xl bg-light-border/30 p-1 dark:bg-dark-card">
           {(
             [
               { tab: 'all', labelKey: 'store.tabAll' },
@@ -737,7 +737,7 @@ export default function FruitStoreScreen() {
                 className="
                   mb-4 rounded-2xl
                   border border-primary bg-light-border/30 p-5
-                  dark:bg-[#242540]
+                  dark:bg-dark-card
                 ">
                 <View className="flex-row items-center justify-between">
                   <View className="mr-4 flex-1 flex-row items-center">
@@ -798,7 +798,7 @@ export default function FruitStoreScreen() {
               className={`
             mb-4 rounded-2xl
             border border-light-border bg-light-border/30 p-5
-            dark:border-dark-border dark:bg-[#242540]
+            dark:border-dark-border dark:bg-dark-card
             ${isAccelerateActive ? 'opacity-60' : 'active:opacity-80'}
           `}>
               <View className="flex-row items-start justify-between">
@@ -836,7 +836,7 @@ export default function FruitStoreScreen() {
               className={`
             mb-4 rounded-2xl
             border border-light-border bg-light-border/30 p-5
-            dark:border-dark-border dark:bg-[#242540]
+            dark:border-dark-border dark:bg-dark-card
             ${allTipsOwned ? 'opacity-60' : 'active:opacity-80'}
           `}>
               <View className="flex-row items-start justify-between">
@@ -953,7 +953,7 @@ export default function FruitStoreScreen() {
               className="
                 mb-4 items-center rounded-2xl border border-dashed
                 border-light-border bg-light-border/30 p-5
-                active:opacity-80 dark:border-dark-border dark:bg-[#242540]
+                active:opacity-80 dark:border-dark-border dark:bg-dark-card
               ">
               <View className="flex-row items-center">
                 <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
@@ -971,7 +971,7 @@ export default function FruitStoreScreen() {
               className="
                 mb-4 items-center rounded-2xl border border-dashed
                 border-light-border bg-light-border/30 p-5
-                active:opacity-80 dark:border-dark-border dark:bg-[#242540]
+                active:opacity-80 dark:border-dark-border dark:bg-dark-card
               ">
               <View className="flex-row items-center">
                 <Ionicons name="gift-outline" size={22} color={colors.primary} />
@@ -998,7 +998,7 @@ export default function FruitStoreScreen() {
                     className="
                       mb-4 rounded-2xl
                       border border-light-border bg-light-border/30 p-5
-                      dark:border-dark-border dark:bg-[#242540]
+                      dark:border-dark-border dark:bg-dark-card
                     ">
                     <View className="flex-row items-center justify-between">
                       <View className="mr-4 flex-1 flex-row items-center">
@@ -1049,7 +1049,7 @@ export default function FruitStoreScreen() {
               className="
                 mb-4 rounded-2xl
                 border border-light-border bg-light-border/30 px-5
-                dark:border-dark-border dark:bg-[#242540]
+                dark:border-dark-border dark:bg-dark-card
               ">
               {visibleHistory.map((entry, index) => {
                 const rowDate = new Date(entry.date).toLocaleDateString(i18n.language, {
@@ -1396,7 +1396,7 @@ function GiftRewardCard({ gift, onBuy }: { gift: GiftItem; onBuy: () => void }) 
       className="
         mb-4 rounded-2xl
         border border-primary bg-light-border/30 p-5
-        active:opacity-80 dark:bg-[#242540]
+        active:opacity-80 dark:bg-dark-card
       ">
       {/* Gift band — ribbon tab hanging from the card's top edge */}
       <View className="absolute rounded-b-lg bg-primary px-2 py-0.5" style={{ top: 0, left: 16 }}>
@@ -1442,7 +1442,7 @@ function CustomRewardCard({
       className="
         mb-4 rounded-2xl
         border border-light-border bg-light-border/30 p-5
-        active:opacity-80 dark:border-dark-border dark:bg-[#242540]
+        active:opacity-80 dark:border-dark-border dark:bg-dark-card
       ">
       <View className="flex-row items-center justify-between">
         <View className="mr-4 flex-1 flex-row items-center">
@@ -1520,17 +1520,17 @@ function CreateRewardModal({
             onPress={() => {}}
             className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
             {/* Header */}
-            <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
+            <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-dark-border">
               <Typography variant="headline-20" color="primary">
                 {t('store.createCustomTitle')}
               </Typography>
               <Pressable
                 onPress={handleClose}
-                className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700">
+                className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-dark-card">
                 <Ionicons
                   name="close"
                   size={20}
-                  color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+                  color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
                 />
               </Pressable>
             </View>
@@ -1543,7 +1543,7 @@ function CreateRewardModal({
                     Keyboard.dismiss();
                     setShowEmojiPicker(true);
                   }}
-                  className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-gray-500 dark:bg-gray-700">
+                  className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-dark-border dark:bg-dark-card">
                   {emoji ? (
                     <Text className="text-2xl">{emoji}</Text>
                   ) : (
@@ -1557,13 +1557,13 @@ function CreateRewardModal({
                   placeholderTextColor="#666"
                   className="flex-1"
                   style={{
-                    backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                    backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
                     borderRadius: 12,
                     padding: 14,
                     fontSize: 16,
-                    color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                    color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                     borderWidth: 1,
-                    borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                    borderColor: colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
                   }}
                   autoFocus={true}
                 />
@@ -1583,13 +1583,13 @@ function CreateRewardModal({
                   keyboardType="number-pad"
                   className="flex-1"
                   style={{
-                    backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                    backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
                     borderRadius: 12,
                     padding: 14,
                     fontSize: 16,
-                    color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                    color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                     borderWidth: 1,
-                    borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                    borderColor: colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
                   }}
                 />
               </View>
@@ -1597,25 +1597,23 @@ function CreateRewardModal({
 
             {/* Actions */}
             <View
-              className="flex-row border-t border-light-border p-4 dark:border-gray-700"
+              className="flex-row border-t border-light-border p-4 dark:border-dark-border"
               style={{ gap: 12 }}>
-              <Pressable
-                onPress={handleClose}
-                className="flex-1 items-center rounded-2xl bg-gray-600 py-4 active:opacity-80">
-                <Typography variant="subtitle-16" color="white">
-                  {t('common.cancel')}
-                </Typography>
-              </Pressable>
-              <Pressable
-                onPress={handleCreate}
+              <Button
+                variant="secondary"
+                size="large"
+                className="flex-1 rounded-2xl py-4"
+                onPress={handleClose}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="primary"
+                size="large"
                 disabled={!canCreate}
-                className={`flex-1 items-center rounded-2xl py-4 ${
-                  canCreate ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'
-                }`}>
-                <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  {t('store.createCustomAction')}
-                </Typography>
-              </Pressable>
+                className="flex-1 rounded-2xl py-4"
+                onPress={handleCreate}>
+                {t('store.createCustomAction')}
+              </Button>
             </View>
           </Pressable>
         </Pressable>
@@ -1671,7 +1669,7 @@ function ThemeCard({
       disabled={applied}
       className={`
         mb-4 rounded-2xl
-        border bg-light-border/30 p-5 dark:bg-[#242540]
+        border bg-light-border/30 p-5 dark:bg-dark-card
         ${applied ? 'border-primary' : 'border-light-border active:opacity-80 dark:border-dark-border'}
       `}>
       <View className="flex-row items-center justify-between">
@@ -1864,7 +1862,7 @@ function SetupTaskCard({
       className="
         mb-4 rounded-2xl
         border border-light-border bg-light-border/30 p-5
-        dark:border-dark-border dark:bg-[#242540]
+        dark:border-dark-border dark:bg-dark-card
       ">
       <View className="flex-row items-center justify-between">
         <View className="mr-4 flex-1 flex-row items-center">

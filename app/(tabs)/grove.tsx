@@ -3,6 +3,7 @@ import { View, SafeAreaView, Image, ScrollView, Pressable, useColorScheme, Refre
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { FriendCarousel } from '../../src/components/grove/FriendCarousel';
 import { ChallengeCard } from '../../src/components/grove/ChallengeCard';
@@ -186,12 +187,12 @@ export default function GroveScreen() {
         <View className="flex-row items-center gap-4">
           {hasFriends && (
             <Pressable onPress={handleAddFriend} className="active:opacity-60" hitSlop={8}>
-              <Ionicons name="person-add-outline" size={22} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+              <Ionicons name="person-add-outline" size={22} color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
             </Pressable>
           )}
           <Pressable onPress={handleNotifications} className="active:opacity-60" hitSlop={8}>
             <View>
-              <Ionicons name="notifications-outline" size={22} color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'} />
+              <Ionicons name="notifications-outline" size={22} color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
               {unreadNotificationCount > 0 && (
                 <View
                   style={{
@@ -201,7 +202,7 @@ export default function GroveScreen() {
                     width: 8,
                     height: 8,
                     borderRadius: 4,
-                    backgroundColor: '#FF3B30',
+                    backgroundColor: colors.danger,
                   }}
                 />
               )}
@@ -217,7 +218,7 @@ export default function GroveScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+            tintColor={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
           />
         }
       >
@@ -227,7 +228,7 @@ export default function GroveScreen() {
             onPress={() => router.push(`/(modals)/friend-feed?userId=${currentUserId}`)}
             className="active:opacity-80"
           >
-            <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mt-1">
+            <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 mt-1">
               <View className="flex-row items-center">
                 {profile.avatar_url ? (
                   <Image
@@ -317,7 +318,7 @@ export default function GroveScreen() {
                   {/* Create new challenge button */}
                   <Pressable
                     onPress={handleCreateChallenge}
-                    className="w-[260px] bg-light-border/30 dark:bg-[#242540] rounded-2xl items-center justify-center"
+                    className="w-[260px] bg-light-border/30 dark:bg-dark-card rounded-2xl items-center justify-center"
                   >
                     <View className="w-12 h-12 rounded-full bg-[#E9A065]/10 items-center justify-center mb-2">
                       <Ionicons name="add" size={24} color="#E9A065" />

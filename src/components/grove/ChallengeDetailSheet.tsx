@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, ScrollView, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
@@ -10,8 +11,8 @@ import type { ChallengeItem, ChallengePeriodDetailsResult } from '../../services
 import { useTranslation } from 'react-i18next';
 
 const OUTCOME_COLORS = {
-  completed: '#22C55E',
-  failed: '#EF4444',
+  completed: colors.success,
+  failed: colors.danger,
 };
 
 interface ChallengeDetailSheetProps {
@@ -95,21 +96,21 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
           </Typography>
           {isCompleted && (
             <View className="bg-green-500/20 rounded-full px-2.5 py-1">
-              <Typography variant="body-12" style={{ color: '#22C55E' }}>
+              <Typography variant="body-12" style={{ color: colors.success }}>
                 {t('challenge.done')}
               </Typography>
             </View>
           )}
           {isFailed && (
             <View className="bg-red-500/20 rounded-full px-2.5 py-1">
-              <Typography variant="body-12" style={{ color: '#EF4444' }}>
+              <Typography variant="body-12" style={{ color: colors.danger }}>
                 {t('challenge.failed')}
               </Typography>
             </View>
           )}
           {isCancelled && (
             <View className="bg-yellow-500/20 rounded-full px-2.5 py-1">
-              <Typography variant="body-12" style={{ color: '#EAB308' }}>
+              <Typography variant="body-12" style={{ color: colors.warning }}>
                 {t('challenge.cancelled')}
               </Typography>
             </View>
@@ -141,7 +142,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
         {/* Target + fruits */}
         <View className="flex-row items-center gap-2 mb-4">
           <View className="bg-primary/10 rounded-lg px-2 py-1">
-            <Typography variant="body-12" style={{ color: '#6592E9' }}>
+            <Typography variant="body-12" style={{ color: colors.primary }}>
               {targetLabel}
             </Typography>
           </View>
@@ -159,7 +160,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
 
         {/* Current user's period grid */}
         {details && myPeriodData && challenge.startDate && (
-          <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl p-4 mb-3">
+          <View className="bg-light-border/30 dark:bg-dark-card rounded-xl p-4 mb-3">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
               {t('challenge.yourProgress')}
             </Typography>
@@ -175,7 +176,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
 
         {/* Ranking */}
         {details && (
-          <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl p-4 mb-3">
+          <View className="bg-light-border/30 dark:bg-dark-card rounded-xl p-4 mb-3">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-3">
               {t('challenge.ranking')}
             </Typography>
@@ -205,7 +206,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
                       <View
                         className="rounded-full px-2 py-0.5"
                         style={{
-                          backgroundColor: outcome === 'completed' ? '#22C55E20' : '#EF444420',
+                          backgroundColor: outcome === 'completed' ? colors.success + '33' : colors.danger + '33',
                         }}
                       >
                         <Typography
@@ -228,8 +229,8 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
             onPress={() => onDelete(challenge.id)}
             className="flex-row items-center justify-center mt-1 mb-4 py-3 rounded-xl bg-red-500/10 active:opacity-70"
           >
-            <Ionicons name="trash-outline" size={16} color="#EF4444" />
-            <Typography variant="subtitle-14-medium" style={{ color: '#EF4444' }} className="ml-2">
+            <Ionicons name="trash-outline" size={16} color={colors.danger} />
+            <Typography variant="subtitle-14-medium" style={{ color: colors.danger }} className="ml-2">
               {t('grove.deleteChallengeTitle')}
             </Typography>
           </Pressable>

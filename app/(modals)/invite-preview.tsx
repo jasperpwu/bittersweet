@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { Button } from '../../src/components/ui/Button/Button';
+import { colors } from '../../src/config/theme';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
 
@@ -156,7 +157,7 @@ export default function InvitePreviewModal() {
             {isAlreadyFriends ? (
               <View className="mt-8 items-center">
                 <View className="flex-row items-center gap-2">
-                  <Ionicons name="checkmark-circle" size={20} color="#65E9A3" />
+                  <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                   <Typography variant="body-14" color="secondary">
                     {t('gm.invAlreadyFriends', { name: profile.display_name })}
                   </Typography>
@@ -174,7 +175,7 @@ export default function InvitePreviewModal() {
                     disabled
                     className="bg-primary opacity-50 px-6 py-4 min-h-14 rounded-xl items-center justify-center"
                   >
-                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <ActivityIndicator color={colors.white} size="small" />
                   </Pressable>
                 ) : (
                   <Button variant="primary" size="large" onPress={handleAccept}>

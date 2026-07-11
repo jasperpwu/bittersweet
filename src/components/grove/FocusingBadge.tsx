@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated } from 'react-native';
+import { colors } from '../../config/theme';
 
 interface FocusingBadgeProps {
   size?: number;
@@ -48,7 +49,7 @@ export const FocusingBadge: React.FC<FocusingBadgeProps> = ({ size = 10 }) => {
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: '#34D399',
+          backgroundColor: colors.success,
           opacity,
         }}
       />

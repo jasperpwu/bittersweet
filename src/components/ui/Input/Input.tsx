@@ -1,5 +1,6 @@
 import React, { FC, useState } from 'react';
 import { TextInput, TextInputProps, View } from 'react-native';
+import { colors } from '../../../config/theme';
 import { Typography } from '../Typography';
 import { getFontFamily } from '../../../utils/typography';
 
@@ -47,7 +48,7 @@ export const Input: FC<InputProps> = ({
         ]}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        placeholderTextColor="#8A8A8A"
+        placeholderTextColor={colors.light.textSecondary}
         {...props}
       />
       {error && (

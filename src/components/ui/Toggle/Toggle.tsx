@@ -1,5 +1,6 @@
 import React, { FC, useEffect } from 'react';
 import { Pressable } from 'react-native';
+import { colors } from '../../../config/theme';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -45,7 +46,7 @@ export const Toggle: FC<ToggleProps> = ({
     backgroundColor: interpolateColor(
       backgroundProgress.value,
       [0, 1],
-      ['#575757', '#6592E9'] // dark-border to primary
+      [colors.dark.border, colors.primary] // dark-border to primary
     ),
     transform: [{ scale: scale.value }],
   }));
@@ -103,7 +104,7 @@ export const Toggle: FC<ToggleProps> = ({
             width: dimensions.thumbSize,
             height: dimensions.thumbSize,
             borderRadius: dimensions.thumbSize / 2,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: colors.white,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.2,

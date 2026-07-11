@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Pressable, useColorScheme } from 'react-native';
+import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from './Typography';
 import { Toggle } from './Toggle';
@@ -47,7 +48,7 @@ export const SettingsItem: React.FC<SettingsItemProps> = ({
     >
       {icon && (
         <View className="w-8 items-center mr-3">
-          <Ionicons name={icon} size={20} color={isDark ? '#CACACA' : '#8B7355'} />
+          <Ionicons name={icon} size={20} color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
         </View>
       )}
 
@@ -58,7 +59,7 @@ export const SettingsItem: React.FC<SettingsItemProps> = ({
           </Typography>
           {premiumBadge && (
             <View className="ml-2 px-2 py-0.5 rounded-full bg-primary/15 flex-row items-center">
-              <Ionicons name="diamond" size={9} color="#8B7FFF" />
+              <Ionicons name="diamond" size={9} color={colors.primary} />
               <Typography variant="tiny-10" className="ml-1 text-primary font-poppins-semibold">
                 PREMIUM
               </Typography>
@@ -88,7 +89,7 @@ export const SettingsItem: React.FC<SettingsItemProps> = ({
       )}
 
       {hasChevron && (
-        <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+        <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
       )}
     </Pressable>
   );
@@ -105,7 +106,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({ title, childre
       <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
         {title}
       </Typography>
-      <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+      <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4">
         {children}
       </View>
     </View>

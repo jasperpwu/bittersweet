@@ -35,8 +35,12 @@ const ReportTile: FC<{ report: WeeklyCoachReport }> = ({ report }) => (
   </View>
 );
 
-/** Progress-aware empty state (no report yet, but the user has some activity). */
-const Teaser: FC = () => {
+/**
+ * Progress-aware empty state (no report yet). Shown inside the collapsible
+ * section — mirrors the Badges empty state, with a small tip telling the user
+ * how to unlock their first report.
+ */
+const EmptyTip: FC = () => {
   const { t } = useTranslation();
   const progress = weekProgress();
   const remainingSessions = Math.max(0, MIN_SESSIONS - progress.sessions);
@@ -52,27 +56,15 @@ const Teaser: FC = () => {
     : t('coach.chipSessions', { current: progress.sessions, total: MIN_SESSIONS });
 
   return (
-    <View className="mb-6 px-5">
-      <Card variant="outlined" padding="medium">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-1 pr-3">
-            <Typography variant="subtitle-16" color="primary" className="mb-1">
-              {t('coach.title')}
-            </Typography>
-            <Typography variant="body-12" color="secondary">
-              {line}
-            </Typography>
-            {!progress.meetsGate && (
-              <Typography variant="tiny-10" color="secondary" className="mt-1">
-                {chip}
-              </Typography>
-            )}
-          </View>
-          <Typography variant="headline-24" color="primary">
-            🧭
-          </Typography>
-        </View>
-      </Card>
+    <View className="items-center py-6">
+      <Typography variant="body-14" color="secondary" className="text-center">
+        {line}
+      </Typography>
+      {!progress.meetsGate && (
+        <Typography variant="tiny-10" color="secondary" className="mt-1.5 text-center">
+          {chip}
+        </Typography>
+      )}
     </View>
   );
 };
@@ -85,7 +77,6 @@ const Teaser: FC = () => {
 export const CoachSection: FC = () => {
   const { t } = useTranslation();
   const coachReports = useAppStore((s) => s.focus.coachReports);
-  const sessionCount = useAppStore((s) => s.focus.sessions.allIds.length);
   const upsertCoachReport = useAppStore((s) => s.focus.upsertCoachReport);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -102,6 +93,7 @@ export const CoachSection: FC = () => {
   }, [coachReports]);
 
   const latest = reports[0];
+  const hasReports = reports.length > 0;
   // Read state lives on the report row itself (synced), so it survives reinstall.
   const hasUnseen = !!latest && !latest.seenAt;
 
@@ -120,12 +112,6 @@ export const CoachSection: FC = () => {
       return next;
     });
   };
-
-  // No reports yet: teaser (or nothing at all for a brand-new user).
-  if (!latest) {
-    if (sessionCount === 0) return null;
-    return <Teaser />;
-  }
 
   return (
     <View className="mb-6 px-5">
@@ -147,9 +133,11 @@ export const CoachSection: FC = () => {
             }}
           />
         )}
-        <Typography variant="body-12" color="secondary" className="mr-2">
-          {reports.length}
-        </Typography>
+        {hasReports && (
+          <Typography variant="body-12" color="secondary" className="mr-2">
+            {reports.length}
+          </Typography>
+        )}
         <Ionicons
           name={isCollapsed ? 'chevron-down' : 'chevron-up'}
           size={16}
@@ -157,13 +145,16 @@ export const CoachSection: FC = () => {
         />
       </Pressable>
 
-      {!isCollapsed && (
-        <View className="-mx-1.5 flex-row flex-wrap">
-          {reports.map((r) => (
-            <ReportTile key={r.id} report={r} />
-          ))}
-        </View>
-      )}
+      {!isCollapsed &&
+        (hasReports ? (
+          <View className="-mx-1.5 flex-row flex-wrap">
+            {reports.map((r) => (
+              <ReportTile key={r.id} report={r} />
+            ))}
+          </View>
+        ) : (
+          <EmptyTip />
+        ))}
     </View>
   );
 };

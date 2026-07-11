@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../../ui/Typography';
+import { colors } from '../../../config/theme';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { WheelColumn } from '../../ui/WheelColumn';
 
@@ -80,7 +81,7 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
       <Pressable onPress={handleOpen} style={{ alignItems: 'center' }}>
         <Text
           style={{
-            color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+            color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
             fontSize: 64,
             fontFamily: 'Poppins-Bold',
             textAlign: 'center',

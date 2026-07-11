@@ -1,5 +1,6 @@
 import React, { useEffect, useState, RefObject } from 'react';
 import { View, Pressable, useColorScheme, StyleSheet, Dimensions } from 'react-native';
+import { colors } from '../../../config/theme';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -124,7 +125,7 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
           height: cutout.height,
           borderRadius: 12,
           borderWidth: 2,
-          borderColor: '#6592E9',
+          borderColor: colors.primary,
         }}
       />
 
@@ -137,7 +138,7 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
             bottom: tooltipBelow ? undefined : SCREEN_HEIGHT - tooltipTop,
             left: 24,
             right: 24,
-            backgroundColor: isDark ? '#2A2A3E' : '#FFFFFF',
+            backgroundColor: isDark ? colors.dark.card : colors.white,
           },
         ]}
       >
@@ -152,8 +153,8 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
                 Math.max(cutout.left + cutout.width / 2 - 24 - 8, 16),
                 SCREEN_WIDTH - 24 * 2 - 32
               ),
-              borderBottomColor: tooltipBelow ? (isDark ? '#2A2A3E' : '#FFFFFF') : 'transparent',
-              borderTopColor: !tooltipBelow ? (isDark ? '#2A2A3E' : '#FFFFFF') : 'transparent',
+              borderBottomColor: tooltipBelow ? (isDark ? colors.dark.card : colors.white) : 'transparent',
+              borderTopColor: !tooltipBelow ? (isDark ? colors.dark.card : colors.white) : 'transparent',
               transform: tooltipBelow ? [] : [{ rotate: '180deg' }],
             },
           ]}

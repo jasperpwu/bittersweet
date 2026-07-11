@@ -3,13 +3,15 @@ import { View, Pressable, Image, Alert, ActivityIndicator, useColorScheme } from
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../ui/Typography';
+import { Button } from '../ui/Button';
 import { DefaultAvatar } from './DefaultAvatar';
 import { useAppStore } from '../../store';
+import { colors } from '../../config/theme';
 
 export const GroveSettingsSection: React.FC = () => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const iconColor = isDark ? '#CACACA' : '#8B7355';
+  const iconColor = isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary;
 
   const isAuthenticated = useAppStore((s) => s.auth.isAuthenticated);
   const profile = useAppStore((s) => s.grove.profile);
@@ -45,25 +47,27 @@ export const GroveSettingsSection: React.FC = () => {
         <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
           Grove
         </Typography>
-        <Pressable
+        <Button
+          variant="primary"
+          fullWidth
+          className="rounded-2xl px-4 py-4"
           onPress={handleSetupPress}
-          className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-4 active:opacity-70"
         >
           <View className="flex-row items-center">
-            <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center mr-3">
-              <Ionicons name="people-outline" size={22} color="#6592E9" />
+            <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center mr-3">
+              <Ionicons name="people-outline" size={22} color={colors.white} />
             </View>
             <View className="flex-1">
-              <Typography variant="subtitle-14-medium" color="primary">
+              <Typography variant="subtitle-14-medium" color="white">
                 Set Up Grove Profile
               </Typography>
-              <Typography variant="body-12" color="secondary" className="mt-0.5">
+              <Typography variant="body-12" color="white" className="mt-0.5 opacity-80">
                 Share your focus journey with friends
               </Typography>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+            <Ionicons name="chevron-forward" size={16} color={colors.white} />
           </View>
-        </Pressable>
+        </Button>
       </View>
     );
   }
@@ -74,7 +78,7 @@ export const GroveSettingsSection: React.FC = () => {
       <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
         Grove
       </Typography>
-      <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+      <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4">
         {/* Profile info */}
         <View className="py-3 border-b border-light-border dark:border-dark-border">
           <View className="flex-row items-center">
@@ -122,7 +126,7 @@ export const GroveSettingsSection: React.FC = () => {
                 </Typography>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+            <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
           </Pressable>
         )}
 
@@ -145,7 +149,7 @@ export const GroveSettingsSection: React.FC = () => {
                 </Typography>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+            <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
           </Pressable>
         )}
 
@@ -175,17 +179,17 @@ export const GroveSettingsSection: React.FC = () => {
             </View>
           </View>
           {isLoading ? (
-            <ActivityIndicator size="small" color="#6592E9" />
+            <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <View
               className={`w-8 h-8 rounded-full items-center justify-center ${
-                isActive ? 'bg-[#51BC6F]' : 'bg-light-border dark:bg-dark-border'
+                isActive ? 'bg-success' : 'bg-light-border dark:bg-dark-border'
               }`}
             >
               <Ionicons
                 name={isActive ? 'checkmark' : 'pause'}
                 size={16}
-                color="#FFFFFF"
+                color={colors.white}
               />
             </View>
           )}

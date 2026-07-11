@@ -12,7 +12,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui/Typography';
+import { Button } from '../../ui/Button';
 import { BottomSheet } from '../../ui/BottomSheet';
+import { colors } from '../../../config/theme';
 import { EmojiPickerOverlay } from '../../ui/EmojiPicker/EmojiPicker';
 import { ColorPickerOverlay } from '../TagColorPicker/TagColorPicker';
 import { ActivityTypePicker } from '../ActivityTypePicker/ActivityTypePicker';
@@ -142,17 +144,18 @@ export const EditTagSheet: FC<EditTagSheetProps> = ({ visible, tagId, onClose })
       scrollable
       beforeClose={handleBeforeClose}
       footer={
-        <View className="border-t border-light-border px-6 pb-2 pt-3 dark:border-gray-700">
-          <Pressable
-            onPress={handleSave}
+        <View className="border-t border-light-border px-6 pb-2 pt-3 dark:border-dark-border">
+          <Button
+            variant="primary"
+            size="large"
+            fullWidth
             disabled={!name.trim()}
-            className={`items-center rounded-2xl py-4 ${
-              name.trim() ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'
-            }`}>
+            className="rounded-2xl py-4"
+            onPress={handleSave}>
             <Typography variant="subtitle-16" color="white" className="font-semibold">
               {t('common.save')}
             </Typography>
-          </Pressable>
+          </Button>
         </View>
       }
       overlay={
@@ -191,27 +194,27 @@ export const EditTagSheet: FC<EditTagSheetProps> = ({ visible, tagId, onClose })
             Keyboard.dismiss();
             setShowEmojiPicker(true);
           }}
-          className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-gray-500 dark:bg-gray-700">
+          className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-dark-border dark:bg-dark-card">
           {emoji ? (
             <Text className="text-2xl">{emoji}</Text>
           ) : (
-            <Ionicons name="happy-outline" size={24} color="#6592E9" />
+            <Ionicons name="happy-outline" size={24} color={colors.primary} />
           )}
         </Pressable>
         <TextInput
           value={name}
           onChangeText={setName}
           placeholder={t('home.tagNamePlaceholder')}
-          placeholderTextColor="#666"
+          placeholderTextColor={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
           className="flex-1"
           style={{
-            backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+            backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
             borderRadius: 12,
             padding: 14,
             fontSize: 16,
-            color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+            color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
             borderWidth: 1,
-            borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+            borderColor: colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
           }}
         />
       </View>
@@ -226,9 +229,9 @@ export const EditTagSheet: FC<EditTagSheetProps> = ({ visible, tagId, onClose })
             Keyboard.dismiss();
             setShowColorPicker(true);
           }}
-          className="flex-row items-center justify-between rounded-xl border border-light-border bg-light-border/30 px-4 py-3 active:opacity-80 dark:border-gray-500 dark:bg-gray-700">
+          className="flex-row items-center justify-between rounded-xl border border-light-border bg-light-border/30 px-4 py-3 active:opacity-80 dark:border-dark-border dark:bg-dark-card">
           <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: color }} />
-          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+          <Ionicons name="chevron-forward" size={18} color={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
         </Pressable>
       </View>
 

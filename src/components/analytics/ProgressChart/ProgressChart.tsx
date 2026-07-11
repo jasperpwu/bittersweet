@@ -1,5 +1,6 @@
 import React, { FC } from 'react';
 import { View, useWindowDimensions } from 'react-native';
+import { colors } from '../../../config/theme';
 import { Typography } from '../../ui/Typography';
 import { Card } from '../../ui/Card';
 
@@ -25,7 +26,7 @@ export const ProgressChart: FC<ProgressChartProps> = ({
   title,
   subtitle,
   chartType = 'line',
-  color = '#6592E9',
+  color = colors.primary,
   height = 200,
   showGrid = true,
   showLabels = true,

@@ -6,6 +6,7 @@ import { AnalyticsTracker } from '../src/services/analytics';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../src/components/ui/Typography';
 import { Button } from '../src/components/ui/Button';
+import { colors } from '../src/config/theme';
 import { TagColorPicker } from '../src/components/focus';
 import { useUnifiedStore } from '../src/store/unified-store';
 import { useAppStore } from '../src/store';
@@ -172,8 +173,8 @@ export default function OnboardingScreen() {
                 {tagName}
               </Typography>
               <View className="flex-row items-center mt-2">
-                <Ionicons name="checkmark-circle" size={20} color="#51BC6F" />
-                <Typography variant="body-14" className="ml-1.5" style={{ color: '#51BC6F' }}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <Typography variant="body-14" className="ml-1.5" style={{ color: colors.success }}>
                   {t('onboarding.tagCreated')}
                 </Typography>
               </View>
@@ -193,10 +194,10 @@ export default function OnboardingScreen() {
                     className="w-11 h-11 rounded-xl items-center justify-center"
                     style={{
                       backgroundColor: tagEmoji === emoji
-                        ? (isDark ? '#3A3A4E' : '#E0D4C0')
-                        : (isDark ? '#2A2A2A' : '#F0E0CC'),
+                        ? colors.primary + '1A'
+                        : (isDark ? colors.dark.input : colors.light.input),
                       borderWidth: tagEmoji === emoji ? 2 : 0,
-                      borderColor: '#6592E9',
+                      borderColor: colors.primary,
                     }}
                   >
                     <Text style={{ fontSize: 22 }}>{emoji}</Text>
@@ -212,17 +213,17 @@ export default function OnboardingScreen() {
                 value={tagName}
                 onChangeText={setTagName}
                 placeholder={t('onboarding.tagNamePlaceholder')}
-                placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
+                placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
                 maxLength={30}
                 className="mb-6"
                 style={{
-                  backgroundColor: isDark ? '#2A2A2A' : '#F0E0CC',
+                  backgroundColor: isDark ? colors.dark.input : colors.light.input,
                   borderRadius: 12,
                   padding: 14,
                   fontSize: 16,
-                  color: isDark ? '#FFFFFF' : '#5D4E37',
+                  color: isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                   borderWidth: 1,
-                  borderColor: isDark ? '#444' : '#D4C4A8',
+                  borderColor: isDark ? colors.dark.border : colors.light.screenBorder,
                 }}
               />
 
@@ -235,16 +236,17 @@ export default function OnboardingScreen() {
               </ScrollView>
 
               {/* Create button */}
-              <Pressable
-                onPress={handleCreateTag}
+              <Button
+                variant="primary"
+                fullWidth
                 disabled={!tagName.trim()}
-                className="bg-primary rounded-xl py-3.5 items-center active:opacity-80"
-                style={{ opacity: !tagName.trim() ? 0.5 : 1 }}
+                className="rounded-xl py-3.5"
+                onPress={handleCreateTag}
               >
                 <Typography variant="subtitle-14-semibold" className="text-white">
                   {t('onboarding.createTag')}
                 </Typography>
-              </Pressable>
+              </Button>
             </View>
           )}
         </View>
@@ -274,19 +276,21 @@ export default function OnboardingScreen() {
         <LanguageTrigger />
 
         <View className="flex-row items-center">
-          <Pressable
-            onPress={handleSignIn}
+          <Button
+            variant="ghost"
+            size="small"
             disabled={isSigningIn}
-            className="flex-row items-center py-2 px-3 active:opacity-70"
+            className="flex-row py-2 px-3"
+            onPress={handleSignIn}
           >
             {isSigningIn ? (
-              <ActivityIndicator size="small" color="#8B7FFF" />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Typography variant="body-14" className="text-primary">
                 {t('common.continueWithApple')}
               </Typography>
             )}
-          </Pressable>
+          </Button>
 
           {/* Dev-only email login (bypasses Apple Sign-In for sandbox testing) */}
           {__DEV__ && (
@@ -305,7 +309,7 @@ export default function OnboardingScreen() {
 
       {signInError && (
         <View className="px-5">
-          <Typography variant="body-12" className="text-[#FF6B6B] text-center">
+          <Typography variant="body-12" color="error" className="text-center">
             {signInError}
           </Typography>
         </View>

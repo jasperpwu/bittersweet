@@ -1,5 +1,6 @@
 import React, { FC } from 'react';
 import { View, Modal, Pressable, ScrollView, Text, useColorScheme } from 'react-native';
+import { colors } from '../../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../Typography';
 import { SheetOverlay } from '../BottomSheet';
@@ -29,7 +30,7 @@ export const EMOJI_CATEGORIES = {
  */
 const EmojiPickerHeader: FC<{ title: string; onClose?: () => void }> = ({ title, onClose }) => {
   const colorScheme = useColorScheme();
-  const closeIconColor = colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37';
+  const closeIconColor = colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary;
   return (
     <View className="flex-row items-center justify-between px-6 pb-4 pt-1">
       <Typography variant="headline-20" color="primary">

@@ -3,6 +3,7 @@ import { View, ScrollView, SafeAreaView, Pressable, Alert, Image, ActivityIndica
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsItem';
 import { PrivacyToggleList } from '../../src/components/grove/PrivacyToggleList';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
@@ -14,7 +15,7 @@ export default function GroveSettingsScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const iconColor = isDark ? '#CACACA' : '#8B7355';
+  const iconColor = isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary;
   const { triggerHaptic } = useDeviceIntegration();
 
   const profile = useAppStore((s) => s.grove.profile);
@@ -88,7 +89,7 @@ export default function GroveSettingsScreen() {
       {/* Header */}
       <View className="h-[56px] px-5 flex-row items-center">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
-          <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
+          <Ionicons name="chevron-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
           {t('settings.tab.grove')}
@@ -162,17 +163,17 @@ export default function GroveSettingsScreen() {
                   </View>
                 </View>
                 {isGroveLoading ? (
-                  <ActivityIndicator size="small" color="#6592E9" />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
                   <View
                     className={`w-8 h-8 rounded-full items-center justify-center ${
-                      isActive ? 'bg-[#51BC6F]' : 'bg-light-border dark:bg-dark-border'
+                      isActive ? 'bg-success' : 'bg-light-border dark:bg-dark-border'
                     }`}
                   >
                     <Ionicons
                       name={isActive ? 'checkmark' : 'pause'}
                       size={16}
-                      color="#FFFFFF"
+                      color={colors.white}
                     />
                   </View>
                 )}
@@ -195,7 +196,7 @@ export default function GroveSettingsScreen() {
                   className="active:opacity-70"
                 >
                   {isSavingPrivacy ? (
-                    <ActivityIndicator size="small" color="#6592E9" />
+                    <ActivityIndicator size="small" color={colors.primary} />
                   ) : (
                     <Typography variant="subtitle-14-medium" className="text-primary">
                       {t('common.save')}
@@ -204,7 +205,7 @@ export default function GroveSettingsScreen() {
                 </Pressable>
               )}
             </View>
-            <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-3">
+            <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4 py-3">
               <PrivacyToggleList
                 tags={activeTags}
                 sharedTagIds={sharedTagIds}

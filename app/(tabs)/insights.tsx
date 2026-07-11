@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { View, SafeAreaView, Alert, ScrollView } from 'react-native';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
 import { GoalProgress } from '../../src/components/analytics/GoalProgress';
 import { BadgeCollection } from '../../src/components/analytics/BadgeCollection';
@@ -112,14 +113,14 @@ export default function InsightsScreen() {
 
   const getTagColor = (tagIdOrName: string): string => {
     const tag = tags?.byId?.[tagIdOrName];
-    if (tag) return tag.color || '#6592E9';
+    if (tag) return tag.color || colors.primary;
     if (tags?.allIds) {
       for (const id of tags.allIds) {
         const t = tags.byId[id];
-        if (t?.name === tagIdOrName) return t.color || '#6592E9';
+        if (t?.name === tagIdOrName) return t.color || colors.primary;
       }
     }
-    return '#6592E9';
+    return colors.primary;
   };
 
   // Build segments from sessions in a time range

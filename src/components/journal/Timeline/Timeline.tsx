@@ -274,7 +274,7 @@ export const Timeline: FC<TimelineProps> = ({
                   right: 0,
                   top: hourIndex * HOUR_HEIGHT,
                   height: 1,
-                  backgroundColor: '#575757',
+                  backgroundColor: colors.dark.border,
                   opacity: 0.2,
                 }}
               />
@@ -319,10 +319,10 @@ export const Timeline: FC<TimelineProps> = ({
                   style={{
                     width: 12,
                     height: 12,
-                    backgroundColor: '#6592E9',
+                    backgroundColor: colors.primary,
                     borderRadius: 6,
                     borderWidth: 2,
-                    borderColor: colorScheme === 'dark' ? '#1B1C30' : '#F5E6D3',
+                    borderColor: colorScheme === 'dark' ? colors.dark.background : colors.light.screen,
                   }}
                 />
                 {/* Blue line */}
@@ -330,7 +330,7 @@ export const Timeline: FC<TimelineProps> = ({
                   style={{
                     flex: 1,
                     height: 2,
-                    backgroundColor: '#6592E9',
+                    backgroundColor: colors.primary,
                     marginLeft: -1,
                   }}
                 />

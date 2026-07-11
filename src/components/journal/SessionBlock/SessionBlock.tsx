@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { View, Pressable, ViewStyle } from 'react-native';
+import { colors } from '../../../config/theme';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -62,7 +63,7 @@ export const SessionBlock: FC<SessionBlockProps> = ({
   const challengeTag = !tag && session.tagId
     ? challenges.find(c => c.tagId === session.tagId)
     : null;
-  const sessionColor = tag?.color || (challengeTag ? '#E9A065' : '#6592E9');
+  const sessionColor = tag?.color || (challengeTag ? '#E9A065' : colors.primary);
   const tagName = tag?.name || challengeTag?.tagName || 'Focus Session';
 
   return (

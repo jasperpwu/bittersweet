@@ -1,5 +1,16 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Pressable, useWindowDimensions, TextInput, Image, useColorScheme, ActivityIndicator, Alert, Linking, Keyboard } from 'react-native';
+import {
+  View,
+  Pressable,
+  useWindowDimensions,
+  TextInput,
+  Image,
+  useColorScheme,
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Keyboard,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -15,7 +26,8 @@ import Animated, {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Modal, Slider, Typography, TimePicker, DatePicker } from '../../src/components/ui';
+import { Modal, Slider, Typography, TimePicker, DatePicker, Button } from '../../src/components/ui';
+import { colors } from '../../src/config/theme';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { CreateTagModal } from '../../src/components/focus';
 import { DateSelector, Timeline, ThreeDayTimeline, TodoSheet } from '../../src/components/journal';
@@ -23,19 +35,29 @@ import { TodoEditModal } from '../../src/components/journal/TodoSheet/TodoEditMo
 import { TodoDragGhost } from '../../src/components/journal/TodoSheet/TodoDragGhost';
 import { useTodoScheduleController } from '../../src/components/journal/TodoSheet/TodoScheduleController';
 import { FruitCounter } from '../../src/components/rewards';
-import { calculateFruitsEarnedForDuration, useFocus, useFocusActions, useAppStore, useTodos, useTodoActions } from '../../src/store';
+import {
+  calculateFruitsEarnedForDuration,
+  useFocus,
+  useFocusActions,
+  useAppStore,
+  useTodos,
+  useTodoActions,
+} from '../../src/store';
 import type { Todo } from '../../src/store/types';
 import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
 import { showToast } from '../../src/components/ui/Toast';
 import { isToday } from '../../src/utils/dateUtils';
 import { fruitsForRating, RATING_FRUIT_MULTIPLIER } from '../../src/utils/focusRating';
 import { FocusSession } from '../../src/types/models';
-import { saveSessionPhoto, uploadSessionPhoto, deleteSessionPhoto } from '../../src/services/sessionPhotoService';
+import {
+  saveSessionPhoto,
+  uploadSessionPhoto,
+  deleteSessionPhoto,
+} from '../../src/services/sessionPhotoService';
 import { EmptyState } from '../../src/components/ui/EmptyState/EmptyState';
 import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
 import { isDevUser } from '../../src/config/devUsers';
 import { useTranslation } from 'react-i18next';
-
 
 export default function JournalScreen() {
   const { t, i18n } = useTranslation();
@@ -45,7 +67,8 @@ export default function JournalScreen() {
   const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
   const [adjustedDuration, setAdjustedDuration] = useState(0);
   const { sessions, tags } = useFocus();
-  const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession } = useFocusActions();
+  const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession } =
+    useFocusActions();
   const secondaryTagEnabled = useSecondaryTagEnabled();
 
   // Which calendar is showing: the single-day Sessions timeline or the 3-day
@@ -129,7 +152,7 @@ export default function JournalScreen() {
       withTiming(10, { duration: 50 }),
       withTiming(-10, { duration: 50 }),
       withTiming(10, { duration: 50 }),
-      withTiming(0, { duration: 50 }),
+      withTiming(0, { duration: 50 })
     );
   }, [manualEntryShakeX]);
 
@@ -139,7 +162,7 @@ export default function JournalScreen() {
 
     // Find the latest session endTime that falls before "now" (any date)
     let latestEndTime: Date | null = null;
-    (sessions.allIds || []).forEach(id => {
+    (sessions.allIds || []).forEach((id) => {
       const session = sessions.byId?.[id];
       if (!session?.endTime) return;
       const end = new Date(session.endTime);
@@ -149,9 +172,10 @@ export default function JournalScreen() {
     });
 
     // Use whichever is later: last session end + 1 minute or 25 min ago (avoid overlap)
-    const start = latestEndTime && latestEndTime >= twentyFiveMinAgo
-      ? new Date(latestEndTime.getTime() + 60 * 1000)
-      : twentyFiveMinAgo;
+    const start =
+      latestEndTime && latestEndTime >= twentyFiveMinAgo
+        ? new Date(latestEndTime.getTime() + 60 * 1000)
+        : twentyFiveMinAgo;
 
     setManualStartTime(start);
     setManualEndTime(now);
@@ -197,7 +221,7 @@ export default function JournalScreen() {
     // Check overlap with existing sessions
     const newStart = finalStart.getTime();
     const newEnd = finalEnd.getTime();
-    const hasOverlap = (sessions.allIds || []).some(id => {
+    const hasOverlap = (sessions.allIds || []).some((id) => {
       const session = sessions.byId?.[id];
       if (!session?.startTime || !session?.endTime) return false;
       const existingStart = new Date(session.startTime).getTime();
@@ -296,7 +320,7 @@ export default function JournalScreen() {
       setSelectedDate(sessionDate);
       setScrollToSessionId(params.sessionId as string);
       setJournalView('sessions');
-      
+
       // Clear the params to avoid re-triggering
       router.setParams({ sessionId: undefined, sessionDate: undefined });
     }
@@ -320,52 +344,60 @@ export default function JournalScreen() {
   }, []);
 
   const navigateDay = useCallback((direction: -1 | 1) => {
-    setSelectedDate(prev => {
+    setSelectedDate((prev) => {
       const next = new Date(prev);
       next.setDate(next.getDate() + direction);
       return next;
     });
   }, []);
 
-  const slideIn = useCallback((fromDirection: -1 | 1) => {
-    // New content enters from the opposite side
-    translateX.value = fromDirection * screenWidth * 0.3;
-    translateX.value = withTiming(0, {
-      duration: 250,
-      easing: Easing.out(Easing.cubic),
-    }, () => {
-      isSwiping.value = false;
-    });
-  }, [screenWidth, translateX, isSwiping]);
+  const slideIn = useCallback(
+    (fromDirection: -1 | 1) => {
+      // New content enters from the opposite side
+      translateX.value = fromDirection * screenWidth * 0.3;
+      translateX.value = withTiming(
+        0,
+        {
+          duration: 250,
+          easing: Easing.out(Easing.cubic),
+        },
+        () => {
+          isSwiping.value = false;
+        }
+      );
+    },
+    [screenWidth, translateX, isSwiping]
+  );
 
-  const swipeGesture = useMemo(() =>
-    Gesture.Pan()
-      .activeOffsetX([-30, 30])
-      .failOffsetY([-20, 20])
-      .onUpdate((event) => {
-        if (!isSwiping.value) {
-          translateX.value = event.translationX;
-        }
-      })
-      .onEnd((event) => {
-        if (isSwiping.value) return;
-        if (Math.abs(event.translationX) > 50) {
-          const direction = event.translationX < 0 ? 1 : -1;
-          isSwiping.value = true;
-          // Slide current content off-screen
-          translateX.value = withTiming(
-            -direction * screenWidth * 0.5,
-            { duration: 150, easing: Easing.in(Easing.cubic) },
-            () => {
-              runOnJS(navigateDay)(direction);
-              runOnJS(slideIn)(direction);
-            }
-          );
-        } else {
-          // Snap back
-          translateX.value = withTiming(0, { duration: 200 });
-        }
-      }),
+  const swipeGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-30, 30])
+        .failOffsetY([-20, 20])
+        .onUpdate((event) => {
+          if (!isSwiping.value) {
+            translateX.value = event.translationX;
+          }
+        })
+        .onEnd((event) => {
+          if (isSwiping.value) return;
+          if (Math.abs(event.translationX) > 50) {
+            const direction = event.translationX < 0 ? 1 : -1;
+            isSwiping.value = true;
+            // Slide current content off-screen
+            translateX.value = withTiming(
+              -direction * screenWidth * 0.5,
+              { duration: 150, easing: Easing.in(Easing.cubic) },
+              () => {
+                runOnJS(navigateDay)(direction);
+                runOnJS(slideIn)(direction);
+              }
+            );
+          } else {
+            // Snap back
+            translateX.value = withTiming(0, { duration: 200 });
+          }
+        }),
     [navigateDay, screenWidth, translateX, isSwiping, slideIn]
   );
 
@@ -374,10 +406,7 @@ export default function JournalScreen() {
     opacity: withTiming(isSwiping.value ? 0.5 : 1, { duration: 100 }),
   }));
 
-  const pickImage = async (
-    source: 'library' | 'camera',
-    onPicked: (uri: string) => void
-  ) => {
+  const pickImage = async (source: 'library' | 'camera', onPicked: (uri: string) => void) => {
     try {
       // Request appropriate permission first
       const permissionResult =
@@ -455,7 +484,7 @@ export default function JournalScreen() {
     const nextSecondary = editSecondaryTag || '';
     if (nextSecondary !== prevSecondary) {
       updateSession(selectedSession.id, { secondaryTagId: nextSecondary || undefined });
-      [prevSecondary, nextSecondary].forEach(tagId => {
+      [prevSecondary, nextSecondary].forEach((tagId) => {
         if (tagId && tagId !== selectedSession.tagId) {
           recomputeChallengeHitsForTag(tagId).catch(() => {});
         }
@@ -519,8 +548,10 @@ export default function JournalScreen() {
   }, [selectedDate, i18n.language, t]);
 
   const selectedActualDuration = selectedSession?.actualDuration ?? selectedSession?.duration ?? 0;
-  const selectedInitialDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
-  const selectedTargetDuration = selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
+  const selectedInitialDuration =
+    selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
+  const selectedTargetDuration =
+    selectedSession?.initialSetDuration ?? selectedSession?.duration ?? 0;
   const isManual = selectedSession?.isManualEntry;
   // Sync banner state (hooks must be called unconditionally)
   const syncBannerUserId = useAppStore((s) => s.auth.user?.id);
@@ -535,40 +566,47 @@ export default function JournalScreen() {
 
   // Resolve tag name for the selected session (handles challenge/shared tags)
   const selectedSessionTag = selectedSession?.tagId ? tags.byId[selectedSession.tagId] : null;
-  const selectedSessionChallengeTag = !selectedSessionTag && selectedSession?.tagId
-    ? challenges.find((c: ChallengeItem) => c.tagId === selectedSession.tagId)
-    : null;
-  const selectedSessionTagName = selectedSessionTag?.name
-    || selectedSessionChallengeTag?.tagName
-    || null;
+  const selectedSessionChallengeTag =
+    !selectedSessionTag && selectedSession?.tagId
+      ? challenges.find((c: ChallengeItem) => c.tagId === selectedSession.tagId)
+      : null;
+  const selectedSessionTagName =
+    selectedSessionTag?.name || selectedSessionChallengeTag?.tagName || null;
   const fallbackAccelerateMultiplier = useAppStore((s) => s.rewards.isAccelerateActive()) ? 2 : 1;
-  const selectedAccelerateMultiplier = selectedSession?.accelerateMultiplier ?? fallbackAccelerateMultiplier;
-  const selectedCurrentDuration = selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0;
-  const currentBaseFruits = isManual ? 0 : calculateFruitsEarnedForDuration(
-    selectedCurrentDuration,
-    selectedTargetDuration,
-    selectedAccelerateMultiplier
-  );
-  const adjustedBaseFruits = isManual ? 0 : calculateFruitsEarnedForDuration(
-    adjustedDuration,
-    selectedTargetDuration,
-    selectedAccelerateMultiplier
-  );
+  const selectedAccelerateMultiplier =
+    selectedSession?.accelerateMultiplier ?? fallbackAccelerateMultiplier;
+  const selectedCurrentDuration =
+    selectedSession?.adjustedDuration ?? selectedSession?.duration ?? 0;
+  const currentBaseFruits = isManual
+    ? 0
+    : calculateFruitsEarnedForDuration(
+        selectedCurrentDuration,
+        selectedTargetDuration,
+        selectedAccelerateMultiplier
+      );
+  const adjustedBaseFruits = isManual
+    ? 0
+    : calculateFruitsEarnedForDuration(
+        adjustedDuration,
+        selectedTargetDuration,
+        selectedAccelerateMultiplier
+      );
   const currentFruits = isManual
     ? 0
-    : selectedSession?.awardedFruits ??
+    : (selectedSession?.awardedFruits ??
       (selectedSession?.focusRating != null
         ? fruitsForRating(currentBaseFruits, selectedSession.focusRating)
-        : currentBaseFruits);
+        : currentBaseFruits));
   const adjustedFruits = isManual
     ? 0
     : editFocusRating != null
       ? fruitsForRating(adjustedBaseFruits, editFocusRating)
       : adjustedBaseFruits;
   const fruitDelta = adjustedFruits - currentFruits;
-  const ratingRewardPercent = editFocusRating != null
-    ? Math.round((RATING_FRUIT_MULTIPLIER[editFocusRating] ?? 1) * 100)
-    : 100;
+  const ratingRewardPercent =
+    editFocusRating != null
+      ? Math.round((RATING_FRUIT_MULTIPLIER[editFocusRating] ?? 1) * 100)
+      : 100;
 
   // Convert store sessions to component format and filter for selected date
   const hasAnySessions = sessions?.allIds?.length > 0;
@@ -585,121 +623,117 @@ export default function JournalScreen() {
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
 
-    return sessions.allIds
-      .map(id => {
-        const session = sessions.byId[id];
-        if (!session) return null;
-        const adjustedSessionDuration = session.adjustedDuration ?? session.duration;
-        
-        return {
-          ...session,
-          startTime: new Date(session.startTime),
-          endTime: new Date(session.endTime),
-          duration: adjustedSessionDuration,
-          initialSetDuration: session.initialSetDuration ?? session.duration,
-          actualDuration: session.actualDuration ?? Math.round((new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60)),
-          adjustedDuration: adjustedSessionDuration,
-          tagId: session.tagId || '',
-          notes: session.notes,
-          isManualEntry: session.isManualEntry,
-        };
-      })
-      .filter((session): session is NonNullable<typeof session> => session !== null)
-      // Show the session on every day its time range overlaps, not just its
-      // start day — a cross-midnight session appears on both days.
-      .filter(session => session.startTime < dayEnd && session.endTime > dayStart)
-      // Clip cross-midnight sessions to the selected day so each day renders
-      // only its own portion (top position and block height stay in bounds).
-      .map(session => {
-        if (session.startTime >= dayStart && session.endTime <= dayEnd) return session;
-        const clippedStart = session.startTime < dayStart ? dayStart : session.startTime;
-        const clippedEnd = session.endTime > dayEnd ? dayEnd : session.endTime;
-        return {
-          ...session,
-          startTime: clippedStart,
-          endTime: clippedEnd,
-          duration: Math.round((clippedEnd.getTime() - clippedStart.getTime()) / (1000 * 60)),
-        };
-      });
-  }, [sessions, selectedDate]);
+    return (
+      sessions.allIds
+        .map((id) => {
+          const session = sessions.byId[id];
+          if (!session) return null;
+          const startTime = new Date(session.startTime);
+          const originalEndTime = new Date(session.endTime);
+          const adjustedSessionDuration = session.adjustedDuration ?? session.duration;
+          // The block's end time reflects the adjusted (counted) duration, not the
+          // raw recorded end, so the block's span and its time-range label match
+          // the slider adjustment made in the edit modal.
+          const endTime = new Date(startTime.getTime() + adjustedSessionDuration * 60 * 1000);
 
+          return {
+            ...session,
+            startTime,
+            endTime,
+            duration: adjustedSessionDuration,
+            initialSetDuration: session.initialSetDuration ?? session.duration,
+            actualDuration:
+              session.actualDuration ??
+              Math.round((originalEndTime.getTime() - startTime.getTime()) / (1000 * 60)),
+            adjustedDuration: adjustedSessionDuration,
+            tagId: session.tagId || '',
+            notes: session.notes,
+            isManualEntry: session.isManualEntry,
+          };
+        })
+        .filter((session): session is NonNullable<typeof session> => session !== null)
+        // Show the session on every day its time range overlaps, not just its
+        // start day — a cross-midnight session appears on both days.
+        .filter((session) => session.startTime < dayEnd && session.endTime > dayStart)
+        // Clip cross-midnight sessions to the selected day so each day renders
+        // only its own portion (top position and block height stay in bounds).
+        .map((session) => {
+          if (session.startTime >= dayStart && session.endTime <= dayEnd) return session;
+          const clippedStart = session.startTime < dayStart ? dayStart : session.startTime;
+          const clippedEnd = session.endTime > dayEnd ? dayEnd : session.endTime;
+          return {
+            ...session,
+            startTime: clippedStart,
+            endTime: clippedEnd,
+            duration: Math.round((clippedEnd.getTime() - clippedStart.getTime()) / (1000 * 60)),
+          };
+        })
+    );
+  }, [sessions, selectedDate]);
 
   return (
     <View className="flex-1 bg-light-bg dark:bg-dark-bg" style={{ paddingTop: insets.top }}>
-      {/* Global Empty State — covers entire tab when user has no sessions at all */}
-      {!hasAnySessions && (
-        <View className="flex-1">
-          <EmptyState
-            icon="leaf-outline"
-            iconColor="#51BC6F"
-            title={t('journal.emptyTitle')}
-            description={t('journal.emptyDesc')}
-            buttonLabel={t('journal.emptyButton')}
-            onButtonPress={() => router.push('/(tabs)')}
-          />
-        </View>
-      )}
-
-      {/* Normal journal UI — header, date carousel, timeline */}
-      {hasAnySessions && (
-        <>
-          {/* Header + Date Selector */}
-          <View className="bg-light-bg dark:bg-dark-bg border-b border-light-border dark:border-dark-border">
-            {/* Header row */}
-            <View className="flex-row items-center justify-between px-4 pt-2 pb-1">
-              <Typography variant="headline-20" color="primary" style={{ fontWeight: '700' }}>
-                {headerDateString}
-              </Typography>
-              <View className="flex-row items-center" style={{ gap: 8 }}>
-                <Pressable
-                  onPress={openManualEntryModal}
-                  className="w-9 h-9 items-center justify-center rounded-lg active:opacity-80 bg-black/10 dark:bg-white/10"
-                  accessibilityLabel={t('journal.addManualA11y')}
-                >
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                </Pressable>
-              </View>
+      {/* Normal journal UI — header, date carousel, timeline. Always rendered so
+          the "+" manual-entry button stays available even with no sessions; when
+          empty, the calendar area is dimmed and the placeholder overlays it. */}
+      <>
+        {/* Header + Date Selector */}
+        <View className="border-b border-light-border bg-light-bg dark:border-dark-border dark:bg-dark-bg">
+          {/* Header row */}
+          <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
+            <Typography variant="headline-20" color="primary" style={{ fontWeight: '700' }}>
+              {headerDateString}
+            </Typography>
+            <View className="flex-row items-center" style={{ gap: 8 }}>
+              <Button
+                variant="soft"
+                onPress={openManualEntryModal}
+                className="h-11 w-11 items-center justify-center rounded-xl"
+                accessibilityLabel={t('journal.addManualA11y')}
+                accessibilityRole="button">
+                <Ionicons name="add" size={24} color={colors.primary} />
+              </Button>
             </View>
-
-            {/* View switcher: Sessions (single-day) / TODOs (3-day planner) */}
-            <View className="px-4 pb-2">
-              <View className="flex-row self-start rounded-full p-1 bg-black/10 dark:bg-white/10">
-                {(
-                  [
-                    { key: 'sessions', label: t('journal.viewSessions') },
-                    { key: 'todos', label: t('todos.title') },
-                  ] as const
-                ).map(({ key, label }) => {
-                  const active = journalView === key;
-                  return (
-                    <Pressable
-                      key={key}
-                      onPress={() => setJournalView(key)}
-                      className={`rounded-full px-4 py-1.5 active:opacity-80 ${active ? 'bg-primary' : ''}`}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                    >
-                      <Typography
-                        variant="subtitle-14-semibold"
-                        color={active ? 'white' : 'secondary'}
-                      >
-                        {label}
-                      </Typography>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Week strip */}
-            <DateSelector
-              selectedDate={selectedDate}
-              onDateSelect={handleDateSelect}
-            />
           </View>
 
-          <View className="flex-1">
-            {/* Timeline */}
+          {/* View switcher: Sessions (single-day) / TODOs (3-day planner) */}
+          <View className="px-4 pb-2">
+            <View className="flex-row self-start rounded-full bg-black/10 p-1 dark:bg-white/10">
+              {(
+                [
+                  { key: 'sessions', label: t('journal.viewSessions') },
+                  { key: 'todos', label: t('todos.title') },
+                ] as const
+              ).map(({ key, label }) => {
+                const active = journalView === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => setJournalView(key)}
+                    className={`rounded-full px-4 py-1.5 active:opacity-80 ${active ? 'bg-primary' : ''}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}>
+                    <Typography
+                      variant="subtitle-14-semibold"
+                      color={active ? 'white' : 'secondary'}>
+                      {label}
+                    </Typography>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Week strip */}
+          <DateSelector selectedDate={selectedDate} onDateSelect={handleDateSelect} />
+        </View>
+
+        <View className="flex-1">
+          {/* Calendar/timeline — dimmed and non-interactive while empty */}
+          <View
+            className="flex-1"
+            style={!hasAnySessions ? { opacity: 0.35 } : undefined}
+            pointerEvents={!hasAnySessions ? 'none' : 'auto'}>
             <GestureDetector gesture={swipeGesture}>
               <Animated.View className="flex-1 px-5 pt-4" style={animatedTimelineStyle}>
                 {journalView === 'sessions' ? (
@@ -723,93 +757,128 @@ export default function JournalScreen() {
                 )}
               </Animated.View>
             </GestureDetector>
-
-            {/* Jump to Today floating button */}
-            {showJumpToToday && (
-              <Animated.View
-                entering={FadeIn.duration(200)}
-                exiting={FadeOut.duration(200)}
-                style={{
-                  position: 'absolute',
-                  bottom: 12,
-                  right: 20,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                  elevation: 5,
-                }}
-              >
-                <Pressable
-                  onPress={handleJumpToToday}
-                  className="flex-row items-center rounded-full px-4 py-2.5 active:opacity-80"
-                  style={{ backgroundColor: 'rgba(101, 146, 233, 0.5)' }}
-                >
-                  <Ionicons name="today-outline" size={18} color="#fff" />
-                  <Typography variant="subtitle-14-semibold" color="white" className="ml-1.5">
-                    {t('journal.backToToday')}
-                  </Typography>
-                </Pressable>
-              </Animated.View>
-            )}
           </View>
-        </>
-      )}
+
+          {/* Empty-state placeholder — overlays the dimmed calendar. Lets touches
+                fall through except on its own button, so the calendar stays visible
+                behind it and the header "+" button remains usable. */}
+          {!hasAnySessions && (
+            <View className="absolute inset-0" pointerEvents="box-none">
+              <EmptyState
+                icon="leaf-outline"
+                iconColor={colors.success}
+                title={t('journal.emptyTitle')}
+                description={t('journal.emptyDesc')}
+                buttonLabel={t('journal.emptyButton')}
+                onButtonPress={() => router.push('/(tabs)')}
+              />
+            </View>
+          )}
+
+          {/* Jump to Today floating button */}
+          {showJumpToToday && (
+            <Animated.View
+              entering={FadeIn.duration(200)}
+              exiting={FadeOut.duration(200)}
+              style={{
+                position: 'absolute',
+                bottom: 12,
+                right: 20,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 5,
+              }}>
+              <Button
+                variant="ghost"
+                className="flex-row rounded-full px-4 py-2.5"
+                style={{ backgroundColor: colors.primary + '80' }}
+                onPress={handleJumpToToday}>
+                <Ionicons name="today-outline" size={18} color={colors.white} />
+                <Typography variant="subtitle-14-semibold" color="white" className="ml-1.5">
+                  {t('journal.backToToday')}
+                </Typography>
+              </Button>
+            </Animated.View>
+          )}
+        </View>
+      </>
 
       {/* Sync Status Banner (dev-only) */}
-      {isDevUser(syncBannerUserId) && (() => {
-        let bannerBg = 'bg-green-800/80';
-        let bannerText = 'All sessions synced';
-        let bannerTextColor = '#4ADE80';
-        let showRetry = false;
-        let showSpinner = false;
+      {isDevUser(syncBannerUserId) &&
+        (() => {
+          let bannerBg = 'bg-green-800/80';
+          let bannerText = 'All sessions synced';
+          let bannerTextColor: string = colors.success;
+          let showRetry = false;
+          let showSpinner = false;
 
-        if (syncIsSyncing || syncStatus === 'syncing') {
-          bannerBg = 'bg-gray-700/80';
-          bannerText = 'Syncing...';
-          bannerTextColor = '#D1D5DB';
-          showSpinner = true;
-        } else if (syncStatus === 'error') {
-          bannerBg = 'bg-red-900/80';
-          bannerText = syncError || 'Sync error';
-          bannerTextColor = '#FCA5A5';
-          showRetry = true;
-        } else if (offlineQueueSize > 0) {
-          bannerBg = 'bg-amber-800/80';
-          bannerText = `${offlineQueueSize} session${offlineQueueSize === 1 ? '' : 's'} pending sync`;
-          bannerTextColor = '#FCD34D';
-        }
+          if (syncIsSyncing || syncStatus === 'syncing') {
+            bannerBg = 'bg-gray-700/80';
+            bannerText = 'Syncing...';
+            bannerTextColor = colors.textGrey;
+            showSpinner = true;
+          } else if (syncStatus === 'error') {
+            bannerBg = 'bg-red-900/80';
+            bannerText = syncError || 'Sync error';
+            bannerTextColor = colors.error;
+            showRetry = true;
+          } else if (offlineQueueSize > 0) {
+            bannerBg = 'bg-amber-800/80';
+            bannerText = `${offlineQueueSize} session${offlineQueueSize === 1 ? '' : 's'} pending sync`;
+            bannerTextColor = colors.warning;
+          }
 
-        return (
-          <View className={`${bannerBg} px-4 py-2 flex-row items-center justify-between`} style={{ paddingBottom: insets.bottom + 8 }}>
-            <View className="flex-row items-center flex-1">
-              {showSpinner && <ActivityIndicator size="small" color={bannerTextColor} style={{ marginRight: 8 }} />}
-              <Typography variant="body-12" style={{ color: bannerTextColor }} className="flex-1">
-                {bannerText}
-              </Typography>
-            </View>
-            {showRetry && (
-              <Pressable onPress={flushOfflineQueue} className="ml-3 px-3 py-1 rounded-md bg-white/20 active:opacity-70">
-                <Typography variant="body-12" style={{ color: '#FCA5A5', fontWeight: '600' }}>
-                  Retry
+          return (
+            <View
+              className={`${bannerBg} flex-row items-center justify-between px-4 py-2`}
+              style={{ paddingBottom: insets.bottom + 8 }}>
+              <View className="flex-1 flex-row items-center">
+                {showSpinner && (
+                  <ActivityIndicator
+                    size="small"
+                    color={bannerTextColor}
+                    style={{ marginRight: 8 }}
+                  />
+                )}
+                <Typography variant="body-12" style={{ color: bannerTextColor }} className="flex-1">
+                  {bannerText}
                 </Typography>
-              </Pressable>
-            )}
-          </View>
-        );
-      })()}
+              </View>
+              {showRetry && (
+                <Pressable
+                  onPress={flushOfflineQueue}
+                  className="ml-3 rounded-md bg-white/20 px-3 py-1 active:opacity-70">
+                  <Typography variant="body-12" style={{ color: colors.error, fontWeight: '600' }}>
+                    Retry
+                  </Typography>
+                </Pressable>
+              )}
+            </View>
+          );
+        })()}
 
       <Modal isVisible={!!selectedSession} onClose={closeSessionModal} size="medium">
         {selectedSession && (
           <Pressable onPress={Keyboard.dismiss} accessible={false}>
             <Typography variant="headline-20" color="primary" className="mb-1">
               {selectedSessionTagName
-                ? (isManual ? `${selectedSessionTagName} ${t('journal.manualSuffix')}` : selectedSessionTagName)
-                : (isManual ? `${t('journal.focusSession')} ${t('journal.manualSuffix')}` : t('journal.focusSession'))}
+                ? isManual
+                  ? `${selectedSessionTagName} ${t('journal.manualSuffix')}`
+                  : selectedSessionTagName
+                : isManual
+                  ? `${t('journal.focusSession')} ${t('journal.manualSuffix')}`
+                  : t('journal.focusSession')}
             </Typography>
 
             <Typography variant="body-14" color="secondary" className="mb-5">
-              {formatTime(selectedSession.startTime)} - {formatTime(selectedSession.endTime)}
+              {formatTime(selectedSession.startTime)} -{' '}
+              {formatTime(
+                new Date(
+                  new Date(selectedSession.startTime).getTime() + adjustedDuration * 60 * 1000
+                )
+              )}
             </Typography>
 
             <View className="mb-5">
@@ -821,7 +890,7 @@ export default function JournalScreen() {
                 onValueChange={setAdjustedDuration}
                 width={Math.min(screenWidth - 96, 320)}
               />
-              <View className="items-center mt-2">
+              <View className="mt-2 items-center">
                 <Typography variant="body-14" color="secondary">
                   {t('journal.adjustedDuration', { duration: formatDuration(adjustedDuration) })}
                 </Typography>
@@ -829,9 +898,9 @@ export default function JournalScreen() {
             </View>
 
             {!isManual ? (
-              <View className="bg-light-border/30 dark:bg-gray-700 rounded-xl p-4 mb-5">
+              <View className="mb-5 rounded-xl bg-light-border/30 p-4 dark:bg-dark-card">
                 <View className="mb-4">
-                  <View className="flex-row items-center justify-between mb-2">
+                  <View className="mb-2 flex-row items-center justify-between">
                     <Typography variant="body-12" color="secondary">
                       {t('journal.focusRating', { defaultValue: 'Focus rating' })}
                     </Typography>
@@ -844,15 +913,21 @@ export default function JournalScreen() {
                         : t('journal.unratedReward', { defaultValue: 'Full reward' })}
                     </Typography>
                   </View>
-                  <View className="flex-row" style={{ gap: 6 }}>
+                  <View className="flex-row" style={{ gap: 5, opacity: 0.6 }}>
                     {[1, 2, 3, 4, 5].map((rating) => {
                       const filled = (editFocusRating ?? 0) >= rating;
                       return (
                         <Ionicons
                           key={rating}
                           name={filled ? 'star' : 'star-outline'}
-                          size={28}
-                          color={filled ? '#6592E9' : colorScheme === 'dark' ? '#4B5563' : '#D4C4A8'}
+                          size={16}
+                          color={
+                            filled
+                              ? colors.primary
+                              : colorScheme === 'dark'
+                                ? colors.dark.border
+                                : colors.light.screenBorder
+                          }
                         />
                       );
                     })}
@@ -868,16 +943,22 @@ export default function JournalScreen() {
                   <Typography
                     variant="body-12"
                     color={fruitDelta > 0 ? 'success' : 'error'}
-                    className="mt-2"
-                  >
-                    {t('journal.fruitChange', { delta: `${fruitDelta > 0 ? '+' : ''}${fruitDelta}` })}
+                    className="mt-2">
+                    {t('journal.fruitChange', {
+                      delta: `${fruitDelta > 0 ? '+' : ''}${fruitDelta}`,
+                    })}
                   </Typography>
                 )}
               </View>
             ) : (
-              <View className="bg-light-border/30 dark:bg-[#2A2B42] rounded-xl p-4 mb-5 flex-row items-start">
-                <Ionicons name="information-circle-outline" size={20} color="#6592E9" className="mr-2" />
-                <Typography variant="body-12" color="secondary" className="flex-1 ml-2">
+              <View className="mb-5 flex-row items-start rounded-xl bg-light-border/30 p-4 dark:bg-dark-card">
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={colors.primary}
+                  className="mr-2"
+                />
+                <Typography variant="body-12" color="secondary" className="ml-2 flex-1">
                   {t('journal.noFruitsManual')}
                 </Typography>
               </View>
@@ -890,9 +971,11 @@ export default function JournalScreen() {
                   {t('journal.secondaryTag')}
                 </Typography>
                 <HorizontalTagSelector
-                  tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt && t.id !== selectedSession.tagId)}
+                  tags={tags.allIds
+                    .map((id) => tags.byId[id])
+                    .filter((t) => t && !t.deletedAt && t.id !== selectedSession.tagId)}
                   selectedTags={editSecondaryTag ? [editSecondaryTag] : []}
-                  onTagSelect={(id) => setEditSecondaryTag(prev => (prev === id ? '' : id))}
+                  onTagSelect={(id) => setEditSecondaryTag((prev) => (prev === id ? '' : id))}
                   maxSelections={1}
                   onCreateTag={() => setCreateTagTarget('editSecondary')}
                 />
@@ -908,18 +991,26 @@ export default function JournalScreen() {
                 value={editNotes}
                 onChangeText={setEditNotes}
                 placeholder={t('journal.notePlaceholder')}
-                placeholderTextColor="#666"
+                placeholderTextColor={
+                  colorScheme === 'dark'
+                    ? colors.dark.textSecondary
+                    : colors.light.screenTextSecondary
+                }
                 multiline
                 numberOfLines={2}
                 textAlignVertical="top"
                 style={{
-                  backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                  backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
                   borderRadius: 12,
                   padding: 12,
                   fontSize: 14,
-                  color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textPrimary
+                      : colors.light.screenTextPrimary,
                   borderWidth: 1,
-                  borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                  borderColor:
+                    colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
                   minHeight: 60,
                 }}
               />
@@ -936,7 +1027,10 @@ export default function JournalScreen() {
                   style={{ width: '100%', height: 160, borderRadius: 12 }}
                   resizeMode="cover"
                 />
-                <Pressable
+                <Button
+                  variant="ghost"
+                  className="mt-2 flex-row rounded-xl py-2.5"
+                  style={{ backgroundColor: colors.danger + '1A' }}
                   onPress={async () => {
                     try {
                       await deleteSessionPhoto(selectedSession.id);
@@ -945,15 +1039,12 @@ export default function JournalScreen() {
                     } catch (error) {
                       console.error('Failed to delete session photo:', error);
                     }
-                  }}
-                  className="mt-2 flex-row items-center justify-center rounded-xl py-2.5 active:opacity-70"
-                  style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}
-                >
-                  <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                  <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
+                  }}>
+                  <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                  <Typography variant="body-12" className="ml-1.5" style={{ color: colors.danger }}>
                     {t('journal.removePhoto')}
                   </Typography>
-                </Pressable>
+                </Button>
               </View>
             ) : (
               <View className="mb-5">
@@ -967,71 +1058,78 @@ export default function JournalScreen() {
                       style={{ width: '100%', height: 160, borderRadius: 12 }}
                       resizeMode="cover"
                     />
-                    <Pressable
-                      onPress={() => setEditPhotoUri(null)}
-                      className="mt-2 flex-row items-center justify-center rounded-xl py-2.5 active:opacity-70"
-                      style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                      <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
+                    <Button
+                      variant="ghost"
+                      className="mt-2 flex-row rounded-xl py-2.5"
+                      style={{ backgroundColor: colors.danger + '1A' }}
+                      onPress={() => setEditPhotoUri(null)}>
+                      <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                      <Typography
+                        variant="body-12"
+                        className="ml-1.5"
+                        style={{ color: colors.danger }}>
                         {t('journal.removePhoto')}
                       </Typography>
-                    </Pressable>
+                    </Button>
                   </View>
                 ) : (
                   <View className="flex-row gap-x-3">
-                    <Pressable
-                      onPress={() => pickImage('library', setEditPhotoUri)}
-                      className="flex-row items-center bg-primary/20 rounded-xl px-4 py-2.5 active:opacity-70"
-                    >
-                      <Ionicons name="images-outline" size={16} color="#6592E9" />
-                      <Typography variant="body-12" className="text-primary ml-1.5">
+                    <Button
+                      variant="soft"
+                      className="flex-row rounded-xl bg-primary-soft-20 px-4 py-2.5"
+                      onPress={() => pickImage('library', setEditPhotoUri)}>
+                      <Ionicons name="images-outline" size={16} color={colors.primary} />
+                      <Typography variant="body-12" className="ml-1.5 text-primary">
                         {t('journal.library')}
                       </Typography>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => pickImage('camera', setEditPhotoUri)}
-                      className="flex-row items-center bg-primary/20 rounded-xl px-4 py-2.5 active:opacity-70"
-                    >
-                      <Ionicons name="camera-outline" size={16} color="#6592E9" />
-                      <Typography variant="body-12" className="text-primary ml-1.5">
+                    </Button>
+                    <Button
+                      variant="soft"
+                      className="flex-row rounded-xl bg-primary-soft-20 px-4 py-2.5"
+                      onPress={() => pickImage('camera', setEditPhotoUri)}>
+                      <Ionicons name="camera-outline" size={16} color={colors.primary} />
+                      <Typography variant="body-12" className="ml-1.5 text-primary">
                         {t('journal.camera')}
                       </Typography>
-                    </Pressable>
+                    </Button>
                   </View>
                 )}
               </View>
             )}
 
             <View className="flex-row gap-3">
-              <Pressable
-                onPress={handleSessionDelete}
+              <Button
+                variant="ghost"
                 disabled={isEditSaving}
-                className="flex-1 rounded-xl py-3 items-center justify-center active:opacity-80"
-              >
-                <Typography variant="subtitle-14-semibold" style={{ color: '#EF4444' }}>
+                className="flex-1 rounded-xl py-3"
+                onPress={handleSessionDelete}>
+                <Typography variant="subtitle-14-semibold" style={{ color: colors.danger }}>
                   {t('common.delete')}
                 </Typography>
-              </Pressable>
-              <Pressable
-                onPress={handleSessionDone}
+              </Button>
+              <Button
+                variant="ghost"
                 disabled={isEditSaving}
-                className="flex-1 bg-white rounded-xl py-3 items-center active:opacity-80"
-                style={{ opacity: isEditSaving ? 0.6 : 1 }}
-              >
+                className="flex-1 rounded-xl bg-white py-3"
+                onPress={handleSessionDone}>
                 {isEditSaving ? (
                   <View className="flex-row items-center">
-                    <ActivityIndicator size="small" color="#1B1C30" />
-                    <Typography variant="subtitle-14-semibold" style={{ color: '#1B1C30' }} className="ml-2">
+                    <ActivityIndicator size="small" color={colors.dark.background} />
+                    <Typography
+                      variant="subtitle-14-semibold"
+                      style={{ color: colors.dark.background }}
+                      className="ml-2">
                       {t('journal.saving')}
                     </Typography>
                   </View>
                 ) : (
-                  <Typography variant="subtitle-14-semibold" style={{ color: '#1B1C30' }}>
+                  <Typography
+                    variant="subtitle-14-semibold"
+                    style={{ color: colors.dark.background }}>
                     {t('common.done')}
                   </Typography>
                 )}
-              </Pressable>
+              </Button>
             </View>
           </Pressable>
         )}
@@ -1040,193 +1138,210 @@ export default function JournalScreen() {
       {/* Manual Entry Modal */}
       <Modal isVisible={isManualEntryModalVisible} onClose={closeManualEntryModal} size="large">
         <Pressable onPress={Keyboard.dismiss} accessible={false}>
-        <Animated.View style={manualEntryShakeStyle}>
-          <Typography variant="headline-20" color="primary" className="mb-4">
-            {t('journal.addFocusSession')}
-          </Typography>
-
-          <View className="mb-5">
-            <View className="mb-4">
-              <DatePicker
-                value={manualDate}
-                onChange={setManualDate}
-                label={t('journal.dateLabel')}
-                maximumDate={new Date()}
-              />
-            </View>
-
-            <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              {t('journal.timeRange')}
+          <Animated.View style={manualEntryShakeStyle}>
+            <Typography variant="headline-20" color="primary" className="mb-4">
+              {t('journal.addFocusSession')}
             </Typography>
-            <View className="flex-row items-center justify-between mb-4">
-              <View className="flex-1 mr-2">
-                <TimePicker
-                  value={manualStartTime}
-                  onChange={setManualStartTime}
-                  label={t('journal.startTime')}
+
+            <View className="mb-5">
+              <View className="mb-4">
+                <DatePicker
+                  value={manualDate}
+                  onChange={setManualDate}
+                  label={t('journal.dateLabel')}
+                  maximumDate={new Date()}
                 />
               </View>
-              <View className="flex-1 ml-2">
-                <TimePicker
-                  value={manualEndTime}
-                  onChange={setManualEndTime}
-                  label={t('journal.endTime')}
-                />
-              </View>
-            </View>
-            
-            <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
-              {t('journal.tagLabel')}
-            </Typography>
-            <View className="mb-4">
-              <HorizontalTagSelector
-                tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt)}
-                selectedTags={manualTag ? [manualTag] : []}
-                onTagSelect={(id) => {
-                  setManualTag(id);
-                  // Keep the two tags distinct: clear secondary if it now matches primary.
-                  if (manualSecondaryTag === id) setManualSecondaryTag('');
-                }}
-                maxSelections={1}
-                onCreateTag={() => setCreateTagTarget('manual')}
-              />
-            </View>
 
-            {/* Optional secondary tag (premium Multi-Task mode) — two activities at once */}
-            {secondaryTagEnabled && (
-              <>
-                <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
-                  {t('journal.secondaryTag')}
-                </Typography>
-                <View className="mb-4">
-                  <HorizontalTagSelector
-                    tags={tags.allIds.map(id => tags.byId[id]).filter(t => t && !t.deletedAt && t.id !== manualTag)}
-                    selectedTags={manualSecondaryTag ? [manualSecondaryTag] : []}
-                    onTagSelect={(id) => setManualSecondaryTag(prev => (prev === id ? '' : id))}
-                    maxSelections={1}
-                    onCreateTag={() => setCreateTagTarget('manualSecondary')}
+              <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
+                {t('journal.timeRange')}
+              </Typography>
+              <View className="mb-4 flex-row items-center justify-between">
+                <View className="mr-2 flex-1">
+                  <TimePicker
+                    value={manualStartTime}
+                    onChange={setManualStartTime}
+                    label={t('journal.startTime')}
                   />
                 </View>
-              </>
-            )}
-
-            {/* Notes input */}
-            <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
-              {t('journal.noteOptional')}
-            </Typography>
-            <TextInput
-              value={manualNotes}
-              onChangeText={setManualNotes}
-              placeholder={t('journal.notePlaceholder')}
-              placeholderTextColor="#666"
-              multiline
-              numberOfLines={2}
-              textAlignVertical="top"
-              style={{
-                backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 14,
-                color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
-                borderWidth: 1,
-                borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
-                minHeight: 60,
-                marginBottom: 16,
-              }}
-            />
-
-            {/* Photo picker */}
-            <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
-              {t('journal.photoOptional')}
-            </Typography>
-            {manualPhotoUri ? (
-              <View className="mb-4">
-                <Image
-                  source={{ uri: manualPhotoUri }}
-                  style={{ width: '100%', height: 160, borderRadius: 12 }}
-                  resizeMode="cover"
-                />
-                <Pressable
-                  onPress={() => setManualPhotoUri(null)}
-                  className="mt-2 flex-row items-center justify-center rounded-xl py-2.5 active:opacity-70"
-                  style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}
-                >
-                  <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                  <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
-                    {t('journal.removePhoto')}
-                  </Typography>
-                </Pressable>
+                <View className="ml-2 flex-1">
+                  <TimePicker
+                    value={manualEndTime}
+                    onChange={setManualEndTime}
+                    label={t('journal.endTime')}
+                  />
+                </View>
               </View>
-            ) : (
-              <View className="flex-row gap-x-3 mb-4">
-                <Pressable
-                  onPress={() => pickImage('library', setManualPhotoUri)}
-                  className="flex-row items-center bg-primary/20 rounded-xl px-4 py-2.5 active:opacity-70"
-                >
-                  <Ionicons name="images-outline" size={16} color="#6592E9" />
-                  <Typography variant="body-12" className="text-primary ml-1.5">
-                    Library
-                  </Typography>
-                </Pressable>
-                <Pressable
-                  onPress={() => pickImage('camera', setManualPhotoUri)}
-                  className="flex-row items-center bg-primary/20 rounded-xl px-4 py-2.5 active:opacity-70"
-                >
-                  <Ionicons name="camera-outline" size={16} color="#6592E9" />
-                  <Typography variant="body-12" className="text-primary ml-1.5">
-                    Camera
-                  </Typography>
-                </Pressable>
-              </View>
-            )}
 
-            {manualEntryError && (
-              <Typography variant="body-14" color="error" className="mb-4">
-                {manualEntryError}
+              <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
+                {t('journal.tagLabel')}
               </Typography>
-            )}
+              <View className="mb-4">
+                <HorizontalTagSelector
+                  tags={tags.allIds.map((id) => tags.byId[id]).filter((t) => t && !t.deletedAt)}
+                  selectedTags={manualTag ? [manualTag] : []}
+                  onTagSelect={(id) => {
+                    setManualTag(id);
+                    // Keep the two tags distinct: clear secondary if it now matches primary.
+                    if (manualSecondaryTag === id) setManualSecondaryTag('');
+                  }}
+                  maxSelections={1}
+                  onCreateTag={() => setCreateTagTarget('manual')}
+                />
+              </View>
 
-            <View className="bg-light-border/30 dark:bg-[#2A2B42] rounded-xl p-4 mb-6">
-              <View className="flex-row items-start">
-                <Ionicons name="information-circle-outline" size={20} color="#6592E9" className="mr-2" />
-                <Typography variant="body-12" color="secondary" className="flex-1 ml-2">
-                  {t('journal.manualInfo')}
+              {/* Optional secondary tag (premium Multi-Task mode) — two activities at once */}
+              {secondaryTagEnabled && (
+                <>
+                  <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
+                    {t('journal.secondaryTag')}
+                  </Typography>
+                  <View className="mb-4">
+                    <HorizontalTagSelector
+                      tags={tags.allIds
+                        .map((id) => tags.byId[id])
+                        .filter((t) => t && !t.deletedAt && t.id !== manualTag)}
+                      selectedTags={manualSecondaryTag ? [manualSecondaryTag] : []}
+                      onTagSelect={(id) => setManualSecondaryTag((prev) => (prev === id ? '' : id))}
+                      maxSelections={1}
+                      onCreateTag={() => setCreateTagTarget('manualSecondary')}
+                    />
+                  </View>
+                </>
+              )}
+
+              {/* Notes input */}
+              <Typography variant="subtitle-14-medium" color="primary" className="mb-2 mt-2">
+                {t('journal.noteOptional')}
+              </Typography>
+              <TextInput
+                value={manualNotes}
+                onChangeText={setManualNotes}
+                placeholder={t('journal.notePlaceholder')}
+                placeholderTextColor={
+                  colorScheme === 'dark'
+                    ? colors.dark.textSecondary
+                    : colors.light.screenTextSecondary
+                }
+                multiline
+                numberOfLines={2}
+                textAlignVertical="top"
+                style={{
+                  backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 14,
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textPrimary
+                      : colors.light.screenTextPrimary,
+                  borderWidth: 1,
+                  borderColor:
+                    colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
+                  minHeight: 60,
+                  marginBottom: 16,
+                }}
+              />
+
+              {/* Photo picker */}
+              <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
+                {t('journal.photoOptional')}
+              </Typography>
+              {manualPhotoUri ? (
+                <View className="mb-4">
+                  <Image
+                    source={{ uri: manualPhotoUri }}
+                    style={{ width: '100%', height: 160, borderRadius: 12 }}
+                    resizeMode="cover"
+                  />
+                  <Button
+                    variant="ghost"
+                    className="mt-2 flex-row rounded-xl py-2.5"
+                    style={{ backgroundColor: colors.danger + '1A' }}
+                    onPress={() => setManualPhotoUri(null)}>
+                    <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                    <Typography
+                      variant="body-12"
+                      className="ml-1.5"
+                      style={{ color: colors.danger }}>
+                      {t('journal.removePhoto')}
+                    </Typography>
+                  </Button>
+                </View>
+              ) : (
+                <View className="mb-4 flex-row gap-x-3">
+                  <Button
+                    variant="soft"
+                    className="flex-row rounded-xl bg-primary-soft-20 px-4 py-2.5"
+                    onPress={() => pickImage('library', setManualPhotoUri)}>
+                    <Ionicons name="images-outline" size={16} color={colors.primary} />
+                    <Typography variant="body-12" className="ml-1.5 text-primary">
+                      Library
+                    </Typography>
+                  </Button>
+                  <Button
+                    variant="soft"
+                    className="flex-row rounded-xl bg-primary-soft-20 px-4 py-2.5"
+                    onPress={() => pickImage('camera', setManualPhotoUri)}>
+                    <Ionicons name="camera-outline" size={16} color={colors.primary} />
+                    <Typography variant="body-12" className="ml-1.5 text-primary">
+                      Camera
+                    </Typography>
+                  </Button>
+                </View>
+              )}
+
+              {manualEntryError && (
+                <Typography variant="body-14" color="error" className="mb-4">
+                  {manualEntryError}
                 </Typography>
+              )}
+
+              <View className="mb-6 rounded-xl bg-light-border/30 p-4 dark:bg-dark-card">
+                <View className="flex-row items-start">
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={20}
+                    color={colors.primary}
+                    className="mr-2"
+                  />
+                  <Typography variant="body-12" color="secondary" className="ml-2 flex-1">
+                    {t('journal.manualInfo')}
+                  </Typography>
+                </View>
+              </View>
+
+              <View className="flex-row gap-3">
+                <Button
+                  variant="ghost"
+                  disabled={isManualSaving}
+                  className="flex-1 rounded-xl bg-light-border/30 py-3 dark:bg-dark-card"
+                  onPress={closeManualEntryModal}>
+                  <Typography variant="subtitle-14-semibold" color="primary">
+                    {t('common.cancel')}
+                  </Typography>
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={isManualSaving}
+                  className="flex-1 rounded-xl py-3"
+                  onPress={handleManualEntrySave}>
+                  {isManualSaving ? (
+                    <View className="flex-row items-center">
+                      <ActivityIndicator size="small" color={colors.white} />
+                      <Typography variant="subtitle-14-semibold" color="white" className="ml-2">
+                        {t('journal.saving')}
+                      </Typography>
+                    </View>
+                  ) : (
+                    <Typography variant="subtitle-14-semibold" color="white">
+                      {t('journal.saveSession')}
+                    </Typography>
+                  )}
+                </Button>
               </View>
             </View>
-
-            <View className="flex-row gap-3">
-              <Pressable
-                onPress={closeManualEntryModal}
-                disabled={isManualSaving}
-                className="flex-1 bg-light-border/30 dark:bg-gray-700 rounded-xl py-3 items-center justify-center active:opacity-80"
-              >
-                <Typography variant="subtitle-14-semibold" color="primary">
-                  {t('common.cancel')}
-                </Typography>
-              </Pressable>
-              <Pressable
-                onPress={handleManualEntrySave}
-                disabled={isManualSaving}
-                className="flex-1 bg-[#6592E9] rounded-xl py-3 items-center justify-center active:opacity-80"
-                style={{ opacity: isManualSaving ? 0.6 : 1 }}
-              >
-                {isManualSaving ? (
-                  <View className="flex-row items-center">
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                    <Typography variant="subtitle-14-semibold" color="white" className="ml-2">
-                      {t('journal.saving')}
-                    </Typography>
-                  </View>
-                ) : (
-                  <Typography variant="subtitle-14-semibold" color="white">
-                    {t('journal.saveSession')}
-                  </Typography>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
         </Pressable>
       </Modal>
 

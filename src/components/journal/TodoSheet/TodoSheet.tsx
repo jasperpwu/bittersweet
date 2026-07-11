@@ -405,6 +405,16 @@ export const TodoSheet: FC<TodoSheetProps> = ({ schedule, expandSignal, createSi
               <Typography variant="subtitle-16" color="primary">
                 {t('todos.title')}
               </Typography>
+              {expanded && (
+                <Pressable
+                  onPress={collapse}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.close')}
+                  className="h-8 w-8 items-center justify-center rounded-full bg-light-border/30 dark:bg-gray-700">
+                  <Ionicons name="close" size={20} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
+                </Pressable>
+              )}
             </View>
           </Pressable>
         </GestureDetector>

@@ -5,8 +5,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../ui/Typography';
+import { Button } from '../ui/Button';
 import { DefaultAvatar } from '../grove/DefaultAvatar';
 import { useAppStore } from '../../store';
+import { colors } from '../../config/theme';
 import { PENDING_REFERRAL_KEY } from '../../hooks/useDeepLinkHandler';
 import { useTranslation } from 'react-i18next';
 
@@ -59,7 +61,7 @@ export const AccountActions: React.FC = () => {
       <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
         {t('account.other')}
       </Typography>
-      <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+      <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4">
         <Pressable
           onPress={handleSignOut}
           disabled={isLoading}
@@ -67,13 +69,13 @@ export const AccountActions: React.FC = () => {
         >
           <View className="flex-row items-center">
             <View className="w-8 items-center mr-3">
-              <Ionicons name="log-out-outline" size={20} color={colorScheme === 'dark' ? '#CACACA' : '#8B7355'} />
+              <Ionicons name="log-out-outline" size={20} color={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
             </View>
             <Typography variant="subtitle-14-medium" color="primary">
               {t('account.signOut')}
             </Typography>
             {isLoading && (
-              <ActivityIndicator size="small" color="#8B7FFF" className="ml-auto" />
+              <ActivityIndicator size="small" color={colors.primary} className="ml-auto" />
             )}
           </View>
         </Pressable>
@@ -85,9 +87,9 @@ export const AccountActions: React.FC = () => {
         >
           <View className="flex-row items-center">
             <View className="w-8 items-center mr-3">
-              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+              <Ionicons name="trash-outline" size={20} color={colors.error} />
             </View>
-            <Typography variant="subtitle-14-medium" className="text-[#FF6B6B]">
+            <Typography variant="subtitle-14-medium" className="text-error">
               {t('account.deleteAccount')}
             </Typography>
           </View>
@@ -101,7 +103,7 @@ export const AccountSection: React.FC = () => {
   const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const iconColor = isDark ? '#CACACA' : '#8B7355';
+  const iconColor = isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary;
 
   const { user, isAuthenticated, isLoading, error } = useAppStore(
     (state) => state.auth
@@ -141,7 +143,7 @@ export const AccountSection: React.FC = () => {
         <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
           {t('account.account')}
         </Typography>
-        <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+        <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4">
           {/* Profile identity */}
           {profile ? (
             // Grove profile: avatar + name + handle
@@ -177,7 +179,7 @@ export const AccountSection: React.FC = () => {
                     </Typography>
                   )}
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+                <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
               </View>
             </Pressable>
           ) : (
@@ -186,7 +188,7 @@ export const AccountSection: React.FC = () => {
               <View className="py-3 border-b border-light-border dark:border-dark-border">
                 <View className="flex-row items-center">
                   <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center mr-3">
-                    <Ionicons name="person" size={20} color="#8B7FFF" />
+                    <Ionicons name="person" size={20} color={colors.primary} />
                   </View>
                   <View className="flex-1">
                     <Typography variant="subtitle-14-medium" color="primary">
@@ -216,7 +218,7 @@ export const AccountSection: React.FC = () => {
                     {t('account.shareJourney')}
                   </Typography>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+                <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
               </Pressable>
             </>
           )}
@@ -240,7 +242,7 @@ export const AccountSection: React.FC = () => {
                   </Typography>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+              <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
             </Pressable>
           )}
 
@@ -263,7 +265,7 @@ export const AccountSection: React.FC = () => {
                   </Typography>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+              <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
             </Pressable>
           )}
 
@@ -294,17 +296,17 @@ export const AccountSection: React.FC = () => {
                 </View>
               </View>
               {isGroveLoading ? (
-                <ActivityIndicator size="small" color="#6592E9" />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <View
                   className={`w-8 h-8 rounded-full items-center justify-center ${
-                    isActive ? 'bg-[#51BC6F]' : 'bg-light-border dark:bg-dark-border'
+                    isActive ? 'bg-success' : 'bg-light-border dark:bg-dark-border'
                   }`}
                 >
                   <Ionicons
                     name={isActive ? 'checkmark' : 'pause'}
                     size={16}
-                    color="#FFFFFF"
+                    color={colors.white}
                   />
                 </View>
               )}
@@ -313,7 +315,7 @@ export const AccountSection: React.FC = () => {
         </View>
 
         {error && (
-          <Typography variant="body-12" className="text-[#FF6B6B] mt-2 px-1">
+          <Typography variant="body-12" className="text-error mt-2 px-1">
             {error}
           </Typography>
         )}
@@ -327,14 +329,14 @@ export const AccountSection: React.FC = () => {
       <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mb-3">
         {t('account.account')}
       </Typography>
-      <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-4">
+      <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4 py-4">
         <Typography variant="body-14" color="secondary" className="mb-4">
           {t('account.signInPrompt')}
         </Typography>
 
         {isLoading ? (
           <View className="items-center py-3">
-            <ActivityIndicator size="small" color="#8B7FFF" />
+            <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : (
           <AppleAuthentication.AppleAuthenticationButton
@@ -353,7 +355,7 @@ export const AccountSection: React.FC = () => {
             </Typography>
             <TextInput
               placeholder="Email"
-              placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
+              placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
               value={devEmail}
               onChangeText={setDevEmail}
               keyboardType="email-address"
@@ -363,7 +365,7 @@ export const AccountSection: React.FC = () => {
             />
             <TextInput
               placeholder="Password"
-              placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
+              placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
               value={devPassword}
               onChangeText={setDevPassword}
               secureTextEntry
@@ -390,7 +392,7 @@ export const AccountSection: React.FC = () => {
           <View className="flex-row items-center" style={{ gap: 8 }}>
             <TextInput
               placeholder={t('account.enterCode')}
-              placeholderTextColor={isDark ? '#575757' : '#A0A0A0'}
+              placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
               value={referralCode}
               onChangeText={(text) => {
                 setReferralCode(text);
@@ -400,20 +402,21 @@ export const AccountSection: React.FC = () => {
               autoCorrect={false}
               className="flex-1 bg-light-bg dark:bg-dark-bg rounded-xl px-3 py-2.5 text-light-text-primary dark:text-dark-text-primary"
             />
-            <Pressable
+            <Button
+              variant="primary"
+              size="small"
+              disabled={!referralCode.trim() || referralSaved}
+              className="rounded-xl px-4 py-2.5"
               onPress={async () => {
                 if (!referralCode.trim()) return;
                 await AsyncStorage.setItem(PENDING_REFERRAL_KEY, referralCode.trim());
                 setReferralSaved(true);
               }}
-              disabled={!referralCode.trim() || referralSaved}
-              className="bg-primary rounded-xl px-4 py-2.5 active:opacity-70"
-              style={{ opacity: !referralCode.trim() || referralSaved ? 0.5 : 1 }}
             >
               <Typography variant="subtitle-14-medium" className="text-white">
                 {referralSaved ? t('account.saved') : t('account.apply')}
               </Typography>
-            </Pressable>
+            </Button>
           </View>
           <Typography variant="body-12" color="secondary" className="mt-1.5">
             {referralSaved
@@ -423,7 +426,7 @@ export const AccountSection: React.FC = () => {
         </View>
 
         {error && (
-          <Typography variant="body-12" className="text-[#FF6B6B] mt-2">
+          <Typography variant="body-12" className="text-error mt-2">
             {error}
           </Typography>
         )}

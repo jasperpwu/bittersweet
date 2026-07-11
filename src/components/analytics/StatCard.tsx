@@ -1,5 +1,6 @@
 import React, { FC } from 'react';
 import { View } from 'react-native';
+import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 
@@ -32,8 +33,8 @@ export const StatCard: FC<StatCardProps> = ({
     error: 'text-error',
   };
 
-  const trendColor = trend?.direction === 'up' ? '#51BC6F' : 
-                   trend?.direction === 'down' ? '#EF786C' : '#8A8A8A';
+  const trendColor = trend?.direction === 'up' ? colors.success :
+                   trend?.direction === 'down' ? colors.error : colors.light.textSecondary;
 
   const trendIcon = trend?.direction === 'up' ? 'trending-up' : 
                    trend?.direction === 'down' ? 'trending-down' : 'remove';

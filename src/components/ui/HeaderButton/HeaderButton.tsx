@@ -1,5 +1,6 @@
 import React, { FC } from 'react';
 import { Pressable, PressableProps } from 'react-native';
+import { colors } from '../../../config/theme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 interface HeaderButtonProps extends PressableProps {
@@ -10,7 +11,7 @@ interface HeaderButtonProps extends PressableProps {
 
 export const HeaderButton: FC<HeaderButtonProps> = ({
   name,
-  color = '#007AFF',
+  color = colors.primary,
   size = 24,
   ...props
 }) => {

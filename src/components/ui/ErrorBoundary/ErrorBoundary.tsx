@@ -1,5 +1,6 @@
 import React, { Component, ReactNode } from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { colors } from '../../../config/theme';
 
 interface Props {
   children: ReactNode;
@@ -38,11 +39,11 @@ export class ErrorBoundary extends Component<Props, State> {
           flex: 1, 
           justifyContent: 'center', 
           alignItems: 'center', 
-          backgroundColor: '#1B1C30',
+          backgroundColor: colors.dark.background,
           padding: 20,
         }}>
           <Text style={{ 
-            color: '#FFFFFF', 
+            color: colors.white, 
             fontSize: 18, 
             fontWeight: 'bold',
             marginBottom: 10,
@@ -51,7 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </Text>
           <Text style={{ 
-            color: '#CACACA', 
+            color: colors.dark.textSecondary, 
             fontSize: 14,
             marginBottom: 20,
             textAlign: 'center',
@@ -60,14 +61,14 @@ export class ErrorBoundary extends Component<Props, State> {
           </Text>
           <Pressable
             style={{
-              backgroundColor: '#6592E9',
+              backgroundColor: colors.primary,
               paddingHorizontal: 20,
               paddingVertical: 12,
               borderRadius: 12,
             }}
             onPress={() => this.setState({ hasError: false, error: undefined })}
           >
-            <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>
+            <Text style={{ color: colors.white, fontWeight: '600' }}>
               Try Again
             </Text>
           </Pressable>

@@ -15,6 +15,7 @@ import Animated, {
   SharedValue,
 } from 'react-native-reanimated';
 import { Typography } from '../../ui/Typography';
+import { colors } from '../../../config/theme';
 import { FocusSession } from '../../../types/models';
 import { useFocus } from '../../../store';
 import { useAppSettings } from '../../../store/unified-store';
@@ -41,7 +42,7 @@ const BLUE = {
   light: { bg: '#6592E9', border: '#4F7FD6' }, // theme `primary`
   dark: { bg: '#4F7FD6', border: '#3B6BBF' }, // theme `primary-light`
 };
-const ON_BANNER = '#FFFFFF'; // text color on the colored banner
+const ON_BANNER = colors.white; // text color on the colored banner
 // Fill is a touch translucent so the solid-white shiny tip reads as brighter
 // than the bar it leads — letting the banner color tint the filled portion.
 const FILL_ON_BANNER = 'rgba(255, 255, 255, 0.80)';
@@ -52,7 +53,7 @@ const TRACK_ON_BANNER = 'rgba(255, 255, 255, 0.28)'; // unfilled bar
 // Shiny white light that rides the leading edge of the fill — a soft white
 // streak trailing into the bar plus a bright glowing head with a white halo,
 // gently shimmering so it reads as a light "leading" the progress.
-const TIP_WHITE = '#FFFFFF';
+const TIP_WHITE = colors.white;
 const TIP_WIDTH = 56; // px width of the white light streak at the leading edge
 const BAR_HEIGHT = 10; // progress bar / track height
 const TIP_SPARK = 22; // size of the spark glint leading the fill

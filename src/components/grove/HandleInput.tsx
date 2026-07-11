@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TextInput, ActivityIndicator, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
+import { colors } from '../../config/theme';
 import { HandleStatus } from '../../hooks/useHandleValidation';
 import { useTranslation } from 'react-i18next';
 
@@ -17,10 +18,10 @@ const statusConfig: Record<HandleStatus, {
   icon?: keyof typeof Ionicons.glyphMap;
 }> = {
   idle: { color: '' },
-  checking: { messageKey: 'handle.checking', color: '#8A8A8A' },
-  available: { messageKey: 'handle.available', color: '#51BC6F', icon: 'checkmark-circle' },
-  taken: { messageKey: 'handle.taken', color: '#EF786C', icon: 'close-circle' },
-  invalid: { messageKey: 'handle.invalid', color: '#EF786C', icon: 'alert-circle' },
+  checking: { messageKey: 'handle.checking', color: colors.light.textSecondary },
+  available: { messageKey: 'handle.available', color: colors.success, icon: 'checkmark-circle' },
+  taken: { messageKey: 'handle.taken', color: colors.error, icon: 'close-circle' },
+  invalid: { messageKey: 'handle.invalid', color: colors.error, icon: 'alert-circle' },
 };
 
 export const HandleInput: React.FC<HandleInputProps> = ({
@@ -39,12 +40,12 @@ export const HandleInput: React.FC<HandleInputProps> = ({
       <View
         className="flex-row items-center rounded-xl px-4"
         style={{
-          backgroundColor: isDark ? '#242540' : '#F0E0CC',
+          backgroundColor: isDark ? colors.dark.card : colors.light.input,
           borderWidth: 1,
           borderColor:
-            status === 'available' ? '#51BC6F' :
-            status === 'taken' || status === 'invalid' ? '#EF786C' :
-            isDark ? '#575757' : '#D4C4A8',
+            status === 'available' ? colors.success :
+            status === 'taken' || status === 'invalid' ? colors.error :
+            isDark ? colors.dark.border : colors.light.screenBorder,
           height: 48,
         }}
       >
@@ -55,7 +56,7 @@ export const HandleInput: React.FC<HandleInputProps> = ({
           value={value}
           onChangeText={onChangeText}
           placeholder={t('handle.placeholder')}
-          placeholderTextColor={isDark ? '#575757' : '#B8A88A'}
+          placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="off"
@@ -63,12 +64,12 @@ export const HandleInput: React.FC<HandleInputProps> = ({
           style={{
             flex: 1,
             fontSize: 14,
-            color: isDark ? '#FFFFFF' : '#5D4E37',
+            color: isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary,
             fontFamily: 'Poppins-Regular',
           }}
         />
         {status === 'checking' && (
-          <ActivityIndicator size="small" color="#6592E9" />
+          <ActivityIndicator size="small" color={colors.primary} />
         )}
         {config.icon && (
           <Ionicons name={config.icon} size={20} color={config.color} />

@@ -30,7 +30,7 @@ export const GenderPicker: React.FC<GenderPickerProps> = ({ value, onChange }) =
             className={`px-4 py-2 rounded-full ${
               isSelected
                 ? 'bg-primary'
-                : 'bg-light-border/30 dark:bg-[#242540]'
+                : 'bg-light-border/30 dark:bg-dark-card'
             } active:opacity-70`}
           >
             <Typography

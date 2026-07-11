@@ -43,11 +43,11 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
           </Typography>
         </View>
       ) : (
-        <View className="mx-5 bg-light-border/30 dark:bg-[#242540] rounded-2xl overflow-hidden">
+        <View className="mx-5 bg-light-border/30 dark:bg-dark-card rounded-2xl overflow-hidden">
           {rankings.map((item, index) => (
             <View key={item.userId}>
               {index > 0 && (
-                <View className="h-px bg-light-border/50 dark:bg-[#2A2B45] mx-4" />
+                <View className="h-px bg-light-border/50 dark:bg-dark-card mx-4" />
               )}
               <LeaderboardRow
                 item={item}

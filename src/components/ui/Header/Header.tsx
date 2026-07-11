@@ -1,5 +1,6 @@
 import React, { FC } from 'react';
 import { View, Pressable, useColorScheme } from 'react-native';
+import { colors } from '../../../config/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -32,7 +33,7 @@ const ActionButton: FC<{ action: HeaderAction; variant?: 'default' | 'danger' }>
   variant = 'default'
 }) => {
   const colorScheme = useColorScheme();
-  const iconColor = colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37';
+  const iconColor = colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary;
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -60,7 +61,7 @@ const ActionButton: FC<{ action: HeaderAction; variant?: 'default' | 'danger' }>
       <Ionicons 
         name={action.icon as keyof typeof Ionicons.glyphMap}
         size={20}
-        color={variant === 'danger' ? '#EF786C' : iconColor}
+        color={variant === 'danger' ? colors.error : iconColor}
       />
     </AnimatedPressable>
   );
@@ -77,7 +78,7 @@ export const Header: FC<HeaderProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const defaultBg = colorScheme === 'dark' ? '#1B1C30' : '#F5E6D3';
+  const defaultBg = colorScheme === 'dark' ? colors.dark.background : colors.light.screen;
 
   return (
     <View

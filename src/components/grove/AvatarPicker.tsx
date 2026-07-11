@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Pressable, Image, ActivityIndicator } from 'react-native';
+import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Typography } from '../ui/Typography';
@@ -52,7 +53,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
               justifyContent: 'center',
             }}
           >
-            <ActivityIndicator size="large" color="#FFFFFF" />
+            <ActivityIndicator size="large" color={colors.white} />
           </View>
         ) : avatarUri ? (
           <Image
@@ -75,7 +76,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
           disabled={isUploading}
           className="flex-row items-center bg-primary/20 rounded-xl px-4 py-3 active:opacity-70"
         >
-          <Ionicons name="images-outline" size={18} color="#6592E9" />
+          <Ionicons name="images-outline" size={18} color={colors.primary} />
           <Typography variant="subtitle-14-medium" className="text-primary ml-2">
             Library
           </Typography>
@@ -86,7 +87,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
           disabled={isUploading}
           className="flex-row items-center bg-primary/20 rounded-xl px-4 py-3 active:opacity-70"
         >
-          <Ionicons name="camera-outline" size={18} color="#6592E9" />
+          <Ionicons name="camera-outline" size={18} color={colors.primary} />
           <Typography variant="subtitle-14-medium" className="text-primary ml-2">
             Camera
           </Typography>

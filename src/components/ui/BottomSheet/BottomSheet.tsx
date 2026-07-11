@@ -5,11 +5,14 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  useColorScheme,
   useWindowDimensions,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { colors } from '../../../config/theme';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,6 +22,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 interface BottomSheetProps {
   isVisible: boolean;
@@ -58,6 +62,9 @@ export const BottomSheet: FC<BottomSheetProps> = ({
   const { height: screenHeight } = useWindowDimensions();
   const height = heightProp ?? screenHeight * 0.8;
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const closeIconColor = colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary;
+  const { t } = useTranslation();
   const translateY = useSharedValue(height);
   const contextY = useSharedValue(0);
   const [modalVisible, setModalVisible] = useState(false);
@@ -252,6 +259,18 @@ export const BottomSheet: FC<BottomSheetProps> = ({
               </View>
             </GestureDetector>
           )}
+
+          {/* Accessible close button — sits above the content in the handle
+              row; routes through the same guarded close path as the swipe /
+              backdrop so no gesture logic changes. */}
+          <Pressable
+            onPress={requestClose}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.close')}
+            className="absolute right-4 top-3 h-8 w-8 items-center justify-center rounded-full bg-light-border/30 dark:bg-gray-700">
+            <Ionicons name="close" size={20} color={closeIconColor} />
+          </Pressable>
         </Animated.View>
 
         {/* Full-screen overlay above the sheet (nested pickers, etc.) */}

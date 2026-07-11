@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
+import { Button } from '../ui/Button';
+import { colors } from '../../config/theme';
 import { BottomSheet } from '../ui/BottomSheet';
 import { showToast } from '../ui/Toast';
 import { useAppStore } from '../../store';
@@ -153,7 +155,7 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
                 onPress={() => setSelectedTagId(tag.id)}
                 className="flex-row items-center py-3 active:opacity-70"
               >
-                <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-[#2A2B45] items-center justify-center mr-3">
+                <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-dark-card items-center justify-center mr-3">
                   <Typography variant="body-14">{tag.icon || ''}</Typography>
                 </View>
                 <Typography variant="subtitle-14-medium" color="primary" className="flex-1">
@@ -163,10 +165,10 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
                   className="w-6 h-6 rounded-full border-2 items-center justify-center"
                   style={{
                     backgroundColor: selected ? ACCENT : 'transparent',
-                    borderColor: selected ? ACCENT : '#8A8A8A',
+                    borderColor: selected ? ACCENT : colors.light.textSecondary,
                   }}
                 >
-                  {selected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                  {selected && <Ionicons name="checkmark" size={14} color={colors.white} />}
                 </View>
               </Pressable>
             );
@@ -177,7 +179,7 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
       {/* Create tag preview */}
       {mode === 'create' && (
         <View className="flex-row items-center py-3">
-          <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-[#2A2B45] items-center justify-center mr-3">
+          <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-dark-card items-center justify-center mr-3">
             <Typography variant="body-14">{challenge.tagIcon || ''}</Typography>
           </View>
           <View className="flex-1">
@@ -192,20 +194,23 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
       )}
 
       {/* Accept button */}
-      <Pressable
-        onPress={handleAccept}
+      <Button
+        variant="ghost"
+        size="large"
+        fullWidth
         disabled={isSubmitting || !canAccept}
-        className="rounded-2xl py-4 items-center mt-4 active:opacity-80"
-        style={{ backgroundColor: ACCENT, opacity: isSubmitting || !canAccept ? 0.5 : 1 }}
+        className="rounded-2xl py-4 mt-4"
+        style={{ backgroundColor: ACCENT }}
+        onPress={handleAccept}
       >
         {isSubmitting ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
+          <ActivityIndicator size="small" color={colors.white} />
         ) : (
-          <Typography variant="subtitle-16" style={{ color: '#FFFFFF' }}>
+          <Typography variant="subtitle-16" style={{ color: colors.white }}>
             Accept Challenge
           </Typography>
         )}
-      </Pressable>
+      </Button>
     </BottomSheet>
   );
 };

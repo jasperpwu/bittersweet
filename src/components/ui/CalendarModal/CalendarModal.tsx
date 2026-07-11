@@ -1,5 +1,6 @@
 import React, { FC, useState } from 'react';
 import { View, Modal, Pressable, Text } from 'react-native';
+import { colors } from '../../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../Typography';
 
@@ -95,7 +96,7 @@ export const CalendarModal: FC<CalendarModalProps> = ({
       onRequestClose={onClose}
     >
       <View className="flex-1 bg-black/60 items-center justify-center px-5">
-        <View className="bg-[#373847] rounded-lg w-full max-w-sm p-5">
+        <View className="bg-dark-card rounded-lg w-full max-w-sm p-5">
           {/* Header */}
           <View className="flex-row items-center justify-between mb-6">
             <Typography variant="headline-18" className="text-white">
@@ -103,10 +104,10 @@ export const CalendarModal: FC<CalendarModalProps> = ({
             </Typography>
             <View className="flex-row space-x-4">
               <Pressable onPress={() => navigateMonth('prev')}>
-                <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+                <Ionicons name="chevron-back" size={20} color={colors.white} />
               </Pressable>
               <Pressable onPress={() => navigateMonth('next')}>
-                <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+                <Ionicons name="chevron-forward" size={20} color={colors.white} />
               </Pressable>
             </View>
           </View>

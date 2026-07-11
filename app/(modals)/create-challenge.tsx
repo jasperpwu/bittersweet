@@ -3,6 +3,8 @@ import { View, SafeAreaView, Pressable, ScrollView, Image, ActivityIndicator } f
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
+import { Button } from '../../src/components/ui/Button';
+import { colors } from '../../src/config/theme';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { Slider } from '../../src/components/ui/Slider';
 import { DatePicker } from '../../src/components/ui/DatePicker/DatePicker';
@@ -182,7 +184,7 @@ export default function CreateChallengeModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color="#6592E9" />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2 flex-1">
           {stepTitle}
@@ -244,23 +246,25 @@ export default function CreateChallengeModal() {
                         }`}
                       >
                         {isSelected && (
-                          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                          <Ionicons name="checkmark" size={14} color={colors.white} />
                         )}
                       </View>
                     </Pressable>
                   );
                 })}
                 {/* Next button */}
-                <Pressable
-                  onPress={handleFriendsNext}
+                <Button
+                  variant="ghost"
+                  size="large"
+                  fullWidth
                   disabled={selectedFriendIds.length === 0}
-                  className="bg-[#E9A065] rounded-2xl py-4 items-center mt-4 active:opacity-80"
-                  style={{ opacity: selectedFriendIds.length === 0 ? 0.4 : 1 }}
+                  className="bg-[#E9A065] rounded-2xl py-4 mt-4"
+                  onPress={handleFriendsNext}
                 >
-                  <Typography variant="subtitle-16" style={{ color: '#FFFFFF' }}>
+                  <Typography variant="subtitle-16" style={{ color: colors.white }}>
                     {t('common.next')}
                   </Typography>
-                </Pressable>
+                </Button>
               </>
             )}
           </View>
@@ -280,13 +284,13 @@ export default function CreateChallengeModal() {
                 onPress={() => handleSelectTag(tag.id)}
                 className="flex-row items-center py-3 active:opacity-70"
               >
-                <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-[#2A2B45] items-center justify-center mr-3">
+                <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-dark-card items-center justify-center mr-3">
                   <Typography variant="body-14">{tag.icon || ''}</Typography>
                 </View>
                 <Typography variant="subtitle-14-medium" color="primary" className="flex-1">
                   {tag.name}
                 </Typography>
-                <Ionicons name="chevron-forward" size={18} color="#8A8A8A" />
+                <Ionicons name="chevron-forward" size={18} color={colors.light.textSecondary} />
               </Pressable>
             ))}
           </View>
@@ -296,7 +300,7 @@ export default function CreateChallengeModal() {
         {step === 'config' && (
           <View>
             {/* Summary */}
-            <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 mb-6">
+            <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 mb-6">
               <View className="flex-row items-center mb-2">
                 <Typography variant="body-12" color="secondary" className="mr-1">
                   {t('createChallenge.challenging')}
@@ -345,7 +349,7 @@ export default function CreateChallengeModal() {
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
               {t('createChallenge.targetDuration')}
             </Typography>
-            <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl px-4 py-3 items-center mb-6">
+            <View className="bg-light-border/30 dark:bg-dark-card rounded-xl px-4 py-3 items-center mb-6">
               <Typography variant="headline-20" color="primary" className="mb-1">
                 {formatDuration(targetHours)}/{period === 'daily' ? t('createChallenge.perDay') : t('createChallenge.perWeek')}
               </Typography>
@@ -399,7 +403,7 @@ export default function CreateChallengeModal() {
 
             {/* Mode-specific picker */}
             {creationMode === 'streak' ? (
-              <View className="bg-light-border/30 dark:bg-[#242540] rounded-xl px-4 py-3 items-center mb-6">
+              <View className="bg-light-border/30 dark:bg-dark-card rounded-xl px-4 py-3 items-center mb-6">
                 <Typography variant="headline-20" color="primary" className="mb-1">
                   {streakCount} {periodLabel}
                 </Typography>{/* periodLabel is localized days/weeks */}
@@ -441,20 +445,22 @@ export default function CreateChallengeModal() {
             </View>
 
             {/* Submit */}
-            <Pressable
-              onPress={handleSubmit}
+            <Button
+              variant="ghost"
+              size="large"
+              fullWidth
               disabled={isSubmitting}
-              className="bg-[#E9A065] rounded-2xl py-4 items-center active:opacity-80"
-              style={{ opacity: isSubmitting ? 0.6 : 1 }}
+              className="bg-[#E9A065] rounded-2xl py-4"
+              onPress={handleSubmit}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
-                <Typography variant="subtitle-16" style={{ color: '#FFFFFF' }}>
+                <Typography variant="subtitle-16" style={{ color: colors.white }}>
                   {t('createChallenge.sendChallenge')}
                 </Typography>
               )}
-            </Pressable>
+            </Button>
           </View>
         )}
       </ScrollView>

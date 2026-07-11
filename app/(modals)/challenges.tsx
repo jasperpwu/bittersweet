@@ -3,6 +3,8 @@ import { View, SafeAreaView, Pressable, SectionList, Alert } from 'react-native'
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
+import { Button } from '../../src/components/ui/Button';
+import { colors } from '../../src/config/theme';
 import { ChallengeCard, formatTarget } from '../../src/components/grove/ChallengeCard';
 import { ChallengeDetailSheet } from '../../src/components/grove/ChallengeDetailSheet';
 import { ChallengeAcceptSheet } from '../../src/components/grove/ChallengeAcceptSheet';
@@ -103,13 +105,13 @@ export default function ChallengesModal() {
             onPress={() => handleDecline(challenge.id)}
             className="w-9 h-9 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
           >
-            <Ionicons name="close" size={18} color="#8A8A8A" />
+            <Ionicons name="close" size={18} color={colors.light.textSecondary} />
           </Pressable>
           <Pressable
             onPress={() => setAcceptingChallenge(challenge)}
             className="w-9 h-9 rounded-full bg-[#E9A065] items-center justify-center active:opacity-80"
           >
-            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+            <Ionicons name="checkmark" size={18} color={colors.white} />
           </Pressable>
         </View>
       </View>
@@ -134,7 +136,7 @@ export default function ChallengesModal() {
               onPress={() => handleDelete(item.id)}
               className="w-9 h-9 rounded-full bg-red-500/20 items-center justify-center active:opacity-70"
             >
-              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+              <Ionicons name="trash-outline" size={16} color={colors.danger} />
             </Pressable>
           </View>
         )}
@@ -175,7 +177,7 @@ export default function ChallengesModal() {
             className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
             hitSlop={8}
           >
-            <Ionicons name="arrow-back" size={24} color="#6592E9" />
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </Pressable>
           <Typography variant="headline-18" color="primary" className="ml-2">
             {t('grove.challenges')}
@@ -192,18 +194,19 @@ export default function ChallengesModal() {
 
       {isEmpty ? (
         <View className="flex-1 items-center justify-center">
-          <Ionicons name="flame-outline" size={48} color="#8A8A8A" />
+          <Ionicons name="flame-outline" size={48} color={colors.light.textSecondary} />
           <Typography variant="body-14" color="secondary" className="mt-4 text-center px-8">
             {t('challengesList.emptyText')}
           </Typography>
-          <Pressable
+          <Button
+            variant="ghost"
+            className="mt-4 bg-[#E9A065] rounded-xl px-5 py-2.5"
             onPress={() => router.push('/(modals)/create-challenge')}
-            className="mt-4 bg-[#E9A065] rounded-xl px-5 py-2.5 active:opacity-80"
           >
-            <Typography variant="subtitle-14-medium" style={{ color: '#FFFFFF' }}>
+            <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>
               {t('groveUI.startChallenge')}
             </Typography>
-          </Pressable>
+          </Button>
         </View>
       ) : (
         <SectionList

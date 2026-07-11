@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
+import { Button } from '../ui/Button';
+import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +13,7 @@ interface EmptyChallengesStateProps {
 export const EmptyChallengesState: React.FC<EmptyChallengesStateProps> = ({ onCreateChallenge }) => {
   const { t } = useTranslation();
   return (
-    <View className="mx-5 bg-light-border/30 dark:bg-[#242540] rounded-2xl p-5 items-center">
+    <View className="mx-5 bg-light-border/30 dark:bg-dark-card rounded-2xl p-5 items-center">
       <View className="w-12 h-12 rounded-full bg-[#E9A065]/10 items-center justify-center mb-3">
         <Ionicons name="flame-outline" size={24} color="#E9A065" />
       </View>
@@ -21,14 +23,15 @@ export const EmptyChallengesState: React.FC<EmptyChallengesStateProps> = ({ onCr
       <Typography variant="body-12" color="secondary" className="text-center mb-4">
         {t('groveUI.noChallengesDesc')}
       </Typography>
-      <Pressable
+      <Button
+        variant="ghost"
+        className="bg-[#E9A065] rounded-xl px-5 py-2.5"
         onPress={onCreateChallenge}
-        className="bg-[#E9A065] rounded-xl px-5 py-2.5 active:opacity-80"
       >
-        <Typography variant="subtitle-14-medium" style={{ color: '#FFFFFF' }}>
+        <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>
           {t('groveUI.startChallenge')}
         </Typography>
-      </Pressable>
+      </Button>
     </View>
   );
 };

@@ -1,5 +1,6 @@
 import { FC, useRef, useCallback, useEffect } from 'react';
 import { View, Animated, NativeSyntheticEvent, NativeScrollEvent, useColorScheme } from 'react-native';
+import { colors } from '../../../config/theme';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../Typography';
 
@@ -72,7 +73,7 @@ export const WheelColumn: FC<WheelColumnProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const textColor = isDark ? '#FFFFFF' : '#5D4E37';
+  const textColor = isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary;
   const separatorColor = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(93,78,55,0.15)';
   const scrollRef = useRef<any>(null);
   const lastSnappedRef = useRef(selectedValue);

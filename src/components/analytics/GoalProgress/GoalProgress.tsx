@@ -348,7 +348,7 @@ const GoalStartAction: FC<{ progress: SharedValue<number> }> = ({ progress }) =>
       style={{ backgroundColor: COMPLETED_FILL, paddingHorizontal: 22 }}
     >
       <Reanimated.View style={iconStyle} className="items-center">
-        <Ionicons name="play" size={22} color="#FFFFFF" />
+        <Ionicons name="play" size={22} color={colors.white} />
         <Typography variant="tiny-10" color="white">
           {t('goalProgress.start')}
         </Typography>
@@ -662,7 +662,7 @@ const StreakCell: FC<{ hit: boolean; fillPercent: number; size: number }> = ({
         className="items-center justify-center rounded-full"
         style={{ width: size, height: size, backgroundColor: COMPLETED_FILL }}
       >
-        <Ionicons name="checkmark-sharp" size={Math.round(size * 0.62)} color="#FFFFFF" />
+        <Ionicons name="checkmark-sharp" size={Math.round(size * 0.62)} color={colors.white} />
       </View>
     );
   }
@@ -755,7 +755,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
           style={goal.percentage >= 100 ? { backgroundColor: COMPLETED_FILL } : undefined}
         >
           {goal.percentage >= 100 ? (
-            <Ionicons name="checkmark-sharp" size={22} color="#FFFFFF" />
+            <Ionicons name="checkmark-sharp" size={22} color={colors.white} />
           ) : (
             <Typography
               variant="body-12"
@@ -1023,7 +1023,7 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
         )}
       </View>
       <Pressable onPress={handleShare} className="active:opacity-70 p-1">
-        <Ionicons name="share-outline" size={18} color={colorScheme === 'dark' ? '#FFFFFF' : '#1C1C1E'} />
+        <Ionicons name="share-outline" size={18} color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
       </Pressable>
     </View>
   );

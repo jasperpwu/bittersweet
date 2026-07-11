@@ -13,6 +13,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
+import { Button } from '../../src/components/ui/Button';
+import { colors } from '../../src/config/theme';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { HeartbeatPauseSheet } from '../../src/components/grove/HeartbeatPauseSheet';
 import { useAppStore } from '../../src/store';
@@ -150,7 +152,7 @@ export default function InnerCircleModal() {
           className="w-8 h-8 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
           hitSlop={8}
         >
-          <Ionicons name="close" size={16} color="#8A8A8A" />
+          <Ionicons name="close" size={16} color={colors.light.textSecondary} />
         </Pressable>
       </View>
     );
@@ -159,7 +161,7 @@ export default function InnerCircleModal() {
   if (heartbeatLoading || innerCircleLoading) {
     return (
       <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg items-center justify-center">
-        <ActivityIndicator size="large" color="#FF6B6B" />
+        <ActivityIndicator size="large" color={colors.error} />
       </SafeAreaView>
     );
   }
@@ -174,7 +176,7 @@ export default function InnerCircleModal() {
             className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
             hitSlop={8}
           >
-            <Ionicons name="arrow-back" size={24} color="#FF6B6B" />
+            <Ionicons name="arrow-back" size={24} color={colors.error} />
           </Pressable>
           <Typography variant="headline-18" color="primary" className="ml-2">
             {t('gm.icChooseFriend')}
@@ -183,7 +185,7 @@ export default function InnerCircleModal() {
 
         {eligibleFriends.length === 0 ? (
           <View className="flex-1 items-center justify-center px-8">
-            <Ionicons name="people-outline" size={48} color="#8A8A8A" />
+            <Ionicons name="people-outline" size={48} color={colors.light.textSecondary} />
             <Typography variant="body-14" color="secondary" className="mt-4 text-center">
               {t('gm.icNoEligible')}
             </Typography>
@@ -218,7 +220,7 @@ export default function InnerCircleModal() {
                     @{friend.profile.handle}
                   </Typography>
                 </View>
-                <Ionicons name="add-circle-outline" size={24} color="#FF6B6B" />
+                <Ionicons name="add-circle-outline" size={24} color={colors.error} />
               </Pressable>
             ))}
           </ScrollView>
@@ -236,7 +238,7 @@ export default function InnerCircleModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color="#FF6B6B" />
+          <Ionicons name="arrow-back" size={24} color={colors.error} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
           {t('gm.icTitle')}
@@ -245,9 +247,9 @@ export default function InnerCircleModal() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Explanation card */}
-        <View className="mx-5 bg-[#FF6B6B]/10 rounded-2xl p-4 mb-4">
+        <View className="mx-5 bg-error/10 rounded-2xl p-4 mb-4">
           <View className="flex-row items-center mb-2">
-            <Ionicons name="heart" size={18} color="#FF6B6B" />
+            <Ionicons name="heart" size={18} color={colors.error} />
             <Typography variant="subtitle-14-medium" color="primary" className="ml-2">
               {t('gm.icSafetyNet')}
             </Typography>
@@ -263,7 +265,7 @@ export default function InnerCircleModal() {
             {t('gm.icMembers', { used: slotsUsed, max: MAX_INNER_CIRCLE })}
           </Typography>
 
-          <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+          <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4">
             {[...acceptedMembers, ...pendingMembers].map((member, index, arr) => (
               <View key={member.id}>
                 {renderMemberRow(member)}
@@ -275,7 +277,7 @@ export default function InnerCircleModal() {
 
             {slotsUsed === 0 && (
               <View className="py-6 items-center">
-                <Ionicons name="heart-outline" size={32} color="#8A8A8A" />
+                <Ionicons name="heart-outline" size={32} color={colors.light.textSecondary} />
                 <Typography variant="body-12" color="secondary" className="mt-2">
                   {t('gm.icNoMembers')}
                 </Typography>
@@ -284,15 +286,17 @@ export default function InnerCircleModal() {
           </View>
 
           {slotsUsed < MAX_INNER_CIRCLE && (
-            <Pressable
+            <Button
+              variant="ghost"
+              fullWidth
+              className="mt-3 flex-row bg-error/10 rounded-xl py-3"
               onPress={() => setShowFriendPicker(true)}
-              className="mt-3 flex-row items-center justify-center bg-[#FF6B6B]/10 rounded-xl py-3 active:opacity-70"
             >
-              <Ionicons name="add" size={18} color="#FF6B6B" />
-              <Typography variant="subtitle-14-medium" style={{ color: '#FF6B6B' }} className="ml-1.5">
+              <Ionicons name="add" size={18} color={colors.error} />
+              <Typography variant="subtitle-14-medium" style={{ color: colors.error }} className="ml-1.5">
                 {t('gm.addFriend')}
               </Typography>
-            </Pressable>
+            </Button>
           )}
         </View>
 
@@ -303,7 +307,7 @@ export default function InnerCircleModal() {
               {t('gm.icIncomingInvites')}
             </Typography>
 
-            <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+            <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4">
               {incomingCircleInvites.map((invite, index) => (
                 <View key={invite.id}>
                   <View className="flex-row items-center py-3">
@@ -334,13 +338,13 @@ export default function InnerCircleModal() {
                         onPress={() => handleDeclineInvite(invite.id)}
                         className="w-8 h-8 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
                       >
-                        <Ionicons name="close" size={16} color="#8A8A8A" />
+                        <Ionicons name="close" size={16} color={colors.light.textSecondary} />
                       </Pressable>
                       <Pressable
                         onPress={() => handleAcceptInvite(invite.id)}
-                        className="w-8 h-8 rounded-full bg-[#FF6B6B] items-center justify-center active:opacity-80"
+                        className="w-8 h-8 rounded-full bg-error items-center justify-center active:opacity-80"
                       >
-                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                        <Ionicons name="checkmark" size={16} color={colors.white} />
                       </Pressable>
                     </View>
                   </View>
@@ -362,7 +366,7 @@ export default function InnerCircleModal() {
             {t('gm.icQuietDesc')}
           </Typography>
 
-          <View className="flex-row bg-light-border/30 dark:bg-[#242540] rounded-xl overflow-hidden">
+          <View className="flex-row bg-light-border/30 dark:bg-dark-card rounded-xl overflow-hidden">
             {THRESHOLD_OPTIONS.map((days) => {
               const isSelected = (heartbeatSettings?.quietThresholdDays ?? 3) === days;
               return (
@@ -370,12 +374,12 @@ export default function InnerCircleModal() {
                   key={days}
                   onPress={() => handleThresholdChange(days)}
                   className={`flex-1 py-3 items-center ${
-                    isSelected ? 'bg-[#FF6B6B]' : ''
+                    isSelected ? 'bg-error' : ''
                   }`}
                 >
                   <Typography
                     variant="subtitle-14-medium"
-                    style={{ color: isSelected ? '#FFFFFF' : isDark ? '#CACACA' : '#8B7355' }}
+                    style={{ color: isSelected ? colors.white : isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary }}
                   >
                     {days}d
                   </Typography>
@@ -393,13 +397,13 @@ export default function InnerCircleModal() {
 
           <Pressable
             onPress={() => setShowPauseSheet(true)}
-            className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 py-3.5 flex-row items-center active:opacity-70"
+            className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4 py-3.5 flex-row items-center active:opacity-70"
           >
             <View className="w-8 items-center mr-3">
               <Ionicons
                 name={heartbeatSettings?.isPaused ? 'pause-circle' : 'pause-circle-outline'}
                 size={22}
-                color={heartbeatSettings?.isPaused ? '#FF6B6B' : isDark ? '#CACACA' : '#8B7355'}
+                color={heartbeatSettings?.isPaused ? colors.error : isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
               />
             </View>
             <View className="flex-1">
@@ -417,7 +421,7 @@ export default function InnerCircleModal() {
                 </Typography>
               )}
             </View>
-            <Ionicons name="chevron-forward" size={16} color={isDark ? '#575757' : '#D4C4A8'} />
+            <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
           </Pressable>
         </View>
       </ScrollView>

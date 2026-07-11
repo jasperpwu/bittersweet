@@ -25,10 +25,15 @@ import Animated, {
   withTiming,
   FadeIn,
 } from 'react-native-reanimated';
-import { Typography } from '../../src/components/ui';
+import { Typography, Button } from '../../src/components/ui';
+import { colors } from '../../src/config/theme';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { GoalProgressBanner } from '../../src/components/focus/GoalProgressBanner';
-import { FocusRatingBlock, FocusRatingInsightsSheet, CreateTagModal } from '../../src/components/focus';
+import {
+  FocusRatingBlock,
+  FocusRatingInsightsSheet,
+  CreateTagModal,
+} from '../../src/components/focus';
 import { FruitCounter } from '../../src/components/rewards';
 import {
   calculateFruitsEarnedForDuration,
@@ -82,7 +87,13 @@ export default function SessionCompleteModal() {
   const applyFullRating = () => {
     if (!session) return;
     updateSession(session.id, {
-      motionSummary: { signal: 'none', profile: 'unknown', recorder: null, activity: null, steps: null },
+      motionSummary: {
+        signal: 'none',
+        profile: 'unknown',
+        recorder: null,
+        activity: null,
+        steps: null,
+      },
     });
     applyFocusRating(session.id, 5, 'suggested');
   };
@@ -98,7 +109,11 @@ export default function SessionCompleteModal() {
     try {
       const snapshot = await getSessionMotionSnapshot(startMs, endMs);
       updateSession(session.id, { motionSummary: snapshot });
-      applyFocusRating(session.id, suggestRating(tagForSession?.activityType, snapshot), 'suggested');
+      applyFocusRating(
+        session.id,
+        suggestRating(tagForSession?.activityType, snapshot),
+        'suggested'
+      );
     } catch {
       applyFullRating();
     } finally {
@@ -334,8 +349,16 @@ export default function SessionCompleteModal() {
       );
       for (const challenge of activeChallenges) {
         const myHits = challenge.myParticipant?.hits ?? 0;
-        const periodLabel = challenge.period === 'daily' ? t('sessionComplete.day') : t('sessionComplete.week');
-        showToast(t('sessionComplete.challengeToast', { period: periodLabel, hits: myHits, total: challenge.totalPeriods }), 'success');
+        const periodLabel =
+          challenge.period === 'daily' ? t('sessionComplete.day') : t('sessionComplete.week');
+        showToast(
+          t('sessionComplete.challengeToast', {
+            period: periodLabel,
+            hits: myHits,
+            total: challenge.totalPeriods,
+          }),
+          'success'
+        );
       }
     }
 
@@ -397,7 +420,7 @@ export default function SessionCompleteModal() {
             <View className="mb-8 items-center">
               <Animated.View
                 ref={fruitRef}
-                className="items-center rounded-2xl bg-light-border/30 px-6 py-4 dark:bg-gray-700"
+                className="items-center rounded-2xl bg-light-border/30 px-6 py-4 dark:bg-dark-card"
                 style={fruitAnimStyle}>
                 <Typography variant="body-12" color="secondary" className="mb-1">
                   {t('sessionComplete.earned')}
@@ -416,18 +439,24 @@ export default function SessionCompleteModal() {
               value={notes}
               onChangeText={setNotes}
               placeholder={t('journal.notePlaceholder')}
-              placeholderTextColor="#666"
+              placeholderTextColor={
+                colorScheme === 'dark'
+                  ? colors.dark.textSecondary
+                  : colors.light.screenTextSecondary
+              }
               multiline
               numberOfLines={3}
               textAlignVertical="top"
               style={{
-                backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
                 borderRadius: 12,
                 padding: 16,
                 fontSize: 14,
-                color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                color:
+                  colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                 borderWidth: 1,
-                borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                borderColor:
+                  colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
                 minHeight: 80,
               }}
             />
@@ -471,37 +500,43 @@ export default function SessionCompleteModal() {
                     style={{ width: '100%', height: 200, borderRadius: 12 }}
                     resizeMode="cover"
                   />
-                  <Pressable
-                    onPress={() => setPhotoUri(null)}
-                    className="mt-2 flex-row items-center justify-center rounded-xl py-2.5 active:opacity-70"
-                    style={{ backgroundColor: 'rgba(220,38,38,0.12)' }}>
-                    <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                    <Typography variant="body-12" className="ml-1.5" style={{ color: '#DC2626' }}>
+                  <Button
+                    variant="ghost"
+                    className="mt-2 flex-row rounded-xl py-2.5"
+                    style={{ backgroundColor: colors.danger + '1A' }}
+                    onPress={() => setPhotoUri(null)}>
+                    <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                    <Typography
+                      variant="body-12"
+                      className="ml-1.5"
+                      style={{ color: colors.danger }}>
                       {t('journal.removePhoto')}
                     </Typography>
-                  </Pressable>
+                  </Button>
                 </View>
               ) : (
                 <View className="flex-row gap-x-3">
-                  <Pressable
-                    onPress={() => pickImage('library')}
+                  <Button
+                    variant="soft"
                     disabled={isSavingPhoto}
-                    className="flex-row items-center rounded-xl bg-primary/20 px-4 py-3 active:opacity-70">
-                    <Ionicons name="images-outline" size={18} color="#6592E9" />
+                    className="flex-row rounded-xl bg-primary-soft-20 px-4 py-3"
+                    onPress={() => pickImage('library')}>
+                    <Ionicons name="images-outline" size={18} color={colors.primary} />
                     <Typography variant="subtitle-14-medium" className="ml-2 text-primary">
                       {t('journal.library')}
                     </Typography>
-                  </Pressable>
+                  </Button>
 
-                  <Pressable
-                    onPress={() => pickImage('camera')}
+                  <Button
+                    variant="soft"
                     disabled={isSavingPhoto}
-                    className="flex-row items-center rounded-xl bg-primary/20 px-4 py-3 active:opacity-70">
-                    <Ionicons name="camera-outline" size={18} color="#6592E9" />
+                    className="flex-row rounded-xl bg-primary-soft-20 px-4 py-3"
+                    onPress={() => pickImage('camera')}>
+                    <Ionicons name="camera-outline" size={18} color={colors.primary} />
                     <Typography variant="subtitle-14-medium" className="ml-2 text-primary">
                       {t('journal.camera')}
                     </Typography>
-                  </Pressable>
+                  </Button>
                 </View>
               )}
             </View>
@@ -522,28 +557,38 @@ export default function SessionCompleteModal() {
 
           {/* Done button */}
           <View className="mt-4">
-            <Pressable
-              onPress={handleDone}
+            <Button
+              variant="ghost"
+              fullWidth
               disabled={isSavingPhoto}
-              className="items-center rounded-2xl bg-white py-4 active:opacity-80"
+              className="rounded-2xl bg-white py-4"
               style={{
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
                 shadowRadius: 8,
                 elevation: 8,
-                opacity: isSavingPhoto ? 0.6 : 1,
-              }}>
+              }}
+              onPress={handleDone}>
               {isSavingPhoto ? (
                 <View className="flex-row items-center">
                   <ActivityIndicator
                     size="small"
-                    color={colorScheme === 'dark' ? '#1B1C30' : '#5D4E37'}
+                    color={
+                      colorScheme === 'dark'
+                        ? colors.dark.background
+                        : colors.light.screenTextPrimary
+                    }
                   />
                   <Typography
                     variant="subtitle-16"
                     className="ml-2 font-semibold"
-                    style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}>
+                    style={{
+                      color:
+                        colorScheme === 'dark'
+                          ? colors.dark.background
+                          : colors.light.screenTextPrimary,
+                    }}>
                     {t('journal.saving')}
                   </Typography>
                 </View>
@@ -551,11 +596,16 @@ export default function SessionCompleteModal() {
                 <Typography
                   variant="subtitle-16"
                   className="font-semibold"
-                  style={{ color: colorScheme === 'dark' ? '#1B1C30' : '#5D4E37' }}>
+                  style={{
+                    color:
+                      colorScheme === 'dark'
+                        ? colors.dark.background
+                        : colors.light.screenTextPrimary,
+                  }}>
                   {t('common.done')}
                 </Typography>
               )}
-            </Pressable>
+            </Button>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -587,38 +637,36 @@ export default function SessionCompleteModal() {
       />
 
       {/* Motion permission priming — explains why before the one-shot OS prompt */}
-      <BottomSheet
-        isVisible={showMotionPrimer}
-        onClose={handleMotionPrimerDecline}
-        height={400}
-      >
-        <View className="items-center mb-4">
-          <View className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-primary/15">
-            <Ionicons name="walk-outline" size={32} color="#8B7FFF" />
+      <BottomSheet isVisible={showMotionPrimer} onClose={handleMotionPrimerDecline} height={400}>
+        <View className="mb-4 items-center">
+          <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-primary-soft">
+            <Ionicons name="walk-outline" size={32} color={colors.primary} />
           </View>
           <Typography variant="headline-20" color="primary" className="text-center">
             {t('sessionComplete.motionPrimerTitle')}
           </Typography>
-          <Typography variant="body-14" color="secondary" className="text-center mt-2">
+          <Typography variant="body-14" color="secondary" className="mt-2 text-center">
             {t('sessionComplete.motionPrimerBody')}
           </Typography>
-          <Typography variant="body-12" color="secondary" className="text-center mt-3" style={{ opacity: 0.7 }}>
+          <Typography
+            variant="body-12"
+            color="secondary"
+            className="mt-3 text-center"
+            style={{ opacity: 0.7 }}>
             {t('sessionComplete.motionPrimerPrivacy')}
           </Typography>
         </View>
 
         <Pressable
           onPress={handleMotionPrimerEnable}
-          className="items-center rounded-2xl bg-primary py-4 active:opacity-80"
-        >
+          className="items-center rounded-2xl bg-primary py-4 active:opacity-80">
           <Typography variant="subtitle-16" className="font-semibold text-white">
             {t('sessionComplete.motionPrimerEnable')}
           </Typography>
         </Pressable>
         <Pressable
           onPress={handleMotionPrimerDecline}
-          className="items-center py-3 mt-1 active:opacity-70"
-        >
+          className="mt-1 items-center py-3 active:opacity-70">
           <Typography variant="subtitle-14-medium" color="secondary">
             {t('sessionComplete.motionPrimerDecline')}
           </Typography>

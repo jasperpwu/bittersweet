@@ -1,5 +1,6 @@
 import React, { FC } from 'react';
 import { View, Pressable } from 'react-native';
+import { colors } from '../../config/theme';
 import { Typography } from '../ui/Typography';
 
 interface TrendDataPoint {
@@ -83,7 +84,7 @@ export const TrendAnalysis: FC<TrendAnalysisProps> = ({
                 <Typography 
                   variant="body-12" 
                   style={{ 
-                    color: point.change >= 0 ? '#51BC6F' : '#EF786C' 
+                    color: point.change >= 0 ? colors.success : colors.error
                   }}
                 >
                   {point.change >= 0 ? '+' : ''}{point.changePercentage}%

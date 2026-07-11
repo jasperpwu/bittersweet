@@ -1,5 +1,6 @@
 import React, { FC } from 'react';
 import { StatusBar as RNStatusBar, Platform, useColorScheme } from 'react-native';
+import { colors } from '../../../config/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface StatusBarProps {
@@ -15,7 +16,7 @@ export const StatusBar: FC<StatusBarProps> = ({
   const colorScheme = useColorScheme();
 
   const resolvedVariant = variant === 'auto' ? (colorScheme === 'dark' ? 'dark' : 'light') : variant;
-  const defaultBg = colorScheme === 'dark' ? '#1B1C30' : '#F5E6D3';
+  const defaultBg = colorScheme === 'dark' ? colors.dark.background : colors.light.screen;
 
   return (
     <>

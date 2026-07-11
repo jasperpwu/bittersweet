@@ -1,5 +1,6 @@
 import React, { FC } from 'react';
 import { View, Pressable } from 'react-native';
+import { colors } from '../../../config/theme';
 import { Typography } from '../../ui/Typography';
 import { Card } from '../../ui/Card';
 import { useFocus } from '../../../store';
@@ -79,7 +80,7 @@ export const FocusGoalItem: FC<FocusGoalItemProps> = ({
         <View className="flex-row flex-wrap mt-2">
           <View
             className="flex-row items-center rounded-full px-2 py-1"
-            style={{ backgroundColor: tag.color || '#6592E9' }}
+            style={{ backgroundColor: tag.color || colors.primary }}
           >
             <Typography variant="tiny-10" className="mr-1">
               {tag.icon}

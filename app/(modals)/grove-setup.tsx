@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
+import { Button } from '../../src/components/ui/Button';
+import { colors } from '../../src/config/theme';
 import { SetupStepIndicator } from '../../src/components/grove/SetupStepIndicator';
 import { HandleInput } from '../../src/components/grove/HandleInput';
 import { AvatarPicker } from '../../src/components/grove/AvatarPicker';
@@ -156,19 +158,19 @@ export default function GroveSetupModal() {
               value={displayName}
               onChangeText={(text) => setDisplayName(text.slice(0, 20))}
               placeholder={t('groveSetup.yourName')}
-              placeholderTextColor={isDark ? '#575757' : '#B8A88A'}
+              placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
               autoCapitalize="words"
               maxLength={20}
               style={{
-                backgroundColor: isDark ? '#242540' : '#F0E0CC',
+                backgroundColor: isDark ? colors.dark.card : colors.light.input,
                 borderRadius: 12,
                 paddingHorizontal: 16,
                 height: 48,
                 fontSize: 14,
-                color: isDark ? '#FFFFFF' : '#5D4E37',
+                color: isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                 fontFamily: 'Poppins-Regular',
                 borderWidth: 1,
-                borderColor: isDark ? '#575757' : '#D4C4A8',
+                borderColor: isDark ? colors.dark.border : colors.light.screenBorder,
               }}
             />
             <Typography variant="body-12" color="secondary" className="mt-1 ml-1">
@@ -306,22 +308,20 @@ export default function GroveSetupModal() {
         </ScrollView>
 
         {/* Bottom button */}
-        <View className="px-5 pb-8 pt-4" style={{ backgroundColor: isDark ? '#1B1C30' : '#F5E6D3' }}>
-          <Pressable
+        <View className="px-5 pb-8 pt-4" style={{ backgroundColor: isDark ? colors.dark.background : colors.light.screen }}>
+          <Button
+            variant="primary"
+            size="large"
+            fullWidth
+            loading={isLoading}
+            disabled={!canProceed}
+            className="rounded-2xl py-4"
             onPress={isLastStep ? handleComplete : handleNext}
-            disabled={!canProceed || isLoading}
-            className={`rounded-2xl py-4 items-center active:opacity-80 ${
-              canProceed && !isLoading ? 'bg-primary' : 'bg-primary/40'
-            }`}
           >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Typography variant="subtitle-16" color="white" className="font-poppins-semibold">
-                {isLastStep ? t('groveSetup.createProfile') : t('groveSetup.continue')}
-              </Typography>
-            )}
-          </Pressable>
+            <Typography variant="subtitle-16" color="white" className="font-poppins-semibold">
+              {isLastStep ? t('groveSetup.createProfile') : t('groveSetup.continue')}
+            </Typography>
+          </Button>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

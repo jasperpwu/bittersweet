@@ -1,5 +1,6 @@
 import React, { FC, useState } from 'react';
 import { View, Pressable, Platform, Modal, useColorScheme } from 'react-native';
+import { colors } from '../../../config/theme';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -100,7 +101,7 @@ export const DatePicker: FC<DatePickerProps> = ({
         <Ionicons
           name="calendar-outline"
           size={20}
-          color="#6592E9"
+          color={colors.primary}
         />
       </Pressable>
 
@@ -125,8 +126,8 @@ export const DatePicker: FC<DatePickerProps> = ({
                   onChange={handleDateChange}
                   {...(minimumDate ? { minimumDate } : {})}
                   {...(maximumDate ? { maximumDate } : {})}
-                  textColor={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
-                  accentColor="#6592E9"
+                  textColor={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
+                  accentColor={colors.primary}
                 />
                 <View className="flex-row justify-end mt-6 gap-3">
                   <Pressable
@@ -137,7 +138,7 @@ export const DatePicker: FC<DatePickerProps> = ({
                   </Pressable>
                   <Pressable
                     onPress={handleConfirm}
-                    className="flex-1 bg-[#6592E9] rounded-xl py-3 items-center justify-center active:opacity-80"
+                    className="flex-1 bg-primary rounded-xl py-3 items-center justify-center active:opacity-80"
                   >
                     <Typography variant="subtitle-14-semibold" color="white">{t('common.confirm')}</Typography>
                   </Pressable>

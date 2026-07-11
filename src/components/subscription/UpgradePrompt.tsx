@@ -1,9 +1,12 @@
 import React, { FC } from 'react';
-import { View, Pressable } from 'react-native';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../ui/Typography';
+import { Button } from '../ui/Button';
 import { BottomSheet } from '../ui/BottomSheet';
+import { colors } from '../../config/theme';
+import { PREMIUM_PERKS } from './premiumPerks';
 
 type LimitType = 'tags' | 'goals' | 'adhd' | 'health';
 
@@ -22,12 +25,6 @@ const LIMIT_KEY: Record<LimitType, string> = {
   health: 'Health',
 };
 
-const PERKS = [
-  { icon: 'pricetags-outline' as const, labelKey: 'subscription.perkUnlimitedTags' },
-  { icon: 'flag-outline' as const, labelKey: 'subscription.perkUnlimitedGoals' },
-  { icon: 'cloud-outline' as const, labelKey: 'subscription.perkCloudSync' },
-];
-
 export const UpgradePrompt: FC<UpgradePromptProps> = ({
   isVisible,
   onClose,
@@ -41,12 +38,12 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
   };
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose} height={380}>
-      <View className="items-center mb-4">
-        <View className="w-14 h-14 rounded-full bg-light-border/30 dark:bg-[#2A2B4A] items-center justify-center mb-4">
-          <Ionicons name="diamond-outline" size={28} color="#8B7FFF" />
+    <BottomSheet isVisible={isVisible} onClose={onClose} height={480}>
+      <View className="mb-4 items-center">
+        <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-primary/15">
+          <Ionicons name="diamond-outline" size={28} color={colors.primary} />
         </View>
-        <Typography variant="headline-20" color="primary" className="text-center mb-2">
+        <Typography variant="headline-20" color="primary" className="mb-2 text-center">
           {copy.title}
         </Typography>
         <Typography variant="body-14" color="secondary" className="text-center">
@@ -54,14 +51,13 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
         </Typography>
       </View>
 
-      {/* Perks */}
-      <View className="bg-light-border/30 dark:bg-[#2A2B4A] rounded-2xl p-4 mb-6">
-        {PERKS.map((perk, i) => (
+      {/* Perks — single source of truth (premiumPerks.ts) */}
+      <View className="mb-6 rounded-2xl bg-light-border/20 p-4 dark:bg-white/[0.03]">
+        {PREMIUM_PERKS.map((perk, i) => (
           <View
             key={perk.labelKey}
-            className={`flex-row items-center py-2 ${i < PERKS.length - 1 ? 'border-b border-light-border dark:border-dark-border' : ''}`}
-          >
-            <Ionicons name={perk.icon} size={18} color="#8B7FFF" />
+            className={`flex-row items-center py-2 ${i < PREMIUM_PERKS.length - 1 ? 'border-b border-light-border dark:border-dark-border' : ''}`}>
+            <Ionicons name={perk.icon} size={18} color={colors.primary} />
             <Typography variant="subtitle-14-medium" color="primary" className="ml-3">
               {t(perk.labelKey)}
             </Typography>
@@ -70,24 +66,30 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
       </View>
 
       {/* CTA */}
-      <Pressable
+      <Button
+        variant="primary"
+        size="large"
+        fullWidth
+        haptic
+        className="rounded-2xl"
         onPress={() => {
           onClose();
           onUpgrade();
-        }}
-        className="bg-primary rounded-2xl py-4 items-center active:opacity-80"
-      >
-        <Typography variant="subtitle-16" color="white" className="font-semibold">
-          {t('subscription.seePlans')}
-        </Typography>
-      </Pressable>
+        }}>
+        {t('subscription.seePlans')}
+      </Button>
 
       {/* Dismiss */}
-      <Pressable onPress={onClose} className="mt-3 items-center active:opacity-70">
-        <Typography variant="body-12" color="secondary">
-          {t('subscription.maybeLater')}
-        </Typography>
-      </Pressable>
+      <Button
+        variant="ghost"
+        size="small"
+        fullWidth
+        textColor="secondary"
+        textVariant="body-12"
+        className="mt-2"
+        onPress={onClose}>
+        {t('subscription.maybeLater')}
+      </Button>
     </BottomSheet>
   );
 };

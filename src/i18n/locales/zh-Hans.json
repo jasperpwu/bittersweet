@@ -74,6 +74,7 @@
     "skip": "跳过",
     "getStarted": "开始使用",
     "cancel": "取消",
+    "close": "关闭",
     "save": "保存",
     "done": "完成",
     "continueWithApple": "通过 Apple 登录",
@@ -648,7 +649,13 @@
     "perkUnlimitedGoals": "无限目标",
     "perkCloudSync": "云备份与同步",
     "seePlans": "查看方案",
-    "maybeLater": "以后再说"
+    "maybeLater": "以后再说",
+    "perkHealthSync": "Apple Health 运动同步",
+    "perkMultiTask": "多任务模式（双标签专注）",
+    "savePercent": "节省 {{percent}}%",
+    "perMonth": "{{price}}/月",
+    "billedAnnually": "按年收费 {{price}}",
+    "continue": "继续"
   },
   "groveSettings": {
     "profile": "资料",

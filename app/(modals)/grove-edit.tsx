@@ -14,6 +14,7 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 import { AvatarPicker } from '../../src/components/grove/AvatarPicker';
 import { GenderPicker } from '../../src/components/grove/GenderPicker';
 import { HandleInput } from '../../src/components/grove/HandleInput';
@@ -164,7 +165,7 @@ export default function GroveEditModal() {
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
           <Pressable onPress={() => router.back()} className="active:opacity-70">
-            <Ionicons name="close" size={24} color={isDark ? '#CACACA' : '#8B7355'} />
+            <Ionicons name="close" size={24} color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
           </Pressable>
 
           <Typography variant="subtitle-16" color="primary" className="font-poppins-semibold">
@@ -177,7 +178,7 @@ export default function GroveEditModal() {
             className="active:opacity-70"
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#6592E9" />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Typography
                 variant="subtitle-14-medium"
@@ -209,7 +210,7 @@ export default function GroveEditModal() {
                 onPress={handleRemoveAvatar}
                 className="self-center mt-3 active:opacity-70"
               >
-                <Typography variant="body-12" className="text-[#EF786C]">
+                <Typography variant="body-12" className="text-error">
                   {t('journal.removePhoto')}
                 </Typography>
               </Pressable>
@@ -225,18 +226,18 @@ export default function GroveEditModal() {
               value={displayName}
               onChangeText={(text) => setDisplayName(text.slice(0, 20))}
               placeholder={t('groveSetup.yourName')}
-              placeholderTextColor={isDark ? '#575757' : '#B8A88A'}
+              placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
               maxLength={20}
               style={{
-                backgroundColor: isDark ? '#242540' : '#F0E0CC',
+                backgroundColor: isDark ? colors.dark.card : colors.light.input,
                 borderRadius: 12,
                 paddingHorizontal: 16,
                 height: 48,
                 fontSize: 14,
-                color: isDark ? '#FFFFFF' : '#5D4E37',
+                color: isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                 fontFamily: 'Poppins-Regular',
                 borderWidth: 1,
-                borderColor: isDark ? '#575757' : '#D4C4A8',
+                borderColor: isDark ? colors.dark.border : colors.light.screenBorder,
               }}
             />
             <Typography variant="body-12" color="secondary" className="mt-1 ml-1">

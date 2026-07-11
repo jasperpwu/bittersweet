@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Pressable, useColorScheme } from 'react-native';
+import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { Toggle } from '../ui/Toggle';
@@ -33,7 +34,7 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const iconColor = isDark ? '#CACACA' : '#8B7355';
+  const iconColor = isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary;
 
   return (
     <View>
@@ -45,7 +46,7 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
         {t('privacy.sharedTagsSub')}
       </Typography>
 
-      <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4 mb-4">
+      <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4 mb-4">
         {tags.map((tag, index) => {
           const isShared = sharedTagIds.includes(tag.id);
           return (
@@ -87,7 +88,7 @@ export const PrivacyToggleList: React.FC<PrivacyToggleListProps> = ({
         {t('privacy.sharing')}
       </Typography>
 
-      <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl px-4">
+      <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4">
         <View className="flex-row items-center justify-between py-3 border-b border-light-border dark:border-dark-border">
           <View className="flex-row items-center flex-1 mr-3">
             <View className="w-8 items-center mr-3">

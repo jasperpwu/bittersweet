@@ -93,32 +93,36 @@ export const Slider: FC<SliderProps> = ({
     [onSlidingComplete]
   );
 
-  const gestureHandler = useAnimatedGestureHandler<
-    PanGestureHandlerGestureEvent,
-    { startX: number }
-  >({
-    onStart: (_, context: { startX: number }) => {
-      isSliding.value = true;
-      scale.value = withSpring(1.2);
-      context.startX = translateX.value;
-    },
-    onActive: (event, context: { startX: number }) => {
-      const newTranslateX = Math.max(0, Math.min(trackWidth, event.translationX + context.startX));
-      translateX.value = newTranslateX;
-
-      // Calculate new value
-      const percentage = trackWidth > 0 ? newTranslateX / trackWidth : 0;
-      let clampedValue: number;
+  // Map an absolute finger X (relative to the track) → the snapped/stepped value.
+  const valueFromTranslate = useCallback(
+    (tx: number) => {
+      'worklet';
+      const percentage = trackWidth > 0 ? tx / trackWidth : 0;
       if (snapPoints && snapPoints.length > 1) {
         const idx = Math.round(percentage * (snapPoints.length - 1));
-        clampedValue = snapPoints[Math.max(0, Math.min(snapPoints.length - 1, idx))];
-      } else {
-        const rawValue = minimumValue + percentage * (maximumValue - minimumValue);
-        const steppedValue = Math.round(rawValue / step) * step;
-        clampedValue = Math.max(minimumValue, Math.min(maximumValue, steppedValue));
+        return snapPoints[Math.max(0, Math.min(snapPoints.length - 1, idx))];
       }
+      const rawValue = minimumValue + percentage * (maximumValue - minimumValue);
+      const steppedValue = Math.round(rawValue / step) * step;
+      return Math.max(minimumValue, Math.min(maximumValue, steppedValue));
+    },
+    [trackWidth, snapPoints, minimumValue, maximumValue, step]
+  );
 
-      runOnJS(updateValue)(clampedValue);
+  // The gesture now spans the whole track, so `event.x` is the finger position
+  // along the full width. Center the thumb under the finger and clamp to the track.
+  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
+    onStart: (event) => {
+      isSliding.value = true;
+      scale.value = withSpring(1.2);
+      const newTranslateX = Math.max(0, Math.min(trackWidth, event.x - thumbSize / 2));
+      translateX.value = newTranslateX;
+      runOnJS(updateValue)(valueFromTranslate(newTranslateX));
+    },
+    onActive: (event) => {
+      const newTranslateX = Math.max(0, Math.min(trackWidth, event.x - thumbSize / 2));
+      translateX.value = newTranslateX;
+      runOnJS(updateValue)(valueFromTranslate(newTranslateX));
     },
     onEnd: () => {
       isSliding.value = false;
@@ -159,8 +163,17 @@ export const Slider: FC<SliderProps> = ({
         </View>
       )}
 
-      <View style={{ width }} className="h-12 justify-center">
-        <Animated.View style={[trackStyle, { justifyContent: 'center' }]}>
+      {/* The whole track is one large touch target — start a horizontal drag
+          anywhere along the full width to move the thumb, not just on the thumb
+          itself. `activeOffsetX` claims only horizontal drags so a parent
+          ScrollView can still scroll vertically. */}
+      <PanGestureHandler
+        onGestureEvent={gestureHandler}
+        enabled={!disabled}
+        activeOffsetX={[-8, 8]}>
+        <Animated.View
+          style={[trackStyle, { width, justifyContent: 'center' }]}
+          className="h-14">
           {/* Track Background */}
           <View
             className="rounded-full bg-light-border dark:bg-dark-border"
@@ -191,40 +204,36 @@ export const Slider: FC<SliderProps> = ({
             )}
           </Animated.View>
 
-          {/* Thumb - outer view provides a larger 44pt hit area */}
-          <PanGestureHandler
-            onGestureEvent={gestureHandler}
-            enabled={!disabled}
-            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
-            <Animated.View
-              style={[
-                thumbStyle,
-                {
-                  position: 'absolute',
-                  width: thumbSize,
-                  height: thumbSize,
-                  borderRadius: thumbSize / 2,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: sliderTheme ? 'transparent' : DEFAULT_SLIDER_COLORS.thumb,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: sliderTheme ? 0 : 0.3,
-                  shadowRadius: 4,
-                  elevation: sliderTheme ? 0 : 5,
-                },
-              ]}>
-              {sliderTheme && (
-                <Text
-                  allowFontScaling={false}
-                  style={{ fontSize: thumbSize - 4, lineHeight: thumbSize }}>
-                  {sliderTheme.thumbEmoji}
-                </Text>
-              )}
-            </Animated.View>
-          </PanGestureHandler>
+          {/* Thumb — visual only; the gesture lives on the whole track above */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              thumbStyle,
+              {
+                position: 'absolute',
+                width: thumbSize,
+                height: thumbSize,
+                borderRadius: thumbSize / 2,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: sliderTheme ? 'transparent' : DEFAULT_SLIDER_COLORS.thumb,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: sliderTheme ? 0 : 0.3,
+                shadowRadius: 4,
+                elevation: sliderTheme ? 0 : 5,
+              },
+            ]}>
+            {sliderTheme && (
+              <Text
+                allowFontScaling={false}
+                style={{ fontSize: thumbSize - 4, lineHeight: thumbSize }}>
+                {sliderTheme.thumbEmoji}
+              </Text>
+            )}
+          </Animated.View>
         </Animated.View>
-      </View>
+      </PanGestureHandler>
 
       {/* Value Labels */}
       <View className="mt-2 w-full flex-row justify-between">

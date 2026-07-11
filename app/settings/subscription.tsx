@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, SafeAreaView, Pressable, Linking, useColorScheme } from 'react-native';
+import { colors } from '../../src/config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
@@ -22,7 +23,7 @@ export default function SubscriptionScreen() {
       {/* Header */}
       <View className="h-[56px] px-5 flex-row items-center">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
-          <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
+          <Ionicons name="chevron-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
           {t('settings.tab.subscription')}

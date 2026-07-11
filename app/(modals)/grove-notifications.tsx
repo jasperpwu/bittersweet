@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
+import { colors } from '../../src/config/theme';
 import {
   buildGroveNotifications,
   type GroveNotification,
@@ -160,13 +161,13 @@ export default function GroveNotificationsModal() {
                 onPress={() => handleRejectRequest(item.friendshipId)}
                 className="w-9 h-9 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
               >
-                <Ionicons name="close" size={18} color="#8A8A8A" />
+                <Ionicons name="close" size={18} color={colors.light.textSecondary} />
               </Pressable>
               <Pressable
                 onPress={() => handleAcceptRequest(item.friendshipId)}
                 className="w-9 h-9 rounded-full bg-primary items-center justify-center active:opacity-80"
               >
-                <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                <Ionicons name="checkmark" size={18} color={colors.white} />
               </Pressable>
             </View>
           </View>
@@ -189,13 +190,13 @@ export default function GroveNotificationsModal() {
                 onPress={() => handleDeclineInvite(item.inviteId)}
                 className="w-9 h-9 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
               >
-                <Ionicons name="close" size={18} color="#8A8A8A" />
+                <Ionicons name="close" size={18} color={colors.light.textSecondary} />
               </Pressable>
               <Pressable
                 onPress={() => handleAcceptInvite(item.inviteId)}
-                className="w-9 h-9 rounded-full bg-[#FF6B6B] items-center justify-center active:opacity-80"
+                className="w-9 h-9 rounded-full bg-error items-center justify-center active:opacity-80"
               >
-                <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                <Ionicons name="checkmark" size={18} color={colors.white} />
               </Pressable>
             </View>
           </View>
@@ -210,10 +211,10 @@ export default function GroveNotificationsModal() {
               <NotificationAvatar profile={profile} />
             ) : (
               <View
-                className="mr-3 items-center justify-center rounded-full bg-[#FF6B6B]/20"
+                className="mr-3 items-center justify-center rounded-full bg-error/20"
                 style={{ width: 44, height: 44 }}
               >
-                <Ionicons name="heart" size={20} color="#FF6B6B" />
+                <Ionicons name="heart" size={20} color={colors.error} />
               </View>
             )}
             <View className="flex-1 mr-2">
@@ -265,7 +266,7 @@ export default function GroveNotificationsModal() {
                 {t('gm.notifChallengeReview', { icon: challenge.tagIcon, name: challenge.tagName })}
               </Typography>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#8A8A8A" />
+            <Ionicons name="chevron-forward" size={16} color={colors.light.textSecondary} />
           </Pressable>
         );
       }
@@ -287,12 +288,12 @@ export default function GroveNotificationsModal() {
           >
             <View
               className="mr-3 items-center justify-center rounded-full"
-              style={{ width: 44, height: 44, backgroundColor: won ? '#51BC6F20' : '#E9A06520' }}
+              style={{ width: 44, height: 44, backgroundColor: won ? colors.success + '33' : '#E9A06520' }}
             >
               <Ionicons
                 name={won ? 'trophy' : 'flag'}
                 size={20}
-                color={won ? '#51BC6F' : '#E9A065'}
+                color={won ? colors.success : '#E9A065'}
               />
             </View>
             <View className="flex-1 mr-2">
@@ -313,22 +314,22 @@ export default function GroveNotificationsModal() {
               <Pressable
                 onPress={() => handleClaimReward(challenge.id)}
                 disabled={claiming}
-                className={`px-3.5 h-9 rounded-full bg-[#51BC6F] items-center justify-center active:opacity-80 ${claiming ? 'opacity-50' : ''}`}
+                className={`px-3.5 h-9 rounded-full bg-success items-center justify-center active:opacity-80 ${claiming ? 'opacity-50' : ''}`}
                 hitSlop={6}
               >
-                <Typography variant="subtitle-14-medium" style={{ color: '#FFFFFF' }}>
+                <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>
                   {claiming ? t('gm.notifClaiming') : t('gm.notifClaim')}
                 </Typography>
               </Pressable>
             ) : won && claimed ? (
               <View className="flex-row items-center">
-                <Ionicons name="checkmark-circle" size={16} color="#51BC6F" />
-                <Typography variant="body-12" className="ml-1" style={{ color: '#51BC6F' }}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Typography variant="body-12" className="ml-1" style={{ color: colors.success }}>
                   {t('gm.notifClaimed')}
                 </Typography>
               </View>
             ) : (
-              <Ionicons name="chevron-forward" size={16} color="#8A8A8A" />
+              <Ionicons name="chevron-forward" size={16} color={colors.light.textSecondary} />
             )}
           </Pressable>
         );
@@ -345,7 +346,7 @@ export default function GroveNotificationsModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color={isDark ? '#FFFFFF' : '#5D4E37'} />
+          <Ionicons name="arrow-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
           {t('gm.notifTitle')}
@@ -354,7 +355,7 @@ export default function GroveNotificationsModal() {
 
       {notifications.length === 0 ? (
         <View className="flex-1 items-center justify-center">
-          <Ionicons name="notifications-off-outline" size={48} color="#8A8A8A" />
+          <Ionicons name="notifications-off-outline" size={48} color={colors.light.textSecondary} />
           <Typography variant="body-14" color="secondary" className="mt-4 text-center px-8">
             {t('gm.notifEmpty')}
           </Typography>
@@ -367,7 +368,7 @@ export default function GroveNotificationsModal() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={isDark ? '#FFFFFF' : '#5D4E37'}
+              tintColor={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
             />
           }
         >

@@ -11,7 +11,7 @@ interface PeriodToggleProps {
 export const PeriodToggle: React.FC<PeriodToggleProps> = ({ period, onPeriodChange }) => {
   const { t } = useTranslation();
   return (
-    <View className="flex-row bg-light-border/30 dark:bg-[#242540] rounded-xl p-1">
+    <View className="flex-row bg-light-border/30 dark:bg-dark-card rounded-xl p-1">
       <Pressable
         onPress={() => onPeriodChange('week')}
         className={`flex-1 py-2 rounded-lg items-center ${

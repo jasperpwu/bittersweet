@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
+import { colors } from '../../config/theme';
 import { Typography } from '../ui/Typography';
 import type { ChallengeItem, ChallengeParticipant } from '../../services/grove/GroveChallengeService';
 import { useTranslation } from 'react-i18next';
@@ -84,7 +85,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
           {t('challenge.progress', { hits: participant.hits, total: totalPeriods, unit: periodUnit })}
         </Typography>
       </View>
-      <View className="h-2 bg-light-border/50 dark:bg-[#2A2B45] rounded-full">
+      <View className="h-2 bg-light-border/50 dark:bg-dark-card rounded-full">
         <View
           className="h-2 rounded-full"
           style={{
@@ -101,7 +102,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
 
   return (
     <Wrapper {...(wrapperProps as any)}>
-    <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 w-[260px]">
+    <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 w-[260px]">
       {/* Tag + Status */}
       <View className="flex-row items-center mb-3">
         <Typography variant="body-14" className="mr-1.5">
@@ -112,21 +113,21 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
         </Typography>
         {isCompleted && (
           <View className="bg-green-500/20 rounded-full px-2 py-0.5">
-            <Typography variant="body-12" style={{ color: '#22C55E' }}>
+            <Typography variant="body-12" style={{ color: colors.success }}>
               {t('challenge.done')}
             </Typography>
           </View>
         )}
         {isFailed && (
           <View className="bg-red-500/20 rounded-full px-2 py-0.5">
-            <Typography variant="body-12" style={{ color: '#EF4444' }}>
+            <Typography variant="body-12" style={{ color: colors.danger }}>
               {t('challenge.failed')}
             </Typography>
           </View>
         )}
         {isCancelled && (
           <View className="bg-yellow-500/20 rounded-full px-2 py-0.5">
-            <Typography variant="body-12" style={{ color: '#EAB308' }}>
+            <Typography variant="body-12" style={{ color: colors.warning }}>
               {t('challenge.cancelled')}
             </Typography>
           </View>
@@ -170,7 +171,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
       {/* Footer */}
       <View className="flex-row items-center justify-between">
         <View className="bg-primary/10 rounded-lg px-2 py-1">
-          <Typography variant="body-12" style={{ color: '#6592E9' }}>
+          <Typography variant="body-12" style={{ color: colors.primary }}>
             {targetLabel}
           </Typography>
         </View>

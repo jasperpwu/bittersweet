@@ -386,36 +386,23 @@ struct HomeScreenWidgetView: View {
   @available(iOS 17.0, *)
   private var mediumIdleGridView: some View {
     let tags = entry.configuredTags
-    let isTwoTag = tags.count <= 2
     // Inter-cell spacing (rows + columns). Kept small so the cells get more of
     // the widget height and read as full rather than floating in blank space.
     // .contentMarginsDisabled() on MediumFocusWidget keeps the system from
     // adding its own margin on top of the outer inset applied below.
     let gap: CGFloat = 8
+    // Always a fixed 2x2 grid so each cell keeps the same block size regardless
+    // of how many tags are configured (1, 2, 3, or 4). Missing slots render an
+    // invisible placeholder that occupies the same space, so present cells never
+    // stretch to fill the row/column.
     return VStack(spacing: gap) {
-      if isTwoTag {
-        // 1 row x 2 columns
-        HStack(spacing: gap) {
-          ForEach(0..<min(tags.count, 2), id: \.self) { i in
-            tagGridButton(tag: tags[i])
-          }
-        }
-      } else {
-        // 2 rows x 2 columns
-        HStack(spacing: gap) {
-          tagGridButton(tag: tags[0])
-          if tags.count > 1 {
-            tagGridButton(tag: tags[1])
-          }
-        }
-        HStack(spacing: gap) {
-          if tags.count > 2 {
-            tagGridButton(tag: tags[2])
-          }
-          if tags.count > 3 {
-            tagGridButton(tag: tags[3])
-          }
-        }
+      HStack(spacing: gap) {
+        gridCell(tags, 0)
+        gridCell(tags, 1)
+      }
+      HStack(spacing: gap) {
+        gridCell(tags, 2)
+        gridCell(tags, 3)
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -423,6 +410,19 @@ struct HomeScreenWidgetView: View {
     // the grid still has breathing room from the widget edge without leaving the
     // cells floating in too much blank space.
     .padding(12)
+  }
+
+  @available(iOS 17.0, *)
+  @ViewBuilder
+  private func gridCell(_ tags: [WidgetTagGridItem], _ index: Int) -> some View {
+    if index < tags.count {
+      tagGridButton(tag: tags[index])
+    } else {
+      // Invisible placeholder keeps the 2x2 grid geometry so real cells stay a
+      // fixed quarter-size block instead of stretching to fill empty slots.
+      Color.clear
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
   }
 
   @available(iOS 17.0, *)

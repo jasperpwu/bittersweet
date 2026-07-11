@@ -1,5 +1,6 @@
 import React, { FC } from 'react';
 import { View, ScrollView, Pressable } from 'react-native';
+import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 
@@ -46,7 +47,7 @@ export const ActivityList: FC<ActivityListProps> = ({
   if (entries.length === 0) {
     return (
       <View className="flex-1 items-center justify-center px-4">
-        <Ionicons name="calendar-outline" size={48} color="#8A8A8A" />
+        <Ionicons name="calendar-outline" size={48} color={colors.light.textSecondary} />
         <Typography variant="body-14" color="secondary" className="mt-4 text-center">
           {emptyMessage}
         </Typography>
@@ -107,14 +108,14 @@ export const ActivityList: FC<ActivityListProps> = ({
                 onPress={() => onEditEntry(entry)}
                 className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 items-center justify-center mr-2"
               >
-                <Ionicons name="pencil" size={16} color="#6592E9" />
+                <Ionicons name="pencil" size={16} color={colors.primary} />
               </Pressable>
               
               <Pressable
                 onPress={() => onDeleteEntry(entry.id)}
                 className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 items-center justify-center"
               >
-                <Ionicons name="trash" size={16} color="#EF786C" />
+                <Ionicons name="trash" size={16} color={colors.error} />
               </Pressable>
             </View>
           </View>

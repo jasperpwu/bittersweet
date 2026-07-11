@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
@@ -184,7 +185,7 @@ export default function AddFriendsModal() {
           onPress={() => handleSendRequest(userId)}
           className="px-4 h-8 rounded-full bg-primary items-center justify-center active:opacity-80"
         >
-          <Typography variant="body-12" style={{ color: '#FFFFFF' }}>
+          <Typography variant="body-12" style={{ color: colors.white }}>
             {t('gm.afAdd')}
           </Typography>
         </Pressable>
@@ -199,7 +200,7 @@ export default function AddFriendsModal() {
             onPress={() => handleAccept(request.friendshipId)}
             className="px-4 h-8 rounded-full bg-primary items-center justify-center active:opacity-80"
           >
-            <Typography variant="body-12" style={{ color: '#FFFFFF' }}>
+            <Typography variant="body-12" style={{ color: colors.white }}>
               {t('gm.afAccept')}
             </Typography>
           </Pressable>
@@ -233,7 +234,7 @@ export default function AddFriendsModal() {
           onPress={() => handleReject(item.friendshipId)}
           className="w-9 h-9 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
         >
-          <Ionicons name="close" size={18} color="#8A8A8A" />
+          <Ionicons name="close" size={18} color={colors.light.textSecondary} />
         </Pressable>
         <Pressable
           onPress={() => handleAccept(item.friendshipId)}
@@ -266,7 +267,7 @@ export default function AddFriendsModal() {
         className="w-8 h-8 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
         hitSlop={8}
       >
-        <Ionicons name="close" size={16} color="#8A8A8A" />
+        <Ionicons name="close" size={16} color={colors.light.textSecondary} />
       </Pressable>
     </Pressable>
   );
@@ -282,7 +283,7 @@ export default function AddFriendsModal() {
     if (searchLoading) {
       return (
         <View className="py-3 px-5 items-center">
-          <ActivityIndicator size="small" color="#6592E9" />
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       );
     }
@@ -326,7 +327,7 @@ export default function AddFriendsModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color="#6592E9" />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2 flex-1">
           {t('gm.afTitle')}
@@ -336,7 +337,7 @@ export default function AddFriendsModal() {
           className="w-10 h-10 items-center justify-center -mr-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="paper-plane-outline" size={22} color="#6592E9" />
+          <Ionicons name="paper-plane-outline" size={22} color={colors.primary} />
         </Pressable>
       </View>
 
@@ -346,7 +347,7 @@ export default function AddFriendsModal() {
           <Ionicons
             name="search"
             size={18}
-            color="#8A8A8A"
+            color={colors.light.textSecondary}
             style={{ marginRight: 8 }}
           />
           <TextInput
@@ -354,7 +355,7 @@ export default function AddFriendsModal() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder={t('gm.afSearch')}
-            placeholderTextColor="#8A8A8A"
+            placeholderTextColor={colors.light.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -367,7 +368,7 @@ export default function AddFriendsModal() {
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={handleClearSearch} hitSlop={8}>
-              <Ionicons name="close-circle" size={18} color="#8A8A8A" />
+              <Ionicons name="close-circle" size={18} color={colors.light.textSecondary} />
             </Pressable>
           )}
         </View>
@@ -385,7 +386,7 @@ export default function AddFriendsModal() {
               {t('gm.frTitle')}
             </Typography>
             <View className="ml-2 w-5 h-5 rounded-full bg-primary items-center justify-center">
-              <Typography variant="body-12" style={{ color: '#FFFFFF', fontSize: 11 }}>
+              <Typography variant="body-12" style={{ color: colors.white, fontSize: 11 }}>
                 {incomingRequests.length}
               </Typography>
             </View>
@@ -420,7 +421,7 @@ export default function AddFriendsModal() {
         }
         ListEmptyComponent={
           <View className="items-center pt-12">
-            <Ionicons name="people-outline" size={48} color="#8A8A8A" />
+            <Ionicons name="people-outline" size={48} color={colors.light.textSecondary} />
             <Typography variant="body-14" color="secondary" className="mt-4 text-center px-8">
               {t('gm.afNoFriends')}
             </Typography>

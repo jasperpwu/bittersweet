@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import { useAppStore } from '../../src/store';
+import { colors } from '../../src/config/theme';
 import type { FriendRequest } from '../../src/services/grove/GroveFriendService';
 
 export default function FriendRequestsModal() {
@@ -64,13 +65,13 @@ export default function FriendRequestsModal() {
           onPress={() => handleReject(item.friendshipId)}
           className="w-9 h-9 rounded-full bg-light-border dark:bg-dark-border items-center justify-center active:opacity-70"
         >
-          <Ionicons name="close" size={18} color="#8A8A8A" />
+          <Ionicons name="close" size={18} color={colors.light.textSecondary} />
         </Pressable>
         <Pressable
           onPress={() => handleAccept(item.friendshipId)}
           className="w-9 h-9 rounded-full bg-primary items-center justify-center active:opacity-80"
         >
-          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+          <Ionicons name="checkmark" size={18} color={colors.white} />
         </Pressable>
       </View>
     </View>
@@ -85,7 +86,7 @@ export default function FriendRequestsModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color="#6592E9" />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
           {t('gm.frTitle')}
@@ -94,7 +95,7 @@ export default function FriendRequestsModal() {
 
       {incomingRequests.length === 0 ? (
         <View className="flex-1 items-center justify-center">
-          <Ionicons name="people-outline" size={48} color="#8A8A8A" />
+          <Ionicons name="people-outline" size={48} color={colors.light.textSecondary} />
           <Typography variant="body-14" color="secondary" className="mt-4 text-center px-8">
             {t('gm.frEmpty')}
           </Typography>

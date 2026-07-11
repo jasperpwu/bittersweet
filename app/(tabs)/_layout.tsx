@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { View, useColorScheme } from 'react-native';
 import { useAppStore } from '../../src/store';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 import { useTranslation } from 'react-i18next';
 
 const ActiveDot = () => (
@@ -10,7 +11,7 @@ const ActiveDot = () => (
     style={{
       width: 14,
       height: 4,
-      backgroundColor: '#6592E9',
+      backgroundColor: colors.primary,
       borderRadius: 100,
       marginTop: 2,
     }}
@@ -33,11 +34,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         freezeOnBlur: false,
-        tabBarActiveTintColor: '#6592E9',
-        tabBarInactiveTintColor: isDark ? '#8A8A8A' : '#8B7355',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: isDark ? colors.light.textSecondary : colors.light.screenTextSecondary,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: isDark ? '#1B1C30' : '#F5E6D3',
+          backgroundColor: isDark ? colors.dark.background : colors.light.screen,
           borderTopWidth: 0,
           height: 84,
           paddingTop: 8,
@@ -129,7 +130,7 @@ export default function TabLayout() {
                     width: 8,
                     height: 8,
                     borderRadius: 4,
-                    backgroundColor: '#FF3B30',
+                    backgroundColor: colors.danger,
                   }}
                 />
               )}

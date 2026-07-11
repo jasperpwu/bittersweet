@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
+import { colors } from '../../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../Typography';
 
@@ -14,7 +15,7 @@ interface EmptyStateProps {
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
   icon,
-  iconColor = '#6592E9',
+  iconColor = colors.primary,
   title,
   description,
   buttonLabel,
@@ -39,7 +40,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           onPress={onButtonPress}
           className="bg-primary rounded-xl px-6 py-3 active:opacity-80"
         >
-          <Typography variant="subtitle-14-medium" style={{ color: '#FFFFFF' }}>
+          <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>
             {buttonLabel}
           </Typography>
         </Pressable>

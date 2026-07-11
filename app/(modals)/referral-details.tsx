@@ -1,9 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, SafeAreaView, ScrollView, Pressable, Alert, ActivityIndicator, useColorScheme } from 'react-native';
+import {
+  View,
+  SafeAreaView,
+  ScrollView,
+  Pressable,
+  Alert,
+  ActivityIndicator,
+  useColorScheme,
+} from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { Button } from '../../src/components/ui/Button/Button';
+import { colors } from '../../src/config/theme';
 import { useAppStore } from '../../src/store';
 import { useReferralLink } from '../../src/hooks/useReferralLink';
 import { REFERRAL_TIERS } from '../../src/store/slices/referralSlice';
@@ -58,9 +67,13 @@ export default function ReferralDetailsModal() {
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
-      <View className="h-[56px] px-5 flex-row items-center">
+      <View className="h-[56px] flex-row items-center px-5">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
-          <Ionicons name="chevron-back" size={24} color={isDark ? '#CACACA' : '#333'} />
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={isDark ? colors.dark.textSecondary : colors.light.screenTextPrimary}
+          />
         </Pressable>
         <Typography variant="headline-20" color="primary">
           {t('referral.title')}
@@ -69,21 +82,23 @@ export default function ReferralDetailsModal() {
 
       <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
         {/* Progress summary */}
-        <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-5 mt-2">
+        <View className="mt-2 rounded-2xl bg-light-border/30 p-5 dark:bg-dark-card">
           <Typography variant="headline-24" color="primary" className="text-center">
             {referralCount}
           </Typography>
-          <Typography variant="body-14" color="secondary" className="text-center mt-1">
+          <Typography variant="body-14" color="secondary" className="mt-1 text-center">
             {t('referral.referredLabel', { count: referralCount })}
           </Typography>
         </View>
 
         {/* Reward tiers */}
-        <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mt-6 mb-3">
+        <Typography
+          variant="subtitle-14-medium"
+          className="mb-3 mt-6 text-primary-light dark:text-primary">
           {t('referral.rewardTiers')}
         </Typography>
 
-        <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl overflow-hidden">
+        <View className="overflow-hidden rounded-2xl bg-light-border/30 dark:bg-dark-card">
           {REFERRAL_TIERS.map((tier, index) => {
             const tierIndex = index + 1;
             const isClaimed = claimedTier >= tierIndex;
@@ -91,33 +106,33 @@ export default function ReferralDetailsModal() {
             const isLast = index === REFERRAL_TIERS.length - 1;
             const isClaiming = claimingTier === tierIndex;
 
-            const rewardLabel = tier.type === 'apples'
-              ? t('referral.apples', { count: tier.reward })
-              : t('referral.lifetimePremium');
+            const rewardLabel =
+              tier.type === 'apples'
+                ? t('referral.apples', { count: tier.reward })
+                : t('referral.lifetimePremium');
 
             return (
               <View
                 key={tierIndex}
                 className={`flex-row items-center px-4 py-4 ${
                   !isLast ? 'border-b border-light-border dark:border-dark-border' : ''
-                }`}
-              >
-                {/* Progress indicator */}
-                <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
-                  isClaimed
-                    ? 'bg-green-500/20'
-                    : referralCount >= tier.referrals
-                    ? 'bg-primary/20'
-                    : 'bg-light-border dark:bg-dark-border'
                 }`}>
+                {/* Progress indicator */}
+                <View
+                  className={`mr-3 h-8 w-8 items-center justify-center rounded-full ${
+                    isClaimed
+                      ? 'bg-green-500/20'
+                      : referralCount >= tier.referrals
+                        ? 'bg-primary-soft-20'
+                        : 'bg-light-border dark:bg-dark-border'
+                  }`}>
                   {isClaimed ? (
-                    <Ionicons name="checkmark" size={18} color="#22C55E" />
+                    <Ionicons name="checkmark" size={18} color={colors.success} />
                   ) : (
                     <Typography
                       variant="body-12"
                       color={referralCount >= tier.referrals ? 'primary' : 'secondary'}
-                      className="font-poppins-medium"
-                    >
+                      className="font-poppins-medium">
                       {tier.referrals}
                     </Typography>
                   )}
@@ -135,19 +150,21 @@ export default function ReferralDetailsModal() {
 
                 {/* Action */}
                 {isClaimed ? (
-                  <Typography variant="body-12" style={{ color: '#22C55E' }} className="font-poppins-medium">
+                  <Typography
+                    variant="body-12"
+                    style={{ color: colors.success }}
+                    className="font-poppins-medium">
                     {t('referral.claimed')}
                   </Typography>
                 ) : isEligible ? (
                   <Pressable
                     onPress={() => handleClaim(tierIndex)}
                     disabled={isClaiming}
-                    className="bg-primary rounded-lg px-3 py-1.5 active:opacity-80"
-                  >
+                    className="rounded-lg bg-primary px-3 py-1.5 active:opacity-80">
                     {isClaiming ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={colors.white} />
                     ) : (
-                      <Typography variant="body-12" className="text-white font-poppins-medium">
+                      <Typography variant="body-12" className="font-poppins-medium text-white">
                         {t('referral.claim')}
                       </Typography>
                     )}
@@ -163,11 +180,13 @@ export default function ReferralDetailsModal() {
         </View>
 
         {/* Share section */}
-        <Typography variant="subtitle-14-medium" className="text-primary-light dark:text-primary mt-6 mb-3">
+        <Typography
+          variant="subtitle-14-medium"
+          className="mb-3 mt-6 text-primary-light dark:text-primary">
           {t('referral.shareLink')}
         </Typography>
 
-        <View className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4">
+        <View className="rounded-2xl bg-light-border/30 p-4 dark:bg-dark-card">
           {referralLink ? (
             <Pressable onPress={handleCopy} className="active:opacity-70">
               <Typography variant="body-12" color="secondary" className="text-center" selectable>
@@ -182,24 +201,14 @@ export default function ReferralDetailsModal() {
         </View>
 
         {/* Action buttons */}
-        <View className="flex-row gap-3 mt-4">
+        <View className="mt-4 flex-row gap-3">
           <View className="flex-1">
-            <Button
-              variant="secondary"
-              size="medium"
-              onPress={handleCopy}
-              disabled={isGenerating}
-            >
+            <Button variant="secondary" size="medium" onPress={handleCopy} disabled={isGenerating}>
               {t('referral.copyLink')}
             </Button>
           </View>
           <View className="flex-1">
-            <Button
-              variant="primary"
-              size="medium"
-              onPress={shareLink}
-              disabled={isGenerating}
-            >
+            <Button variant="primary" size="medium" onPress={shareLink} disabled={isGenerating}>
               {t('common.share')}
             </Button>
           </View>

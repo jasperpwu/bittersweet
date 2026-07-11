@@ -157,7 +157,7 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
             <Typography
               variant="body-14"
               className="text-center"
-              style={{ color: '#FFFFFF' }}
+              style={{ color: colors.white }}
             >
               {tag.name}
             </Typography>

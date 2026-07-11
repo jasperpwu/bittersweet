@@ -1,5 +1,6 @@
 import { FC, useRef, useEffect, useMemo } from 'react';
 import { View, Animated, useColorScheme, useWindowDimensions } from 'react-native';
+import { colors } from '../../../config/theme';
 import * as Haptics from 'expo-haptics';
 
 interface TimeScrollerProps {
@@ -151,10 +152,10 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   const centerOffset = (screenWidth - TICK_SPACING) / 2;
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const textColor = isDark ? '#FFFFFF' : '#5D4E37';
+  const textColor = isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary;
   const minorTickColor = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(93,78,55,0.25)';
-  const majorTickColor = isDark ? '#FFFFFF' : '#5D4E37';
-  const indicatorColor = isDark ? '#FFFFFF' : '#5D4E37';
+  const majorTickColor = isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary;
+  const indicatorColor = isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary;
   const scrollViewRef = useRef<typeof Animated.ScrollView | null>(null);
   const isUserScrollingRef = useRef(false);
   const lastSnappedRef = useRef(selectedTime);

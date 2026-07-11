@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
+import { colors } from '../../src/config/theme';
 import { useBlocklist, useBlocklistActions } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { showToast } from '../../src/components/ui/Toast';
@@ -234,7 +235,7 @@ export default function AppSelectionScreen() {
         <DeviceActivitySelectionViewPersisted
           style={{
             flex: 1,
-            backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F5E6D3'
+            backgroundColor: colorScheme === 'dark' ? colors.dark.background : colors.light.screen
           }}
           onSelectionChange={handleSelectionChange}
           familyActivitySelectionId="bittersweet-blocklist"

@@ -4,7 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
 import { Typography } from '../ui/Typography';
+import { Button } from '../ui/Button';
 import { BottomSheet } from '../ui/BottomSheet';
+import { colors } from '../../config/theme';
 import { useUnifiedStore } from '../../store/unified-store';
 import { useAppStore } from '../../store';
 import { setLanguage } from '../../i18n';
@@ -59,7 +61,7 @@ export const LanguageSelectorSheet: FC<LanguageSelectorSheetProps> = ({ visible,
             <Typography variant="subtitle-16" color={selected ? 'primary' : 'secondary'}>
               {lang.nativeName}
             </Typography>
-            {selected && <Ionicons name="checkmark" size={22} color="#51BC6F" />}
+            {selected && <Ionicons name="checkmark" size={22} color={colors.success} />}
           </Pressable>
         );
       })}
@@ -78,15 +80,17 @@ export const LanguageTrigger: FC<{ className?: string }> = ({ className }) => {
 
   return (
     <>
-      <Pressable
+      <Button
+        variant="ghost"
+        size="small"
+        className={`flex-row py-2 px-3 ${className ?? ''}`}
         onPress={() => setOpen(true)}
-        className={`flex-row items-center py-2 px-3 active:opacity-70 ${className ?? ''}`}
       >
-        <Ionicons name="globe-outline" size={18} color="#8B7FFF" />
+        <Ionicons name="globe-outline" size={18} color={colors.primary} />
         <Typography variant="body-14" className="ml-1.5 text-primary">
           {label}
         </Typography>
-      </Pressable>
+      </Button>
       <LanguageSelectorSheet visible={open} onClose={() => setOpen(false)} />
     </>
   );

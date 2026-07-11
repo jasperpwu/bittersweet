@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../ui/Typography';
+import { Button } from '../ui/Button';
 import { EmojiPickerOverlay } from '../ui/EmojiPicker/EmojiPicker';
 import { DefaultAvatar } from '../grove/DefaultAvatar';
 import { useAppStore } from '../../store';
@@ -85,17 +86,17 @@ export function GiftRewardModal({
             onPress={() => {}}
             className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
             {/* Header */}
-            <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-gray-700">
+            <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-dark-border">
               <Typography variant="headline-20" color="primary">
                 {t('store.giftModalTitle')}
               </Typography>
               <Pressable
                 onPress={handleClose}
-                className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-gray-700">
+                className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-dark-card">
                 <Ionicons
                   name="close"
                   size={20}
-                  color={colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37'}
+                  color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
                 />
               </Pressable>
             </View>
@@ -192,7 +193,7 @@ export function GiftRewardModal({
                         Keyboard.dismiss();
                         setShowEmojiPicker(true);
                       }}
-                      className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-gray-500 dark:bg-gray-700">
+                      className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-dark-border dark:bg-dark-card">
                       {emoji ? (
                         <Text className="text-2xl">{emoji}</Text>
                       ) : (
@@ -203,16 +204,16 @@ export function GiftRewardModal({
                       value={name}
                       onChangeText={setName}
                       placeholder={t('store.giftNamePlaceholder')}
-                      placeholderTextColor="#666"
+                      placeholderTextColor={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
                       className="flex-1"
                       style={{
-                        backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                        backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
                         borderRadius: 12,
                         padding: 14,
                         fontSize: 16,
-                        color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                        color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                         borderWidth: 1,
-                        borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                        borderColor: colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
                       }}
                     />
                   </View>
@@ -227,17 +228,17 @@ export function GiftRewardModal({
                       value={costText}
                       onChangeText={(text) => setCostText(text.replace(/[^0-9]/g, ''))}
                       placeholder={t('store.customCostPlaceholder')}
-                      placeholderTextColor="#666"
+                      placeholderTextColor={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
                       keyboardType="number-pad"
                       className="flex-1"
                       style={{
-                        backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0E0CC',
+                        backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
                         borderRadius: 12,
                         padding: 14,
                         fontSize: 16,
-                        color: colorScheme === 'dark' ? '#FFFFFF' : '#5D4E37',
+                        color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                         borderWidth: 1,
-                        borderColor: colorScheme === 'dark' ? '#444' : '#D4C4A8',
+                        borderColor: colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
                       }}
                     />
                   </View>
@@ -248,25 +249,23 @@ export function GiftRewardModal({
             {/* Actions */}
             {friends.length > 0 && (
               <View
-                className="flex-row border-t border-light-border p-4 dark:border-gray-700"
+                className="flex-row border-t border-light-border p-4 dark:border-dark-border"
                 style={{ gap: 12 }}>
-                <Pressable
-                  onPress={handleClose}
-                  className="flex-1 items-center rounded-2xl bg-gray-600 py-4 active:opacity-80">
-                  <Typography variant="subtitle-16" color="white">
-                    {t('common.cancel')}
-                  </Typography>
-                </Pressable>
-                <Pressable
-                  onPress={handleCreate}
+                <Button
+                  variant="secondary"
+                  size="large"
+                  className="flex-1 rounded-2xl py-4"
+                  onPress={handleClose}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="large"
                   disabled={!canCreate}
-                  className={`flex-1 items-center rounded-2xl py-4 ${
-                    canCreate ? 'bg-blue-600 active:opacity-80' : 'bg-gray-500 opacity-50'
-                  }`}>
-                  <Typography variant="subtitle-16" color="white" className="font-semibold">
-                    {t('store.giftCreateAction')}
-                  </Typography>
-                </Pressable>
+                  className="flex-1 rounded-2xl py-4"
+                  onPress={handleCreate}>
+                  {t('store.giftCreateAction')}
+                </Button>
               </View>
             )}
           </Pressable>

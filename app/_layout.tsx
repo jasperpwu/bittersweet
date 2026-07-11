@@ -5,6 +5,7 @@ import '../src/i18n';
 import { Stack, router, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from '../src/hooks/useFonts';
+import { colors } from '../src/config/theme';
 import { View, Text, useColorScheme } from 'react-native';
 import { StatusBar } from '../src/components/ui/StatusBar';
 import { AnimatedSplashScreen } from '../src/components/ui/AnimatedSplashScreen';
@@ -1114,9 +1115,9 @@ export default function RootLayout() {
                 flex: 1,
                 justifyContent: 'center',
                 alignItems: 'center',
-                backgroundColor: systemColorScheme === 'dark' ? '#1B1C30' : '#F5E6D3',
+                backgroundColor: systemColorScheme === 'dark' ? colors.dark.background : colors.light.screen,
               }}>
-              <Text style={{ color: systemColorScheme === 'dark' ? '#FFFFFF' : '#5D4E37' }}>
+              <Text style={{ color: systemColorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary }}>
                 Loading...
               </Text>
             </View>

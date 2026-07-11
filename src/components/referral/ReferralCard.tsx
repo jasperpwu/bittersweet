@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Pressable, useColorScheme } from 'react-native';
+import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../ui/Typography';
@@ -31,7 +32,7 @@ export const ReferralCard: React.FC = () => {
       </Typography>
       <Pressable
         onPress={() => router.push('/(modals)/referral-details' as any)}
-        className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 active:opacity-80"
+        className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 active:opacity-80"
       >
         <View className="flex-row items-center">
           <View className="flex-1">
@@ -51,7 +52,7 @@ export const ReferralCard: React.FC = () => {
             disabled={isGenerating}
             className="bg-primary rounded-xl px-4 py-2.5 flex-row items-center active:opacity-80"
           >
-            <Ionicons name="share-outline" size={16} color="#FFFFFF" />
+            <Ionicons name="share-outline" size={16} color={colors.white} />
             <Typography variant="body-12" className="ml-1.5 text-white font-poppins-medium">
               Share
             </Typography>
@@ -65,7 +66,7 @@ export const ReferralCard: React.FC = () => {
           <Ionicons
             name="chevron-forward"
             size={14}
-            color={isDark ? '#575757' : '#D4C4A8'}
+            color={isDark ? colors.dark.border : colors.light.screenBorder}
             style={{ marginLeft: 4 }}
           />
         </View>

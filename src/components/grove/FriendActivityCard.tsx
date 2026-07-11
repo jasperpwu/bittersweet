@@ -50,7 +50,7 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
 
   return (
     <View
-      className="bg-light-border/30 dark:bg-[#242540] rounded-2xl p-4 w-[280px]"
+      className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 w-[280px]"
       style={{ height: ACTIVITY_CARD_HEIGHT }}
     >
       {/* Header: avatar + name + time */}
