@@ -1,5 +1,5 @@
 import React, { FC } from 'react';
-import { View, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +8,17 @@ import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
 import { useAppStore } from '../../store';
 import { colors } from '../../config/theme';
+
+const BRAND_BUTTON_HEIGHT = 48;
+// The native Apple button draws its own label: system font (SF), medium weight,
+// pure black on the white button style. The Google label copies those values so
+// the two brand buttons read identically — deliberately outside Poppins/theme
+// tokens (brand styling, fixed in both light and dark, like the white background
+// above). 19pt was matched by eye against the native control at this height
+// (Apple's 43%-of-height web ratio renders larger than the iOS control does).
+const BRAND_BUTTON_LABEL_COLOR = '#000000';
+const BRAND_BUTTON_FONT_SIZE = 19;
+const BRAND_BUTTON_ICON_SIZE = 17;
 
 /**
  * White Google sign-in button styled to sit next to the (fixed-white) Apple
@@ -24,20 +35,27 @@ export const GoogleSignInButton: FC<{ onPress: () => void; disabled?: boolean }>
       disabled={disabled}
       className="w-full flex-row items-center justify-center rounded-xl active:opacity-70"
       style={{
-        height: 48,
+        height: BRAND_BUTTON_HEIGHT,
         backgroundColor: colors.white,
         borderWidth: 1,
         borderColor: colors.light.border,
       }}
     >
-      <Ionicons name="logo-google" size={18} color={colors.light.textPrimary} />
-      <Typography
-        variant="subtitle-14-medium"
+      <Ionicons
+        name="logo-google"
+        size={BRAND_BUTTON_ICON_SIZE}
+        color={BRAND_BUTTON_LABEL_COLOR}
+      />
+      <Text
         className="ml-2"
-        style={{ color: colors.light.textPrimary }}
+        style={{
+          color: BRAND_BUTTON_LABEL_COLOR,
+          fontSize: BRAND_BUTTON_FONT_SIZE,
+          fontWeight: '500',
+        }}
       >
         {t('common.continueWithGoogle')}
-      </Typography>
+      </Text>
     </Pressable>
   );
 };
@@ -82,10 +100,10 @@ export const SignInSheet: FC<SignInSheetProps> = ({ visible, onClose, onSignedIn
       ) : (
         <View style={{ gap: 12 }}>
           <AppleAuthentication.AppleAuthenticationButton
-            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
             buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
             cornerRadius={12}
-            style={{ width: '100%', height: 48 }}
+            style={{ width: '100%', height: BRAND_BUTTON_HEIGHT }}
             onPress={() => handleSignIn(signInWithApple)}
           />
           <GoogleSignInButton onPress={() => handleSignIn(signInWithGoogle)} />

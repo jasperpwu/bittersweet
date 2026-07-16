@@ -13,6 +13,7 @@ import { useAppStore } from '../src/store';
 import { useTranslation } from 'react-i18next';
 import { LanguageTrigger } from '../src/components/settings/LanguageSelector';
 import { SignInSheet } from '../src/components/auth/SignInSheet';
+import { showToast } from '../src/components/ui/Toast';
 
 const SUGGESTED_EMOJIS = ['📚', '💼', '🏋️', '🎨', '🧘', '💻', '📖', '🎵'];
 
@@ -40,7 +41,7 @@ export default function OnboardingScreen() {
   const [tagColor, setTagColor] = useState('#6592E9');
   const [tagCreated, setTagCreated] = useState(false);
 
-  const { isLoading: isSigningIn, error: signInError } = useAppStore((state) => state.auth);
+  const { isLoading: isSigningIn, error: signInError, isAuthenticated } = useAppStore((state) => state.auth);
   const signInWithEmail = useAppStore((state) => state.auth.signInWithEmail);
   const clearAuthError = useAppStore((state) => state.auth.clearAuthError);
   const createTag = useAppStore((state) => state.focus.createTag);
@@ -50,6 +51,8 @@ export default function OnboardingScreen() {
   const finishSignIn = useCallback(async () => {
     const { isAuthenticated } = useAppStore.getState().auth;
     if (!isAuthenticated) return;
+
+    showToast(t('common.signedInSuccessfully'), 'success', undefined, undefined, 'bottom');
 
     // The cloud is the source of truth for whether this account already finished
     // onboarding. Existing/onboarded account → enter the app. Brand-new account
@@ -61,7 +64,7 @@ export default function OnboardingScreen() {
     if (onboarded !== false) {
       router.replace('/(tabs)');
     }
-  }, []);
+  }, [t]);
 
 
   // Dev-only: email/password login to bypass Apple Sign-In (e.g. when testing
@@ -272,36 +275,41 @@ export default function OnboardingScreen() {
       <View style={{ paddingTop: insets.top + 8 }} className="flex-row justify-between items-center px-5">
         <LanguageTrigger />
 
-        <View className="flex-row items-center">
-          <Button
-            variant="ghost"
-            size="small"
-            disabled={isSigningIn}
-            className="flex-row py-2 px-3"
-            onPress={() => setSignInSheetOpen(true)}
-          >
-            {isSigningIn ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Typography variant="body-14" className="text-primary">
-                {t('common.signIn')}
-              </Typography>
-            )}
-          </Button>
-
-          {/* Dev-only email login (bypasses Apple Sign-In for sandbox testing) */}
-          {__DEV__ && (
-            <Pressable
-              onPress={handleTestLogin}
+        {/* Once signed in, the header offers no sign-in entry points */}
+        {isAuthenticated ? (
+          <View />
+        ) : (
+          <View className="flex-row items-center">
+            <Button
+              variant="ghost"
+              size="small"
               disabled={isSigningIn}
-              className="flex-row items-center py-2 px-3 active:opacity-70"
+              className="flex-row py-2 px-3"
+              onPress={() => setSignInSheetOpen(true)}
             >
-              <Typography variant="body-14" className="text-primary opacity-60">
-                Test Login
-              </Typography>
-            </Pressable>
-          )}
-        </View>
+              {isSigningIn ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Typography variant="body-14" className="text-primary">
+                  {t('common.signIn')}
+                </Typography>
+              )}
+            </Button>
+
+            {/* Dev-only email login (bypasses Apple Sign-In for sandbox testing) */}
+            {__DEV__ && (
+              <Pressable
+                onPress={handleTestLogin}
+                disabled={isSigningIn}
+                className="flex-row items-center py-2 px-3 active:opacity-70"
+              >
+                <Typography variant="body-14" className="text-primary opacity-60">
+                  Test Login
+                </Typography>
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
 
       {signInError && (
