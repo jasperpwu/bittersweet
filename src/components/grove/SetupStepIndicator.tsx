@@ -11,12 +11,16 @@ export const SetupStepIndicator: React.FC<SetupStepIndicatorProps> = ({
   totalSteps,
 }) => {
   return (
-    <View className="flex-row items-center justify-center gap-x-2">
+    <View className="flex-row items-center justify-center">
       {Array.from({ length: totalSteps }, (_, i) => (
         <View
           key={i}
-          className={`w-2 h-2 rounded-full ${
-            i <= currentStep ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
+          className={`mx-1 h-2 rounded-full ${
+            i === currentStep
+              ? 'w-6 bg-primary'
+              : i < currentStep
+                ? 'w-2 bg-primary'
+                : 'w-2 bg-light-border dark:bg-dark-border'
           }`}
         />
       ))}

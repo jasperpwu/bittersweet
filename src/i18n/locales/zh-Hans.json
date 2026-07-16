@@ -86,7 +86,9 @@
     "delete": "删除",
     "you": "你",
     "remove": "移除",
-    "offlineSyncPending": "暂无网络连接，恢复联网后将自动同步"
+    "offlineSyncPending": "暂无网络连接，恢复联网后将自动同步",
+    "offlineTitle": "当前离线",
+    "offlineTryFocus": "你好像处于离线状态。请检查网络连接，或者先到「专注」标签页开始一次专注会话。"
   },
   "onboarding": {
     "slide1": {

@@ -86,7 +86,9 @@
     "delete": "削除",
     "you": "あなた",
     "remove": "削除",
-    "offlineSyncPending": "オフラインです。接続が回復したら自動的に同期されます"
+    "offlineSyncPending": "オフラインです。接続が回復したら自動的に同期されます",
+    "offlineTitle": "オフラインです",
+    "offlineTryFocus": "オフラインのようです。接続を確認するか、その間に「集中」タブで集中セッションをお試しください。"
   },
   "onboarding": {
     "slide1": {

@@ -27,15 +27,15 @@ export const GenderPicker: React.FC<GenderPickerProps> = ({ value, onChange }) =
           <Pressable
             key={option.value}
             onPress={() => onChange(isSelected ? null : option.value)}
-            className={`px-4 py-2 rounded-full ${
+            className={`px-4 py-2 rounded-full border ${
               isSelected
-                ? 'bg-primary'
-                : 'bg-light-border/30 dark:bg-dark-card'
+                ? 'border-primary bg-light-input dark:bg-dark-card'
+                : 'border-light-border dark:border-dark-border bg-transparent'
             } active:opacity-70`}
           >
             <Typography
               variant="body-14"
-              color={isSelected ? 'white' : 'primary'}
+              color={isSelected ? 'primary' : 'secondary'}
             >
               {t(option.labelKey)}
             </Typography>

@@ -86,7 +86,9 @@
     "delete": "Eliminar",
     "you": "Tú",
     "remove": "Eliminar",
-    "offlineSyncPending": "Sin conexión: tus cambios se sincronizarán cuando vuelvas a estar en línea"
+    "offlineSyncPending": "Sin conexión: tus cambios se sincronizarán cuando vuelvas a estar en línea",
+    "offlineTitle": "Sin conexión",
+    "offlineTryFocus": "Parece que estás sin conexión. Revisa tu conexión o, mientras tanto, prueba una sesión de enfoque en la pestaña Enfoque."
   },
   "onboarding": {
     "slide1": {

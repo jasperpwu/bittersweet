@@ -22,6 +22,7 @@ const statusConfig: Record<HandleStatus, {
   available: { messageKey: 'handle.available', color: colors.success, icon: 'checkmark-circle' },
   taken: { messageKey: 'handle.taken', color: colors.error, icon: 'close-circle' },
   invalid: { messageKey: 'handle.invalid', color: colors.error, icon: 'alert-circle' },
+  offline: { messageKey: 'common.offlineTryFocus', color: colors.error, icon: 'cloud-offline-outline' },
 };
 
 export const HandleInput: React.FC<HandleInputProps> = ({
@@ -44,7 +45,7 @@ export const HandleInput: React.FC<HandleInputProps> = ({
           borderWidth: 1,
           borderColor:
             status === 'available' ? colors.success :
-            status === 'taken' || status === 'invalid' ? colors.error :
+            status === 'taken' || status === 'invalid' || status === 'offline' ? colors.error :
             isDark ? colors.dark.border : colors.light.screenBorder,
           height: 48,
         }}

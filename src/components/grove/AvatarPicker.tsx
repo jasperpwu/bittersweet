@@ -1,10 +1,13 @@
 import React from 'react';
-import { View, Pressable, Image, ActivityIndicator } from 'react-native';
+import { View, Pressable, Image, ActivityIndicator, Alert } from 'react-native';
 import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Typography } from '../ui/Typography';
+import { Button } from '../ui/Button';
 import { DefaultAvatar } from './DefaultAvatar';
+import { isDeviceOffline } from '../../utils/network';
+import { useTranslation } from 'react-i18next';
 
 interface AvatarPickerProps {
   avatarUri: string | null;
@@ -21,6 +24,8 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
   isUploading = false,
   onImageSelected,
 }) => {
+  const { t } = useTranslation();
+
   const pickImage = async (source: 'library' | 'camera') => {
     const options: ImagePicker.ImagePickerOptions = {
       mediaTypes: ['images'],
@@ -34,14 +39,23 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
       : await ImagePicker.launchImageLibraryAsync(options);
 
     if (!result.canceled && result.assets[0]) {
+      // Avatars upload straight to the cloud (no offline queue) — warn now, but
+      // keep the photo so it uploads once the profile save succeeds online.
+      if (await isDeviceOffline()) {
+        Alert.alert(t('common.offlineTitle'), t('common.offlineTryFocus'));
+      }
       onImageSelected(result.assets[0].uri);
     }
   };
 
   return (
     <View className="items-center">
-      {/* Avatar preview */}
-      <View className="mb-6">
+      {/* Avatar preview — tappable, opens the photo library */}
+      <Pressable
+        onPress={() => pickImage('library')}
+        disabled={isUploading}
+        className="mb-6 active:opacity-80"
+      >
         {isUploading ? (
           <View
             style={{
@@ -67,31 +81,42 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
             size={120}
           />
         )}
-      </View>
+
+        {/* Camera badge */}
+        <View className="absolute bottom-0 right-0 w-9 h-9 rounded-full bg-primary items-center justify-center border-[3px] border-light-bg dark:border-dark-bg">
+          <Ionicons name="camera" size={16} color={colors.white} />
+        </View>
+      </Pressable>
 
       {/* Action buttons */}
       <View className="flex-row gap-x-3">
-        <Pressable
+        <Button
+          variant="soft"
+          size="small"
+          disabled={isUploading}
           onPress={() => pickImage('library')}
-          disabled={isUploading}
-          className="flex-row items-center bg-primary/20 rounded-xl px-4 py-3 active:opacity-70"
         >
-          <Ionicons name="images-outline" size={18} color={colors.primary} />
-          <Typography variant="subtitle-14-medium" className="text-primary ml-2">
-            Library
-          </Typography>
-        </Pressable>
+          <View className="flex-row items-center">
+            <Ionicons name="images-outline" size={18} color={colors.primary} />
+            <Typography variant="subtitle-14-medium" className="text-primary ml-2">
+              {t('journal.library')}
+            </Typography>
+          </View>
+        </Button>
 
-        <Pressable
-          onPress={() => pickImage('camera')}
+        <Button
+          variant="soft"
+          size="small"
           disabled={isUploading}
-          className="flex-row items-center bg-primary/20 rounded-xl px-4 py-3 active:opacity-70"
+          onPress={() => pickImage('camera')}
         >
-          <Ionicons name="camera-outline" size={18} color={colors.primary} />
-          <Typography variant="subtitle-14-medium" className="text-primary ml-2">
-            Camera
-          </Typography>
-        </Pressable>
+          <View className="flex-row items-center">
+            <Ionicons name="camera-outline" size={18} color={colors.primary} />
+            <Typography variant="subtitle-14-medium" className="text-primary ml-2">
+              {t('journal.camera')}
+            </Typography>
+          </View>
+        </Button>
       </View>
     </View>
   );

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import NetInfo from '@react-native-community/netinfo';
 import { GroveService } from '../services/grove';
+import { isDeviceOffline } from '../utils/network';
 
-export type HandleStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
+export type HandleStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'offline';
 
 const HANDLE_REGEX = /^[a-z0-9_]{3,20}$/;
 const DEBOUNCE_MS = 500;
@@ -46,12 +48,30 @@ export function useHandleValidation() {
         setStatus(available ? 'available' : 'taken');
       } catch {
         if (currentAbort.current) return;
-        // On network error, don't block the user - show as available
-        // DB unique constraint is the safety net
-        setStatus('available');
+        // Offline: surface it and block the step. Other failures (server hiccup
+        // while online) stay optimistic - the DB unique constraint is the safety net.
+        const offline = await isDeviceOffline();
+        if (currentAbort.current) return;
+        setStatus(offline ? 'offline' : 'available');
       }
     }, DEBOUNCE_MS);
   }, []);
+
+  // If the availability check failed offline, re-run it automatically when
+  // connectivity returns so the user isn't stuck until they retype the handle.
+  const statusRef = useRef<HandleStatus>('idle');
+  statusRef.current = status;
+  const handleValueRef = useRef('');
+  handleValueRef.current = handle;
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected && statusRef.current === 'offline') {
+        validateHandle(handleValueRef.current);
+      }
+    });
+    return unsubscribe;
+  }, [validateHandle]);
 
   useEffect(() => {
     return () => {

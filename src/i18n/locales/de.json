@@ -86,7 +86,9 @@
     "delete": "Löschen",
     "you": "Du",
     "remove": "Entfernen",
-    "offlineSyncPending": "Keine Verbindung – deine Änderungen werden synchronisiert, sobald du wieder online bist"
+    "offlineSyncPending": "Keine Verbindung – deine Änderungen werden synchronisiert, sobald du wieder online bist",
+    "offlineTitle": "Du bist offline",
+    "offlineTryFocus": "Du scheinst offline zu sein. Prüfe deine Verbindung – oder starte in der Zwischenzeit eine Fokus-Sitzung im Fokus-Tab."
   },
   "onboarding": {
     "slide1": {

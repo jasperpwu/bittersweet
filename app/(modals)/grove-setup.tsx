@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   SafeAreaView,
@@ -8,10 +8,10 @@ import {
   ScrollView,
   Platform,
   Alert,
-  ActivityIndicator,
   useColorScheme,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { Button } from '../../src/components/ui/Button';
 import { colors } from '../../src/config/theme';
@@ -23,6 +23,7 @@ import { PrivacyToggleList } from '../../src/components/grove/PrivacyToggleList'
 import { InterestPicker } from '../../src/components/grove/InterestPicker';
 import { useHandleValidation } from '../../src/hooks/useHandleValidation';
 import { useAppStore } from '../../src/store';
+import { isDeviceOffline } from '../../src/utils/network';
 import { useTranslation } from 'react-i18next';
 
 const TOTAL_STEPS = 4;
@@ -46,6 +47,19 @@ export default function GroveSetupModal() {
   const isLoading = useAppStore((s) => s.grove.isLoading);
 
   const [step, setStep] = useState(0);
+
+  // Grove setup is cloud-only (no offline queue) — if the device is offline,
+  // say so up front instead of letting the user fill in four steps that can't save.
+  useEffect(() => {
+    (async () => {
+      if (await isDeviceOffline()) {
+        Alert.alert(t('common.offlineTitle'), t('common.offlineTryFocus'), [
+          { text: t('common.ok'), onPress: () => router.back() },
+        ]);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Step 0: Name & Handle
   const [displayName, setDisplayName] = useState('');
@@ -124,6 +138,9 @@ export default function GroveSetupModal() {
           t('groveSetup.handleTakenBody'),
           [{ text: t('common.ok'), onPress: () => setStep(0) }]
         );
+      } else if (await isDeviceOffline()) {
+        // Stay in the modal so the entered data survives a retry once online.
+        Alert.alert(t('common.offlineTitle'), t('common.offlineTryFocus'));
       } else {
         Alert.alert(t('common.error'), t('groveSetup.failedCreate'));
       }
@@ -195,7 +212,7 @@ export default function GroveSetupModal() {
             <Typography variant="headline-20" color="primary" className="mb-2">
               {t('groveSetup.step1Title')}
             </Typography>
-            <Typography variant="body-14" color="secondary" className="mb-8">
+            <Typography variant="body-14" color="secondary" className="mb-6">
               {t('groveSetup.step1Sub')}
             </Typography>
 
@@ -277,24 +294,32 @@ export default function GroveSetupModal() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Header */}
-        <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
+        <View className="h-[56px] px-5 flex-row items-center justify-between">
           {step > 0 ? (
-            <Pressable onPress={handleBack} className="active:opacity-70">
-              <Typography variant="subtitle-14-medium" className="text-primary">
-                {t('groveSetup.back')}
-              </Typography>
+            <Pressable
+              onPress={handleBack}
+              className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
+              hitSlop={8}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.primary} />
             </Pressable>
           ) : (
-            <View style={{ width: 40 }} />
+            <Pressable
+              onPress={() => router.back()}
+              className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
+              hitSlop={8}
+            >
+              <Ionicons
+                name="close"
+                size={24}
+                color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
+              />
+            </Pressable>
           )}
 
           <SetupStepIndicator currentStep={step} totalSteps={TOTAL_STEPS} />
 
-          <Pressable onPress={() => router.back()} className="active:opacity-70">
-            <Typography variant="subtitle-14-medium" color="secondary">
-              {t('common.cancel')}
-            </Typography>
-          </Pressable>
+          <View className="w-10 h-10 -mr-2" />
         </View>
 
         {/* Content */}
@@ -308,19 +333,16 @@ export default function GroveSetupModal() {
         </ScrollView>
 
         {/* Bottom button */}
-        <View className="px-5 pb-8 pt-4" style={{ backgroundColor: isDark ? colors.dark.background : colors.light.screen }}>
+        <View className="px-5 pb-8 pt-4 bg-light-bg dark:bg-dark-bg border-t border-light-border/50 dark:border-dark-border/50">
           <Button
             variant="primary"
             size="large"
             fullWidth
             loading={isLoading}
             disabled={!canProceed}
-            className="rounded-2xl py-4"
             onPress={isLastStep ? handleComplete : handleNext}
           >
-            <Typography variant="subtitle-16" color="white" className="font-poppins-semibold">
-              {isLastStep ? t('groveSetup.createProfile') : t('groveSetup.continue')}
-            </Typography>
+            {isLastStep ? t('groveSetup.createProfile') : t('groveSetup.continue')}
           </Button>
         </View>
       </KeyboardAvoidingView>
