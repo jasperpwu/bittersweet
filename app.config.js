@@ -9,6 +9,20 @@ const APP_GROUP = IS_DEV
 
 const BUNDLE_ID = IS_DEV ? `${PROD_BUNDLE_ID}.dev` : PROD_BUNDLE_ID;
 
+// Google OAuth client IDs for native Google Sign-In (public identifiers, safe
+// to commit). From Google Cloud Console → Credentials: one Web client (Supabase
+// validates the ID token audience against it) + one iOS client per bundle ID.
+const GOOGLE_WEB_CLIENT_ID =
+  '383580120267-f8gknrjlc9gjl4tm4mfe5jqmn1f7ffh3.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = IS_DEV
+  ? '383580120267-2lnfhp1cbhlenmeeagkh26puctl8ugj8.apps.googleusercontent.com'
+  : '383580120267-6a7bkendofi4gv78g45nl97n4ftchu54.apps.googleusercontent.com';
+// The iOS URL scheme is the reversed iOS client ID.
+const GOOGLE_IOS_URL_SCHEME = `com.googleusercontent.apps.${GOOGLE_IOS_CLIENT_ID.replace(
+  '.apps.googleusercontent.com',
+  ''
+)}`;
+
 export default ({ config }) => {
   // Keep the internal project name unchanged so the Xcode project directory
   // and extension target names remain consistent across dev/prod builds.
@@ -53,6 +67,9 @@ export default ({ config }) => {
       }
       if (pluginName === 'expo-live-activity') {
         return [pluginName, { ...pluginConfig, appGroupIdentifier: APP_GROUP }];
+      }
+      if (pluginName === '@react-native-google-signin/google-signin') {
+        return [pluginName, { ...pluginConfig, iosUrlScheme: GOOGLE_IOS_URL_SCHEME }];
       }
       return plugin;
     });
@@ -103,6 +120,10 @@ export default ({ config }) => {
 
   // Expose app group ID for TypeScript code via expo-constants
   newConfig.extra.appGroupId = APP_GROUP;
+
+  // Google Sign-In client IDs for GoogleSignin.configure() (read via expo-constants)
+  newConfig.extra.googleWebClientId = GOOGLE_WEB_CLIENT_ID;
+  newConfig.extra.googleIosClientId = GOOGLE_IOS_CLIENT_ID;
 
   return newConfig;
 };

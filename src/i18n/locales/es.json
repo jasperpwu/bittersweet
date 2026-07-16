@@ -78,6 +78,8 @@
     "save": "Guardar",
     "done": "Listo",
     "continueWithApple": "Iniciar sesión con Apple",
+    "signIn": "Iniciar sesión",
+    "continueWithGoogle": "Iniciar sesión con Google",
     "ok": "OK",
     "confirm": "Confirmar",
     "error": "Error",

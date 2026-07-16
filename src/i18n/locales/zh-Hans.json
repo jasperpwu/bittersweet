@@ -78,6 +78,8 @@
     "save": "保存",
     "done": "完成",
     "continueWithApple": "通过 Apple 登录",
+    "signIn": "登录",
+    "continueWithGoogle": "通过 Google 登录",
     "ok": "好",
     "confirm": "确认",
     "error": "错误",

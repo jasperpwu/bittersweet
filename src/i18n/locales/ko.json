@@ -78,6 +78,8 @@
     "save": "저장",
     "done": "완료",
     "continueWithApple": "Apple로 로그인",
+    "signIn": "로그인",
+    "continueWithGoogle": "Google로 로그인",
     "ok": "확인",
     "confirm": "확인",
     "error": "오류",

@@ -1,5 +1,8 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../../config/supabase';
 import { PENDING_REFERRAL_KEY } from '../../hooks/useDeepLinkHandler';
 
@@ -19,12 +22,61 @@ export interface AuthSlice {
   lastSignedInUserId: string | null;
 
   signInWithApple: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   restoreSession: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   clearAuthError: () => void;
 }
+
+// GoogleSignin.configure() must run once before any other GoogleSignin call.
+// Client IDs come from app.config.js extra (variant-aware: dev vs prod).
+let googleSignInConfigured = false;
+const configureGoogleSignIn = () => {
+  if (googleSignInConfigured) return;
+  GoogleSignin.configure({
+    webClientId: Constants.expoConfig?.extra?.googleWebClientId,
+    iosClientId: Constants.expoConfig?.extra?.googleIosClientId,
+  });
+  googleSignInConfigured = true;
+};
+
+// Shared post-sign-in: store the user and apply any referral code saved from a
+// deep link before sign-in. `overrides` carries provider values not (yet) in
+// user_metadata — e.g. Apple only sends fullName/email on the first sign-in.
+const completeSignIn = async (
+  set: any,
+  get: any,
+  user: SupabaseUser,
+  overrides: { email?: string | null; fullName?: string | null } = {}
+) => {
+  set((state: any) => ({
+    auth: {
+      ...state.auth,
+      user: {
+        id: user.id,
+        email: user.email ?? overrides.email ?? null,
+        fullName: overrides.fullName ?? user.user_metadata?.full_name ?? null,
+        avatarUrl: user.user_metadata?.avatar_url ?? null,
+        createdAt: user.created_at ?? null,
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    },
+  }));
+
+  // Check for pending referral code (from deep link before sign-in)
+  try {
+    const pendingCode = await AsyncStorage.getItem(PENDING_REFERRAL_KEY);
+    if (pendingCode) {
+      await AsyncStorage.removeItem(PENDING_REFERRAL_KEY);
+      await get().referral.applyReferralCode(pendingCode);
+    }
+  } catch (refError: any) {
+    console.error('Failed to apply pending referral code:', refError);
+  }
+};
 
 export const createAuthSlice = (set: any, get: any): AuthSlice => ({
   user: null,
@@ -70,32 +122,10 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
         });
       }
 
-      const user = data.user;
-      set((state: any) => ({
-        auth: {
-          ...state.auth,
-          user: {
-            id: user.id,
-            email: user.email ?? credential.email,
-            fullName: fullName ?? user.user_metadata?.full_name ?? null,
-            avatarUrl: user.user_metadata?.avatar_url ?? null,
-            createdAt: user.created_at ?? null,
-          },
-          isAuthenticated: true,
-          isLoading: false,
-        },
-      }));
-
-      // Check for pending referral code (from deep link before sign-in)
-      try {
-        const pendingCode = await AsyncStorage.getItem(PENDING_REFERRAL_KEY);
-        if (pendingCode) {
-          await AsyncStorage.removeItem(PENDING_REFERRAL_KEY);
-          await get().referral.applyReferralCode(pendingCode);
-        }
-      } catch (refError: any) {
-        console.error('Failed to apply pending referral code:', refError);
-      }
+      await completeSignIn(set, get, data.user, {
+        email: credential.email,
+        fullName,
+      });
     } catch (error: any) {
       // User cancelled is not an error
       if (error.code === 'ERR_REQUEST_CANCELED') {
@@ -106,6 +136,48 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
       }
 
       console.error('Apple Sign-In error:', error);
+      set((state: any) => ({
+        auth: {
+          ...state.auth,
+          isLoading: false,
+          error: error.message || 'Sign-in failed',
+        },
+      }));
+    }
+  },
+
+  signInWithGoogle: async () => {
+    set((state: any) => ({
+      auth: { ...state.auth, isLoading: true, error: null },
+    }));
+
+    try {
+      configureGoogleSignIn();
+      const response = await GoogleSignin.signIn();
+
+      // User cancelled is not an error (v13+ resolves with type 'cancelled'
+      // instead of rejecting)
+      if (response.type === 'cancelled') {
+        set((state: any) => ({
+          auth: { ...state.auth, isLoading: false },
+        }));
+        return;
+      }
+
+      if (!response.data.idToken) {
+        throw new Error('No identity token received from Google');
+      }
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: response.data.idToken,
+      });
+
+      if (error) throw error;
+
+      await completeSignIn(set, get, data.user);
+    } catch (error: any) {
+      console.error('Google Sign-In error:', error);
       set((state: any) => ({
         auth: {
           ...state.auth,
@@ -160,31 +232,7 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
 
       if (!user) throw signInResult.error ?? new Error('Sign-in failed');
 
-      set((state: any) => ({
-        auth: {
-          ...state.auth,
-          user: {
-            id: user.id,
-            email: user.email ?? null,
-            fullName: user.user_metadata?.full_name ?? null,
-            avatarUrl: user.user_metadata?.avatar_url ?? null,
-            createdAt: user.created_at ?? null,
-          },
-          isAuthenticated: true,
-          isLoading: false,
-        },
-      }));
-
-      // Check for pending referral code (from deep link before sign-in)
-      try {
-        const pendingCode = await AsyncStorage.getItem(PENDING_REFERRAL_KEY);
-        if (pendingCode) {
-          await AsyncStorage.removeItem(PENDING_REFERRAL_KEY);
-          await get().referral.applyReferralCode(pendingCode);
-        }
-      } catch (refError: any) {
-        console.error('Failed to apply pending referral code:', refError);
-      }
+      await completeSignIn(set, get, user);
     } catch (error: any) {
       console.error('Email Sign-In error:', error);
       set((state: any) => ({
@@ -203,6 +251,16 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
     }));
 
     try {
+      // Best-effort: clear the native Google session so the next Google
+      // sign-in shows the account picker instead of silently reusing the
+      // last account. Never blocks the Supabase sign-out.
+      try {
+        configureGoogleSignIn();
+        await GoogleSignin.signOut();
+      } catch (googleError) {
+        console.warn('Google sign-out skipped:', googleError);
+      }
+
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 

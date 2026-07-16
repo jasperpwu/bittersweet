@@ -10,6 +10,7 @@ import { DefaultAvatar } from '../grove/DefaultAvatar';
 import { useAppStore } from '../../store';
 import { colors } from '../../config/theme';
 import { PENDING_REFERRAL_KEY } from '../../hooks/useDeepLinkHandler';
+import { GoogleSignInButton } from './SignInSheet';
 import { useTranslation } from 'react-i18next';
 
 export const AccountActions: React.FC = () => {
@@ -109,6 +110,7 @@ export const AccountSection: React.FC = () => {
     (state) => state.auth
   );
   const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
+  const signInWithGoogle = useAppStore((state) => state.auth.signInWithGoogle);
   const signInWithEmail = useAppStore((state) => state.auth.signInWithEmail);
   const [devEmail, setDevEmail] = useState('');
   const [devPassword, setDevPassword] = useState('');
@@ -192,7 +194,7 @@ export const AccountSection: React.FC = () => {
                   </View>
                   <View className="flex-1">
                     <Typography variant="subtitle-14-medium" color="primary">
-                      {user.fullName || t('account.appleUser')}
+                      {user.fullName || user.email || t('account.appleUser')}
                     </Typography>
                     {userSinceLabel && (
                       <Typography variant="body-12" color="secondary" className="mt-0.5">
@@ -339,13 +341,16 @@ export const AccountSection: React.FC = () => {
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : (
-          <AppleAuthentication.AppleAuthenticationButton
-            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-            cornerRadius={12}
-            style={{ width: '100%', height: 48 }}
-            onPress={signInWithApple}
-          />
+          <View style={{ gap: 12 }}>
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              cornerRadius={12}
+              style={{ width: '100%', height: 48 }}
+              onPress={signInWithApple}
+            />
+            <GoogleSignInButton onPress={signInWithGoogle} />
+          </View>
         )}
 
         {__DEV__ && (

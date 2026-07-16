@@ -41,6 +41,12 @@
         }
       ],
       "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.383580120267-6a7bkendofi4gv78g45nl97n4ftchu54"
+        }
+      ],
       "expo-iap",
       "./plugins/withFmtFix",
       "./plugins/withHomeWidget",
@@ -48,7 +54,13 @@
       [
         "expo-build-properties",
         {
-          "ios": { "deploymentTarget": "18.0" }
+          "ios": {
+            "deploymentTarget": "18.0",
+            "extraPods": [
+              { "name": "GoogleUtilities", "modular_headers": true },
+              { "name": "RecaptchaInterop", "modular_headers": true }
+            ]
+          }
         }
       ],
       [

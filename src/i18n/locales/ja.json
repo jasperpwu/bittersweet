@@ -78,6 +78,8 @@
     "save": "保存",
     "done": "完了",
     "continueWithApple": "Appleでサインイン",
+    "signIn": "サインイン",
+    "continueWithGoogle": "Googleでサインイン",
     "ok": "OK",
     "confirm": "確定",
     "error": "エラー",

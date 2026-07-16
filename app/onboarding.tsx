@@ -12,6 +12,7 @@ import { useUnifiedStore } from '../src/store/unified-store';
 import { useAppStore } from '../src/store';
 import { useTranslation } from 'react-i18next';
 import { LanguageTrigger } from '../src/components/settings/LanguageSelector';
+import { SignInSheet } from '../src/components/auth/SignInSheet';
 
 const SUGGESTED_EMOJIS = ['📚', '💼', '🏋️', '🎨', '🧘', '💻', '📖', '🎵'];
 
@@ -40,10 +41,10 @@ export default function OnboardingScreen() {
   const [tagCreated, setTagCreated] = useState(false);
 
   const { isLoading: isSigningIn, error: signInError } = useAppStore((state) => state.auth);
-  const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
   const signInWithEmail = useAppStore((state) => state.auth.signInWithEmail);
   const clearAuthError = useAppStore((state) => state.auth.clearAuthError);
   const createTag = useAppStore((state) => state.focus.createTag);
+  const [signInSheetOpen, setSignInSheetOpen] = useState(false);
 
   // Shared post-sign-in navigation: mark onboarding seen and enter the app.
   const finishSignIn = useCallback(async () => {
@@ -62,10 +63,6 @@ export default function OnboardingScreen() {
     }
   }, []);
 
-  const handleSignIn = useCallback(async () => {
-    await signInWithApple();
-    await finishSignIn();
-  }, [signInWithApple, finishSignIn]);
 
   // Dev-only: email/password login to bypass Apple Sign-In (e.g. when testing
   // with an Apple sandbox account). Hardcoded test credentials.
@@ -281,13 +278,13 @@ export default function OnboardingScreen() {
             size="small"
             disabled={isSigningIn}
             className="flex-row py-2 px-3"
-            onPress={handleSignIn}
+            onPress={() => setSignInSheetOpen(true)}
           >
             {isSigningIn ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Typography variant="body-14" className="text-primary">
-                {t('common.continueWithApple')}
+                {t('common.signIn')}
               </Typography>
             )}
           </Button>
@@ -358,6 +355,12 @@ export default function OnboardingScreen() {
           </Button>
         )}
       </View>
+
+      <SignInSheet
+        visible={signInSheetOpen}
+        onClose={() => setSignInSheetOpen(false)}
+        onSignedIn={finishSignIn}
+      />
     </View>
   );
 }
