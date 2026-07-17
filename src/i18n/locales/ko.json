@@ -99,8 +99,8 @@
       "description": "집중할수록 나무가 자라고, 노력한 만큼 열매를 즐길 수 있어요."
     },
     "slide2": {
-      "title": "첫 태그를 만들어 보세요",
-      "description": "태그로 집중 세션을 정리할 수 있어요. 먼저 하나 만들어 볼까요?"
+      "title": "첫 태그를 골라보세요",
+      "description": "태그로 집중 시간을 정리할 수 있어요. 세 가지를 수정하거나, 다른 제안을 카드로 끌어와 바꿔보세요."
     },
     "slide3": {
       "title": "열매 모으고, 앱 잠금 해제",
@@ -110,12 +110,19 @@
       "title": "Bittersweet에 오신 것을 환영해요",
       "description": "이 앱은 지금도 계속 발전하고 있어요. 여러분의 의견이 Bittersweet의 내일을 만듭니다."
     },
-    "pickEmoji": "이모지 선택",
-    "tagName": "태그 이름",
     "tagNamePlaceholder": "예: 공부, 업무, 운동",
-    "tagCreated": "태그가 생성되었어요",
-    "color": "색상",
-    "createTag": "태그 만들기"
+    "moreSuggestions": "다른 제안",
+    "suggestedTags": {
+      "work": "업무",
+      "study": "공부",
+      "workout": "운동",
+      "reading": "독서",
+      "meditation": "명상",
+      "coding": "코딩",
+      "art": "미술",
+      "music": "음악",
+      "chores": "집안일"
+    }
   },
   "settings": {
     "language": {

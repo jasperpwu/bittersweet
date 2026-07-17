@@ -18,8 +18,8 @@ export interface TagColorFamily {
 
 /**
  * The original eight tag colors, keyed by hue. This is the source of truth for
- * both the "Classic" family swatches and the seeded default-tag colors in the
- * store, so the two never drift apart.
+ * both the "Classic" family swatches and the onboarding suggested-tag colors,
+ * so the two never drift apart.
  */
 export const CLASSIC_TAG_COLORS = {
   blue: '#6592E9',

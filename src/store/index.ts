@@ -3447,44 +3447,6 @@ function populateDefaults() {
 }
 
 /**
- * Default tags seeded once on a fresh install (no login session yet). A brand-new
- * local user starts with these four categories regardless of whether they create a
- * tag during onboarding. Returning/signed-in users are never seeded here — their
- * tags come from the cloud pull.
- */
-const DEFAULT_TAGS: { name: string; icon: string; color: string }[] = [
-  { name: 'Exercise', icon: '🏋️', color: CLASSIC_TAG_COLORS.green },
-  { name: 'Study', icon: '📚', color: CLASSIC_TAG_COLORS.amber },
-  { name: 'Work', icon: '💼', color: CLASSIC_TAG_COLORS.blue },
-  { name: 'Mindful Rest', icon: '🧘', color: CLASSIC_TAG_COLORS.purple },
-];
-
-export function seedDefaultTags() {
-  // Seed SYNCHRONOUSLY — do not defer to onFinishHydration. This runs only from the
-  // fresh-install branch of restoreSession, before the user can possibly sign in.
-  // Deferring would let a sign-in's cloud-pull clear local data first, after which a
-  // late seed callback would inject stray default tags into the signed-in account.
-  // On a genuine fresh install AsyncStorage is empty, so there is no persisted data to
-  // clobber, and the custom persist `merge` returns currentState when storage is empty
-  // — so these tags survive a racing rehydration.
-  try {
-    for (const tag of DEFAULT_TAGS) {
-      // Skip any default whose name already exists (defensive against double-seed).
-      const state = getStoreState();
-      const exists = state.focus.tags.allIds.some(
-        (id) =>
-          state.focus.tags.byId[id]?.name === tag.name && !state.focus.tags.byId[id]?.deletedAt
-      );
-      if (exists) continue;
-      state.focus.createTag(tag);
-    }
-    console.log('🌱 Seeded default tags for fresh install');
-  } catch (error) {
-    console.error('❌ Error seeding default tags:', error);
-  }
-}
-
-/**
  * Store initialization — waits for persist rehydration before populating defaults.
  * This prevents default tags from being written to storage before real user data
  * has been loaded, which was the root cause of the data-nuke bug.

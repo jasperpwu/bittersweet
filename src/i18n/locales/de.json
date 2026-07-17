@@ -99,8 +99,8 @@
       "description": "Bleib konzentriert, damit dein Baum wächst – und ernte später die Früchte deiner Arbeit."
     },
     "slide2": {
-      "title": "Erstelle dein erstes Label",
-      "description": "Mit Labels ordnest du deine Fokus-Sitzungen. Erstell eins, um loszulegen."
+      "title": "Wähle deine ersten Labels",
+      "description": "Mit Labels ordnest du deine Fokuszeit. Bearbeite diese drei oder zieh einen anderen Vorschlag auf eine Karte, um sie zu ersetzen."
     },
     "slide3": {
       "title": "Früchte ernten, Apps freischalten",
@@ -110,12 +110,19 @@
       "title": "Willkommen bei Bittersweet",
       "description": "Wir verbessern die App ständig – dein Feedback zeigt uns, wohin die Reise geht."
     },
-    "pickEmoji": "Emoji auswählen",
-    "tagName": "Name",
     "tagNamePlaceholder": "Lernen, Arbeit, Sport …",
-    "tagCreated": "Label erstellt!",
-    "color": "Farbe",
-    "createTag": "Label erstellen"
+    "moreSuggestions": "Weitere Vorschläge",
+    "suggestedTags": {
+      "work": "Arbeit",
+      "study": "Lernen",
+      "workout": "Training",
+      "reading": "Lesen",
+      "meditation": "Meditation",
+      "coding": "Programmieren",
+      "art": "Kunst",
+      "music": "Musik",
+      "chores": "Haushalt"
+    }
   },
   "settings": {
     "language": {

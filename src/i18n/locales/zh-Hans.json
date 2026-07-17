@@ -99,8 +99,8 @@
       "description": "保持专注，小树就会长大，日后尽享你努力的果实。"
     },
     "slide2": {
-      "title": "创建第一个标签",
-      "description": "标签能帮你整理专注记录，先创建一个开始吧。"
+      "title": "挑选你的首批标签",
+      "description": "标签帮你整理专注时间。可以编辑这三个，也可以把其他建议拖到卡片上进行替换。"
     },
     "slide3": {
       "title": "收获果实，解锁应用",
@@ -110,12 +110,19 @@
       "title": "欢迎来到 Bittersweet",
       "description": "我们仍在不断打磨这款应用，你的反馈将塑造它的未来。"
     },
-    "pickEmoji": "选择一个表情",
-    "tagName": "标签名称",
     "tagNamePlaceholder": "例如：学习、工作、运动",
-    "tagCreated": "标签已创建！",
-    "color": "颜色",
-    "createTag": "创建标签"
+    "moreSuggestions": "更多建议",
+    "suggestedTags": {
+      "work": "工作",
+      "study": "学习",
+      "workout": "健身",
+      "reading": "阅读",
+      "meditation": "冥想",
+      "coding": "编程",
+      "art": "绘画",
+      "music": "音乐",
+      "chores": "家务"
+    }
   },
   "settings": {
     "language": {

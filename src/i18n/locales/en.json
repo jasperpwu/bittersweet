@@ -99,8 +99,8 @@
       "description": "Stay focused to grow your tree and later enjoy the fruits of your hard work."
     },
     "slide2": {
-      "title": "Create Your First Tag",
-      "description": "Tags help you categorize your focus sessions. Create one to get started!"
+      "title": "Pick Your First Tags",
+      "description": "Tags organize your focus time. Edit these three, or drag another suggestion onto a card to swap it."
     },
     "slide3": {
       "title": "Earn Fruits & Unlock Apps",
@@ -110,12 +110,19 @@
       "title": "Welcome to Bittersweet",
       "description": "We are actively developing this app and would love your feedback to shape its future."
     },
-    "pickEmoji": "Pick an emoji",
-    "tagName": "Tag name",
     "tagNamePlaceholder": "e.g. Study, Work, Exercise",
-    "tagCreated": "Tag created!",
-    "color": "Color",
-    "createTag": "Create Tag"
+    "moreSuggestions": "More suggestions",
+    "suggestedTags": {
+      "work": "Work",
+      "study": "Study",
+      "workout": "Workout",
+      "reading": "Reading",
+      "meditation": "Meditation",
+      "coding": "Coding",
+      "art": "Art",
+      "music": "Music",
+      "chores": "Chores"
+    }
   },
   "settings": {
     "language": {

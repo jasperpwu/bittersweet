@@ -99,8 +99,8 @@
       "description": "Mantén la concentración para que tu árbol crezca y disfruta después del fruto de tu esfuerzo."
     },
     "slide2": {
-      "title": "Crea tu primera etiqueta",
-      "description": "Las etiquetas organizan tus sesiones de concentración. Crea una para empezar."
+      "title": "Elige tus primeras etiquetas",
+      "description": "Las etiquetas organizan tu tiempo de concentración. Edita estas tres o arrastra otra sugerencia sobre una tarjeta para reemplazarla."
     },
     "slide3": {
       "title": "Gana fruta y desbloquea apps",
@@ -110,12 +110,19 @@
       "title": "Te damos la bienvenida a Bittersweet",
       "description": "Seguimos mejorando la app cada día, y tu opinión nos ayuda a decidir hacia dónde va."
     },
-    "pickEmoji": "Elige un emoji",
-    "tagName": "Nombre de la etiqueta",
     "tagNamePlaceholder": "Estudio, Trabajo, Ejercicio…",
-    "tagCreated": "¡Etiqueta creada!",
-    "color": "Color",
-    "createTag": "Crear etiqueta"
+    "moreSuggestions": "Más sugerencias",
+    "suggestedTags": {
+      "work": "Trabajo",
+      "study": "Estudio",
+      "workout": "Ejercicio",
+      "reading": "Lectura",
+      "meditation": "Meditación",
+      "coding": "Programación",
+      "art": "Arte",
+      "music": "Música",
+      "chores": "Tareas"
+    }
   },
   "settings": {
     "language": {

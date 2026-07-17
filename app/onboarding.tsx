@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { View, FlatList, ScrollView, useWindowDimensions, useColorScheme, Pressable, ActivityIndicator, TextInput, Text } from 'react-native';
+import { View, FlatList, useWindowDimensions, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { AnalyticsTracker } from '../src/services/analytics';
@@ -7,7 +7,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../src/components/ui/Typography';
 import { Button } from '../src/components/ui/Button';
 import { colors } from '../src/config/theme';
-import { TagColorPicker } from '../src/components/focus';
+import {
+  OnboardingTagPicker,
+  defaultTagDrafts,
+  resolveDraftName,
+  type OnboardingTagDraft,
+} from '../src/components/onboarding/OnboardingTagPicker';
 import { useUnifiedStore } from '../src/store/unified-store';
 import { useAppStore } from '../src/store';
 import { useTranslation } from 'react-i18next';
@@ -15,33 +20,46 @@ import { LanguageTrigger } from '../src/components/settings/LanguageSelector';
 import { SignInSheet } from '../src/components/auth/SignInSheet';
 import { showToast } from '../src/components/ui/Toast';
 
-const SUGGESTED_EMOJIS = ['📚', '💼', '🏋️', '🎨', '🧘', '💻', '📖', '🎵'];
-
 // Slide content is keyed by translation namespace; the title/description strings
 // are resolved with t() at render time (see renderItem below).
 const ONBOARDING_SLIDES = [
   { id: '1', key: 'slide1', iconName: 'leaf-outline', iconColor: '#51BC6F', interactive: false },
   { id: '2', key: 'slide2', iconName: 'timer-outline', iconColor: '#6592E9', interactive: true },
-  { id: '3', key: 'slide3', iconName: 'shield-checkmark-outline', iconColor: '#EF786C', interactive: false },
-  { id: '4', key: 'slide4', iconName: 'megaphone-outline', iconColor: '#F5A623', interactive: false },
+  {
+    id: '3',
+    key: 'slide3',
+    iconName: 'shield-checkmark-outline',
+    iconColor: '#EF786C',
+    interactive: false,
+  },
+  {
+    id: '4',
+    key: 'slide4',
+    iconName: 'megaphone-outline',
+    iconColor: '#F5A623',
+    interactive: false,
+  },
 ] as const;
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  // Tag creation state
-  const [tagName, setTagName] = useState('');
-  const [tagEmoji, setTagEmoji] = useState('📚');
-  const [tagColor, setTagColor] = useState('#6592E9');
-  const [tagCreated, setTagCreated] = useState(false);
+  // The three chosen tag drafts live inside OnboardingTagPicker; a ref mirror
+  // (no re-render needed here) lets completeOnboarding read the final values.
+  const tagDraftsRef = useRef<OnboardingTagDraft[]>(defaultTagDrafts());
+  // Pager scrolling pauses while a suggestion chip is being dragged, so the
+  // drag doesn't fight the horizontal FlatList.
+  const [pagerScrollEnabled, setPagerScrollEnabled] = useState(true);
 
-  const { isLoading: isSigningIn, error: signInError, isAuthenticated } = useAppStore((state) => state.auth);
+  const {
+    isLoading: isSigningIn,
+    error: signInError,
+    isAuthenticated,
+  } = useAppStore((state) => state.auth);
   const signInWithEmail = useAppStore((state) => state.auth.signInWithEmail);
   const clearAuthError = useAppStore((state) => state.auth.clearAuthError);
   const createTag = useAppStore((state) => state.focus.createTag);
@@ -66,7 +84,6 @@ export default function OnboardingScreen() {
     }
   }, [t]);
 
-
   // Dev-only: email/password login to bypass Apple Sign-In (e.g. when testing
   // with an Apple sandbox account). Hardcoded test credentials.
   const handleTestLogin = useCallback(async () => {
@@ -83,6 +100,24 @@ export default function OnboardingScreen() {
   }, [signInError, clearAuthError]);
 
   const completeOnboarding = async () => {
+    // Turn the three onboarding tag drafts into real, persisted tags. Until
+    // this point they were in-memory suggestions only. Skip blank names and
+    // names that already exist (defensive — e.g. a brand-new account whose
+    // initialUpload already ran can't create duplicates on a re-entry).
+    const focusState = useAppStore.getState().focus;
+    const existingNames = new Set(
+      focusState.tags.allIds
+        .map((id) => focusState.tags.byId[id])
+        .filter((tag) => tag && !tag.deletedAt)
+        .map((tag) => tag!.name.trim().toLowerCase())
+    );
+    for (const draft of tagDraftsRef.current) {
+      const name = resolveDraftName(draft, t);
+      if (!name || existingNames.has(name.toLowerCase())) continue;
+      existingNames.add(name.toLowerCase());
+      createTag({ name, icon: draft.emoji, color: draft.color });
+    }
+
     // Set hasSeenOnboarding to true in the store
     const updatePreferences = useUnifiedStore.getState().updatePreferences;
     if (updatePreferences) {
@@ -101,16 +136,6 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)');
   };
 
-  const handleCreateTag = () => {
-    if (!tagName.trim() || !tagEmoji || tagCreated) return;
-    createTag({
-      name: tagName.trim(),
-      icon: tagEmoji,
-      color: tagColor,
-    });
-    setTagCreated(true);
-  };
-
   const handleNext = () => {
     if (currentIndex < ONBOARDING_SLIDES.length - 1) {
       flatListRef.current?.scrollToIndex({
@@ -122,15 +147,13 @@ export default function OnboardingScreen() {
     }
   };
 
-  // Tag creation is optional. If the user filled in the form (name + emoji),
-  // create the tag before advancing; otherwise just skip ahead.
-  const tagFormReady = !!tagName.trim() && !!tagEmoji;
-  const handleInteractiveNext = () => {
-    if (!tagCreated && tagFormReady) {
-      handleCreateTag();
-    }
-    handleNext();
-  };
+  const handleDraftsChange = useCallback((drafts: OnboardingTagDraft[]) => {
+    tagDraftsRef.current = drafts;
+  }, []);
+
+  const handleDragActiveChange = useCallback((active: boolean) => {
+    setPagerScrollEnabled(!active);
+  }, []);
 
   const onScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
@@ -143,14 +166,15 @@ export default function OnboardingScreen() {
   const renderItem = ({ item }: { item: (typeof ONBOARDING_SLIDES)[number] }) => {
     const title = t(`onboarding.${item.key}.title`);
     const description = t(`onboarding.${item.key}.description`);
-    // Interactive tag creation slide
+    // Interactive tag picker slide — three editable suggestions plus a
+    // drag-to-swap pool. Drafts stay in memory until completeOnboarding.
     if (item.interactive) {
       return (
-        <View style={{ width }} className="flex-1 px-8 pt-16">
+        <View style={{ width }} className="flex-1 px-8 pt-12">
           {/* Header section */}
-          <View className="items-center mb-10">
-            <View className="mb-5">
-              <Ionicons name={item.iconName as any} size={56} color={item.iconColor} />
+          <View className="mb-8 items-center">
+            <View className="mb-4">
+              <Ionicons name={item.iconName as any} size={48} color={item.iconColor} />
             </View>
             <Typography variant="headline-24" color="primary" className="mb-2 text-center">
               {title}
@@ -160,95 +184,10 @@ export default function OnboardingScreen() {
             </Typography>
           </View>
 
-          {tagCreated ? (
-            // Success state
-            <View className="items-center mt-8">
-              <View
-                className="w-20 h-20 rounded-2xl items-center justify-center mb-4"
-                style={{ backgroundColor: tagColor + '20', borderWidth: 2, borderColor: tagColor }}
-              >
-                <Text style={{ fontSize: 36 }}>{tagEmoji}</Text>
-              </View>
-              <Typography variant="subtitle-16" color="primary" className="mb-1">
-                {tagName}
-              </Typography>
-              <View className="flex-row items-center mt-2">
-                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                <Typography variant="body-14" className="ml-1.5" style={{ color: colors.success }}>
-                  {t('onboarding.tagCreated')}
-                </Typography>
-              </View>
-            </View>
-          ) : (
-            // Creation form
-            <View className="w-full self-center" style={{ maxWidth: 320 }}>
-              {/* Emoji selector */}
-              <Typography variant="body-12" color="secondary" className="mb-2">
-                {t('onboarding.pickEmoji')}
-              </Typography>
-              <View className="flex-row flex-wrap mb-6" style={{ gap: 10 }}>
-                {SUGGESTED_EMOJIS.map((emoji) => (
-                  <Pressable
-                    key={emoji}
-                    onPress={() => setTagEmoji(emoji)}
-                    className="w-11 h-11 rounded-xl items-center justify-center"
-                    style={{
-                      backgroundColor: tagEmoji === emoji
-                        ? colors.primary + '1A'
-                        : (isDark ? colors.dark.input : colors.light.input),
-                      borderWidth: tagEmoji === emoji ? 2 : 0,
-                      borderColor: colors.primary,
-                    }}
-                  >
-                    <Text style={{ fontSize: 22 }}>{emoji}</Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              {/* Tag name */}
-              <Typography variant="body-12" color="secondary" className="mb-2">
-                {t('onboarding.tagName')}
-              </Typography>
-              <TextInput
-                value={tagName}
-                onChangeText={setTagName}
-                placeholder={t('onboarding.tagNamePlaceholder')}
-                placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
-                maxLength={30}
-                className="mb-6"
-                style={{
-                  backgroundColor: isDark ? colors.dark.input : colors.light.input,
-                  borderRadius: 12,
-                  padding: 14,
-                  fontSize: 16,
-                  color: isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary,
-                  borderWidth: 1,
-                  borderColor: isDark ? colors.dark.border : colors.light.screenBorder,
-                }}
-              />
-
-              {/* Color selector */}
-              <Typography variant="body-12" color="secondary" className="mb-2">
-                {t('onboarding.color')}
-              </Typography>
-              <ScrollView style={{ maxHeight: 220 }} className="mb-8" nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                <TagColorPicker selectedColor={tagColor} onSelectColor={setTagColor} swatchSize={32} />
-              </ScrollView>
-
-              {/* Create button */}
-              <Button
-                variant="primary"
-                fullWidth
-                disabled={!tagName.trim()}
-                className="rounded-xl py-3.5"
-                onPress={handleCreateTag}
-              >
-                <Typography variant="subtitle-14-semibold" className="text-white">
-                  {t('onboarding.createTag')}
-                </Typography>
-              </Button>
-            </View>
-          )}
+          <OnboardingTagPicker
+            onDraftsChange={handleDraftsChange}
+            onDragActiveChange={handleDragActiveChange}
+          />
         </View>
       );
     }
@@ -272,7 +211,9 @@ export default function OnboardingScreen() {
   return (
     <View className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header: language selector (left) + sign-in (right) */}
-      <View style={{ paddingTop: insets.top + 8 }} className="flex-row justify-between items-center px-5">
+      <View
+        style={{ paddingTop: insets.top + 8 }}
+        className="flex-row items-center justify-between px-5">
         <LanguageTrigger />
 
         {/* Once signed in, the header offers no sign-in entry points */}
@@ -284,9 +225,8 @@ export default function OnboardingScreen() {
               variant="ghost"
               size="small"
               disabled={isSigningIn}
-              className="flex-row py-2 px-3"
-              onPress={() => setSignInSheetOpen(true)}
-            >
+              className="flex-row px-3 py-2"
+              onPress={() => setSignInSheetOpen(true)}>
               {isSigningIn ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
@@ -301,8 +241,7 @@ export default function OnboardingScreen() {
               <Pressable
                 onPress={handleTestLogin}
                 disabled={isSigningIn}
-                className="flex-row items-center py-2 px-3 active:opacity-70"
-              >
+                className="flex-row items-center px-3 py-2 active:opacity-70">
                 <Typography variant="body-14" className="text-primary opacity-60">
                   Test Login
                 </Typography>
@@ -327,6 +266,7 @@ export default function OnboardingScreen() {
         keyExtractor={(item) => item.id}
         horizontal
         pagingEnabled
+        scrollEnabled={pagerScrollEnabled}
         showsHorizontalScrollIndicator={false}
         bounces={false}
         onScroll={onScroll}
@@ -340,28 +280,20 @@ export default function OnboardingScreen() {
             <View
               key={index}
               className={`mx-1 h-2 rounded-full ${
-                index === currentIndex ? 'w-6 bg-primary' : 'w-2 bg-light-border dark:bg-dark-border'
+                index === currentIndex
+                  ? 'w-6 bg-primary'
+                  : 'w-2 bg-light-border dark:bg-dark-border'
               }`}
             />
           ))}
         </View>
 
-        {/* Action Button — tag creation is optional: show "Skip" until the user
-            fills in a tag, then "Next" (which creates the tag and advances). */}
-        {ONBOARDING_SLIDES[currentIndex]?.interactive ? (
-          <Button
-            onPress={handleInteractiveNext}
-            variant={tagCreated || tagFormReady ? 'primary' : 'secondary'}
-            size="large"
-            className="w-full"
-          >
-            {tagCreated || tagFormReady ? t('common.next') : t('common.skip')}
-          </Button>
-        ) : (
-          <Button onPress={handleNext} variant="primary" size="large" className="w-full">
-            {currentIndex === ONBOARDING_SLIDES.length - 1 ? t('common.getStarted') : t('common.next')}
-          </Button>
-        )}
+        {/* Action Button */}
+        <Button onPress={handleNext} variant="primary" size="large" className="w-full">
+          {currentIndex === ONBOARDING_SLIDES.length - 1
+            ? t('common.getStarted')
+            : t('common.next')}
+        </Button>
       </View>
 
       <SignInSheet

@@ -99,8 +99,8 @@
       "description": "Mantenha o foco para sua árvore crescer e depois colha os frutos do seu esforço."
     },
     "slide2": {
-      "title": "Crie sua primeira tag",
-      "description": "As tags organizam suas sessões de foco. Crie uma para começar."
+      "title": "Escolha suas primeiras tags",
+      "description": "As tags organizam seu tempo de foco. Edite estas três ou arraste outra sugestão para um cartão para substituí-la."
     },
     "slide3": {
       "title": "Colha frutos e libere apps",
@@ -110,12 +110,19 @@
       "title": "Boas-vindas ao Bittersweet",
       "description": "Estamos sempre melhorando o app, e a sua opinião ajuda a definir o que vem por aí."
     },
-    "pickEmoji": "Escolha um emoji",
-    "tagName": "Nome da tag",
     "tagNamePlaceholder": "Estudo, Trabalho, Exercício…",
-    "tagCreated": "Tag criada!",
-    "color": "Cor",
-    "createTag": "Criar tag"
+    "moreSuggestions": "Mais sugestões",
+    "suggestedTags": {
+      "work": "Trabalho",
+      "study": "Estudos",
+      "workout": "Treino",
+      "reading": "Leitura",
+      "meditation": "Meditação",
+      "coding": "Programação",
+      "art": "Arte",
+      "music": "Música",
+      "chores": "Tarefas"
+    }
   },
   "settings": {
     "language": {

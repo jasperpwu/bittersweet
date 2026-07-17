@@ -99,8 +99,8 @@
       "description": "集中するほど木が育ち、がんばった分だけ実りを楽しめます。"
     },
     "slide2": {
-      "title": "最初のタグを作ろう",
-      "description": "タグを使うと集中セッションを整理できます。まずは1つ作ってみましょう。"
+      "title": "最初のタグを選ぼう",
+      "description": "タグで集中時間を整理できます。この3つを編集するか、ほかの候補をカードにドラッグして入れ替えましょう。"
     },
     "slide3": {
       "title": "実を集めて、アプリを解放",
@@ -110,12 +110,19 @@
       "title": "Bittersweetへようこそ",
       "description": "このアプリは日々進化しています。あなたの声が、これからのBittersweetをつくります。"
     },
-    "pickEmoji": "絵文字を選ぶ",
-    "tagName": "タグ名",
     "tagNamePlaceholder": "例：勉強、仕事、運動",
-    "tagCreated": "タグを作成しました",
-    "color": "カラー",
-    "createTag": "タグを作成"
+    "moreSuggestions": "ほかの候補",
+    "suggestedTags": {
+      "work": "仕事",
+      "study": "勉強",
+      "workout": "運動",
+      "reading": "読書",
+      "meditation": "瞑想",
+      "coding": "コーディング",
+      "art": "アート",
+      "music": "音楽",
+      "chores": "家事"
+    }
   },
   "settings": {
     "language": {
