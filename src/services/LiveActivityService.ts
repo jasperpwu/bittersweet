@@ -1,6 +1,17 @@
 import * as LiveActivity from 'expo-live-activity';
 import { Appearance, Platform } from 'react-native';
 import * as Device from 'expo-device';
+import i18n from '../i18n';
+
+// Localized labels for the natively-rendered Live Activity buttons/statuses.
+// Sent with every state update so reused (long-lived) activities pick up
+// language changes; the widget falls back to English when absent.
+const laLabels = () => ({
+  startLabel: i18n.t('liveActivity.start'),
+  endLabel: i18n.t('liveActivity.end'),
+  unlockedLabel: i18n.t('liveActivity.unlocked'),
+  unblockExpiredLabel: i18n.t('liveActivity.unblockExpired'),
+});
 
 // Color palettes for Live Activity based on system appearance
 const LA_COLORS = {
@@ -49,14 +60,18 @@ export class LiveActivityService {
    * @param reason - The reason for unlocking (user-provided text)
    * @returns Activity ID if started successfully, undefined otherwise
    */
-  static async startUnlockCountdown(endTime: Date, durationMinutes: number, reason?: string): Promise<string | undefined> {
+  static async startUnlockCountdown(
+    endTime: Date,
+    durationMinutes: number,
+    reason?: string
+  ): Promise<string | undefined> {
     // Check if Live Activities are available
     if (!this.isAvailable()) {
       console.log('Live Activities not available:', {
         platform: Platform.OS,
         osVersion: Device.osVersion,
         moduleAvailable: !!LiveActivity?.startActivity,
-        requiresIOS162: 'iOS 16.2+'
+        requiresIOS162: 'iOS 16.2+',
       });
       return undefined;
     }
@@ -91,6 +106,7 @@ export class LiveActivityService {
         dynamicIslandImageName: 'app_icon',
         dynamicIslandText: reason || 'Unlocked',
         timerStartDateInMilliseconds: startTimestamp,
+        ...laLabels(),
       };
 
       // Configuration for Live Activity — pick colors based on current system appearance
@@ -115,11 +131,13 @@ export class LiveActivityService {
         endTimestamp: endTimestamp,
         currentTime: now,
         timeUntilEnd: Math.round((endTimestamp - now) / 1000),
-        LiveActivityAvailable: !!LiveActivity?.startActivity
+        LiveActivityAvailable: !!LiveActivity?.startActivity,
       });
 
       if (!LiveActivity?.startActivity) {
-        console.log('❌ LiveActivity.startActivity is not available - app may need rebuild after adding plugin');
+        console.log(
+          '❌ LiveActivity.startActivity is not available - app may need rebuild after adding plugin'
+        );
         return undefined;
       }
 
@@ -146,7 +164,10 @@ export class LiveActivityService {
    * @param activityId - The ID of the activity to stop
    * @param reason - Optional reason for stopping (for final state)
    */
-  static async stopUnlockCountdown(activityId: string, reason: 'expired' | 'manual' = 'expired'): Promise<void> {
+  static async stopUnlockCountdown(
+    activityId: string,
+    reason: 'expired' | 'manual' = 'expired'
+  ): Promise<void> {
     if (!this.isAvailable()) {
       return;
     }
@@ -159,11 +180,12 @@ export class LiveActivityService {
       // updateImages() before activity.end(), and if image resolution fails
       // the Task throws silently and the activity is never dismissed.
       const finalState: LiveActivity.LiveActivityState = {
-        title: reason === 'expired' ? "Focus Session Complete" : "Focus Session Ended",
-        subtitle: "Apps are now unblocked",
+        title: reason === 'expired' ? 'Focus Session Complete' : 'Focus Session Ended',
+        subtitle: 'Apps are now unblocked',
         progressBar: {
           date: Date.now(), // Set to now to show 00:00
         },
+        ...laLabels(),
       };
 
       await LiveActivity.stopActivity(activityId, finalState);
@@ -193,14 +215,18 @@ export class LiveActivityService {
    * @param labelName - The focus label/tag name
    * @returns Activity ID if started successfully, undefined otherwise
    */
-  static async startFocusTimer(endTime: Date, durationMinutes: number, labelName: string): Promise<string | undefined> {
+  static async startFocusTimer(
+    endTime: Date,
+    durationMinutes: number,
+    labelName: string
+  ): Promise<string | undefined> {
     // Check if Live Activities are available
     if (!this.isAvailable()) {
       console.log('Live Activities not available:', {
         platform: Platform.OS,
         osVersion: Device.osVersion,
         moduleAvailable: !!LiveActivity?.startActivity,
-        requiresIOS162: 'iOS 16.2+'
+        requiresIOS162: 'iOS 16.2+',
       });
       return undefined;
     }
@@ -225,6 +251,7 @@ export class LiveActivityService {
         dynamicIslandImageName: 'app_icon',
         dynamicIslandText: labelName,
         timerStartDateInMilliseconds: startTimestamp,
+        ...laLabels(),
       };
 
       console.log('🎬 Starting Live Activity for focus timer:', {
@@ -237,7 +264,9 @@ export class LiveActivityService {
       });
 
       if (!LiveActivity?.startOrUpdateActivity) {
-        console.log('❌ LiveActivity.startOrUpdateActivity is not available - app may need rebuild after patching');
+        console.log(
+          '❌ LiveActivity.startOrUpdateActivity is not available - app may need rebuild after patching'
+        );
         return undefined;
       }
 
@@ -280,7 +309,10 @@ export class LiveActivityService {
    * @param labelName - The focus label/tag name
    * @returns Activity ID if started successfully, undefined otherwise
    */
-  static async startFocusTimerInfinite(startTime: Date, labelName: string): Promise<string | undefined> {
+  static async startFocusTimerInfinite(
+    startTime: Date,
+    labelName: string
+  ): Promise<string | undefined> {
     if (!this.isAvailable()) {
       return undefined;
     }
@@ -299,6 +331,7 @@ export class LiveActivityService {
         imageName: 'app_icon',
         dynamicIslandImageName: 'app_icon',
         dynamicIslandText: labelName,
+        ...laLabels(),
       };
 
       if (!LiveActivity?.startOrUpdateActivity) {
@@ -340,9 +373,12 @@ export class LiveActivityService {
 
     try {
       // Build idle state with tag info so the LA shows a "Start" button
-      const durationLabel = this.lastDurationMinutes != null
-        ? (this.lastDurationMinutes > 0 ? `${this.lastDurationMinutes} min` : '∞')
-        : undefined;
+      const durationLabel =
+        this.lastDurationMinutes != null
+          ? this.lastDurationMinutes > 0
+            ? `${this.lastDurationMinutes} min`
+            : '∞'
+          : undefined;
 
       const idleState: LiveActivity.LiveActivityState = {
         title: this.lastTagName || 'Focus',
@@ -353,6 +389,7 @@ export class LiveActivityService {
         isIdle: true,
         tagId: this.lastTagId,
         durationMinutes: this.lastDurationMinutes,
+        ...laLabels(),
       };
 
       // Transition to idle via update (not end) so the activity stays alive
@@ -371,9 +408,8 @@ export class LiveActivityService {
    */
   static isAvailable(): boolean {
     // Live Activities require iOS 16.2+
-    const isIOSVersionSupported = Platform.OS === 'ios' &&
-      Device.osVersion != null &&
-      parseFloat(Device.osVersion) >= 16.2;
+    const isIOSVersionSupported =
+      Platform.OS === 'ios' && Device.osVersion != null && parseFloat(Device.osVersion) >= 16.2;
 
     const isModuleAvailable = LiveActivity && typeof LiveActivity.startActivity === 'function';
 
@@ -411,12 +447,15 @@ export class LiveActivityService {
    * tag/duration. Uses updateAllActivities so it works regardless of
    * whether we still have the activity ID tracked in memory.
    */
-  static async showIdleFocusActivity(tagName: string, tagId?: string, durationMinutes?: number): Promise<void> {
+  static async showIdleFocusActivity(
+    tagName: string,
+    tagId?: string,
+    durationMinutes?: number
+  ): Promise<void> {
     if (!this.isAvailable()) return;
 
-    const durationLabel = durationMinutes != null
-      ? (durationMinutes > 0 ? `${durationMinutes} min` : '∞')
-      : undefined;
+    const durationLabel =
+      durationMinutes != null ? (durationMinutes > 0 ? `${durationMinutes} min` : '∞') : undefined;
 
     const idleState: LiveActivity.LiveActivityState = {
       title: tagName,
@@ -427,6 +466,7 @@ export class LiveActivityService {
       isIdle: true,
       tagId,
       durationMinutes,
+      ...laLabels(),
     };
 
     try {
@@ -439,5 +479,4 @@ export class LiveActivityService {
       console.error('❌ Error updating all idle focus LAs:', error);
     }
   }
-
 }

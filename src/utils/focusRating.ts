@@ -3,10 +3,11 @@
  *
  * Turns Core Motion signals captured during a focus session into a suggested
  * 1–5★ rating, and maps that rating onto a fruit-reward multiplier. The rating
- * is only ever a *suggestion* — the user can override it in the summary modal —
- * because the underlying motion signal is an on-device estimate, not ground
- * truth (see plan: CMSensorRecorder is unreliable on iPhone, and stationary
- * motion can't distinguish a phone on a desk from one fidgeted in-hand).
+ * is applied automatically and shown read-only in the summary modal; the tag's
+ * activity type is the user's lever for accuracy. Because the underlying motion
+ * signal is an on-device estimate, not ground truth (CMSensorRecorder is
+ * unreliable on iPhone, and stationary motion can't distinguish a phone on a
+ * desk from one fidgeted in-hand), ambiguous/no-signal cases err toward 5★.
  *
  * Two signal sources, in priority order:
  *  1. `RecordedAccelSummary` — fine-grained raw-accelerometer summary from
@@ -119,7 +120,10 @@ function classifyFromActivity(a: MotionActivitySummary, steps?: number | null): 
   // "Still" only when the phone was overwhelmingly stationary AND took almost no
   // steps. Anything less — a non-stationary remainder (e.g. only 76% stationary)
   // or a handful of steps — means the user wasn't fully settled ⇒ occasional.
-  if (stationaryFrac >= ACTIVITY_STILL_STATIONARY_FRACTION && stepsPerMin <= ACTIVITY_STILL_STEPS_PER_MIN) {
+  if (
+    stationaryFrac >= ACTIVITY_STILL_STATIONARY_FRACTION &&
+    stepsPerMin <= ACTIVITY_STILL_STEPS_PER_MIN
+  ) {
     return 'still';
   }
   return 'occasional';
@@ -182,7 +186,15 @@ function stationaryStars(snapshot: MotionSnapshot): number {
   if (snapshot.signal === 'recorder' && snapshot.recorder) {
     const r = snapshot.recorder;
     let stars =
-      r.activeFraction <= 0.05 ? 5 : r.activeFraction <= 0.15 ? 4 : r.activeFraction <= 0.3 ? 3 : r.activeFraction <= 0.5 ? 2 : 1;
+      r.activeFraction <= 0.05
+        ? 5
+        : r.activeFraction <= 0.15
+          ? 4
+          : r.activeFraction <= 0.3
+            ? 3
+            : r.activeFraction <= 0.5
+              ? 2
+              : 1;
     if (r.handlingEvents >= 8) stars = Math.min(stars, 2);
     else if (r.handlingEvents >= 3) stars = Math.min(stars, 3);
     return clampStars(stars);
@@ -192,7 +204,15 @@ function stationaryStars(snapshot: MotionSnapshot): number {
     if (movingFractionOf(a) >= 0.5) return 1; // walked/ran most of the session
     const stationaryFrac = a.stationarySec / a.totalSec;
     let stars =
-      stationaryFrac >= 0.95 ? 5 : stationaryFrac >= 0.85 ? 4 : stationaryFrac >= 0.7 ? 3 : stationaryFrac >= 0.5 ? 2 : 1;
+      stationaryFrac >= 0.95
+        ? 5
+        : stationaryFrac >= 0.85
+          ? 4
+          : stationaryFrac >= 0.7
+            ? 3
+            : stationaryFrac >= 0.5
+              ? 2
+              : 1;
     const spm = stepsPerMinOf(a, snapshot.steps);
     if (spm > 8) stars = Math.min(stars, 2);
     else if (spm > 3) stars = Math.min(stars, 3);
@@ -227,7 +247,9 @@ function activeStars(snapshot: MotionSnapshot): number {
 function onPhoneStars(snapshot: MotionSnapshot): number {
   const heavyMotion =
     (snapshot.signal === 'recorder' && (snapshot.recorder?.activeFraction ?? 0) >= 0.5) ||
-    (snapshot.signal === 'activity' && snapshot.activity && movingFractionOf(snapshot.activity) >= 0.5);
+    (snapshot.signal === 'activity' &&
+      snapshot.activity &&
+      movingFractionOf(snapshot.activity) >= 0.5);
   return heavyMotion ? 4 : 5;
 }
 
@@ -254,36 +276,37 @@ export function suggestRating(
 }
 
 /**
- * Human-readable one-liner for the insights sheet. Wording is signal-aware: the
- * `activity` fallback only knows locomotion (walking/running), NOT phone
- * handling, so it must not claim "fully focused" — it can't see you pick the
- * phone up at a desk. Only the `recorder` signal can speak to handling.
+ * i18n key for the one-line motion summary in the insights sheet. Wording is
+ * signal-aware: the `activity` fallback only knows locomotion (walking/running),
+ * NOT phone handling, so its strings must not claim "fully focused" — it can't
+ * see you pick the phone up at a desk. Only the `recorder` signal can speak to
+ * handling.
  */
-export function describeMotion(snapshot: MotionSnapshot): string {
+export function describeMotionKey(snapshot: MotionSnapshot): string {
   if (snapshot.signal === 'none' || snapshot.profile === 'unknown') {
-    return 'Not enough motion data to estimate focus.';
+    return 'ratingInsights.motionNoData';
   }
 
   if (snapshot.signal === 'activity') {
     switch (snapshot.profile) {
       case 'still':
-        return 'No walking or running detected (can’t tell if the phone was handled).';
+        return 'ratingInsights.motionActivityStill';
       case 'occasional':
-        return 'Not fully settled — some movement or steps during the session.';
+        return 'ratingInsights.motionActivityOccasional';
       case 'constant':
       default:
-        return 'You were moving (walking/running) for much of the session.';
+        return 'ratingInsights.motionActivityConstant';
     }
   }
 
   // recorder signal — fine-grained, can speak to phone handling
   switch (snapshot.profile) {
     case 'still':
-      return 'Phone stayed put — looks fully focused.';
+      return 'ratingInsights.motionRecorderStill';
     case 'occasional':
-      return 'Phone was picked up a few times during the session.';
+      return 'ratingInsights.motionRecorderOccasional';
     case 'constant':
     default:
-      return 'Phone was in near-constant motion.';
+      return 'ratingInsights.motionRecorderConstant';
   }
 }

@@ -16,6 +16,10 @@ struct LiveActivityAttributes: ActivityAttributes {
     var isIdle: Bool?
     var tagId: String?
     var durationMinutes: Int?
+    var startLabel: String?
+    var endLabel: String?
+    var unlockedLabel: String?
+    var unblockExpiredLabel: String?
   }
 
   var name: String
@@ -64,7 +68,7 @@ struct StaleUnlockBannerView: View {
     VStack(alignment: .leading) {
       HStack(alignment: .center) {
         VStack(alignment: .leading, spacing: 2) {
-          Text("Unblock Expired")
+          Text(state.unblockExpiredLabel ?? "Unblock Expired")
             .font(.title2)
             .fontWeight(.semibold)
             .foregroundStyle(textColor)
@@ -126,7 +130,7 @@ struct StaleBonusBannerView: View {
 
         if #available(iOS 17.0, *) {
           Button(intent: StopSessionIntent()) {
-            Text("End")
+            Text(state.endLabel ?? "End")
               .font(.title3)
               .fontWeight(.semibold)
               .foregroundStyle(buttonTextColor)
@@ -259,7 +263,7 @@ struct WatchActivityView: View {
       HStack(spacing: 4) {
         Text("\u{1F513}")
           .font(.system(size: 13))
-        Text("Unlocked")
+        Text(contentState.unlockedLabel ?? "Unlocked")
           .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(Color(hex: "#4CAF7C"))
           .lineLimit(1)
@@ -330,7 +334,7 @@ struct WatchActivityView: View {
 
   private var watchStaleUnlockView: some View {
     VStack(alignment: .leading, spacing: 4) {
-      Text("Unblock Expired")
+      Text(contentState.unblockExpiredLabel ?? "Unblock Expired")
         .font(.system(size: 14, weight: .semibold))
         .foregroundStyle(.primary)
     }
@@ -376,6 +380,7 @@ struct LiveActivityContentRouter: View {
 struct DynamicIslandIdleBottomView: View {
   let tagId: String?
   let durationMinutes: Int?
+  let startLabel: String?
 
   var body: some View {
     HStack {
@@ -385,7 +390,7 @@ struct DynamicIslandIdleBottomView: View {
           tagId: tagId,
           duration: durationMinutes
         )) {
-          Text("Start")
+          Text(startLabel ?? "Start")
             .font(.title3)
             .fontWeight(.semibold)
             .foregroundStyle(.white)
@@ -407,6 +412,7 @@ struct DynamicIslandActiveBottomView: View {
   let progressViewTint: String?
   let sessionType: String?
   let deepLinkUrl: String?
+  let endLabel: String?
 
   var body: some View {
     HStack {
@@ -433,7 +439,7 @@ struct DynamicIslandActiveBottomView: View {
   }
 
   private func adaptiveEndButtonLabel(fontSize: Font, hPad: CGFloat, vPad: CGFloat) -> some View {
-    Text("End")
+    Text(endLabel ?? "End")
       .font(fontSize)
       .fontWeight(.semibold)
       .foregroundStyle(.white)
@@ -498,7 +504,8 @@ struct LiveActivityWidget: Widget {
           if context.state.isIdle == true {
             DynamicIslandIdleBottomView(
               tagId: context.state.tagId,
-              durationMinutes: context.state.durationMinutes
+              durationMinutes: context.state.durationMinutes,
+              startLabel: context.state.startLabel
             )
           } else if let date = context.state.timerEndDateInMilliseconds {
             DynamicIslandActiveBottomView(
@@ -506,7 +513,8 @@ struct LiveActivityWidget: Widget {
               startDateMs: context.state.timerStartDateInMilliseconds,
               progressViewTint: context.attributes.progressViewTint,
               sessionType: context.attributes.sessionType,
-              deepLinkUrl: context.attributes.deepLinkUrl
+              deepLinkUrl: context.attributes.deepLinkUrl,
+              endLabel: context.state.endLabel
             )
           }
         }

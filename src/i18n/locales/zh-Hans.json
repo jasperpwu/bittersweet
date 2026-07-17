@@ -247,7 +247,10 @@
     "minutesShort": "{{count}} 分钟",
     "badgeChallenge": "挑战",
     "badgeSharing": "分享中",
-    "badgeShared": "已共享"
+    "badgeShared": "已共享",
+    "activityStationary": "静止",
+    "activityOnPhone": "使用手机",
+    "activityActive": "活动"
   },
   "journal": {
     "emptyTitle": "你的日志还是空的",
@@ -737,7 +740,36 @@
     "motionPrimerBody": "Bittersweet 可以根据会话期间手机的运动来估算你的专注程度，并据此调整果实奖励。",
     "motionPrimerPrivacy": "运动数据仅保存在你的设备上，且只用于估算此评分。",
     "motionPrimerEnable": "开启运动评分",
-    "motionPrimerDecline": "暂不"
+    "motionPrimerDecline": "暂不",
+    "focusRating": "专注评分",
+    "analyzingFocus": "正在分析专注度…",
+    "whyThisRating": "为什么是这个评分？"
+  },
+  "ratingInsights": {
+    "title": "评分是如何得出的",
+    "phoneMoved": "手机的移动情况",
+    "noMotionData": "本次专注没有可用的运动数据。",
+    "inMotionPct": "手机有 {{pct}}% 的时间在移动",
+    "movementBursts_other": "检测到 {{count}} 次移动",
+    "activityBreakdown": "静止 {{stationary}}% · 步行 {{walking}}% · 跑步 {{running}}%",
+    "steps_other": "{{count}} 步",
+    "estimateUnavailable": "运动估计不可用。",
+    "motionNoData": "运动数据不足，无法估计专注度。",
+    "motionActivityStill": "未检测到步行或跑步（无法判断是否拿起过手机）。",
+    "motionActivityOccasional": "未完全静止：专注期间有一些移动或步数。",
+    "motionActivityConstant": "专注期间你大部分时间都在移动（步行/跑步）。",
+    "motionRecorderStill": "手机一直没动——看起来非常专注。",
+    "motionRecorderOccasional": "专注期间手机被拿起了几次。",
+    "motionRecorderConstant": "手机几乎一直在移动。",
+    "mappingActive": "这是一个活动类标签，动得越多，星星越多。",
+    "mappingOnPhone": "这是一个使用手机类标签，移动几乎不影响评分。",
+    "mappingStationary": "这是一个静止类标签，保持静止能获得更多星星。",
+    "rewardImpact": "{{rating}}★ → 本次专注果实的 {{pct}}%",
+    "ratingNotSet": "未评分",
+    "disclaimer": "由设备本地估计（{{signal}}）。设置此标签的活动类型，可让评分更准确。",
+    "signalRecorder": "加速度传感器",
+    "signalActivity": "运动活动",
+    "signalNone": "无信号"
   },
   "aiCoach": {
     "emptyTitle": "本周还没有报告",
@@ -977,6 +1009,12 @@
     "💰": "理财,投资,记账,省钱",
     "📱": "手机,刷手机,社交,抖音,小红书",
     "😴": "睡觉,午睡,补觉"
+  },
+  "liveActivity": {
+    "start": "开始",
+    "end": "结束",
+    "unlocked": "已解锁",
+    "unblockExpired": "解锁已结束"
   },
   "unlock": {
     "trendTitle": "解锁时长趋势",

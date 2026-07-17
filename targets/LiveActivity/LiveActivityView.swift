@@ -84,7 +84,7 @@ import AppIntents
               tagId: contentState.tagId,
               duration: contentState.durationMinutes
             )) {
-              Text("Start")
+              Text(contentState.startLabel ?? "Start")
                 .font(.title3)
                 .fontWeight(.semibold)
                 .foregroundStyle(buttonTextColor)
@@ -167,7 +167,7 @@ import AppIntents
           if #available(iOS 17.0, *) {
             if attributes.sessionType == "unlock" {
               Button(intent: StopUnlockIntent()) {
-                Text("End")
+                Text(contentState.endLabel ?? "End")
                   .font(.title3)
                   .fontWeight(.semibold)
                   .foregroundStyle(buttonTextColor)
@@ -179,7 +179,7 @@ import AppIntents
               .buttonStyle(.plain)
             } else {
               Button(intent: StopSessionIntent()) {
-                Text("End")
+                Text(contentState.endLabel ?? "End")
                   .font(.title3)
                   .fontWeight(.semibold)
                   .foregroundStyle(buttonTextColor)

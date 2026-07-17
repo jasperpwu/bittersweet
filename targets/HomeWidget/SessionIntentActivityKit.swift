@@ -28,6 +28,10 @@ struct LiveActivityAttributes: ActivityAttributes {
     var isIdle: Bool?
     var tagId: String?
     var durationMinutes: Int?
+    var startLabel: String?
+    var endLabel: String?
+    var unlockedLabel: String?
+    var unblockExpiredLabel: String?
   }
 
   var name: String
@@ -55,6 +59,10 @@ class WidgetActivityKitLoader: NSObject {
 
   @objc class func registerHandlers() {
     WidgetActivityKit.startHandler = { tagName, duration, startTimeMs, endTimeMs, isInfinite in
+      // Carry over the localized button labels from the activity being
+      // replaced (JS supplies them on every update); native has no i18n.
+      let prevState = Activity<LiveActivityAttributes>.activities.first?.content.state
+
       // End all existing activities first to prevent duplicates
       for activity in Activity<LiveActivityAttributes>.activities {
         let id = activity.id
@@ -75,7 +83,11 @@ class WidgetActivityKitLoader: NSObject {
         progress: nil,
         imageName: "app_icon",
         dynamicIslandImageName: "app_icon",
-        dynamicIslandText: tagName
+        dynamicIslandText: tagName,
+        startLabel: prevState?.startLabel,
+        endLabel: prevState?.endLabel,
+        unlockedLabel: prevState?.unlockedLabel,
+        unblockExpiredLabel: prevState?.unblockExpiredLabel
       )
 
       // Match JS-side palette (LA_COLORS in LiveActivityService.ts)
@@ -214,7 +226,11 @@ class WidgetActivityKitLoader: NSObject {
             dynamicIslandText: tagTitle,
             isIdle: true,
             tagId: tag?.id,
-            durationMinutes: tag?.lastDuration
+            durationMinutes: tag?.lastDuration,
+            startLabel: activity.content.state.startLabel,
+            endLabel: activity.content.state.endLabel,
+            unlockedLabel: activity.content.state.unlockedLabel,
+            unblockExpiredLabel: activity.content.state.unblockExpiredLabel
           )
           // Update (not end) so the activity stays alive and updatable — the
           // system silently ignores updates to ended activities, so an ended

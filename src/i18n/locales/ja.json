@@ -247,7 +247,10 @@
     "minutesShort": "{{count}}分",
     "badgeChallenge": "チャレンジ",
     "badgeSharing": "シェア中",
-    "badgeShared": "シェア済み"
+    "badgeShared": "シェア済み",
+    "activityStationary": "静止",
+    "activityOnPhone": "スマホ操作",
+    "activityActive": "アクティブ"
   },
   "journal": {
     "emptyTitle": "ジャーナルはまだ空です",
@@ -737,7 +740,36 @@
     "motionPrimerBody": "Bittersweetは、セッション中のスマートフォンの動きから集中度を推定し、実の報酬を調整できます。",
     "motionPrimerPrivacy": "モーションデータは端末内にとどまり、この評価の推定にのみ使用されます。",
     "motionPrimerEnable": "モーション評価を有効にする",
-    "motionPrimerDecline": "あとで"
+    "motionPrimerDecline": "あとで",
+    "focusRating": "集中度の評価",
+    "analyzingFocus": "集中度を分析中…",
+    "whyThisRating": "この評価の理由は？"
+  },
+  "ratingInsights": {
+    "title": "評価の算出方法",
+    "phoneMoved": "スマホの動き",
+    "noMotionData": "このセッションのモーションデータはありませんでした。",
+    "inMotionPct": "時間の{{pct}}%でスマホが動いていました",
+    "movementBursts_other": "{{count}}回の動きを検出",
+    "activityBreakdown": "静止 {{stationary}}% · 歩行 {{walking}}% · 走行 {{running}}%",
+    "steps_other": "{{count}}歩",
+    "estimateUnavailable": "モーションの推定は利用できません。",
+    "motionNoData": "集中度を推定するにはモーションデータが不足しています。",
+    "motionActivityStill": "歩行や走行は検出されませんでした（スマホを手に取ったかどうかは判定できません）。",
+    "motionActivityOccasional": "完全な静止ではなく、セッション中に多少の動きや歩数がありました。",
+    "motionActivityConstant": "セッションの大部分で移動（歩行・走行）していました。",
+    "motionRecorderStill": "スマホは置かれたままでした。しっかり集中できていたようです。",
+    "motionRecorderOccasional": "セッション中に何度かスマホを手に取りました。",
+    "motionRecorderConstant": "スマホがほぼ常に動いていました。",
+    "mappingActive": "アクティブなタグなので、動きが多いほど星が増えます。",
+    "mappingOnPhone": "スマホ操作のタグなので、動きは評価にほとんど影響しません。",
+    "mappingStationary": "静止タグなので、じっとしているほど星が増えます。",
+    "rewardImpact": "{{rating}}★ → このセッションの実の{{pct}}%",
+    "ratingNotSet": "評価なし",
+    "disclaimer": "デバイス上での推定です（{{signal}}）。タグのアクティビティの種類を設定すると、より正確に評価できます。",
+    "signalRecorder": "加速度センサー",
+    "signalActivity": "モーションアクティビティ",
+    "signalNone": "信号なし"
   },
   "aiCoach": {
     "emptyTitle": "今週のレポートはまだありません",
@@ -977,6 +1009,12 @@
     "💰": "家計,投資,節約,お金",
     "📱": "スマホ,sns,インスタ,ティックトック",
     "😴": "睡眠,昼寝,寝る"
+  },
+  "liveActivity": {
+    "start": "開始",
+    "end": "終了",
+    "unlocked": "アンロック中",
+    "unblockExpired": "アンロック終了"
   },
   "unlock": {
     "trendTitle": "アンロック時間の推移",

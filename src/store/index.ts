@@ -26,8 +26,17 @@ import { FocusGoal, WeeklyCoachReport, Todo, TodoRecurrence } from './types';
 import { nextOccurrence, startOfDay } from '../utils/todoRecurrence';
 import { persistenceConfig, persistStateNow } from './middleware/persistence';
 import { computeBadgeStats } from '../utils/badgeStats';
-import { fruitsForRating, type RatingSource } from '../utils/focusRating';
-import { startSessionMotionRecording } from '../services/motionInsights';
+import {
+  fruitsForRating,
+  shouldAutoRate,
+  suggestRating,
+  type RatingSource,
+} from '../utils/focusRating';
+import {
+  startSessionMotionRecording,
+  getMotionPermissionStatus,
+  getSessionMotionSnapshot,
+} from '../services/motionInsights';
 import { useUnifiedStore } from './unified-store';
 import { CLASSIC_TAG_COLORS, DEFAULT_TAG_COLOR } from '../config/tagColors';
 import * as Notifications from 'expo-notifications';
@@ -112,6 +121,7 @@ interface AppStore {
     updateSession: (id: string, updates: Partial<FocusSession>) => void;
     adjustSessionDuration: (id: string, adjustedDuration: number) => void;
     applyFocusRating: (id: string, rating: number, source: RatingSource) => void;
+    autoRateSessionFromMotion: (id: string) => Promise<void>;
     deleteSession: (id: string) => void;
     startSession: (id: string) => void;
     completeSession: (id?: string) => void;
@@ -879,6 +889,63 @@ export const useAppStore = create<AppStore>()(
               FamilyControlsModule.updateShieldBalance(get().rewards.balance).catch((error) => {
                 console.error('Failed to update shield balance after focus rating:', error);
               });
+            }
+          },
+
+          // Rate a completed session from historical Core Motion data, with no UI.
+          // Used by every completion surface that skips the summary modal (widget /
+          // Live Activity / Apple Watch stops adopted on foreground) and, via the
+          // modal, by the in-app flow. Mirrors the modal's fallbacks: unrateable
+          // sessions (too short / manual), missing permission, or any read failure
+          // get the full reward (5★, no penalty). Never prompts for the Motion &
+          // Fitness permission — priming is the summary modal's job. No-ops if the
+          // session is already rated.
+          autoRateSessionFromMotion: async (sessionId) => {
+            const session = get().focus.sessions.byId[sessionId];
+            if (!session || session.focusRating != null) return;
+
+            const applyFullRating = () => {
+              get().focus.updateSession(sessionId, {
+                motionSummary: {
+                  signal: 'none',
+                  profile: 'unknown',
+                  recorder: null,
+                  activity: null,
+                  steps: null,
+                },
+              });
+              get().focus.applyFocusRating(sessionId, 5, 'suggested');
+            };
+
+            if (
+              !shouldAutoRate({
+                durationMinutes: session.duration,
+                isManualEntry: session.isManualEntry,
+              })
+            ) {
+              applyFullRating();
+              return;
+            }
+
+            try {
+              const status = await getMotionPermissionStatus();
+              if (status !== 'granted') {
+                applyFullRating();
+                return;
+              }
+              const snapshot = await getSessionMotionSnapshot(
+                new Date(session.startTime).getTime(),
+                new Date(session.endTime).getTime()
+              );
+              get().focus.updateSession(sessionId, { motionSummary: snapshot });
+              const tag = session.tagId ? get().focus.tags.byId[session.tagId] : null;
+              get().focus.applyFocusRating(
+                sessionId,
+                suggestRating(tag?.activityType, snapshot),
+                'suggested'
+              );
+            } catch {
+              applyFullRating();
             }
           },
 
@@ -3261,6 +3328,7 @@ export const useFocusActions = () =>
     updateSession: state.focus.updateSession,
     adjustSessionDuration: state.focus.adjustSessionDuration,
     applyFocusRating: state.focus.applyFocusRating,
+    autoRateSessionFromMotion: state.focus.autoRateSessionFromMotion,
     deleteSession: state.focus.deleteSession,
     startSession: state.focus.startSession,
     completeSession: state.focus.completeSession,

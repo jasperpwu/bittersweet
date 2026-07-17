@@ -248,7 +248,10 @@
     "minutesShort": "{{count}} min",
     "badgeChallenge": "Challenge",
     "badgeSharing": "Sharing",
-    "badgeShared": "Shared"
+    "badgeShared": "Shared",
+    "activityStationary": "Stationary",
+    "activityOnPhone": "On-phone",
+    "activityActive": "Active"
   },
   "journal": {
     "emptyTitle": "Your journal is empty",
@@ -738,7 +741,38 @@
     "motionPrimerBody": "Bittersweet can use your phone's motion during a session to suggest how focused you were and scale your fruit reward.",
     "motionPrimerPrivacy": "Motion data stays on your device and is only used to estimate this rating.",
     "motionPrimerEnable": "Enable Motion Rating",
-    "motionPrimerDecline": "Not Now"
+    "motionPrimerDecline": "Not Now",
+    "focusRating": "Focus rating",
+    "analyzingFocus": "Analyzing focus…",
+    "whyThisRating": "Why this rating?"
+  },
+  "ratingInsights": {
+    "title": "How we estimated this",
+    "phoneMoved": "How your phone moved",
+    "noMotionData": "No motion data was available for this session.",
+    "inMotionPct": "Phone in motion {{pct}}% of the time",
+    "movementBursts_one": "{{count}} movement burst detected",
+    "movementBursts_other": "{{count}} movement bursts detected",
+    "activityBreakdown": "Stationary {{stationary}}% · Walking {{walking}}% · Running {{running}}%",
+    "steps_one": "{{count}} step",
+    "steps_other": "{{count}} steps",
+    "estimateUnavailable": "Motion estimate unavailable.",
+    "motionNoData": "Not enough motion data to estimate focus.",
+    "motionActivityStill": "No walking or running detected (can't tell if the phone was handled).",
+    "motionActivityOccasional": "Not fully settled — some movement or steps during the session.",
+    "motionActivityConstant": "You were moving (walking/running) for much of the session.",
+    "motionRecorderStill": "Phone stayed put — looks fully focused.",
+    "motionRecorderOccasional": "Phone was picked up a few times during the session.",
+    "motionRecorderConstant": "Phone was in near-constant motion.",
+    "mappingActive": "This is an active tag, so more movement earns more stars.",
+    "mappingOnPhone": "This is an on-phone tag, so movement barely affects the rating.",
+    "mappingStationary": "This is a stationary tag, so staying still earns more stars.",
+    "rewardImpact": "{{rating}}★ → {{pct}}% of this session's fruits",
+    "ratingNotSet": "Rating not set",
+    "disclaimer": "On-device estimate ({{signal}}). To make ratings more accurate, set this tag's activity type.",
+    "signalRecorder": "raw accelerometer",
+    "signalActivity": "motion activity",
+    "signalNone": "no signal"
   },
   "aiCoach": {
     "emptyTitle": "No weekly report yet",
@@ -978,6 +1012,12 @@
     "💰": "finance,budget,invest,tax,money,saving",
     "📱": "phone,scroll,social,instagram,tiktok",
     "😴": "sleep,nap"
+  },
+  "liveActivity": {
+    "start": "Start",
+    "end": "End",
+    "unlocked": "Unlocked",
+    "unblockExpired": "Unblock Expired"
   },
   "unlock": {
     "trendTitle": "Unlock time trend",

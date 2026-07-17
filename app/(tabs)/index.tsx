@@ -1696,7 +1696,7 @@ export default function FocusScreen() {
               ? Math.max(1, durationMinutes)
               : sessionInfo.targetDuration;
 
-            store.focus.createCompletedSession({
+            const adopted = store.focus.createCompletedSession({
               // Reuse the id the native stop already recorded under, so this
               // local write merges with the native Supabase row instead of
               // duplicating it.
@@ -1707,6 +1707,11 @@ export default function FocusScreen() {
               targetDuration: effectiveTargetDuration,
               tagId: sessionInfo.tagId,
             });
+
+            // The summary modal (where rating normally happens) never opens for
+            // externally-stopped sessions, so rate from historical Core Motion
+            // here. Fire-and-forget: adoption must not block on motion reads.
+            store.focus.autoRateSessionFromMotion(adopted.id).catch(() => {});
           }
 
           await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);

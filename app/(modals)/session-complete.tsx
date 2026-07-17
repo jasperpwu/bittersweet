@@ -41,9 +41,8 @@ import {
   useFocusActions,
   useAppStore,
 } from '../../src/store';
-import { suggestRating, shouldAutoRate } from '../../src/utils/focusRating';
+import { shouldAutoRate } from '../../src/utils/focusRating';
 import {
-  getSessionMotionSnapshot,
   getMotionPermissionStatus,
   ensureMotionPermission,
 } from '../../src/services/motionInsights';
@@ -62,7 +61,7 @@ export default function SessionCompleteModal() {
   const colorScheme = useColorScheme();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { sessions, tags } = useFocus();
-  const { updateSession, applyFocusRating } = useFocusActions();
+  const { updateSession, autoRateSessionFromMotion } = useFocusActions();
 
   const session = sessionId ? sessions.byId[sessionId] : null;
 
@@ -85,40 +84,13 @@ export default function SessionCompleteModal() {
   const [showMotionPrimer, setShowMotionPrimer] = useState(false);
   const ratingComputedRef = useRef(false);
 
-  // Give the full reward with no motion penalty (too short/manual, permission
-  // declined, or no signal available).
-  const applyFullRating = () => {
+  // Rate the session via the shared store logic (motion when permitted, full
+  // reward otherwise), showing the "Analyzing focus…" state while it runs.
+  const runAutoRating = async () => {
     if (!session) return;
-    updateSession(session.id, {
-      motionSummary: {
-        signal: 'none',
-        profile: 'unknown',
-        recorder: null,
-        activity: null,
-        steps: null,
-      },
-    });
-    applyFocusRating(session.id, 5, 'suggested');
-  };
-
-  // Read motion for the session window and apply the suggested rating. Assumes the
-  // Motion & Fitness permission has already been granted by the caller.
-  const computeRatingFromMotion = async () => {
-    if (!session) return;
-    const tagForSession = session.tagId ? tags.byId[session.tagId] : null;
     setAnalyzingRating(true);
-    const startMs = new Date(session.startTime).getTime();
-    const endMs = new Date(session.endTime).getTime();
     try {
-      const snapshot = await getSessionMotionSnapshot(startMs, endMs);
-      updateSession(session.id, { motionSummary: snapshot });
-      applyFocusRating(
-        session.id,
-        suggestRating(tagForSession?.activityType, snapshot),
-        'suggested'
-      );
-    } catch {
-      applyFullRating();
+      await autoRateSessionFromMotion(session.id);
     } finally {
       setAnalyzingRating(false);
     }
@@ -126,37 +98,25 @@ export default function SessionCompleteModal() {
 
   // Compute the suggested focus rating from motion once per session. If the
   // session already has a rating (revisited, or user-set), leave it alone.
+  // The only UI-specific branch is the permission primer: on a rateable
+  // session with the permission still undetermined, explain why we need
+  // motion before the one-shot OS prompt (shown once, ever).
   useEffect(() => {
     if (!session || ratingComputedRef.current) return;
     ratingComputedRef.current = true;
     if (session.focusRating != null) return;
 
-    if (
-      !shouldAutoRate({ durationMinutes: session.duration, isManualEntry: session.isManualEntry })
-    ) {
-      // Too short / manual — give full reward, no penalty.
-      applyFullRating();
-      return;
-    }
-
     (async () => {
-      const status = await getMotionPermissionStatus();
-      if (status === 'granted') {
-        await computeRatingFromMotion();
-        return;
+      if (
+        shouldAutoRate({ durationMinutes: session.duration, isManualEntry: session.isManualEntry })
+      ) {
+        const status = await getMotionPermissionStatus();
+        if (status === 'undetermined' && !preferences.hasSeenMotionPrimer) {
+          setShowMotionPrimer(true);
+          return;
+        }
       }
-      if (status === 'denied') {
-        // Can't read motion — full reward, no penalty.
-        applyFullRating();
-        return;
-      }
-      // Undetermined: explain why we need motion before the one-shot OS prompt.
-      // Show the primer only once; after that, default to full reward.
-      if (preferences.hasSeenMotionPrimer) {
-        applyFullRating();
-        return;
-      }
-      setShowMotionPrimer(true);
+      await runAutoRating();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
@@ -164,15 +124,16 @@ export default function SessionCompleteModal() {
   const handleMotionPrimerEnable = async () => {
     setShowMotionPrimer(false);
     await updatePreferences({ hasSeenMotionPrimer: true });
-    const granted = await ensureMotionPermission();
-    if (granted) await computeRatingFromMotion();
-    else applyFullRating();
+    // The store method re-checks the permission: granted → motion rating,
+    // still undetermined/denied → full reward.
+    await ensureMotionPermission();
+    await runAutoRating();
   };
 
   const handleMotionPrimerDecline = async () => {
     setShowMotionPrimer(false);
     await updatePreferences({ hasSeenMotionPrimer: true });
-    applyFullRating();
+    await runAutoRating();
   };
 
   // Celebration animations
@@ -433,12 +394,13 @@ export default function SessionCompleteModal() {
             </Typography>
           </View>
 
-          {/* Suggested focus rating — scales the fruit reward */}
+          {/* Suggested focus rating — scales the fruit reward. Read-only: the
+              user can't override stars, only improve future ratings via the
+              tag's activity type. */}
           {baseFruits > 0 && (
             <FocusRatingBlock
               rating={session.focusRating ?? null}
               analyzing={analyzingRating}
-              onChange={(r) => applyFocusRating(session.id, r, 'user')}
               onWhyPress={() => setShowRatingInsights(true)}
             />
           )}

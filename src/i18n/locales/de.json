@@ -248,7 +248,10 @@
     "minutesShort": "{{count}} Min.",
     "badgeChallenge": "Challenge",
     "badgeSharing": "Geteilt",
-    "badgeShared": "Geteilt"
+    "badgeShared": "Geteilt",
+    "activityStationary": "Ruhig",
+    "activityOnPhone": "Am Handy",
+    "activityActive": "Aktiv"
   },
   "journal": {
     "emptyTitle": "Dein Journal ist leer",
@@ -738,7 +741,38 @@
     "motionPrimerBody": "Bittersweet kann die Bewegung deines Telefons während einer Sitzung nutzen, um deinen Fokus einzuschätzen und deine Früchte-Belohnung anzupassen.",
     "motionPrimerPrivacy": "Bewegungsdaten bleiben auf deinem Gerät und werden nur zur Einschätzung dieser Bewertung verwendet.",
     "motionPrimerEnable": "Bewegungsbewertung aktivieren",
-    "motionPrimerDecline": "Jetzt nicht"
+    "motionPrimerDecline": "Jetzt nicht",
+    "focusRating": "Fokus-Bewertung",
+    "analyzingFocus": "Fokus wird analysiert…",
+    "whyThisRating": "Warum diese Bewertung?"
+  },
+  "ratingInsights": {
+    "title": "So haben wir das geschätzt",
+    "phoneMoved": "So hat sich dein Handy bewegt",
+    "noMotionData": "Für diese Sitzung waren keine Bewegungsdaten verfügbar.",
+    "inMotionPct": "Handy {{pct}} % der Zeit in Bewegung",
+    "movementBursts_one": "{{count}} Bewegungsimpuls erkannt",
+    "movementBursts_other": "{{count}} Bewegungsimpulse erkannt",
+    "activityBreakdown": "Ruhig {{stationary}} % · Gehen {{walking}} % · Laufen {{running}} %",
+    "steps_one": "{{count}} Schritt",
+    "steps_other": "{{count}} Schritte",
+    "estimateUnavailable": "Bewegungsschätzung nicht verfügbar.",
+    "motionNoData": "Zu wenige Bewegungsdaten, um den Fokus einzuschätzen.",
+    "motionActivityStill": "Kein Gehen oder Laufen erkannt (ob das Handy in der Hand war, lässt sich nicht sagen).",
+    "motionActivityOccasional": "Nicht ganz zur Ruhe gekommen – etwas Bewegung oder ein paar Schritte während der Sitzung.",
+    "motionActivityConstant": "Du warst einen Großteil der Sitzung in Bewegung (Gehen/Laufen).",
+    "motionRecorderStill": "Das Handy blieb liegen – sieht nach voller Konzentration aus.",
+    "motionRecorderOccasional": "Das Handy wurde während der Sitzung ein paarmal in die Hand genommen.",
+    "motionRecorderConstant": "Das Handy war fast durchgehend in Bewegung.",
+    "mappingActive": "Dies ist ein aktives Label – mehr Bewegung bringt mehr Sterne.",
+    "mappingOnPhone": "Dies ist ein Am-Handy-Label – Bewegung beeinflusst die Bewertung kaum.",
+    "mappingStationary": "Dies ist ein ruhiges Label – Stillhalten bringt mehr Sterne.",
+    "rewardImpact": "{{rating}} ★ → {{pct}} % der Früchte dieser Sitzung",
+    "ratingNotSet": "Keine Bewertung",
+    "disclaimer": "Schätzung direkt auf deinem Gerät ({{signal}}). Lege den Aktivitätstyp dieses Labels fest, um Bewertungen genauer zu machen.",
+    "signalRecorder": "Roh-Beschleunigungssensor",
+    "signalActivity": "Bewegungsaktivität",
+    "signalNone": "kein Signal"
   },
   "aiCoach": {
     "emptyTitle": "Noch kein Wochenbericht",
@@ -978,6 +1012,12 @@
     "💰": "finanz,budget,invest,steuer,geld,sparen",
     "📱": "handy,social,insta,tiktok",
     "😴": "schlaf,nickerchen"
+  },
+  "liveActivity": {
+    "start": "Starten",
+    "end": "Beenden",
+    "unlocked": "Freigeschaltet",
+    "unblockExpired": "Freischaltung abgelaufen"
   },
   "unlock": {
     "trendTitle": "Freischaltzeit-Verlauf",

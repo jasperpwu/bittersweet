@@ -248,7 +248,10 @@
     "minutesShort": "{{count}} min",
     "badgeChallenge": "Reto",
     "badgeSharing": "Compartiendo",
-    "badgeShared": "Compartida"
+    "badgeShared": "Compartida",
+    "activityStationary": "Quieto",
+    "activityOnPhone": "Con teléfono",
+    "activityActive": "Activo"
   },
   "journal": {
     "emptyTitle": "Tu diario está vacío",
@@ -738,7 +741,38 @@
     "motionPrimerBody": "Bittersweet puede usar el movimiento de tu teléfono durante la sesión para estimar tu nivel de concentración y ajustar tu recompensa de fruta.",
     "motionPrimerPrivacy": "Los datos de movimiento se quedan en tu dispositivo y solo se usan para estimar esta valoración.",
     "motionPrimerEnable": "Activar valoración por movimiento",
-    "motionPrimerDecline": "Ahora no"
+    "motionPrimerDecline": "Ahora no",
+    "focusRating": "Valoración de concentración",
+    "analyzingFocus": "Analizando concentración…",
+    "whyThisRating": "¿Por qué esta valoración?"
+  },
+  "ratingInsights": {
+    "title": "Cómo lo hemos estimado",
+    "phoneMoved": "Cómo se movió tu teléfono",
+    "noMotionData": "No había datos de movimiento disponibles para esta sesión.",
+    "inMotionPct": "Teléfono en movimiento el {{pct}} % del tiempo",
+    "movementBursts_one": "{{count}} ráfaga de movimiento detectada",
+    "movementBursts_other": "{{count}} ráfagas de movimiento detectadas",
+    "activityBreakdown": "Quieto {{stationary}} % · Caminando {{walking}} % · Corriendo {{running}} %",
+    "steps_one": "{{count}} paso",
+    "steps_other": "{{count}} pasos",
+    "estimateUnavailable": "Estimación de movimiento no disponible.",
+    "motionNoData": "No hay suficientes datos de movimiento para estimar la concentración.",
+    "motionActivityStill": "No se detectó caminar ni correr (no podemos saber si tomaste el teléfono).",
+    "motionActivityOccasional": "No estuviste del todo quieto: hubo algo de movimiento o pasos durante la sesión.",
+    "motionActivityConstant": "Estuviste en movimiento (caminando o corriendo) gran parte de la sesión.",
+    "motionRecorderStill": "El teléfono no se movió: parece concentración total.",
+    "motionRecorderOccasional": "Tomaste el teléfono algunas veces durante la sesión.",
+    "motionRecorderConstant": "El teléfono estuvo en movimiento casi constante.",
+    "mappingActive": "Es una etiqueta de tipo activo, así que más movimiento da más estrellas.",
+    "mappingOnPhone": "Es una etiqueta de tipo con teléfono, así que el movimiento apenas afecta a la valoración.",
+    "mappingStationary": "Es una etiqueta de tipo quieto, así que quedarte quieto da más estrellas.",
+    "rewardImpact": "{{rating}} ★ → {{pct}} % de la fruta de esta sesión",
+    "ratingNotSet": "Sin valoración",
+    "disclaimer": "Estimación en el dispositivo ({{signal}}). Para valoraciones más precisas, configura el tipo de actividad de esta etiqueta.",
+    "signalRecorder": "acelerómetro",
+    "signalActivity": "actividad de movimiento",
+    "signalNone": "sin señal"
   },
   "aiCoach": {
     "emptyTitle": "Aún no hay informe semanal",
@@ -978,6 +1012,12 @@
     "💰": "finanzas,presupuesto,inversi,impuesto,dinero,ahorro",
     "📱": "móvil,movil,celular,redes,instagram,tiktok",
     "😴": "dormir,siesta,sueño,sueno"
+  },
+  "liveActivity": {
+    "start": "Iniciar",
+    "end": "Terminar",
+    "unlocked": "Desbloqueado",
+    "unblockExpired": "Desbloqueo finalizado"
   },
   "unlock": {
     "trendTitle": "Tendencia de desbloqueo",
