@@ -685,14 +685,13 @@ export default function JournalScreen() {
               {headerDateString}
             </Typography>
             <View className="flex-row items-center" style={{ gap: 8 }}>
-              <Button
-                variant="soft"
+              <Pressable
                 onPress={openManualEntryModal}
-                className="h-11 w-11 items-center justify-center rounded-xl"
+                className="h-11 w-11 items-center justify-center rounded-xl bg-primary-soft active:opacity-80"
                 accessibilityLabel={t('journal.addManualA11y')}
                 accessibilityRole="button">
                 <Ionicons name="add" size={24} color={colors.primary} />
-              </Button>
+              </Pressable>
             </View>
           </View>
 
