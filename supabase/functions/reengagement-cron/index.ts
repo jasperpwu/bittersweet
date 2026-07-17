@@ -18,13 +18,19 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const SEND_HOUR = 10; // deliver around 10am local time
 
-// ⚠️ TEST OVERRIDE — remove before GA. For this one user the tiers are measured
-// in HOURS instead of days (2h / 5h / 14h) and the 10am-local gate is skipped,
-// so nudges fire on the next hourly cron run for fast end-to-end testing.
+// ⚠️ TEST OVERRIDE — remove before GA. For this one user there is no tier
+// escalation: a nudge fires every 2 HOURS of inactivity (instead of the
+// 2d/5d/14d tiers) and the 10am-local gate is skipped, for fast end-to-end
+// testing.
 const TEST_USER_ID = '9c931ba0-39e9-4597-b691-4b941b0c7118';
-function tierConfig(userId: string): { unit: number; gateLocalHour: boolean } {
-  if (userId === TEST_USER_ID) return { unit: HOUR_MS, gateLocalHour: false };
-  return { unit: DAY_MS, gateLocalHour: true };
+function tierConfig(userId: string): {
+  unit: number;
+  gateLocalHour: boolean;
+  repeatEveryTwoUnits: boolean;
+} {
+  if (userId === TEST_USER_ID)
+    return { unit: HOUR_MS, gateLocalHour: false, repeatEveryTwoUnits: true };
+  return { unit: DAY_MS, gateLocalHour: true, repeatEveryTwoUnits: false };
 }
 
 const corsHeaders = {
@@ -186,12 +192,19 @@ function tierToSend(
   lastActiveMs: number,
   state: { last_nudge_at: string | null; last_tier: string | null } | undefined,
   nowMs: number,
-  unitMs: number
+  unitMs: number,
+  repeatEveryTwoUnits = false
 ): 2 | 5 | 14 | null {
   const level = inactiveUnits >= 14 ? 14 : inactiveUnits >= 5 ? 5 : inactiveUnits >= 2 ? 2 : null;
   if (!level) return null;
 
   const lastNudgeMs = state?.last_nudge_at ? new Date(state.last_nudge_at).getTime() : 0;
+
+  // Test-user mode: no escalation — re-nudge every 2 units of quiet.
+  if (repeatEveryTwoUnits) {
+    return nowMs - lastNudgeMs >= 2 * unitMs ? 2 : null;
+  }
+
   const streakActive = lastNudgeMs > lastActiveMs;
   const sentLevel = streakActive && state?.last_tier ? parseInt(state.last_tier, 10) || 0 : 0;
 
@@ -362,7 +375,14 @@ Deno.serve(async (req: Request) => {
       const cfg = tierConfig(u.user_id);
       const lastActiveMs = new Date(u.last_active_at).getTime();
       const inactiveUnits = Math.floor((nowMs - lastActiveMs) / cfg.unit);
-      const level = tierToSend(inactiveUnits, lastActiveMs, state.get(u.user_id), nowMs, cfg.unit);
+      const level = tierToSend(
+        inactiveUnits,
+        lastActiveMs,
+        state.get(u.user_id),
+        nowMs,
+        cfg.unit,
+        cfg.repeatEveryTwoUnits
+      );
       if (!level) {
         skippedDedup++;
         continue;

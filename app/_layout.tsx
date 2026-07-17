@@ -78,6 +78,23 @@ function handleReengageTap(feature: unknown) {
   router.push(route as never);
 }
 
+// Route a tapped notification to its destination. Shared between the live
+// response listener and the cold-start check: a tap that launches the app from
+// a killed state is delivered via getLastNotificationResponseAsync(), never
+// through addNotificationResponseReceivedListener (registered too late).
+function routeNotificationTap(data: Record<string, unknown> | undefined) {
+  if (data?.type === 'weekly-coach') {
+    router.push('/(modals)/ai-coach');
+  } else if (data?.type === 'gift') {
+    // Gifts (incoming + sent-gift history) live in the fruit store's
+    // Custom tab — land the tap there for every gift event.
+    router.push('/fruit-store?tab=custom');
+  } else if (data?.type === 'reengage') {
+    // Re-engagement nudge → deep-link straight to the promoted feature.
+    handleReengageTap(data.feature);
+  }
+}
+
 // Show notification banner even when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => {
@@ -231,22 +248,21 @@ export default function RootLayout() {
       }
     );
 
-    // Route taps on the weekly AI coach nudge to the coach report screen.
+    // Route notification taps (weekly coach, gifts, re-engagement nudges).
     const coachResponseSubscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        const data = response.notification.request.content.data;
-        if (data?.type === 'weekly-coach') {
-          router.push('/(modals)/ai-coach');
-        } else if (data?.type === 'gift') {
-          // Gifts (incoming + sent-gift history) live in the fruit store's
-          // Custom tab — land the tap there for every gift event.
-          router.push('/fruit-store?tab=custom');
-        } else if (data?.type === 'reengage') {
-          // Re-engagement nudge → deep-link straight to the promoted feature.
-          handleReengageTap(data.feature);
-        }
+        routeNotificationTap(response.notification.request.content.data);
       }
     );
+
+    // Cold start: when a tap launched the app, the response never reaches the
+    // listener above — pick it up here, then clear it so a later remount
+    // doesn't re-navigate.
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (!response) return;
+      routeNotificationTap(response.notification.request.content.data);
+      Notifications.clearLastNotificationResponseAsync();
+    });
 
     // Fetch server-side subscription state immediately (before IAP init completes)
     useAppStore.getState().subscription.fetchTierFromServer();
