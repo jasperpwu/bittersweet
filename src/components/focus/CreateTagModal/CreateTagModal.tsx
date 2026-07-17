@@ -1,5 +1,13 @@
 import React, { FC, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, TextInput, Keyboard, useColorScheme, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  TextInput,
+  Keyboard,
+  useColorScheme,
+  useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui/Typography';
@@ -12,8 +20,12 @@ import { ActivityTypePicker } from '../ActivityTypePicker/ActivityTypePicker';
 import { useAppStore } from '../../../store';
 import { useSubscriptionGate } from '../../../hooks/useSubscriptionGate';
 import { inferActivityType } from '../../../utils/inferActivityType';
+import { inferTagEmoji } from '../../../utils/inferTagEmoji';
 import type { ActivityType } from '../../../utils/focusRating';
 import type { SessionTag } from '../../../types/models';
+
+/** Fallback emoji shown on open and used when name-based inference finds no match. */
+const DEFAULT_TAG_EMOJI = '🏷️';
 
 interface CreateTagModalProps {
   visible: boolean;
@@ -43,38 +55,46 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
   const { canCreateTag } = useSubscriptionGate();
 
   const [name, setName] = useState('');
-  const [emoji, setEmoji] = useState('');
+  const [emoji, setEmoji] = useState(DEFAULT_TAG_EMOJI);
   const [color, setColor] = useState('#6592E9');
   const [activityType, setActivityType] = useState<ActivityType | undefined>(undefined);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
 
-  // Tracks whether the user has manually picked an activity type this session;
-  // once they have, name-based inference stops overriding their choice.
+  // Track whether the user has manually picked an activity type / emoji this
+  // session; once they have, name-based inference stops overriding their choice.
   const activityTouched = useRef(false);
+  const emojiTouched = useRef(false);
 
   const reset = () => {
     setName('');
-    setEmoji('');
+    setEmoji(DEFAULT_TAG_EMOJI);
     setColor('#6592E9');
     setActivityType(undefined);
     setShowEmojiPicker(false);
     setShowColorPicker(false);
   };
 
-  // Reset the "touched" flag each time the modal opens.
+  // Reset the "touched" flags each time the modal opens.
   useEffect(() => {
-    if (visible) activityTouched.current = false;
+    if (visible) {
+      activityTouched.current = false;
+      emojiTouched.current = false;
+    }
   }, [visible]);
 
-  // Debounced inference of the activity type from the tag name. Only fills the
-  // picker until the user makes their own choice.
+  // Debounced inference of the activity type and emoji from the tag name.
+  // Each only fills its picker until the user makes their own choice.
   useEffect(() => {
-    if (!visible || activityTouched.current) return;
+    if (!visible || (activityTouched.current && emojiTouched.current)) return;
     const current = name;
     const timer = setTimeout(() => {
-      if (activityTouched.current) return;
-      setActivityType(inferActivityType(current) ?? undefined);
+      if (!activityTouched.current) {
+        setActivityType(inferActivityType(current) ?? undefined);
+      }
+      if (!emojiTouched.current) {
+        setEmoji(inferTagEmoji(current) ?? DEFAULT_TAG_EMOJI);
+      }
     }, 400);
     return () => clearTimeout(timer);
   }, [name, visible]);
@@ -90,10 +110,10 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
       onUpgradeNeeded?.();
       return;
     }
-    if (name.trim() && emoji) {
+    if (name.trim()) {
       const newTag = createTag({
         name: name.trim(),
-        icon: emoji,
+        icon: emoji || DEFAULT_TAG_EMOJI,
         color,
         activityType,
       });
@@ -103,7 +123,7 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
     }
   };
 
-  const canSubmit = !!name.trim() && !!emoji;
+  const canSubmit = !!name.trim();
 
   return (
     <BottomSheet
@@ -133,6 +153,7 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
               title={t('home.chooseEmojiNewTag')}
               onClose={() => setShowEmojiPicker(false)}
               onEmojiSelect={(picked) => {
+                emojiTouched.current = true;
                 setEmoji(picked);
                 setShowEmojiPicker(false);
               }}
@@ -163,24 +184,23 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
             setShowEmojiPicker(true);
           }}
           className="h-12 w-12 items-center justify-center rounded-xl border border-light-border bg-light-border/30 active:opacity-80 dark:border-dark-border dark:bg-dark-card">
-          {emoji ? (
-            <Text className="text-2xl">{emoji}</Text>
-          ) : (
-            <Ionicons name="happy-outline" size={24} color={colors.primary} />
-          )}
+          <Text className="text-2xl">{emoji || DEFAULT_TAG_EMOJI}</Text>
         </Pressable>
         <TextInput
           value={name}
           onChangeText={setName}
           placeholder={t('home.tagNamePlaceholder')}
-          placeholderTextColor={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
+          placeholderTextColor={
+            colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary
+          }
           className="flex-1"
           style={{
             backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
             borderRadius: 12,
             padding: 14,
             fontSize: 16,
-            color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
+            color:
+              colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
             borderWidth: 1,
             borderColor: colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
           }}
@@ -199,7 +219,13 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
           }}
           className="flex-row items-center justify-between rounded-xl border border-light-border bg-light-border/30 px-4 py-3 active:opacity-80 dark:border-dark-border dark:bg-dark-card">
           <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: color }} />
-          <Ionicons name="chevron-forward" size={18} color={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={
+              colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary
+            }
+          />
         </Pressable>
       </View>
 
