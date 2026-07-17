@@ -120,6 +120,12 @@ export default function RootLayout() {
   }, []);
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const [showUnlockSheet, setShowUnlockSheet] = useState(false);
+  // Flips true once restoreSession() has settled, so auth-dependent routing
+  // (the onboarding redirect) never runs against a not-yet-restored session.
+  // Matters on reinstall: the Keychain session survives but hasSeenOnboarding
+  // doesn't, and redirecting before auth restores would trap a signed-in
+  // returning user in onboarding.
+  const [sessionRestored, setSessionRestored] = useState(false);
 
   // Apply the persisted/synced language preference to i18next
   useApplyLanguage();
@@ -251,11 +257,9 @@ export default function RootLayout() {
     // Initialize sync middleware
     const teardownSync = initSyncMiddleware(useAppStore);
 
-    // Gate the auth listener on restoreSession() completing first. On a fresh
-    // install the Keychain still holds a stale (e.g. deleted-account) session
-    // that supabase-js would otherwise replay as INITIAL_SESSION the instant we
-    // register — before restoreSession()'s signOut clears it — driving the
-    // signed-in flow (grove.fetchProfile → getUser) against a dead token.
+    // Gate the auth listener on restoreSession() completing first, so auth
+    // state is populated before INITIAL_SESSION replays and before any
+    // auth-dependent routing runs.
     // Both are additionally gated on main-store hydration settling: the
     // INITIAL_SESSION/SIGNED_IN handlers read local state and apply sync results
     // to the store, and anything read from or written to a not-yet-hydrated store
@@ -266,6 +270,7 @@ export default function RootLayout() {
     storeHydrationSettled
       .then(() => useAppStore.getState().auth.restoreSession())
       .then(() => {
+        setSessionRestored(true);
         if (authListenerCancelled) return;
         const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
           if (event === 'SIGNED_OUT') {
@@ -295,10 +300,9 @@ export default function RootLayout() {
             // 2. Clear all widget data from UserDefaults
             WidgetService.clearAllWidgetData();
 
-            // 3. Clear AsyncStorage (except installed flag)
+            // 3. Clear AsyncStorage
             try {
               await AsyncStorage.clear();
-              await AsyncStorage.setItem('bittersweet-installed', 'true');
             } catch (e) {
               console.error('Error clearing AsyncStorage on sign-out:', e);
             }
@@ -354,10 +358,9 @@ export default function RootLayout() {
               // 2. Clear all widget data
               WidgetService.clearAllWidgetData();
 
-              // 3. Clear AsyncStorage (except installed flag)
+              // 3. Clear AsyncStorage
               try {
                 await AsyncStorage.clear();
-                await AsyncStorage.setItem('bittersweet-installed', 'true');
               } catch (e) {
                 console.error('Error clearing AsyncStorage on user switch:', e);
               }
@@ -485,10 +488,9 @@ export default function RootLayout() {
                   // 2. Clear all widget data
                   WidgetService.clearAllWidgetData();
 
-                  // 3. Clear AsyncStorage (except installed flag)
+                  // 3. Clear AsyncStorage
                   try {
                     await AsyncStorage.clear();
-                    await AsyncStorage.setItem('bittersweet-installed', 'true');
                   } catch (e) {
                     console.error('Error clearing AsyncStorage on sign-in:', e);
                   }
@@ -948,7 +950,10 @@ export default function RootLayout() {
   useQuickActionHandler(isReady);
 
   useEffect(() => {
-    if (isReady) {
+    // Wait for restoreSession() to settle (sessionRestored) so a reinstall with a
+    // surviving Keychain session isn't misread as "not authenticated" — the
+    // redirect below would trap that signed-in user in onboarding.
+    if (isReady && sessionRestored) {
       const { useUnifiedStore } = require('../src/store/unified-store');
       const hasSeenOnboarding = useUnifiedStore.getState().preferences?.hasSeenOnboarding;
       // An authenticated user has already passed through onboarding (it's the only
@@ -964,7 +969,7 @@ export default function RootLayout() {
         }, 50);
       }
     }
-  }, [isReady, pathname]);
+  }, [isReady, sessionRestored, pathname]);
 
   return (
     <ErrorBoundary>
