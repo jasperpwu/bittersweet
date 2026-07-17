@@ -39,19 +39,55 @@ export const TAG_COLOR_FAMILIES: TagColorFamily[] = [
   },
   {
     name: 'Pastel',
-    colors: ['#A8D8EA', '#AA96DA', '#FCBAD3', '#FFDAC1', '#C5E1A5', '#B5EAD7', '#FFF1A6', '#D6A2E8'],
+    colors: [
+      '#A8D8EA',
+      '#AA96DA',
+      '#FCBAD3',
+      '#FFDAC1',
+      '#C5E1A5',
+      '#B5EAD7',
+      '#FFF1A6',
+      '#D6A2E8',
+    ],
   },
   {
     name: 'Earth',
-    colors: ['#A0522D', '#C17767', '#8D6E63', '#B07D4F', '#6B8E23', '#7D8471', '#C19A6B', '#5C4033'],
+    colors: [
+      '#A0522D',
+      '#C17767',
+      '#8D6E63',
+      '#B07D4F',
+      '#6B8E23',
+      '#7D8471',
+      '#C19A6B',
+      '#5C4033',
+    ],
   },
   {
     name: 'Neutral',
-    colors: ['#2C3E50', '#5D6D7E', '#85929E', '#9E9E9E', '#BDBDBD', '#6B7280', '#34495E', '#4A4A4A'],
+    colors: [
+      '#2C3E50',
+      '#5D6D7E',
+      '#85929E',
+      '#9E9E9E',
+      '#BDBDBD',
+      '#6B7280',
+      '#34495E',
+      '#4A4A4A',
+    ],
   },
   {
     name: 'Neon',
-    colors: ['#FF0080', '#00E5FF', '#B0FF00', '#FFE600', '#FF3D00', '#D500F9', '#00FFB3', '#FF6D00'],
+    colors: [
+      '#FF0080',
+      '#00E5FF',
+      '#B0FF00',
+      '#FFE600',
+      '#FF3D00',
+      '#D500F9',
+      '#00FFB3',
+      '#FF6D00',
+    ],
   },
 ];
 
@@ -60,6 +96,17 @@ export const TAG_COLORS: string[] = TAG_COLOR_FAMILIES.flatMap((family) => famil
 
 /** Default color applied to a new tag when the user hasn't picked one. */
 export const DEFAULT_TAG_COLOR: string = CLASSIC_TAG_COLORS.blue;
+
+/**
+ * Suggested color for a new tag: the first palette color (family order, so
+ * Classic first) not already used by an existing tag. Keeps tags created
+ * without ever opening the color picker visually distinct from each other.
+ * Falls back to the default blue when every palette color is taken.
+ */
+export function nextUnusedTagColor(usedColors: string[]): string {
+  const used = new Set(usedColors.map((c) => c.toUpperCase()));
+  return TAG_COLORS.find((c) => !used.has(c.toUpperCase())) ?? DEFAULT_TAG_COLOR;
+}
 
 /**
  * Returns true when `hex` is light enough that a white selection ring/checkmark

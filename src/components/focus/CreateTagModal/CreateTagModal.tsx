@@ -14,6 +14,7 @@ import { Typography } from '../../ui/Typography';
 import { Button } from '../../ui/Button';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { colors } from '../../../config/theme';
+import { DEFAULT_TAG_COLOR, nextUnusedTagColor } from '../../../config/tagColors';
 import { EmojiPickerOverlay } from '../../ui/EmojiPicker/EmojiPicker';
 import { ColorPickerOverlay } from '../TagColorPicker/TagColorPicker';
 import { ActivityTypePicker } from '../ActivityTypePicker/ActivityTypePicker';
@@ -56,7 +57,7 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
 
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState(DEFAULT_TAG_EMOJI);
-  const [color, setColor] = useState('#6592E9');
+  const [color, setColor] = useState(DEFAULT_TAG_COLOR);
   const [activityType, setActivityType] = useState<ActivityType | undefined>(undefined);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -69,17 +70,25 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
   const reset = () => {
     setName('');
     setEmoji(DEFAULT_TAG_EMOJI);
-    setColor('#6592E9');
+    setColor(DEFAULT_TAG_COLOR);
     setActivityType(undefined);
     setShowEmojiPicker(false);
     setShowColorPicker(false);
   };
 
-  // Reset the "touched" flags each time the modal opens.
+  // On each open: reset the "touched" flags and suggest the first palette
+  // color no existing tag uses, so back-to-back created tags stay distinct.
+  // Read imperatively — no need to re-render on unrelated tag changes.
   useEffect(() => {
     if (visible) {
       activityTouched.current = false;
       emojiTouched.current = false;
+      const { byId, allIds } = useAppStore.getState().focus.tags;
+      const usedColors = allIds
+        .map((id) => byId[id])
+        .filter((tag) => tag && !tag.deletedAt)
+        .map((tag) => tag.color);
+      setColor(nextUnusedTagColor(usedColors));
     }
   }, [visible]);
 
