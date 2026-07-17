@@ -314,25 +314,13 @@ function DraggableTagRow({
           }}>
           <Pressable onPress={handleRowPress}>
             <View
-              className={`flex-row items-center rounded-2xl p-4 ${isSelected ? 'border border-primary bg-primary/20' : 'dark:bg-dark-card'}`}
-              style={[
-                {
-                  borderLeftWidth: 4,
-                  borderLeftColor: tag.color || colors.primary,
-                  // Opaque background so swipe-to-reveal buttons don't bleed through
-                  ...(!isSelected
-                    ? { backgroundColor: colorScheme === 'dark' ? colors.dark.card : colors.light.input }
-                    : {}),
-                },
-                isSelected && {
-                  shadowColor: tag.color || colors.primary,
-                  shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: 0.18,
-                  shadowRadius: 6,
-                  elevation: 4,
-                  transform: [{ scale: 1.02 }],
-                },
-              ]}>
+              className="flex-row items-center rounded-2xl p-4 dark:bg-dark-card"
+              style={{
+                borderLeftWidth: 4,
+                borderLeftColor: tag.color || colors.primary,
+                // Opaque background so swipe-to-reveal buttons don't bleed through
+                backgroundColor: colorScheme === 'dark' ? colors.dark.card : colors.light.input,
+              }}>
               <View className="mr-3 h-10 w-10 items-center justify-center rounded-lg border border-gray-500 bg-gray-600">
                 <Text className="text-xl">{tag.icon || '\uD83C\uDFF7\uFE0F'}</Text>
               </View>
@@ -390,6 +378,13 @@ function DraggableTagRow({
                   <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
                     {t('home.todoCountPill', { count: todoCount })}
                   </Text>
+                </View>
+              )}
+              {isSelected && (
+                <View
+                  className="ml-3 h-6 w-6 items-center justify-center rounded-full"
+                  style={{ backgroundColor: tag.color || colors.primary }}>
+                  <Ionicons name="checkmark" size={15} color={colors.white} />
                 </View>
               )}
             </View>
