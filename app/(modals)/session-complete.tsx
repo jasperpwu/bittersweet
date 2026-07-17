@@ -51,6 +51,8 @@ import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { showToast } from '../../src/components/ui/Toast';
 import { saveSessionPhoto, uploadSessionPhoto } from '../../src/services/sessionPhotoService';
 import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
+import { SignInSheet } from '../../src/components/auth/SignInSheet';
+import { setHeldSessionId, clearHeldSessionId } from '../../src/services/sync/heldSession';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
 import { useTranslation } from 'react-i18next';
@@ -70,6 +72,7 @@ export default function SessionCompleteModal() {
   const [showCreateTag, setShowCreateTag] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isSavingPhoto, setIsUploadingPhoto] = useState(false);
+  const [showSignInSheet, setShowSignInSheet] = useState(false);
 
   // Coach mark
   const fruitRef = useRef<View>(null);
@@ -360,6 +363,31 @@ export default function SessionCompleteModal() {
           'success'
         );
       }
+    }
+
+    // First-ever session and not signed in — offer sign-in before leaving so
+    // the session (and its fruits) can be backed up. Dismissing goes back.
+    const { auth, focus, grove: groveSlice } = useAppStore.getState();
+    if (!auth.isAuthenticated && focus.sessions.allIds.length === 1) {
+      // If the sheet signs into an EXISTING account, the auth handler wipes local
+      // data — mark this session so it gets pushed to the cloud first and survives.
+      setHeldSessionId(session.id);
+      setShowSignInSheet(true);
+      return;
+    }
+
+    // Signed in but no Grove profile — one-time nudge to set it up. Gate on
+    // profileLoaded so a null profile that merely hasn't been fetched yet
+    // (e.g. right after sign-in) doesn't trigger a false prompt.
+    if (
+      auth.isAuthenticated &&
+      groveSlice.profileLoaded &&
+      !groveSlice.profile &&
+      !preferences.hasSeenGroveSetupPrompt
+    ) {
+      updatePreferences({ hasSeenGroveSetupPrompt: true });
+      router.replace({ pathname: '/(modals)/grove-setup', params: { promo: 'post-session' } });
+      return;
     }
 
     router.back();
@@ -672,6 +700,24 @@ export default function SessionCompleteModal() {
           </Typography>
         </Pressable>
       </BottomSheet>
+
+      {/* Post-first-session sign-in offer — closes back to home either way */}
+      <SignInSheet
+        visible={showSignInSheet}
+        onClose={() => {
+          // Dismissed without signing in — drop the preservation marker so it
+          // can't leak into an unrelated later sign-in. (On success this runs
+          // after auth is set, so the marker stays for the auth handler.)
+          if (!useAppStore.getState().auth.isAuthenticated) {
+            clearHeldSessionId();
+          }
+          setShowSignInSheet(false);
+          router.back();
+        }}
+        onSignedIn={() =>
+          showToast(t('common.signedInSuccessfully'), 'success', undefined, undefined, 'bottom')
+        }
+      />
 
       {/* Create-new-tag modal for the secondary tag selector */}
       <CreateTagModal

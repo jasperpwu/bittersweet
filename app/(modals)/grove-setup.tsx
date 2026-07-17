@@ -10,7 +10,7 @@ import {
   Alert,
   useColorScheme,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { Button } from '../../src/components/ui/Button';
@@ -39,6 +39,8 @@ export default function GroveSetupModal() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // Set when opened as the one-time post-session nudge — adds a motivating intro line.
+  const { promo } = useLocalSearchParams<{ promo?: string }>();
 
   const userId = useAppStore((s) => s.auth.user?.id);
   const tags = useAppStore((s) => s.focus.tags);
@@ -160,6 +162,11 @@ export default function GroveSetupModal() {
       case 0:
         return (
           <View>
+            {promo === 'post-session' && (
+              <Typography variant="subtitle-14-medium" className="mb-3 text-primary">
+                {t('groveSetup.postSessionPrompt')}
+              </Typography>
+            )}
             <Typography variant="headline-20" color="primary" className="mb-2">
               {t('groveSetup.step0Title')}
             </Typography>

@@ -37,6 +37,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore, clearAllStoreData } from '../src/store';
 import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
+import { takeHeldSessionId } from '../src/services/sync/heldSession';
 import { storeHydrationSettled } from '../src/store/middleware/persistence';
 
 import { calculateGoalProgress, getTargetForDate } from '../src/utils/goalProgress';
@@ -430,6 +431,12 @@ export default function RootLayout() {
                 // the PRESERVE branch, which is safe: initialUpload is upsert-only,
                 // so a misclassified existing user neither loses local data nor
                 // wipes cloud data, and the next cold-start reconciles.
+                //
+                // Consume the post-session hold marker up front — it is single-use
+                // and must not leak into a later auth event. In the brand-new
+                // branch it is simply discarded (initialUpload preserves all local
+                // data anyway); only the existing-account branch acts on it.
+                const heldSessionId = takeHeldSessionId();
                 const remoteData = await useAppStore.getState().sync.pullFromCloud();
                 const cloudHasData =
                   !!remoteData &&
@@ -440,6 +447,18 @@ export default function RootLayout() {
                   console.log(
                     '🔄 SIGNED_IN (existing account) — clearing local data, pulling cloud clean'
                   );
+
+                  // Post-first-session sign-in: push the held session (and its tag)
+                  // to the cloud BEFORE the wipe below destroys the only copy — the
+                  // pullAndApply afterwards brings it back down as cloud data. After
+                  // a user-switch wipe the session is already gone from the store,
+                  // so this no-ops (no cross-account leak).
+                  let heldFruits = 0;
+                  if (heldSessionId) {
+                    heldFruits = await useAppStore
+                      .getState()
+                      .sync.pushHeldSessionToCloud(heldSessionId, remoteData);
+                  }
 
                   // Drop the sync baseline + queue BEFORE wiping, like the sign-out and
                   // user-switch paths do. Without this, clearAllStoreData below fires the
@@ -503,6 +522,16 @@ export default function RootLayout() {
 
                   // 7. Pull from cloud and apply directly (no merge)
                   await useAppStore.getState().sync.pullAndApply();
+
+                  // Re-credit the preserved session's fruits on top of the pulled
+                  // cloud balance (the pull reset the balance to the cloud value,
+                  // which predates this session). The rewards object-sync then
+                  // pushes the new balance back up.
+                  if (heldFruits > 0) {
+                    useAppStore.getState().rewards.earnFruits(heldFruits, 'preserved_session', {
+                      sessionId: heldSessionId,
+                    });
+                  }
                 } else {
                   // Brand-new account: keep local data and push it to the cloud.
                   console.log(

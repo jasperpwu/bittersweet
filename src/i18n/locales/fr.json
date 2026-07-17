@@ -837,6 +837,7 @@
     "back": "Retour",
     "step0Title": "Comment t’appelle-t-on ?",
     "step0Sub": "Choisis un nom affiché et un identifiant unique pour ton profil Grove.",
+    "postSessionPrompt": "Crée ton profil pour grandir avec tes amis !",
     "displayName": "Nom affiché",
     "yourName": "Ton nom",
     "handle": "Identifiant",

@@ -837,6 +837,7 @@
     "back": "Atrás",
     "step0Title": "¿Cómo te llamamos?",
     "step0Sub": "Elige un nombre visible y un nombre de usuario único para tu perfil de Grove.",
+    "postSessionPrompt": "¡Crea tu perfil y crece junto a tus amigos!",
     "displayName": "Nombre visible",
     "yourName": "Tu nombre",
     "handle": "Nombre de usuario",

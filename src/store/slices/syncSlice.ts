@@ -49,6 +49,16 @@ export interface SyncSlice {
   initialUpload: () => Promise<void>;
   pullFromCloud: () => Promise<any>;
   /**
+   * Push one locally-held session (and its tag(s)) directly to the cloud BEFORE
+   * the existing-account sign-in wipe. Used by the post-first-session sign-in
+   * flow: the session was completed while signed out, so this device holds the
+   * only copy and the wipe+pullAndApply that follows would destroy it. Tags are
+   * remapped by name onto the account's existing tags to avoid duplicates;
+   * unmatched tags are uploaded. Returns the session's fruit award so the caller
+   * can re-credit it after the cloud pull (0 when nothing was pushed).
+   */
+  pushHeldSessionToCloud: (sessionId: string, remoteData: any) => Promise<number>;
+  /**
    * Cloud-truth check for whether the signed-in account has completed onboarding.
    * Returns true/false from the cloud, or null on error. Used by the onboarding
    * sign-in button to decide whether to enter the app or keep a brand-new account
@@ -472,6 +482,60 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
     } catch (error: any) {
       console.error('Pull from cloud error:', error);
       return null;
+    }
+  },
+
+  pushHeldSessionToCloud: async (sessionId: string, remoteData: any) => {
+    const state = get();
+    const userId = state.auth.user?.id;
+    if (!userId) return 0;
+    const session = state.focus.sessions.byId[sessionId];
+    if (!session) return 0;
+
+    try {
+      // Map a local tag onto the cloud account: reuse a same-named cloud tag if
+      // one exists, otherwise upload the local tag (the session row's FK needs it).
+      const remoteTags = remoteData?.focus?.tags ?? { byId: {}, allIds: [] };
+      const resolveTag = async (tagId?: string): Promise<string | undefined> => {
+        if (!tagId) return undefined;
+        const localTag = state.focus.tags.byId[tagId];
+        if (!localTag) return undefined;
+        const name = localTag.name.trim().toLowerCase();
+        const match = remoteTags.allIds
+          .map((id: string) => remoteTags.byId[id])
+          .find((t: any) => t && !t.deletedAt && t.name?.trim().toLowerCase() === name);
+        if (match) return match.id;
+        const { error } = await supabase.from('session_tags').upsert(tagToRow(localTag, userId));
+        if (error) throw error;
+        return localTag.id;
+      };
+
+      const tagId = await resolveTag(session.tagId);
+      if (!tagId) return 0; // dangling tag reference — cannot satisfy the FK
+      const secondaryTagId = await resolveTag(session.secondaryTagId);
+
+      // The wipe deletes local photo files — move the photo to storage first.
+      // Best effort: a failed upload preserves the session without its photo.
+      let photoUrl = session.photoUrl;
+      if (photoUrl && !photoUrl.startsWith('http')) {
+        try {
+          const { uploadSessionPhoto } = require('../../services/sessionPhotoService');
+          photoUrl = await uploadSessionPhoto(photoUrl, session.id);
+        } catch {
+          console.warn('[Sync] Held session photo upload failed — pushing session without photo');
+          photoUrl = undefined;
+        }
+      }
+
+      const row = sessionToRow({ ...session, tagId, secondaryTagId, photoUrl }, userId);
+      const { error } = await supabase.from('focus_sessions').upsert(row);
+      if (error) throw error;
+
+      console.log('☁️ Held session pushed to cloud before wipe:', sessionId);
+      return session.awardedFruits ?? session.fruitsEarned ?? 0;
+    } catch (error) {
+      console.error('[Sync] pushHeldSessionToCloud failed — session will not survive the wipe:', error);
+      return 0;
     }
   },
 

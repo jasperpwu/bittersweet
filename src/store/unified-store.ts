@@ -48,6 +48,8 @@ interface AppPreferences {
   rawAccelRatingEnabled: boolean;
   // Whether the one-time motion-permission priming pop-up has been shown on the summary.
   hasSeenMotionPrimer: boolean;
+  // Whether the one-time post-session Grove profile setup prompt has been shown.
+  hasSeenGroveSetupPrompt: boolean;
   // Applied fruit-store slider theme (see config/sliderThemes.ts); null = classic look.
   // Cloud-synced via user_settings.slider_theme_id (ownership syncs separately via
   // purchase history). Wiped by clearUnifiedStoreData.
@@ -168,6 +170,7 @@ const createDefaultPreferences = (): AppPreferences => ({
   },
   rawAccelRatingEnabled: false,
   hasSeenMotionPrimer: false,
+  hasSeenGroveSetupPrompt: false,
   sliderThemeId: null,
 });
 

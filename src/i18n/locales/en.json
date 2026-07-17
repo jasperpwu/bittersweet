@@ -837,6 +837,7 @@
     "back": "Back",
     "step0Title": "What should we call you?",
     "step0Sub": "Choose a display name and a unique handle for your Grove profile.",
+    "postSessionPrompt": "Set up your profile to grow with your friends!",
     "displayName": "Display Name",
     "yourName": "Your name",
     "handle": "Handle",
