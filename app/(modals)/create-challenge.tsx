@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 type Period = 'daily' | 'weekly';
 type CreationMode = 'streak' | 'until';
 
+const ACCENT = '#E9A065';
+
 const SLIDER_CONFIG: Record<Period, { min: number; max: number; step: number }> = {
   daily: { min: 0.5, max: 12, step: 0.5 },
   weekly: { min: 1, max: 84, step: 1 },
@@ -253,19 +255,6 @@ export default function CreateChallengeModal() {
                     </Pressable>
                   );
                 })}
-                {/* Next button */}
-                <Button
-                  variant="ghost"
-                  size="large"
-                  fullWidth
-                  disabled={selectedFriendIds.length === 0}
-                  className="bg-[#E9A065] rounded-2xl py-4 mt-4"
-                  onPress={handleFriendsNext}
-                >
-                  <Typography variant="subtitle-16" style={{ color: colors.white }}>
-                    {t('common.next')}
-                  </Typography>
-                </Button>
               </>
             )}
           </View>
@@ -333,7 +322,7 @@ export default function CreateChallengeModal() {
                   key={p}
                   onPress={() => handlePeriodChange(p)}
                   className={`flex-1 py-2.5 rounded-xl ${
-                    period === p ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
+                    period === p ? 'bg-[#E9A065]' : 'bg-light-border dark:bg-dark-border'
                   }`}
                 >
                   <Typography
@@ -444,14 +433,35 @@ export default function CreateChallengeModal() {
                 })}
               </Typography>
             </View>
+          </View>
+        )}
+      </ScrollView>
 
-            {/* Submit */}
+      {/* Pinned bottom CTA */}
+      {(step === 'friend' && friends.length > 0) || step === 'config' ? (
+        <View className="px-5 pt-2 pb-1">
+          {step === 'friend' ? (
+            <Button
+              variant="ghost"
+              size="large"
+              fullWidth
+              disabled={selectedFriendIds.length === 0}
+              className="rounded-2xl py-4"
+              style={{ backgroundColor: ACCENT }}
+              onPress={handleFriendsNext}
+            >
+              <Typography variant="subtitle-16" style={{ color: colors.white }}>
+                {t('common.next')}
+              </Typography>
+            </Button>
+          ) : (
             <Button
               variant="ghost"
               size="large"
               fullWidth
               disabled={isSubmitting}
-              className="bg-[#E9A065] rounded-2xl py-4"
+              className="rounded-2xl py-4"
+              style={{ backgroundColor: ACCENT }}
               onPress={handleSubmit}
             >
               {isSubmitting ? (
@@ -462,9 +472,9 @@ export default function CreateChallengeModal() {
                 </Typography>
               )}
             </Button>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
