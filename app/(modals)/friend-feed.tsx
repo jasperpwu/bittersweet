@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
-import { View, SafeAreaView, Pressable, ScrollView, Image, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, SafeAreaView, Pressable, ScrollView, ActivityIndicator, useColorScheme } from 'react-native';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -432,7 +433,7 @@ export default function FriendFeedModal() {
                       <Image
                         source={{ uri: item.session.photo_url }}
                         style={{ width: '100%', height: 200, borderRadius: 10 }}
-                        resizeMode="cover"
+                        contentFit="cover"
                       />
                     </View>
                   ) : null}

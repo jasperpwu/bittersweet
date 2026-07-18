@@ -4,7 +4,6 @@ import {
   Pressable,
   Text,
   TextInput,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal as RNModal,
@@ -12,6 +11,7 @@ import {
   ScrollView,
   useColorScheme,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';

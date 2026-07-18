@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Image, Alert, ActivityIndicator, Pressable, useWindowDimensions } from 'react-native';
+import { View, Alert, ActivityIndicator, Pressable, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';

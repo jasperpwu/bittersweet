@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Image } from 'react-native';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
 import { Typography } from '../ui/Typography';
 import { DefaultAvatar } from './DefaultAvatar';
 import { FocusingBadge } from './FocusingBadge';
@@ -105,7 +106,7 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
             <Image
               source={{ uri: session.photo_url }}
               style={{ width: '100%', flex: 1, borderRadius: 10 }}
-              resizeMode="cover"
+              contentFit="cover"
             />
             {session.notes && (
               <Typography variant="body-12" color="secondary" className="mt-2" numberOfLines={1}>

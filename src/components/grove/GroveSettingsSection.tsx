@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Pressable, Image, Alert, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, Pressable, Alert, ActivityIndicator, useColorScheme } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../ui/Typography';

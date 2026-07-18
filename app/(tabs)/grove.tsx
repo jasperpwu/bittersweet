@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, SafeAreaView, Image, ScrollView, Pressable, useColorScheme, RefreshControl, Alert } from 'react-native';
+import { View, SafeAreaView, ScrollView, Pressable, useColorScheme, RefreshControl, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';

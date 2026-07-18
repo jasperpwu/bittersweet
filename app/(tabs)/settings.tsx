@@ -5,10 +5,10 @@ import {
   SafeAreaView,
   Pressable,
   useColorScheme,
-  Image,
   ActivityIndicator,
   Linking,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';

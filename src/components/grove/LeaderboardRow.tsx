@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Image, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { Typography } from '../ui/Typography';
 import { DefaultAvatar } from './DefaultAvatar';
 import { FocusingBadge } from './FocusingBadge';

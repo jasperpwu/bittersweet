@@ -7,7 +7,6 @@ import {
   useColorScheme,
   Text,
   TextInput,
-  Image,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
@@ -19,6 +18,7 @@ import {
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -1087,7 +1087,7 @@ export default function FruitStoreScreen() {
                         <Image
                           source={{ uri: gift.photoUrl }}
                           style={{ width: 44, height: 44, borderRadius: 8 }}
-                          resizeMode="cover"
+                          contentFit="cover"
                         />
                       ) : (
                         <Ionicons name="camera-outline" size={20} color={colors.primary} />
@@ -1148,7 +1148,7 @@ export default function FruitStoreScreen() {
                         <Image
                           source={{ uri: purchase.photoUrl }}
                           style={{ width: 44, height: 44, borderRadius: 8 }}
-                          resizeMode="cover"
+                          contentFit="cover"
                         />
                       ) : (
                         <Ionicons name="camera-outline" size={20} color={colors.primary} />
@@ -1159,7 +1159,7 @@ export default function FruitStoreScreen() {
                         <Image
                           source={{ uri: gift.photoUrl }}
                           style={{ width: 44, height: 44, borderRadius: 8 }}
-                          resizeMode="cover"
+                          contentFit="cover"
                         />
                       ) : (
                         <Ionicons name="camera-outline" size={20} color={colors.primary} />
@@ -1253,7 +1253,7 @@ export default function FruitStoreScreen() {
               <Image
                 source={{ uri: photoPurchase.photoUrl }}
                 style={{ width: '100%', height: 200, borderRadius: 12, marginBottom: 16 }}
-                resizeMode="cover"
+                contentFit="cover"
               />
             ) : (
               <Typography variant="body-14" color="secondary" className="mb-4 text-center">
@@ -1319,7 +1319,7 @@ export default function FruitStoreScreen() {
               <Image
                 source={{ uri: photoGift.photoUrl }}
                 style={{ width: '100%', height: 200, borderRadius: 12, marginBottom: 16 }}
-                resizeMode="cover"
+                contentFit="cover"
               />
             ) : (
               <Typography variant="body-14" color="secondary" className="mb-4 text-center">

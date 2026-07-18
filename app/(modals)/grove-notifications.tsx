@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, SafeAreaView, Pressable, Image, ScrollView, RefreshControl, Alert, useColorScheme } from 'react-native';
+import { View, SafeAreaView, Pressable, ScrollView, RefreshControl, Alert, useColorScheme } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';

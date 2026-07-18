@@ -4,12 +4,12 @@ import {
   SafeAreaView,
   Pressable,
   FlatList,
-  Image,
   Alert,
   TextInput,
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';

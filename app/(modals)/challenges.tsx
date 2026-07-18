@@ -200,7 +200,8 @@ export default function ChallengesModal() {
           </Typography>
           <Button
             variant="ghost"
-            className="mt-4 bg-[#E9A065] rounded-xl px-5 py-2.5"
+            className="mt-4 rounded-xl px-5"
+            style={{ backgroundColor: '#E9A065' }}
             onPress={() => router.push('/(modals)/create-challenge')}
           >
             <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>

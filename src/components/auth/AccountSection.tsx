@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Pressable, Alert, ActivityIndicator, Linking, Image, useColorScheme, TextInput } from 'react-native';
+import { View, Pressable, Alert, ActivityIndicator, Linking, useColorScheme, TextInput } from 'react-native';
+import { Image } from 'expo-image';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';

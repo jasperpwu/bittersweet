@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable } from 'react-native';
+import { View } from 'react-native';
 import { Button } from '../ui/Button';
 import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +25,8 @@ export const EmptyChallengesState: React.FC<EmptyChallengesStateProps> = ({ onCr
       </Typography>
       <Button
         variant="ghost"
-        className="bg-[#E9A065] rounded-xl px-5 py-2.5"
+        className="rounded-xl px-5"
+        style={{ backgroundColor: '#E9A065' }}
         onPress={onCreateChallenge}
       >
         <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>

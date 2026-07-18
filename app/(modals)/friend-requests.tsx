@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, SafeAreaView, Pressable, FlatList, Image, Alert } from 'react-native';
+import { View, SafeAreaView, Pressable, FlatList, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
