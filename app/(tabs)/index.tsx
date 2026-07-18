@@ -26,6 +26,7 @@ import Reanimated, {
   withSpring,
   runOnJS,
   LinearTransition,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { Typography, Button } from '../../src/components/ui';
 import { BottomSheet } from '../../src/components/ui/BottomSheet';
@@ -37,6 +38,10 @@ import {
   EditTagSheet,
 } from '../../src/components/focus';
 import { TodoEditModal } from '../../src/components/journal/TodoSheet/TodoEditModal';
+import {
+  SwipeStartAction,
+  START_ACTION_THRESHOLD,
+} from '../../src/components/analytics/GoalProgress/GoalProgress';
 import { useThrottledPress } from '../../src/hooks/common';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
@@ -102,6 +107,7 @@ type DraggableTagRowProps = {
   onDelete: (tag: any, event: any) => void;
   onUnlink?: (tag: any) => void;
   onShare?: (tag: any) => void;
+  onStartSession?: (tag: any) => void;
   onSwipeOpen?: (ref: any) => void;
   onDragStart: (index: number) => void;
   onDragMove: (translationY: number) => void;
@@ -123,6 +129,7 @@ function DraggableTagRow({
   onDelete,
   onUnlink,
   onShare,
+  onStartSession,
   onSwipeOpen,
   onDragStart,
   onDragMove,
@@ -139,6 +146,7 @@ function DraggableTagRow({
 
   const swipeableRef = useRef<any>(null);
   const didSwipe = useRef(false);
+  const firedRef = useRef(false);
 
   // Reset shared values when drag ends and array has reordered
   React.useEffect(() => {
@@ -223,14 +231,17 @@ function DraggableTagRow({
     onSelect(tag.id);
   };
 
-  const renderRightActions = () => (
-    <View className="ml-2 flex-row items-center">
+  // Swipe left→right reveals the management actions (moved here from the right
+  // so the right edge is free for the start-session gesture — same layout as the
+  // goal rows in the insights tab).
+  const renderLeftActions = () => (
+    <View className="mr-2 flex-row items-center">
       <Pressable
         onPress={() => {
           swipeableRef.current?.close();
           onEdit(tag, null);
         }}
-        className="mr-2 h-full w-16 items-center justify-center rounded-lg"
+        className="ml-2 h-full w-16 items-center justify-center rounded-lg"
         style={{ backgroundColor: 'rgba(200, 200, 200, 0.3)' }}>
         <Ionicons
           name="pencil-outline"
@@ -247,7 +258,7 @@ function DraggableTagRow({
             swipeableRef.current?.close();
             onShare(tag);
           }}
-          className="mr-2 h-full w-16 items-center justify-center rounded-lg"
+          className="ml-2 h-full w-16 items-center justify-center rounded-lg"
           style={{ backgroundColor: colors.link + '33' }}>
           <Ionicons name="share-outline" size={16} color={colors.link} />
           <Typography variant="tiny-10" style={{ color: colors.link }} className="mt-0.5">
@@ -263,7 +274,7 @@ function DraggableTagRow({
             swipeableRef.current?.close();
             onUnlink?.(tag);
           }}
-          className="h-full w-16 items-center justify-center rounded-lg bg-danger">
+          className="ml-2 h-full w-16 items-center justify-center rounded-lg bg-danger">
           <Ionicons name="unlink-outline" size={16} color={colors.white} />
           <Typography variant="tiny-10" color="white" className="mt-0.5">
             {t('home.unlink')}
@@ -275,7 +286,7 @@ function DraggableTagRow({
             swipeableRef.current?.close();
             onDelete(tag, null);
           }}
-          className="h-full w-16 items-center justify-center rounded-lg bg-danger">
+          className="ml-2 h-full w-16 items-center justify-center rounded-lg bg-danger">
           <Ionicons name="trash-outline" size={16} color={colors.white} />
           <Typography variant="tiny-10" color="white" className="mt-0.5">
             {t('common.delete')}
@@ -284,6 +295,29 @@ function DraggableTagRow({
       )}
     </View>
   );
+
+  // Swipe right→left reveals the Start panel; dragging past the threshold
+  // commits (iOS-Mail-style full swipe) and starts a focus session for this tag
+  // with its last-used duration — same gesture as the goal rows.
+  const renderRightActions = (progress: SharedValue<number>) => (
+    <SwipeStartAction progress={progress} />
+  );
+
+  // Full-swipe commit. ReanimatedSwipeable reports `direction` by the row's
+  // translation sign: a left→right pull (management buttons) reports 'right'; a
+  // right→left pull (Start panel) reports 'left'. Only the Start side commits on
+  // full swipe — the buttons just stay revealed for tapping.
+  const handleWillOpen = (direction: 'left' | 'right') => {
+    didSwipe.current = true;
+    onSwipeOpen?.(swipeableRef.current);
+    if (direction !== 'left') return;
+    if (firedRef.current) return;
+    firedRef.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Leave the row OPEN — the revealed Start panel is the "it worked"
+    // confirmation. The parent closes it off-screen once the picker is hidden.
+    onStartSession?.(tag);
+  };
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -301,13 +335,13 @@ function DraggableTagRow({
         ]}>
         <Swipeable
           ref={swipeableRef}
-          renderRightActions={isReadOnly ? undefined : renderRightActions}
-          overshootRight={false}
-          onSwipeableWillOpen={() => {
-            didSwipe.current = true;
-            onSwipeOpen?.(swipeableRef.current);
-          }}
+          renderLeftActions={isReadOnly ? undefined : renderLeftActions}
+          renderRightActions={renderRightActions}
+          rightThreshold={START_ACTION_THRESHOLD}
+          overshootFriction={8}
+          onSwipeableWillOpen={handleWillOpen}
           onSwipeableClose={() => {
+            firedRef.current = false;
             setTimeout(() => {
               didSwipe.current = false;
             }, 100);
@@ -825,6 +859,17 @@ export default function FocusScreen() {
     }
     openSwipeableRef.current = ref;
   }, []);
+
+  // A committed Start swipe intentionally leaves its row open (Start panel
+  // showing) while the picker closes — closing it there would read as a
+  // snap-back. The BottomSheet's Modal stays mounted when hidden, so reset the
+  // row here once the picker is off-screen or it would still be open on reopen.
+  useEffect(() => {
+    if (!showTagModal && openSwipeableRef.current) {
+      openSwipeableRef.current.close?.();
+      openSwipeableRef.current = null;
+    }
+  }, [showTagModal]);
 
   // Sync dragOrderIds with store when modal opens
   useEffect(() => {
@@ -2125,6 +2170,24 @@ export default function FocusScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autostartNonce]);
 
+  // Full right→left swipe on a tag row in the picker: prime the tag + its
+  // last-used duration, close the picker, and fire the same autostart path the
+  // Journal TODO / goal-row swipes use.
+  const handleStartSessionFromTag = useCallback(
+    (tag: { id: string }) => {
+      if (isRunning || isSessionActive) return;
+      const duration = lastDurationByTagId[tag.id] ?? 15;
+      pendingStartRef.current = { tagId: tag.id, duration };
+      setSelectedTag(tag.id);
+      setLastSelectedTagId(tag.id);
+      WidgetService.syncSelectedTagId(tag.id);
+      setSelectedTime(duration);
+      setShowTagModal(false);
+      setAutostartNonce((n) => n + 1);
+    },
+    [isRunning, isSessionActive, lastDurationByTagId, setLastSelectedTagId]
+  );
+
   const handleTimeChange = (time: number) => {
     setSelectedTime(time);
     if (selectedTag) {
@@ -2599,6 +2662,7 @@ export default function FocusScreen() {
                 onDelete={handleDeleteTag}
                 onUnlink={handleUnlinkTag}
                 onShare={handleShareTag}
+                onStartSession={handleStartSessionFromTag}
                 onSwipeOpen={handleSwipeOpen}
                 onDragStart={handleDragStart}
                 onDragMove={handleDragMove}

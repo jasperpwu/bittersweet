@@ -77,6 +77,12 @@ const ACCEL_OCCASIONAL_MIN_EVENTS = 2; // ≥ this many bursts ⇒ at least occa
 const ACTIVITY_CONSTANT_MOVING_FRACTION = 0.5; // ≥ this in walking/running ⇒ constant
 const ACTIVITY_STILL_STATIONARY_FRACTION = 0.9; // must be at least this stationary to be "still"
 const ACTIVITY_STILL_STEPS_PER_MIN = 0.5; // and below this step rate (≈ <1 step / 2 min)
+// Handling caps are rates, not absolute counts — 8 bursts in 2 hours is normal
+// desk behavior while 8 in 15 minutes is fidgeting. The absolute floor keeps a
+// short session from being capped by just a couple of bursts.
+const HANDLING_HEAVY_PER_HOUR = 8; // ≥ this many bursts/hour ⇒ cap at 2★
+const HANDLING_LIGHT_PER_HOUR = 3; // ≥ this many bursts/hour ⇒ cap at 3★
+const HANDLING_MIN_EVENTS = 3; // never cap below this many total bursts
 
 const clampRating = (r: number): number => Math.max(1, Math.min(5, Math.round(r)));
 
@@ -195,8 +201,12 @@ function stationaryStars(snapshot: MotionSnapshot): number {
             : r.activeFraction <= 0.5
               ? 2
               : 1;
-    if (r.handlingEvents >= 8) stars = Math.min(stars, 2);
-    else if (r.handlingEvents >= 3) stars = Math.min(stars, 3);
+    const hours = r.durationSec / 3600;
+    const burstsPerHour = hours > 0 ? r.handlingEvents / hours : r.handlingEvents;
+    if (r.handlingEvents >= HANDLING_MIN_EVENTS) {
+      if (burstsPerHour >= HANDLING_HEAVY_PER_HOUR) stars = Math.min(stars, 2);
+      else if (burstsPerHour >= HANDLING_LIGHT_PER_HOUR) stars = Math.min(stars, 3);
+    }
     return clampStars(stars);
   }
   if (snapshot.signal === 'activity' && snapshot.activity) {

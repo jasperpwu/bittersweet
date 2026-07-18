@@ -174,7 +174,7 @@
     "joinTag": "Label beitreten",
     "newTag": "Neues Label",
     "coachTitle": "Labels verwalten",
-    "coachMessage": "Halten zum Sortieren, wischen zum Bearbeiten",
+    "coachMessage": "Halten zum Sortieren, nach rechts wischen zum Bearbeiten, nach links zum Starten",
     "editTag": "Label bearbeiten",
     "todoCountPill_one": "{{count}} Aufgabe",
     "todoCountPill_other": "{{count}} Aufgaben",
@@ -977,7 +977,8 @@
     "fallbackB": "Eine stetige Woche. Ein Ziel schaltet schärfere, persönlichere Erkenntnisse frei."
   },
   "activityKeywords": {
-    "active": "lauf,jogg,geh,spazier,wander,gym,fitnessstudio,training,trainier,übung,ubung,gewicht,cardio,yoga,pilates,dehn,schwimm,rad,fahrrad,radfahr,sport,tanz,klettern,fußball,fussball,basketball,tennis,box,kampfsport,fitness,marathon,liegestütz,crossfit",
+    "active": "lauf,jogg,geh,spazier,wander,rad,fahrrad,radfahr,marathon",
+    "ambiguous": "gym,fitnessstudio,training,trainier,übung,ubung,gewicht,cardio,yoga,pilates,dehn,schwimm,sport,tanz,klettern,fußball,fussball,basketball,tennis,box,kampfsport,fitness,liegestütz,crossfit",
     "on_phone": "scroll,social,instagram,tiktok,twitter,reddit,youtube,video,schau,surf,spiel,gaming,nachricht,chat,facetime,news,feed,stream,netflix,film,podcast,fernseh,serie",
     "stationary": "lesen,les,lern,studi,schreib,code,programmier,arbeit,fokus,meditier,zeichn,design,mal,tagebuch,hausaufgab,prüfung,prufung,examen,recherch,plan,mail,email,schreibtisch,büro,buro,kurs,vorlesung,buch,aufsatz,these,mathe,wiederhol,notiz"
   },

@@ -237,7 +237,7 @@ function DraggableGoalRow({
   // (iOS-Mail-style full swipe) and starts a focus session for the goal's tag,
   // pre-filled with the goal's remaining minutes.
   const renderRightActions = (progress: SharedValue<number>) => (
-    <GoalStartAction progress={progress} />
+    <SwipeStartAction progress={progress} />
   );
 
   // Full-swipe commit. ReanimatedSwipeable reports `direction` by the row's
@@ -327,13 +327,14 @@ function DraggableGoalRow({
 // Drag past this distance (px) and the Start commits on release. Kept low so a
 // short, relaxed swipe triggers it — a faster flick commits even sooner via the
 // swipe velocity that ReanimatedSwipeable factors into the release position.
-const START_ACTION_THRESHOLD = 44;
+export const START_ACTION_THRESHOLD = 44;
 
-// Right-side swipe panel for a goal row — mirrors the TodoSheet's ActionPanel so
-// the reveal stays buttery: the colored panel fills the swiped gap via flexbox
-// (no per-frame width animation), and only the icon fades + scales in with the
-// swipe `progress`. The actual start is committed by the row's full-swipe handler.
-const GoalStartAction: FC<{ progress: SharedValue<number> }> = ({ progress }) => {
+// Right-side swipe panel for a list row (goal rows here, tag rows on the home
+// tab) — mirrors the TodoSheet's ActionPanel so the reveal stays buttery: the
+// colored panel fills the swiped gap via flexbox (no per-frame width animation),
+// and only the icon fades + scales in with the swipe `progress`. The actual
+// start is committed by the row's full-swipe handler.
+export const SwipeStartAction: FC<{ progress: SharedValue<number> }> = ({ progress }) => {
   const { t } = useTranslation();
   const iconStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.5, 1], [0, 0.6, 1], Extrapolation.CLAMP),

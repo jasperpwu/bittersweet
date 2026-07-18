@@ -174,7 +174,7 @@
     "joinTag": "Unirse a etiqueta",
     "newTag": "Nueva etiqueta",
     "coachTitle": "Gestiona tus etiquetas",
-    "coachMessage": "Mantén pulsado para reordenar, desliza para editar",
+    "coachMessage": "Mantén pulsado para reordenar, desliza a la derecha para editar y a la izquierda para iniciar",
     "editTag": "Editar etiqueta",
     "todoCountPill_one": "{{count}} tarea",
     "todoCountPill_other": "{{count}} tareas",
@@ -977,7 +977,8 @@
     "fallbackB": "Una semana constante. Crear una meta desbloquea claves más afiladas y personales."
   },
   "activityKeywords": {
-    "active": "corr,trot,camin,andar,sender,gimnasio,gym,entren,ejercici,pesa,cardio,yoga,pilates,estir,nad,bici,ciclis,deporte,baila,escal,fútbol,futbol,balonces,tenis,box,marcial,fitness,maratón,maraton,flexion,crossfit",
+    "active": "corr,trot,camin,andar,sender,bici,ciclis,maratón,maraton",
+    "ambiguous": "gimnasio,gym,entren,ejercici,pesa,cardio,yoga,pilates,estir,nad,deporte,baila,escal,fútbol,futbol,balonces,tenis,box,marcial,fitness,flexion,crossfit",
     "on_phone": "scroll,redes,instagram,tiktok,twitter,reddit,youtube,vídeo,video,ver,navega,jueg,juego,gaming,mensaj,chat,chate,facetime,noticia,feed,stream,netflix,pelícu,pelicu,podcast,tele",
     "stationary": "leer,ley,estudi,escrib,código,codigo,program,trabaj,concentr,medita,dibuj,diseñ,disen,pint,diario,deber,tarea,examen,aprend,investig,plan,correo,email,escritorio,oficina,clase,libro,ensayo,tesis,mate,repas,apunt,nota"
   },

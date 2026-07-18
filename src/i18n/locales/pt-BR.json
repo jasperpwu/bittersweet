@@ -174,7 +174,7 @@
     "joinTag": "Entrar em tag",
     "newTag": "Nova tag",
     "coachTitle": "Gerencie suas tags",
-    "coachMessage": "Segure para reordenar, deslize para editar",
+    "coachMessage": "Segure para reordenar, deslize para a direita para editar e para a esquerda para iniciar",
     "editTag": "Editar tag",
     "todoCountPill_one": "{{count}} tarefa",
     "todoCountPill_other": "{{count}} tarefas",
@@ -977,7 +977,8 @@
     "fallbackB": "Uma semana constante. Criar uma meta libera insights mais afiados e pessoais."
   },
   "activityKeywords": {
-    "active": "corr,trot,caminh,andar,trilha,academia,gym,trein,exercí,exerci,peso,cardio,yoga,ioga,pilates,along,nad,bike,bicicleta,cicli,esporte,danç,danc,escal,futebol,basquete,tênis,tenis,box,marcial,fitness,maratona,maraton,flexão,flexao,crossfit",
+    "active": "corr,trot,caminh,andar,trilha,bike,bicicleta,cicli,maratona,maraton",
+    "ambiguous": "academia,gym,trein,exercí,exerci,peso,cardio,yoga,ioga,pilates,along,nad,esporte,danç,danc,escal,futebol,basquete,tênis,tenis,box,marcial,fitness,flexão,flexao,crossfit",
     "on_phone": "scroll,redes,instagram,tiktok,twitter,reddit,youtube,vídeo,video,assist,naveg,jog,jogo,gaming,mensag,chat,facetime,notícia,noticia,feed,stream,netflix,filme,podcast,série,serie",
     "stationary": "ler,leitur,estud,escrev,código,codigo,program,trabalh,foco,medit,desenh,design,pint,diário,diario,dever,tarefa,prova,exame,aprend,pesquis,plan,email,e-mail,escritório,escritorio,aula,livro,redaç,redac,tese,matemát,matemat,revis,anot,nota"
   },

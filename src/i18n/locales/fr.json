@@ -174,7 +174,7 @@
     "joinTag": "Rejoindre une étiquette",
     "newTag": "Nouvelle étiquette",
     "coachTitle": "Gérez vos étiquettes",
-    "coachMessage": "Maintenez pour réorganiser, glissez pour modifier",
+    "coachMessage": "Maintenez pour réorganiser, glissez à droite pour modifier, à gauche pour démarrer",
     "editTag": "Modifier l'étiquette",
     "todoCountPill_one": "{{count}} tâche",
     "todoCountPill_other": "{{count}} tâches",
@@ -977,7 +977,8 @@
     "fallbackB": "Une semaine régulière. Créer un objectif débloque des analyses plus fines et personnelles."
   },
   "activityKeywords": {
-    "active": "cour,jog,march,rando,gym,gymnase,entraîn,entrain,exerc,muscu,poids,cardio,yoga,pilates,étir,etir,nag,vélo,velo,cyclis,sport,dans,escalad,foot,basket,tennis,boxe,martial,fitness,marathon,pompe,crossfit",
+    "active": "cour,jog,march,rando,vélo,velo,cyclis,marathon",
+    "ambiguous": "gym,gymnase,entraîn,entrain,exerc,muscu,poids,cardio,yoga,pilates,étir,etir,nag,sport,dans,escalad,foot,basket,tennis,boxe,martial,fitness,pompe,crossfit",
     "on_phone": "scroll,réseaux,reseaux,instagram,tiktok,twitter,reddit,youtube,vidéo,video,regard,navig,jeu,jou,gaming,messag,chat,facetime,actu,fil,stream,netflix,film,podcast,télé,tele,série,serie",
     "stationary": "lire,lect,étud,etud,écri,ecri,rédig,redig,code,cod,program,travail,travaill,concentr,médit,medit,dessin,design,peind,peintur,journal,devoir,examen,apprend,recherch,plan,courriel,email,mail,bureau,cours,livre,dissert,thèse,these,math,révis,revis,note"
   },

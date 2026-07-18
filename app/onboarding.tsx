@@ -15,6 +15,7 @@ import {
 } from '../src/components/onboarding/OnboardingTagPicker';
 import { useUnifiedStore } from '../src/store/unified-store';
 import { useAppStore } from '../src/store';
+import { inferActivityType } from '../src/utils/inferActivityType';
 import { useTranslation } from 'react-i18next';
 import { LanguageTrigger } from '../src/components/settings/LanguageSelector';
 import { SignInSheet } from '../src/components/auth/SignInSheet';
@@ -115,7 +116,14 @@ export default function OnboardingScreen() {
       const name = resolveDraftName(draft, t);
       if (!name || existingNames.has(name.toLowerCase())) continue;
       existingNames.add(name.toLowerCase());
-      createTag({ name, icon: draft.emoji, color: draft.color });
+      // Same name→type inference as the tag create/edit sheets; null (no match
+      // or ambiguous, e.g. "Workout") leaves the type unset — user can set it later.
+      createTag({
+        name,
+        icon: draft.emoji,
+        color: draft.color,
+        activityType: inferActivityType(name) ?? undefined,
+      });
     }
 
     // Set hasSeenOnboarding to true in the store

@@ -174,7 +174,7 @@
     "joinTag": "Join Tag",
     "newTag": "New Tag",
     "coachTitle": "Manage your tags",
-    "coachMessage": "Hold to reorder, swipe to edit",
+    "coachMessage": "Hold to reorder, swipe right to edit, swipe left to start",
     "editTag": "Edit Tag",
     "todoCountPill_one": "{{count}} task",
     "todoCountPill_other": "{{count}} tasks",
@@ -977,7 +977,8 @@
     "fallbackB": "A steady week. Setting a goal unlocks sharper, more personal insights."
   },
   "activityKeywords": {
-    "active": "run,jog,walk,hike,gym,workout,exercise,lift,weight,cardio,yoga,pilates,stretch,swim,bike,cycl,sport,dance,climb,basketball,soccer,football,tennis,box,martial,fitness,treadmill,marathon,pushup,crossfit",
+    "active": "run,jog,walk,hike,hiking,bike,biking,cycl,treadmill,marathon",
+    "ambiguous": "gym,workout,exercise,lift,weight,cardio,yoga,pilates,stretch,swim,sport,dance,climb,basketball,soccer,football,tennis,box,martial,fitness,pushup,crossfit",
     "on_phone": "scroll,social,instagram,tiktok,twitter,reddit,youtube,video,watch,browse,game,gaming,text,chat,messag,facetime,news,feed,stream,netflix,movie,tv,podcast",
     "stationary": "read,study,studie,write,writ,code,coding,program,work,focus,meditat,draw,design,paint,journal,homework,exam,learn,research,plan,email,desk,office,lecture,class,book,essay,thesis,math,revis,note"
   },
