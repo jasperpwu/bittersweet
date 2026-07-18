@@ -731,7 +731,6 @@
   "sessionComplete": {
     "notFound": "Session not found",
     "earned": "Earned",
-    "notesHelp": "Your notes help summarize your week and generate tips.",
     "coachTitle": "You earned fruits!",
     "coachMessage": "Spend them to unblock apps or purchase items in the Fruit Store.",
     "day": "Day",

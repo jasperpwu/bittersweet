@@ -730,7 +730,6 @@
   "sessionComplete": {
     "notFound": "セッションが見つかりません",
     "earned": "獲得",
-    "notesHelp": "メモは週のまとめやヒントの作成に役立ちます。",
     "coachTitle": "実を獲得しました！",
     "coachMessage": "アプリのブロック解除やストアでの購入に使えます。",
     "day": "日",

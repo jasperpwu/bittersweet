@@ -23,7 +23,6 @@ import Animated, {
   withSequence,
   withDelay,
   withTiming,
-  FadeIn,
 } from 'react-native-reanimated';
 import { Typography, Button } from '../../src/components/ui';
 import { colors } from '../../src/config/theme';
@@ -364,14 +363,14 @@ export default function SessionCompleteModal() {
           contentContainerStyle={{
             flexGrow: 1,
             paddingHorizontal: 24,
-            paddingTop: 60,
-            paddingBottom: 40,
+            paddingTop: 24,
+            paddingBottom: 24,
           }}
           keyboardShouldPersistTaps="handled">
           {/* Tag emoji + name */}
-          <View className="mb-6 items-center">
+          <View className="mb-3 items-center">
             <Animated.View style={emojiAnimStyle}>
-              <Typography variant="headline-24" color="primary" className="mb-2">
+              <Typography variant="headline-24" color="primary" className="mb-1">
                 {tag?.icon || '🏷️'}
               </Typography>
             </Animated.View>
@@ -380,19 +379,15 @@ export default function SessionCompleteModal() {
             </Typography>
           </View>
 
-          {/* Duration */}
-          <Animated.View className="items-center" style={durationAnimStyle}>
-            <Typography variant="headline-24" color="primary" className="mb-2">
+          {/* Duration + start/end time */}
+          <Animated.View className="mb-5 items-center" style={durationAnimStyle}>
+            <Typography variant="headline-24" color="primary">
               {formatDuration(session.duration)}
             </Typography>
-          </Animated.View>
-
-          {/* Start / End time */}
-          <View className="mb-8 items-center">
-            <Typography variant="body-14" color="secondary">
+            <Typography variant="body-14" color="secondary" className="mt-0.5">
               {formatTime(session.startTime)} – {formatTime(session.endTime)}
             </Typography>
-          </View>
+          </Animated.View>
 
           {/* Suggested focus rating — scales the fruit reward. Read-only: the
               user can't override stars, only improve future ratings via the
@@ -407,10 +402,10 @@ export default function SessionCompleteModal() {
 
           {/* Fruits earned (after the rating discount) */}
           {baseFruits > 0 && (
-            <View className="mb-8 items-center">
+            <View className="mb-5 items-center">
               <Animated.View
                 ref={fruitRef}
-                className="items-center rounded-2xl bg-light-border/30 px-6 py-4 dark:bg-dark-card"
+                className="items-center rounded-2xl bg-light-border/30 px-5 py-3 dark:bg-dark-card"
                 style={fruitAnimStyle}>
                 <Typography variant="body-12" color="secondary" className="mb-1">
                   {t('sessionComplete.earned')}
@@ -421,7 +416,7 @@ export default function SessionCompleteModal() {
           )}
 
           {/* Notes input */}
-          <View className="mb-6 w-full">
+          <View className="mb-4 w-full">
             <Typography variant="body-14" color="secondary" className="mb-2">
               {t('journal.note')}
             </Typography>
@@ -440,28 +435,21 @@ export default function SessionCompleteModal() {
               style={{
                 backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
                 borderRadius: 12,
-                padding: 16,
+                padding: 12,
                 fontSize: 14,
                 color:
                   colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
                 borderWidth: 1,
                 borderColor:
                   colorScheme === 'dark' ? colors.dark.border : colors.light.screenBorder,
-                minHeight: 80,
+                minHeight: 64,
               }}
             />
-            <Typography
-              variant="body-12"
-              color="secondary"
-              className="mt-2"
-              style={{ opacity: 0.6 }}>
-              {t('sessionComplete.notesHelp')}
-            </Typography>
           </View>
 
           {/* Optional secondary tag (premium Multi-Task mode) — two activities at once */}
           {secondaryTagEnabled && (
-            <View className="mb-6 w-full">
+            <View className="mb-4 w-full">
               <Typography variant="body-14" color="secondary" className="mb-2">
                 {t('journal.secondaryTag')}
               </Typography>
@@ -479,7 +467,7 @@ export default function SessionCompleteModal() {
 
           {/* Photo section */}
           {!hasExistingPhoto && (
-            <View className="mb-6 w-full">
+            <View className="mb-4 w-full">
               <Typography variant="body-14" color="secondary" className="mb-2">
                 {t('journal.addPhoto')}
               </Typography>
@@ -487,7 +475,7 @@ export default function SessionCompleteModal() {
                 <View>
                   <Image
                     source={{ uri: photoUri }}
-                    style={{ width: '100%', height: 200, borderRadius: 12 }}
+                    style={{ width: '100%', height: 160, borderRadius: 12 }}
                     resizeMode="cover"
                   />
                   <Button
@@ -533,20 +521,20 @@ export default function SessionCompleteModal() {
           )}
 
           {hasExistingPhoto && (
-            <View className="mb-6 w-full">
+            <View className="mb-4 w-full">
               <Typography variant="body-12" color="secondary" className="mb-2">
                 {t('journal.photo')}
               </Typography>
               <Image
                 source={{ uri: session.photoUrl }}
-                style={{ width: '100%', height: 200, borderRadius: 12 }}
+                style={{ width: '100%', height: 160, borderRadius: 12 }}
                 resizeMode="cover"
               />
             </View>
           )}
 
           {/* Done button */}
-          <View className="mt-4">
+          <View className="mt-2">
             <Button
               variant="ghost"
               fullWidth

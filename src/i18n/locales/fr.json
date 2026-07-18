@@ -731,7 +731,6 @@
   "sessionComplete": {
     "notFound": "Session introuvable",
     "earned": "Gagné",
-    "notesHelp": "Vos notes aident à résumer votre semaine et à générer des conseils.",
     "coachTitle": "Vous avez gagné des fruits !",
     "coachMessage": "Utilisez-les pour débloquer des apps ou acheter des articles dans la Boutique.",
     "day": "Jour",

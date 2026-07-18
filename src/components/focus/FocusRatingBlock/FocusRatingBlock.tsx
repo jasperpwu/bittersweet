@@ -27,8 +27,8 @@ export function FocusRatingBlock({ rating, analyzing, onWhyPress }: FocusRatingB
   const emptyColor = colorScheme === 'dark' ? colors.dark.border : colors.light.border;
 
   return (
-    <View className="mb-8 items-center">
-      <View className="mb-2 flex-row items-center" style={{ gap: 4 }}>
+    <View className="mb-5 items-center">
+      <View className="mb-1.5 flex-row items-center" style={{ gap: 4 }}>
         <Typography variant="body-12" color="secondary">
           {analyzing ? t('sessionComplete.analyzingFocus') : t('sessionComplete.focusRating')}
         </Typography>
@@ -41,14 +41,14 @@ export function FocusRatingBlock({ rating, analyzing, onWhyPress }: FocusRatingB
             <Ionicons
               key={s}
               name={filled ? 'star' : 'star-outline'}
-              size={32}
+              size={26}
               color={filled ? colors.primary : emptyColor}
             />
           );
         })}
       </View>
       {!analyzing && (
-        <Pressable onPress={onWhyPress} className="mt-3 active:opacity-70" hitSlop={6}>
+        <Pressable onPress={onWhyPress} className="mt-2 active:opacity-70" hitSlop={6}>
           <Typography
             variant="body-12"
             color="secondary"

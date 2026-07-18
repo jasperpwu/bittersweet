@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Typography, DatePicker, TimePicker, Slider } from '../../ui';
+import { Typography, DatePicker, TimePicker, Slider, Toggle } from '../../ui';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { showToast } from '../../ui/Toast';
 import { HorizontalTagSelector } from '../../focus/TagSelector';
@@ -158,12 +158,6 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
     return false;
   };
 
-  // Guard for the explicit close (X) button.
-  const handleClosePress = () => {
-    if (isDirty()) promptDiscard();
-    else onClose();
-  };
-
   const canSave = name.trim().length > 0 && tagId.length > 0;
 
   // When the user sets a start, make sure we can actually deliver the reminder.
@@ -224,15 +218,10 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
       height={screenHeight * 0.85}
       scrollable
       beforeClose={handleBeforeClose}>
-      {/* Header */}
-      <View className="mb-4 flex-row items-center justify-between">
-        <Typography variant="headline-20" color="primary">
-          {todo ? t('todos.editTitle') : t('todos.newTitle')}
-        </Typography>
-        <Pressable onPress={handleClosePress} className="p-1 active:opacity-70" hitSlop={8}>
-          <Ionicons name="close" size={24} color={placeholder} />
-        </Pressable>
-      </View>
+      {/* Header — close is provided by BottomSheet's built-in button */}
+      <Typography variant="headline-20" color="primary" className="mb-4">
+        {todo ? t('todos.editTitle') : t('todos.newTitle')}
+      </Typography>
 
       {/* Name */}
       <Typography variant="body-12" color="secondary" className="mb-2">
@@ -262,194 +251,186 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
       </View>
 
       {/* Start: date always, time optional */}
-      <Pressable
-        onPress={() => setStartEnabled((v) => !v)}
-        className="mb-2 flex-row items-center justify-between active:opacity-70">
-        <Typography variant="body-14" color="primary">
-          {t('todos.startLabel')}
-        </Typography>
-        <Ionicons
-          name={startEnabled ? 'checkbox' : 'square-outline'}
-          size={22}
-          color={startEnabled ? colors.primary : placeholder}
-        />
-      </Pressable>
-      {startEnabled && (
-        <View className="mb-5 gap-3">
-          <DatePicker value={startAt} onChange={setStartAt} />
-          <Pressable
-            onPress={() => setStartTimeEnabled((v) => !v)}
-            className="flex-row items-center justify-between active:opacity-70">
-            <Typography variant="body-12" color="secondary">
-              {t('todos.setTime')}
-            </Typography>
-            <Ionicons
-              name={startTimeEnabled ? 'checkbox' : 'square-outline'}
-              size={20}
-              color={startTimeEnabled ? colors.primary : placeholder}
-            />
-          </Pressable>
-          {startTimeEnabled && <TimePicker value={startAt} onChange={setStartAt} />}
-        </View>
-      )}
-
-      {/* Repeat (requires a start date) */}
-      {startEnabled && (
-        <View className="mb-5">
-          <Typography variant="body-14" color="primary" className="mb-2">
-            {t('todos.repeatLabel')}
+      <View className="mb-4 rounded-xl bg-black/5 px-4 py-3 dark:bg-white/5">
+        <Pressable
+          onPress={() => setStartEnabled((v) => !v)}
+          className="flex-row items-center justify-between active:opacity-70">
+          <Typography variant="body-14" color="primary">
+            {t('todos.startLabel')}
           </Typography>
-          <View className="flex-row flex-wrap gap-2">
-            {REPEAT_CHOICES.map((choice) => {
-              const selected = repeat === choice;
-              return (
-                <Pressable
-                  key={choice}
-                  onPress={() => setRepeat(choice)}
-                  className={`rounded-full px-3.5 py-2 active:opacity-70 ${
-                    selected ? 'bg-primary' : 'bg-black/5 dark:bg-white/5'
-                  }`}>
-                  <Typography variant="body-12" color={selected ? 'white' : 'primary'}>
-                    {t(REPEAT_LABEL_KEYS[choice])}
-                  </Typography>
-                </Pressable>
-              );
-            })}
+          <Toggle value={startEnabled} onValueChange={setStartEnabled} />
+        </Pressable>
+        {startEnabled && (
+          <View className="mt-3 gap-3">
+            <DatePicker value={startAt} onChange={setStartAt} />
+            <Pressable
+              onPress={() => setStartTimeEnabled((v) => !v)}
+              className="flex-row items-center justify-between active:opacity-70">
+              <Typography variant="body-12" color="secondary">
+                {t('todos.setTime')}
+              </Typography>
+              <Toggle value={startTimeEnabled} onValueChange={setStartTimeEnabled} size="small" />
+            </Pressable>
+            {startTimeEnabled && <TimePicker value={startAt} onChange={setStartAt} />}
           </View>
-          {repeat === 'weekly' && (
-            <Typography variant="body-12" color="secondary" className="mt-2">
-              {t('todos.repeatWeeklyHint', {
-                day: startAt.toLocaleDateString(i18n.language, { weekday: 'long' }),
+        )}
+
+        {/* Repeat (requires a start date) */}
+        {startEnabled && (
+          <View className="mt-4">
+            <Typography variant="body-14" color="primary" className="mb-2">
+              {t('todos.repeatLabel')}
+            </Typography>
+            <View className="flex-row flex-wrap gap-2">
+              {REPEAT_CHOICES.map((choice) => {
+                const selected = repeat === choice;
+                return (
+                  <Pressable
+                    key={choice}
+                    onPress={() => setRepeat(choice)}
+                    className={`rounded-full px-3.5 py-2 active:opacity-70 ${
+                      selected ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
+                    }`}>
+                    <Typography variant="body-12" color={selected ? 'white' : 'primary'}>
+                      {t(REPEAT_LABEL_KEYS[choice])}
+                    </Typography>
+                  </Pressable>
+                );
               })}
-            </Typography>
-          )}
-          {repeat === 'monthly' && (
-            <Typography variant="body-12" color="secondary" className="mt-2">
-              {t('todos.repeatMonthlyHint', { day: startAt.getDate() })}
-            </Typography>
-          )}
-          {repeat === 'custom' && (
-            <View className="mt-3">
-              <View className="mb-3 flex-row gap-2">
-                {(['weekly', 'monthly'] as const).map((freq) => {
-                  const selected = customFreq === freq;
-                  return (
-                    <Pressable
-                      key={freq}
-                      onPress={() => setCustomFreq(freq)}
-                      className={`rounded-full px-3.5 py-2 active:opacity-70 ${
-                        selected ? 'bg-primary' : 'bg-black/5 dark:bg-white/5'
-                      }`}>
-                      <Typography variant="body-12" color={selected ? 'white' : 'primary'}>
-                        {t(freq === 'weekly' ? 'todos.repeatOnWeekdays' : 'todos.repeatOnMonthDay')}
-                      </Typography>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {customFreq === 'weekly' ? (
-                // Same weekday-chip pattern as the rest-days picker in settings.
-                <View className="flex-row gap-x-2">
-                  {t('preferences.dayInitials')
-                    .split(',')
-                    .map((label, dayIndex) => {
-                      const isSelected = customWeekdays.includes(dayIndex);
-                      return (
-                        <Pressable
-                          key={dayIndex}
-                          onPress={() =>
-                            setCustomWeekdays((prev) =>
-                              isSelected
-                                ? prev.filter((d) => d !== dayIndex)
-                                : [...prev, dayIndex].sort((a, b) => a - b)
-                            )
-                          }
-                          className={`h-9 w-9 items-center justify-center rounded-full ${
-                            isSelected ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
-                          }`}>
-                          <Typography
-                            variant="body-12"
-                            color={isSelected ? 'white' : 'primary'}
-                            className="font-poppins-medium">
-                            {label}
-                          </Typography>
-                        </Pressable>
-                      );
-                    })}
-                </View>
-              ) : (
-                <Slider
-                  value={customMonthDay}
-                  minimumValue={1}
-                  maximumValue={31}
-                  step={1}
-                  onValueChange={setCustomMonthDay}
-                  label={t('todos.repeatMonthDayLabel')}
-                />
-              )}
             </View>
-          )}
-        </View>
-      )}
+            {repeat === 'weekly' && (
+              <Typography variant="body-12" color="secondary" className="mt-2">
+                {t('todos.repeatWeeklyHint', {
+                  day: startAt.toLocaleDateString(i18n.language, { weekday: 'long' }),
+                })}
+              </Typography>
+            )}
+            {repeat === 'monthly' && (
+              <Typography variant="body-12" color="secondary" className="mt-2">
+                {t('todos.repeatMonthlyHint', { day: startAt.getDate() })}
+              </Typography>
+            )}
+            {repeat === 'custom' && (
+              <View className="mt-3">
+                <View className="mb-3 flex-row gap-2">
+                  {(['weekly', 'monthly'] as const).map((freq) => {
+                    const selected = customFreq === freq;
+                    return (
+                      <Pressable
+                        key={freq}
+                        onPress={() => setCustomFreq(freq)}
+                        className={`rounded-full px-3.5 py-2 active:opacity-70 ${
+                          selected ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
+                        }`}>
+                        <Typography variant="body-12" color={selected ? 'white' : 'primary'}>
+                          {t(
+                            freq === 'weekly' ? 'todos.repeatOnWeekdays' : 'todos.repeatOnMonthDay'
+                          )}
+                        </Typography>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                {customFreq === 'weekly' ? (
+                  // Same weekday-chip pattern as the rest-days picker in settings.
+                  <View className="flex-row gap-x-2">
+                    {t('preferences.dayInitials')
+                      .split(',')
+                      .map((label, dayIndex) => {
+                        const isSelected = customWeekdays.includes(dayIndex);
+                        return (
+                          <Pressable
+                            key={dayIndex}
+                            onPress={() =>
+                              setCustomWeekdays((prev) =>
+                                isSelected
+                                  ? prev.filter((d) => d !== dayIndex)
+                                  : [...prev, dayIndex].sort((a, b) => a - b)
+                              )
+                            }
+                            className={`h-9 w-9 items-center justify-center rounded-full ${
+                              isSelected ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
+                            }`}>
+                            <Typography
+                              variant="body-12"
+                              color={isSelected ? 'white' : 'primary'}
+                              className="font-poppins-medium">
+                              {label}
+                            </Typography>
+                          </Pressable>
+                        );
+                      })}
+                  </View>
+                ) : (
+                  <Slider
+                    value={customMonthDay}
+                    minimumValue={1}
+                    maximumValue={31}
+                    step={1}
+                    onValueChange={setCustomMonthDay}
+                    label={t('todos.repeatMonthDayLabel')}
+                  />
+                )}
+              </View>
+            )}
+          </View>
+        )}
+      </View>
 
       {/* Deadline: date always, time optional */}
-      <Pressable
-        onPress={() => setDeadlineEnabled((v) => !v)}
-        className="mb-2 flex-row items-center justify-between active:opacity-70">
-        <Typography variant="body-14" color="primary">
-          {t('todos.deadlineLabel')}
-        </Typography>
-        <Ionicons
-          name={deadlineEnabled ? 'checkbox' : 'square-outline'}
-          size={22}
-          color={deadlineEnabled ? colors.primary : placeholder}
-        />
-      </Pressable>
-      {deadlineEnabled && (
-        <View className="mb-5 gap-3">
-          <DatePicker value={deadlineAt} onChange={setDeadlineAt} />
-          <Pressable
-            onPress={() => setDeadlineTimeEnabled((v) => !v)}
-            className="flex-row items-center justify-between active:opacity-70">
-            <Typography variant="body-12" color="secondary">
-              {t('todos.setTime')}
-            </Typography>
-            <Ionicons
-              name={deadlineTimeEnabled ? 'checkbox' : 'square-outline'}
-              size={20}
-              color={deadlineTimeEnabled ? colors.primary : placeholder}
-            />
-          </Pressable>
-          {deadlineTimeEnabled && <TimePicker value={deadlineAt} onChange={setDeadlineAt} />}
-        </View>
-      )}
+      <View className="mb-4 rounded-xl bg-black/5 px-4 py-3 dark:bg-white/5">
+        <Pressable
+          onPress={() => setDeadlineEnabled((v) => !v)}
+          className="flex-row items-center justify-between active:opacity-70">
+          <Typography variant="body-14" color="primary">
+            {t('todos.deadlineLabel')}
+          </Typography>
+          <Toggle value={deadlineEnabled} onValueChange={setDeadlineEnabled} />
+        </Pressable>
+        {deadlineEnabled && (
+          <View className="mt-3 gap-3">
+            <DatePicker value={deadlineAt} onChange={setDeadlineAt} />
+            <Pressable
+              onPress={() => setDeadlineTimeEnabled((v) => !v)}
+              className="flex-row items-center justify-between active:opacity-70">
+              <Typography variant="body-12" color="secondary">
+                {t('todos.setTime')}
+              </Typography>
+              <Toggle
+                value={deadlineTimeEnabled}
+                onValueChange={setDeadlineTimeEnabled}
+                size="small"
+              />
+            </Pressable>
+            {deadlineTimeEnabled && <TimePicker value={deadlineAt} onChange={setDeadlineAt} />}
+          </View>
+        )}
+      </View>
 
       {/* Duration (optional) */}
-      <Pressable
-        onPress={() => setDurationEnabled((v) => !v)}
-        className="mb-2 flex-row items-center justify-between active:opacity-70">
-        <Typography variant="body-14" color="primary">
-          {t('todos.durationLabel')}
-        </Typography>
-        <Ionicons
-          name={durationEnabled ? 'checkbox' : 'square-outline'}
-          size={22}
-          color={durationEnabled ? colors.primary : placeholder}
-        />
-      </Pressable>
-      {durationEnabled && (
-        <View className="mb-5 mt-1">
-          <Slider
-            value={duration}
-            minimumValue={5}
-            maximumValue={120}
-            step={5}
-            onValueChange={setDuration}
-            label={t('todos.durationLabel')}
-            unit="m"
-          />
-        </View>
-      )}
+      <View className="mb-5 rounded-xl bg-black/5 px-4 py-3 dark:bg-white/5">
+        <Pressable
+          onPress={() => setDurationEnabled((v) => !v)}
+          className="flex-row items-center justify-between active:opacity-70">
+          <Typography variant="body-14" color="primary">
+            {t('todos.durationLabel')}
+          </Typography>
+          <Toggle value={durationEnabled} onValueChange={setDurationEnabled} />
+        </Pressable>
+        {durationEnabled && (
+          <View className="mt-3">
+            <Slider
+              value={duration}
+              minimumValue={5}
+              maximumValue={120}
+              step={5}
+              onValueChange={setDuration}
+              label={t('todos.durationLabel')}
+              unit="m"
+            />
+          </View>
+        )}
+      </View>
 
       {/* Notes */}
       <Typography variant="body-12" color="secondary" className="mb-2">
