@@ -1230,24 +1230,23 @@ export const useAppStore = create<AppStore>()(
                 skipped++;
                 continue;
               }
-              // Always skip hand-logged Health entries: only genuine device-recorded
-              // workouts are imported, which keeps reward-bearing imports un-farmable.
-              if (w.wasUserEntered) {
-                skipped++;
-                continue;
-              }
               if (!(w.durationMinutes > 0)) {
                 skipped++;
                 continue;
               }
 
-              // Reward-bearing like a real completed session. No accelerate multiplier:
-              // these are backfilled past workouts, so current accelerate must not apply.
-              fruitsEarned += calculateFruitsEarnedForDuration(
-                w.durationMinutes,
-                w.durationMinutes,
-                1
-              );
+              // Hand-logged Health entries import like in-app manual entries: they
+              // become sessions but never earn fruit, which keeps reward-bearing
+              // imports un-farmable. Only genuine device-recorded workouts earn.
+              // No accelerate multiplier: these are backfilled past workouts, so
+              // current accelerate must not apply.
+              if (!w.wasUserEntered) {
+                fruitsEarned += calculateFruitsEarnedForDuration(
+                  w.durationMinutes,
+                  w.durationMinutes,
+                  1
+                );
+              }
 
               toAdd.push({
                 id,
@@ -1261,7 +1260,9 @@ export const useAppStore = create<AppStore>()(
                 accelerateMultiplier: 1,
                 createdAt: now,
                 updatedAt: now,
-                isManualEntry: false,
+                // Mirrors deleteSession's deduction rule: manual entries granted 0
+                // fruit, so deleting one deducts 0 — the grant stays symmetric.
+                isManualEntry: w.wasUserEntered,
               });
             }
 
@@ -1281,8 +1282,9 @@ export const useAppStore = create<AppStore>()(
                 };
               });
 
-              // Award fruits for the imported workouts. Deletion deducts the same
-              // amount (isManualEntry === false), so the grant stays symmetric.
+              // Award fruits for the device-recorded imports (hand-logged ones
+              // contributed 0 above). Deletion deducts the same amount per
+              // session's isManualEntry flag, so the grant stays symmetric.
               if (fruitsEarned > 0) {
                 get().rewards.earnFruits(fruitsEarned, 'healthkit_import', { count: toAdd.length });
                 console.log(

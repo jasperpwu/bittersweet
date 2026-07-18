@@ -698,7 +698,7 @@
     "failedStatus": "Failed to update Grove status. Please try again."
   },
   "health": {
-    "intro": "Connect Apple Health to turn finished workouts into focus sessions. Workouts logged by popular fitness apps such as SmartGym and Peloton are supported too. Imported workouts appear under the tag you choose and earn fruit like a focus session. Workouts you log by hand in the Health app are skipped.",
+    "intro": "Connect Apple Health to turn finished workouts into focus sessions. Workouts logged by popular fitness apps such as SmartGym and Peloton are supported too. New workouts are imported and synced automatically whenever you open the app. Imported workouts appear under the tag you choose.",
     "connection": "Connection",
     "connect": "Connect Apple Health",
     "connectSub": "Sync Apple Fitness workouts as sessions",

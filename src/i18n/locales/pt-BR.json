@@ -698,7 +698,7 @@
     "failedStatus": "Não foi possível atualizar o status do Grove. Tente novamente."
   },
   "health": {
-    "intro": "Conecte o Apple Saúde para transformar treinos concluídos em sessões de foco. Treinos registrados por apps populares como SmartGym e Peloton também são suportados. Os treinos importados aparecem sob a tag que você escolher e rendem frutos como uma sessão de foco. Treinos que você registra manualmente no app Saúde são ignorados.",
+    "intro": "Conecte o Apple Saúde para transformar treinos concluídos em sessões de foco. Treinos registrados por apps populares como SmartGym e Peloton também são suportados. Treinos novos são importados e sincronizados automaticamente sempre que você abre o app. Os treinos importados aparecem sob a tag que você escolher.",
     "connection": "Conexão",
     "connect": "Conectar Apple Saúde",
     "connectSub": "Importe treinos do Apple Fitness como sessões",

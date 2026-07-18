@@ -698,7 +698,7 @@
     "failedStatus": "Échec de la mise à jour du statut Grove. Réessayez."
   },
   "health": {
-    "intro": "Connectez Apple Santé pour transformer vos entraînements terminés en sessions de concentration. Les entraînements enregistrés par des apps populaires comme SmartGym et Peloton sont aussi pris en charge. Les entraînements importés apparaissent sous l'étiquette que vous choisissez et rapportent des fruits comme une session. Les entraînements saisis à la main dans l'app Santé sont ignorés.",
+    "intro": "Connectez Apple Santé pour transformer vos entraînements terminés en sessions de concentration. Les entraînements enregistrés par des apps populaires comme SmartGym et Peloton sont aussi pris en charge. Les nouveaux entraînements sont importés et synchronisés automatiquement à chaque ouverture de l'app. Les entraînements importés apparaissent sous l'étiquette que vous choisissez.",
     "connection": "Connexion",
     "connect": "Connecter Apple Santé",
     "connectSub": "Importez vos entraînements Apple Fitness comme sessions",

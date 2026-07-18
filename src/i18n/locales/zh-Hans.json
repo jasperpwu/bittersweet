@@ -697,7 +697,7 @@
     "failedStatus": "无法更新 Grove 状态。请重试。"
   },
   "health": {
-    "intro": "连接 Apple 健康，将完成的锻炼转化为专注会话。也支持 SmartGym、Peloton 等热门健身应用记录的锻炼。导入的锻炼会显示在你选择的标签下，并像专注会话一样获得果实。你在“健康”应用中手动记录的锻炼会被跳过。",
+    "intro": "连接 Apple 健康，将完成的锻炼转化为专注会话。也支持 SmartGym、Peloton 等热门健身应用记录的锻炼。每次打开应用时，新的锻炼都会自动导入并同步。导入的锻炼会显示在你选择的标签下。",
     "connection": "连接",
     "connect": "连接 Apple 健康",
     "connectSub": "将 Apple Fitness 锻炼导入为会话",

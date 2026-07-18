@@ -698,7 +698,7 @@
     "failedStatus": "Grove-Status konnte nicht aktualisiert werden. Bitte versuche es erneut."
   },
   "health": {
-    "intro": "Verbinde Apple Health, um abgeschlossene Workouts in Fokus-Sitzungen zu verwandeln. Auch Workouts beliebter Fitness-Apps wie SmartGym und Peloton werden unterstützt. Importierte Workouts erscheinen unter dem gewählten Label und bringen Früchte wie eine Fokus-Sitzung. Manuell in der Health-App erfasste Workouts werden übersprungen.",
+    "intro": "Verbinde Apple Health, um abgeschlossene Workouts in Fokus-Sitzungen zu verwandeln. Auch Workouts beliebter Fitness-Apps wie SmartGym und Peloton werden unterstützt. Neue Workouts werden automatisch importiert und synchronisiert, sobald du die App öffnest. Importierte Workouts erscheinen unter dem gewählten Label.",
     "connection": "Verbindung",
     "connect": "Apple Health verbinden",
     "connectSub": "Apple-Fitness-Workouts als Sitzungen importieren",
