@@ -266,8 +266,8 @@ export default function GroveScreen() {
           <>
             {/* Recent Activity section */}
             <View className="mt-3">
-              <View className="px-5 mb-2">
-                <Typography variant="subtitle-14-medium" color="secondary">
+              <View className="px-5 mb-3">
+                <Typography variant="subtitle-16" color="primary">
                   {t('grove.recentActivity')}
                 </Typography>
               </View>

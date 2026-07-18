@@ -673,6 +673,12 @@
     "continue": "続ける"
   },
   "groveSettings": {
+    "introTitle": "Groveで一緒に成長しよう",
+    "introDesc": "Groveは、集中の歩みを友だちとシェアして励まし合う場所です。",
+    "introFeed": "友だちの集中セッションを見て応援しよう",
+    "introChallenges": "チャレンジや週間ランキングで競い合おう",
+    "introCircle": "インナーサークルをつくって、お互いに支え合おう",
+    "signInCta": "サインインしてはじめる",
     "profile": "プロフィール",
     "setupTitle": "Groveプロフィールを設定",
     "setupSub": "集中の歩みを友だちとシェアしましょう",

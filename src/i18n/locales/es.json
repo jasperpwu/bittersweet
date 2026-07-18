@@ -674,6 +674,12 @@
     "continue": "Continuar"
   },
   "groveSettings": {
+    "introTitle": "Crece con tus amigos en Grove",
+    "introDesc": "Grove es donde compartes tu camino de concentración con amigos y se animan mutuamente.",
+    "introFeed": "Mira las sesiones de concentración de tus amigos y anímalos",
+    "introChallenges": "Compite en retos y clasificaciones semanales",
+    "introCircle": "Crea un círculo cercano que te ayude a mantener el compromiso",
+    "signInCta": "Inicia sesión para empezar",
     "profile": "Perfil",
     "setupTitle": "Configurar perfil de Grove",
     "setupSub": "Comparte tu camino de concentración con amigos",

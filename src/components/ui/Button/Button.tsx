@@ -67,7 +67,12 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: 'bg-transparent border border-light-border dark:border-dark-border',
   outline: 'bg-transparent border-2 border-primary',
   soft: 'bg-primary-soft',
-  ghost: 'bg-transparent',
+  // No bg class at all: transparent is the RN default, and an explicit
+  // `bg-transparent` here can beat a caller-supplied background (className OR
+  // inline style) on the Reanimated-wrapped Pressable — see the NativeWind
+  // class-conflict gotcha. Ghost must leave the background slot empty so
+  // callers can tint it.
+  ghost: '',
   destructive: 'bg-error',
 };
 

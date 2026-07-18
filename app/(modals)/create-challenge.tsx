@@ -243,10 +243,9 @@ export default function CreateChallengeModal() {
                       </View>
                       <View
                         className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                          isSelected
-                            ? 'bg-[#E9A065] border-[#E9A065]'
-                            : 'border-light-border dark:border-dark-border'
+                          isSelected ? '' : 'border-light-border dark:border-dark-border'
                         }`}
+                        style={isSelected ? { backgroundColor: ACCENT, borderColor: ACCENT } : undefined}
                       >
                         {isSelected && (
                           <Ionicons name="checkmark" size={14} color={colors.white} />
@@ -322,8 +321,9 @@ export default function CreateChallengeModal() {
                   key={p}
                   onPress={() => handlePeriodChange(p)}
                   className={`flex-1 py-2.5 rounded-xl ${
-                    period === p ? 'bg-[#E9A065]' : 'bg-light-border dark:bg-dark-border'
+                    period === p ? '' : 'bg-light-border dark:bg-dark-border'
                   }`}
+                  style={period === p ? { backgroundColor: ACCENT } : undefined}
                 >
                   <Typography
                     variant="body-14"
@@ -378,8 +378,9 @@ export default function CreateChallengeModal() {
                   key={mode}
                   onPress={() => setCreationMode(mode)}
                   className={`flex-1 py-2.5 rounded-xl ${
-                    creationMode === mode ? 'bg-[#E9A065]' : 'bg-light-border dark:bg-dark-border'
+                    creationMode === mode ? '' : 'bg-light-border dark:bg-dark-border'
                   }`}
+                  style={creationMode === mode ? { backgroundColor: ACCENT } : undefined}
                 >
                   <Typography
                     variant="body-14"
@@ -423,7 +424,7 @@ export default function CreateChallengeModal() {
             )}
 
             {/* Computed End Date Info */}
-            <View className="bg-[#E9A065]/10 rounded-xl px-4 py-3 mb-6">
+            <View className="rounded-xl px-4 py-3 mb-6" style={{ backgroundColor: `${ACCENT}1A` }}>
               <Typography variant="body-12" color="secondary">
                 {t('createChallenge.summary', {
                   tag: selectedTag?.name,
@@ -446,7 +447,6 @@ export default function CreateChallengeModal() {
               size="large"
               fullWidth
               disabled={selectedFriendIds.length === 0}
-              className="rounded-2xl py-4"
               style={{ backgroundColor: ACCENT }}
               onPress={handleFriendsNext}
             >
@@ -460,7 +460,6 @@ export default function CreateChallengeModal() {
               size="large"
               fullWidth
               disabled={isSubmitting}
-              className="rounded-2xl py-4"
               style={{ backgroundColor: ACCENT }}
               onPress={handleSubmit}
             >

@@ -13,6 +13,8 @@ import { useAppStore } from '../../src/store';
 import type { ChallengeItem } from '../../src/services/grove/GroveChallengeService';
 import { useTranslation } from 'react-i18next';
 
+const ACCENT = '#E9A065';
+
 export default function ChallengesModal() {
   const { t } = useTranslation();
   const challenges = useAppStore((s) => s.grove.challenges);
@@ -109,7 +111,8 @@ export default function ChallengesModal() {
           </Pressable>
           <Pressable
             onPress={() => setAcceptingChallenge(challenge)}
-            className="w-9 h-9 rounded-full bg-[#E9A065] items-center justify-center active:opacity-80"
+            className="w-9 h-9 rounded-full items-center justify-center active:opacity-80"
+            style={{ backgroundColor: ACCENT }}
           >
             <Ionicons name="checkmark" size={18} color={colors.white} />
           </Pressable>
@@ -188,7 +191,7 @@ export default function ChallengesModal() {
           className="w-10 h-10 items-center justify-center active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="add" size={28} color="#E9A065" />
+          <Ionicons name="add" size={28} color={ACCENT} />
         </Pressable>
       </View>
 
@@ -200,8 +203,8 @@ export default function ChallengesModal() {
           </Typography>
           <Button
             variant="ghost"
-            className="mt-4 rounded-xl px-5"
-            style={{ backgroundColor: '#E9A065' }}
+            className="mt-4"
+            style={{ backgroundColor: ACCENT }}
             onPress={() => router.push('/(modals)/create-challenge')}
           >
             <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>

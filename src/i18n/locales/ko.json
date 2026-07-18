@@ -673,6 +673,12 @@
     "continue": "계속"
   },
   "groveSettings": {
+    "introTitle": "Grove에서 함께 성장해요",
+    "introDesc": "Grove는 집중 여정을 친구와 공유하고 서로 응원하는 공간이에요.",
+    "introFeed": "친구의 집중 세션을 보고 응원해 보세요",
+    "introChallenges": "챌린지와 주간 랭킹에서 경쟁해 보세요",
+    "introCircle": "서로 책임감을 지켜 주는 이너 서클을 만들어 보세요",
+    "signInCta": "로그인하고 시작하기",
     "profile": "프로필",
     "setupTitle": "Grove 프로필 설정",
     "setupSub": "집중 여정을 친구와 공유하세요",

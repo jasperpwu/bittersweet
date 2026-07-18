@@ -201,7 +201,7 @@ export const JoinSharedTagSheet: React.FC<JoinSharedTagSheetProps> = ({
         size="large"
         fullWidth
         disabled={isSubmitting || !canJoin}
-        className="rounded-2xl py-4 mt-4"
+        className="mt-4"
         style={{ backgroundColor: ACCENT }}
         onPress={handleJoin}
       >

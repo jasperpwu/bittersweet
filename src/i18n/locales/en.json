@@ -674,6 +674,12 @@
     "continue": "Continue"
   },
   "groveSettings": {
+    "introTitle": "Grow together in the Grove",
+    "introDesc": "Grove is where you share your focus journey with friends and keep each other going.",
+    "introFeed": "See friends' focus sessions and cheer them on",
+    "introChallenges": "Compete in challenges and weekly rankings",
+    "introCircle": "Build an Inner Circle that keeps you accountable",
+    "signInCta": "Sign in to get started",
     "profile": "Profile",
     "setupTitle": "Set Up Grove Profile",
     "setupSub": "Share your focus journey with friends",

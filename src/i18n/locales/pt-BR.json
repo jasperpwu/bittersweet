@@ -674,6 +674,12 @@
     "continue": "Continuar"
   },
   "groveSettings": {
+    "introTitle": "Cresçam juntos no Grove",
+    "introDesc": "O Grove é onde você compartilha sua jornada de foco com amigos e vocês se motivam mutuamente.",
+    "introFeed": "Veja as sessões de foco dos seus amigos e torça por eles",
+    "introChallenges": "Dispute desafios e rankings semanais",
+    "introCircle": "Monte um círculo íntimo que ajuda você a manter o compromisso",
+    "signInCta": "Entre para começar",
     "profile": "Perfil",
     "setupTitle": "Configurar perfil do Grove",
     "setupSub": "Compartilhe sua jornada de foco com amigos",

@@ -674,6 +674,12 @@
     "continue": "Weiter"
   },
   "groveSettings": {
+    "introTitle": "Gemeinsam wachsen im Grove",
+    "introDesc": "Im Grove teilst du deinen Fokus-Weg mit Freunden und ihr motiviert euch gegenseitig.",
+    "introFeed": "Sieh die Fokus-Sitzungen deiner Freunde und feuere sie an",
+    "introChallenges": "Tritt in Challenges und wöchentlichen Ranglisten an",
+    "introCircle": "Baue einen Inneren Kreis auf, der dich dranbleiben lässt",
+    "signInCta": "Anmelden und loslegen",
     "profile": "Profil",
     "setupTitle": "Grove-Profil einrichten",
     "setupSub": "Teile deinen Fokus-Weg mit Freunden",

@@ -155,7 +155,7 @@ export default function SettingsScreen() {
                 ) : (
                   <View style={{ gap: 12 }}>
                     <AppleAuthentication.AppleAuthenticationButton
-                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
                       buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
                       cornerRadius={12}
                       style={{ width: '100%', height: 48 }}

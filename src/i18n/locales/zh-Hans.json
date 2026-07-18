@@ -673,6 +673,12 @@
     "continue": "继续"
   },
   "groveSettings": {
+    "introTitle": "在 Grove 与好友一起成长",
+    "introDesc": "Grove 是你与好友分享专注历程、互相打气的地方。",
+    "introFeed": "查看好友的专注会话，为他们加油",
+    "introChallenges": "参加挑战，比拼每周排行榜",
+    "introCircle": "组建核心圈，互相督促坚持下去",
+    "signInCta": "登录即可开始",
     "profile": "资料",
     "setupTitle": "设置 Grove 资料",
     "setupSub": "与好友分享你的专注历程",

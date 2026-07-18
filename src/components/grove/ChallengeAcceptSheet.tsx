@@ -135,7 +135,10 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
 
       {/* Option (b): explain why "Use my tag" is unavailable */}
       {!hasMatch && (
-        <View className="flex-row items-start bg-[#E9A065]/10 rounded-xl px-3 py-2.5 mb-4">
+        <View
+          className="flex-row items-start rounded-xl px-3 py-2.5 mb-4"
+          style={{ backgroundColor: `${ACCENT}1A` }}
+        >
           <Ionicons name="information-circle-outline" size={16} color={ACCENT} style={{ marginTop: 1 }} />
           <Typography variant="body-12" color="secondary" className="ml-2 flex-1">
             You have no tag named &quot;{challenge.tagName}&quot;. Create one to join — it comes with a goal you
@@ -199,7 +202,7 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
         size="large"
         fullWidth
         disabled={isSubmitting || !canAccept}
-        className="rounded-2xl py-4 mt-4"
+        className="mt-4"
         style={{ backgroundColor: ACCENT }}
         onPress={handleAccept}
       >

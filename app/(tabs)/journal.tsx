@@ -31,6 +31,7 @@ import { colors } from '../../src/config/theme';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { CreateTagModal } from '../../src/components/focus';
 import { DateSelector, Timeline, ThreeDayTimeline, TodoSheet } from '../../src/components/journal';
+import { THREE_DAY_COUNT } from '../../src/components/journal/Timeline/constants';
 import { TodoEditModal } from '../../src/components/journal/TodoSheet/TodoEditModal';
 import { TodoDragGhost } from '../../src/components/journal/TodoSheet/TodoDragGhost';
 import { useTodoScheduleController } from '../../src/components/journal/TodoSheet/TodoScheduleController';
@@ -343,13 +344,19 @@ export default function JournalScreen() {
     setSelectedDate(new Date());
   }, []);
 
-  const navigateDay = useCallback((direction: -1 | 1) => {
-    setSelectedDate((prev) => {
-      const next = new Date(prev);
-      next.setDate(next.getDate() + direction);
-      return next;
-    });
-  }, []);
+  // Sessions view shows one day per page; the TODOs view shows a 3-day window,
+  // so a swipe there pages the whole window.
+  const swipeDayStep = journalView === 'todos' ? THREE_DAY_COUNT : 1;
+  const navigateDay = useCallback(
+    (direction: -1 | 1) => {
+      setSelectedDate((prev) => {
+        const next = new Date(prev);
+        next.setDate(next.getDate() + direction * swipeDayStep);
+        return next;
+      });
+    },
+    [swipeDayStep]
+  );
 
   const slideIn = useCallback(
     (fromDirection: -1 | 1) => {
