@@ -17,6 +17,7 @@ import { colors } from '../../src/config/theme';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
 import { AccountActions } from '../../src/components/auth/AccountSection';
+import { GoogleSignInButton } from '../../src/components/auth/SignInSheet';
 import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
@@ -99,6 +100,7 @@ export default function SettingsScreen() {
     error: authError,
   } = useAppStore((state) => state.auth);
   const signInWithApple = useAppStore((state) => state.auth.signInWithApple);
+  const signInWithGoogle = useAppStore((state) => state.auth.signInWithGoogle);
   const profile = useAppStore((s) => s.grove.profile);
   const profileLoaded = useAppStore((s) => s.grove.profileLoaded);
   const referralCount = useAppStore((s) => s.referral.referralCount);
@@ -151,13 +153,16 @@ export default function SettingsScreen() {
                     <ActivityIndicator size="small" color={colors.primary} />
                   </View>
                 ) : (
-                  <AppleAuthentication.AppleAuthenticationButton
-                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-                    cornerRadius={12}
-                    style={{ width: '100%', height: 48 }}
-                    onPress={signInWithApple}
-                  />
+                  <View style={{ gap: 12 }}>
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                      cornerRadius={12}
+                      style={{ width: '100%', height: 48 }}
+                      onPress={signInWithApple}
+                    />
+                    <GoogleSignInButton onPress={signInWithGoogle} />
+                  </View>
                 )}
                 {authError && (
                   <Typography variant="body-12" color="error" className="mt-2">
