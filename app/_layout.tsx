@@ -888,6 +888,12 @@ export default function RootLayout() {
         // Flush any pending offline sync operations
         useAppStore.getState().sync.flushOfflineQueue();
 
+        // Repeatable safety net for sessions stranded local-only (e.g. a failed
+        // cold-start pull, or a per-row flush failure). Throttled to ≤ once/hour
+        // inside the slice; the cold-start triggerSync only runs at launch, and
+        // iOS can suspend the app for days between cold starts.
+        useAppStore.getState().sync.reconcileLocalSessionsToCloud();
+
         // Record app activity (debounced) so the re-engagement cron knows the
         // user is still around and resets any inactivity streak.
         ActivityPingService.ping();
@@ -904,6 +910,13 @@ export default function RootLayout() {
         ) {
           groveState.recordHeartbeatActivity();
         }
+      } else if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
+        // Snapshot how many ops are still queued as the app backgrounds. A
+        // non-zero size that keeps recurring points at a stuck/undeliverable
+        // entry — the class that strands a session until a reinstall wipes it.
+        AnalyticsTracker.track('sync_queue_size_on_background', {
+          size: useAppStore.getState().sync.offlineQueueSize,
+        });
       }
 
       appState.current = nextAppState;

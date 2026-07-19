@@ -17,6 +17,14 @@ import { invalidateSyncSnapshot } from '../middleware/syncMiddleware';
 import { BlocklistSyncService } from '../../services/sync/BlocklistSyncService';
 import { FamilyControlsModule } from '../../modules/BitterSweetFamilyControls';
 import { WidgetService } from '../../services/WidgetService';
+import { AnalyticsTracker } from '../../services/analytics';
+
+// Throttle for reconcileLocalSessionsToCloud — a foreground repair pass that must
+// run at most once per hour, not on every app foreground. Module-level so it
+// survives across calls within a process; reset is unnecessary (worst case a fresh
+// user waits up to an hour, and cold-start triggerSync already covers fresh data).
+const RECONCILE_THROTTLE_MS = 60 * 60 * 1000;
+let lastReconcileAt = 0;
 
 function buildLegacySelection(
   selectionId: string,
@@ -68,6 +76,17 @@ export interface SyncSlice {
   /** Push current settings (incl. hasSeenOnboarding) to the cloud immediately. */
   syncSettings: () => Promise<void>;
   flushOfflineQueue: () => Promise<void>;
+  /**
+   * Repair path for sessions that live locally but never reached the cloud.
+   * Foreground-safe and throttled (≤ once/hour): pulls the cloud's known session
+   * ids and re-enqueues any local session missing from that set, then flushes.
+   *
+   * Complements the cold-start triggerSync reconcile, which only runs at launch —
+   * iOS can keep the app suspended for days between cold starts, so a session
+   * stranded by a failed launch-time pull (or a per-row flush failure) would
+   * otherwise never retry until the next real cold start with working network.
+   */
+  reconcileLocalSessionsToCloud: () => Promise<void>;
   updateQueueSize: () => Promise<void>;
   clearSyncError: () => void;
 }
@@ -588,6 +607,65 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
       }
     } catch (error: any) {
       console.error('Flush offline queue error:', error);
+    }
+  },
+
+  reconcileLocalSessionsToCloud: async () => {
+    const state = get();
+    // Skip while a full sync is mid-flight — triggerSync/pullAndApply already
+    // reconcile, and racing them risks re-pushing rows they're about to apply.
+    if (!state.auth.isAuthenticated || state.sync.isSyncing) return;
+    const userId = state.auth.user?.id;
+    if (!userId) return;
+
+    const now = Date.now();
+    if (now - lastReconcileAt < RECONCILE_THROTTLE_MS) return;
+    lastReconcileAt = now;
+
+    try {
+      // The full set of session ids the cloud already knows — INCLUDING
+      // soft-deleted ones (no deleted_at filter) — so a session the user deleted
+      // (tombstoned in cloud) is never resurrected by re-pushing it. Single
+      // column, so cheap enough to run on foreground.
+      const { data, error } = await supabase
+        .from('focus_sessions')
+        .select('id')
+        .eq('user_id', userId);
+      if (error) throw error;
+      const cloudIds = new Set((data ?? []).map((r: any) => r.id));
+
+      const sessions = get().focus.sessions;
+      const missing = sessions.allIds.filter((id: string) => !cloudIds.has(id));
+      if (missing.length === 0) return;
+
+      console.warn(
+        `[Sync] Reconcile — ${missing.length} local session(s) missing from cloud; re-enqueuing`
+      );
+      AnalyticsTracker.track('sync_reconcile_missing_sessions', { count: missing.length });
+
+      const tags = get().focus.tags.byId;
+      for (const id of missing) {
+        const session = sessions.byId[id];
+        if (!session) continue;
+        // FK: focus_sessions.tag_id / secondary_tag_id → session_tags.id. Enqueue
+        // the referenced tags first so the session upsert can't fail the constraint.
+        const primaryTag = tags[session.tagId];
+        if (primaryTag) {
+          await SyncService.enqueue('session_tags', 'upsert', tagToRow(primaryTag, userId));
+        }
+        if (session.secondaryTagId && session.secondaryTagId !== session.tagId) {
+          const secondaryTag = tags[session.secondaryTagId];
+          if (secondaryTag) {
+            await SyncService.enqueue('session_tags', 'upsert', tagToRow(secondaryTag, userId));
+          }
+        }
+        await SyncService.enqueue('focus_sessions', 'upsert', sessionToRow(session, userId));
+      }
+
+      await SyncService.flush();
+      set((s: any) => ({ sync: { ...s.sync, offlineQueueSize: syncQueue.size } }));
+    } catch (error: any) {
+      console.error('[Sync] reconcileLocalSessionsToCloud error:', error);
     }
   },
 

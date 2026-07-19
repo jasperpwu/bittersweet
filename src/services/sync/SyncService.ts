@@ -29,6 +29,7 @@ import {
   defaultSetupTasks,
   mergeSetupTasks,
 } from './SyncMapper';
+import { AnalyticsTracker } from '../analytics';
 
 const BATCH_SIZE = 100;
 
@@ -415,6 +416,17 @@ export class SyncService {
             `[SyncFlush] Failed focus session payload: id=${entry.data?.id ?? '?'} user_id=${entry.data?.user_id ?? '?'} tag_id=${entry.data?.tag_id ?? '?'}`
           );
         }
+
+        // Telemetry so a persistently-stuck ("poison") queue entry is visible in
+        // PostHog — this is the class that silently strands a session until a
+        // reinstall wipes it. Fires per failed entry per flush; a stuck row that
+        // keeps failing across flushes is exactly the signal we want to surface.
+        AnalyticsTracker.track('sync_flush_entry_failed', {
+          table: entry.table,
+          operation: entry.operation,
+          code: error?.code ?? null,
+          message: error?.message ?? String(error),
+        });
 
         // Quarantine the one known non-retryable case: a HealthKit-imported
         // session (`hk-` id, derived from the global Apple Health workout UUID)

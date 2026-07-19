@@ -13,6 +13,7 @@ import {
   customRewardToRow,
   settingsToRow,
 } from '../../services/sync/SyncMapper';
+import { AnalyticsTracker } from '../../services/analytics';
 
 /**
  * Zustand middleware that transparently enqueues sync operations
@@ -341,6 +342,7 @@ async function diffAndEnqueue(
           `[SyncMW] ⚠️ Session ${id} vanished from the store without deleteSession — ` +
             'a stale apply removed it; NOT propagating a cloud soft_delete'
         );
+        AnalyticsTracker.track('sync_session_vanished', { session_id: id });
         continue;
       }
       await SyncService.enqueue(table, 'soft_delete', { id });

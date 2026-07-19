@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../../config/supabase';
+import { SyncService } from '../../services/sync/SyncService';
 import { PENDING_REFERRAL_KEY } from '../../hooks/useDeepLinkHandler';
 
 export interface AuthUser {
@@ -259,6 +260,24 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
         await GoogleSignin.signOut();
       } catch (googleError) {
         console.warn('Google sign-out skipped:', googleError);
+      }
+
+      // Flush any queued writes to the cloud while the token is STILL VALID.
+      // This must happen before signOut(): afterward the token is gone (so
+      // SyncService.flush()'s getSession guard no-ops), and the SIGNED_OUT
+      // handler's resetSyncSnapshot() calls syncQueue.clear() — so any op not
+      // flushed here is dropped for good on the local wipe. That is the exact
+      // path that stranded a completed session (queued, never flushed, then the
+      // queue was cleared). Best-effort: an offline sign-out can't reach the
+      // cloud and those rows are unavoidably lost, but a reachable one now
+      // durably saves the user's in-flight sessions instead of discarding them.
+      try {
+        const result = await SyncService.flush();
+        console.log(
+          `[signOut] Pre-sign-out flush — flushed:${result.flushed} failed:${result.failed}`
+        );
+      } catch (flushError) {
+        console.warn('[signOut] Pre-sign-out flush failed:', flushError);
       }
 
       const { error } = await supabase.auth.signOut();
