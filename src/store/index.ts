@@ -1919,7 +1919,7 @@ export const useAppStore = create<AppStore>()(
             set((state) => {
               const existingTag = state.focus.tags.byId[tagId];
               if (existingTag) {
-                const updatedTag = { ...existingTag, ...updates, id: tagId }; // id is immutable
+                const updatedTag = { ...existingTag, ...updates, id: tagId, updatedAt: new Date() }; // id is immutable
                 return {
                   focus: {
                     ...state.focus,

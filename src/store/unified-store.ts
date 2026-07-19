@@ -54,6 +54,12 @@ interface AppPreferences {
   // Cloud-synced via user_settings.slider_theme_id (ownership syncs separately via
   // purchase history). Wiped by clearUnifiedStoreData.
   sliderThemeId: string | null;
+  // Last-write-wins timestamp for settings sync (ISO). Bumped on every user edit in
+  // updatePreferences and compared in SyncService.merge — without it local's timestamp
+  // reads as 0 and an offline preference change is discarded by an older cloud row on
+  // the next cold-start merge. Optional so pre-existing persisted prefs (which lack it)
+  // still hydrate; the first edit stamps it.
+  updatedAt?: string;
 }
 
 interface NotificationSettings {
@@ -241,6 +247,10 @@ export const useUnifiedStore = create<UnifiedStore>()(
                 ...get().preferences.healthKit,
                 ...updates.healthKit,
               },
+              // Stamp the edit time for settings LWW. Respect an explicitly-passed value
+              // so a sync-apply carries the cloud row's timestamp through instead of
+              // faking a fresh local edit.
+              updatedAt: updates.updatedAt ?? new Date().toISOString(),
             };
 
             set({ preferences: updatedPreferences });

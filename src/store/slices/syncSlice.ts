@@ -233,7 +233,10 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
 
       // Apply merged settings to unified store if remote won
       if (merged.settings && merged.settings !== localPrefs) {
-        const { updatedAt, lastDurationByTagId: _, ...prefsToApply } = merged.settings;
+        // Keep updatedAt in prefsToApply so the merged row's LWW timestamp round-trips
+        // into local prefs; only lastDurationByTagId is applied separately (to the focus
+        // store), so it alone is stripped here.
+        const { lastDurationByTagId: _, ...prefsToApply } = merged.settings;
         useUnifiedStore.getState().updatePreferences(prefsToApply);
         console.log('☁️ Applied remote settings to unified store');
       }
@@ -399,7 +402,8 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
       // Apply settings to unified store
       if (remoteData.settings) {
         const { useUnifiedStore } = require('../unified-store');
-        const { updatedAt, lastDurationByTagId: _, ...prefsToApply } = remoteData.settings;
+        // Keep updatedAt (LWW timestamp) — only lastDurationByTagId is applied elsewhere.
+        const { lastDurationByTagId: _, ...prefsToApply } = remoteData.settings;
         useUnifiedStore.getState().updatePreferences(prefsToApply);
         console.log('☁️ Applied cloud settings to unified store');
       }
@@ -684,13 +688,17 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
 });
 
 /**
- * Enqueue every row where the LOCAL side won the cold-start merge, then flush.
+ * Enqueue every row where the LOCAL side genuinely needs pushing up after the
+ * cold-start merge, then flush.
  *
- * mergeNormalized keeps the local object reference for local-only and local-newer
- * rows, and the remote object reference when remote wins. So `merged.byId[id] !==
- * remote.byId[id]` is an exact test for "this row needs to be pushed up" — it's true
- * only for local-only rows (remote has none) and local-newer rows (local won LWW),
- * and false for remote-only / remote-won rows that are already in the cloud.
+ * Push only two cases: (1) local-only rows the cloud has never seen, and (2)
+ * local-strictly-newer rows (local won LWW on a later updatedAt). We compare by
+ * `updatedAt`, NOT object reference — mergeNormalized keeps the local reference on a
+ * timestamp TIE too (`localTime >= remoteTime`), and the remote side is always a
+ * freshly-parsed object instance, so a reference test (`item !== remoteById[id]`)
+ * treats every already-synced tied row as a "local win" and re-enqueues the entire
+ * library on every cold start even when nothing changed. A tie means identical
+ * content already in the cloud — nothing to push.
  *
  * Tags are enqueued before sessions/goals/badges so the focus_sessions.tag_id FK is
  * satisfied (flush also priority-orders session_tags first). Idempotent: the queue
@@ -706,7 +714,14 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
     let count = 0;
     for (const id of mergedList.allIds) {
       const item = mergedList.byId[id];
-      if (item && item !== remoteById[id]) {
+      if (!item) continue;
+      const remoteItem = remoteById[id];
+      const isLocalOnly = !remoteItem;
+      const isLocalNewer =
+        remoteItem &&
+        new Date(item.updatedAt ?? 0).getTime() >
+          new Date(remoteItem.updatedAt ?? 0).getTime();
+      if (isLocalOnly || isLocalNewer) {
         await SyncService.enqueue(table, 'upsert', mapFn(item));
         count++;
       }
