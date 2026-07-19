@@ -43,7 +43,6 @@ export default function GroveSetupModal() {
   const { promo } = useLocalSearchParams<{ promo?: string }>();
 
   const userId = useAppStore((s) => s.auth.user?.id);
-  const tags = useAppStore((s) => s.focus.tags);
   const createProfile = useAppStore((s) => s.grove.createProfile);
   const uploadAvatar = useAppStore((s) => s.grove.uploadAvatar);
   const isLoading = useAppStore((s) => s.grove.isLoading);
@@ -78,15 +77,9 @@ export default function GroveSetupModal() {
   const [gender, setGender] = useState<Gender | null>(null);
   const [interests, setInterests] = useState<string[]>([]);
 
-  // Step 3: Privacy
-  const [sharedTagIds, setSharedTagIds] = useState<string[]>([]);
-  const [shareNotes, setShareNotes] = useState(false);
+  // Step 3: Privacy — tags and notes are always shared; profile type + live status are opt-in
+  const [profileType, setProfileType] = useState<'public' | 'private'>('public');
   const [showLiveStatus, setShowLiveStatus] = useState(false);
-
-  const activeTags = tags.allIds
-    .map((id) => tags.byId[id])
-    .filter((tag) => tag && !tag.deletedAt)
-    .map((tag) => ({ id: tag.id, name: tag.name, icon: tag.icon || '🎯' }));
 
   const canProceedStep0 =
     displayName.trim().length >= 1 &&
@@ -114,10 +107,9 @@ export default function GroveSetupModal() {
           avatar_color: avatarColor,
           gender,
           interests,
+          profile_type: profileType,
         },
         {
-          shared_tag_ids: sharedTagIds,
-          share_notes: shareNotes,
           show_live_status: showLiveStatus,
         }
       );
@@ -147,14 +139,6 @@ export default function GroveSetupModal() {
         Alert.alert(t('common.error'), t('groveSetup.failedCreate'));
       }
     }
-  };
-
-  const handleToggleTag = (tagId: string) => {
-    setSharedTagIds((prev) =>
-      prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId]
-    );
   };
 
   const renderStep = () => {
@@ -271,12 +255,9 @@ export default function GroveSetupModal() {
             </Typography>
 
             <PrivacyToggleList
-              tags={activeTags}
-              sharedTagIds={sharedTagIds}
-              shareNotes={shareNotes}
+              profileType={profileType}
               showLiveStatus={showLiveStatus}
-              onToggleTag={handleToggleTag}
-              onToggleShareNotes={setShareNotes}
+              onChangeProfileType={setProfileType}
               onToggleShowLiveStatus={setShowLiveStatus}
             />
           </View>

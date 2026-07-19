@@ -30,8 +30,6 @@ enum WidgetKeys {
   // Supabase sync keys (written by JS for native intent REST calls)
   static let supabaseUserId = "supabaseUserId"
   static let supabaseAccessToken = "supabaseAccessToken"
-  static let groveSharedTagIds = "groveSharedTagIds"
-  static let groveShareNotes = "groveShareNotes"
   static let groveShowLiveStatus = "groveShowLiveStatus"
   static let groveActiveChallenges = "groveActiveChallenges"
 }
@@ -559,19 +557,6 @@ struct WidgetDataManager {
 
   func getGroveShowLiveStatus() -> Bool {
     return userDefaults?.bool(forKey: WidgetKeys.groveShowLiveStatus) ?? false
-  }
-
-  func getGroveShareNotes() -> Bool {
-    return userDefaults?.bool(forKey: WidgetKeys.groveShareNotes) ?? false
-  }
-
-  func getGroveSharedTagIds() -> [String] {
-    guard let jsonString = userDefaults?.string(forKey: WidgetKeys.groveSharedTagIds),
-          let data = jsonString.data(using: .utf8),
-          let array = try? JSONSerialization.jsonObject(with: data) as? [String] else {
-      return []
-    }
-    return array
   }
 
   func getGroveActiveChallenges() -> [[String: String]] {

@@ -11,6 +11,9 @@ interface FriendCarouselProps {
   onReactionToggle: (sessionId: string) => void;
   onAddFriend: () => void;
   showAddFriend?: boolean;
+  // Discovery (stranger) card invites
+  onInvite?: (userId: string) => void;
+  invitedUserIds?: Set<string>;
 }
 
 const CARD_WIDTH = 280;
@@ -23,6 +26,8 @@ export const FriendCarousel: React.FC<FriendCarouselProps> = ({
   onReactionToggle,
   onAddFriend,
   showAddFriend = true,
+  onInvite,
+  invitedUserIds,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -65,11 +70,13 @@ export const FriendCarousel: React.FC<FriendCarouselProps> = ({
             item={item}
             onReactionToggle={onReactionToggle}
             isNew={isNew}
+            onInvite={onInvite}
+            invited={invitedUserIds?.has(item.profile.user_id)}
           />
         </View>
       );
     },
-    [feed.length, lastGroveVisit, onReactionToggle, onAddFriend, showAddFriend]
+    [feed.length, lastGroveVisit, onReactionToggle, onAddFriend, showAddFriend, onInvite, invitedUserIds]
   );
 
   // Data array: feed items + optional null sentinel for add card

@@ -15,6 +15,7 @@ import { EmptyGroveState } from '../../src/components/grove/EmptyGroveState';
 import { useAppStore } from '../../src/store';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 import { buildGroveNotifications, countUnreadGroveNotifications } from '../../src/utils/groveNotifications';
+import { showToast } from '../../src/components/ui/Toast';
 import { useTranslation } from 'react-i18next';
 
 export default function GroveScreen() {
@@ -38,6 +39,7 @@ export default function GroveScreen() {
   const updateLastGroveVisit = useAppStore((s) => s.grove.updateLastGroveVisit);
   const addReaction = useAppStore((s) => s.grove.addReaction);
   const removeReaction = useAppStore((s) => s.grove.removeReaction);
+  const sendFriendRequest = useAppStore((s) => s.grove.sendFriendRequest);
   const incomingRequests = useAppStore((s) => s.grove.incomingRequests);
   const incomingCircleInvites = useAppStore((s) => s.grove.incomingCircleInvites);
   const heartbeatAlerts = useAppStore((s) => s.grove.heartbeatAlerts);
@@ -51,6 +53,7 @@ export default function GroveScreen() {
 
   const colorScheme = useColorScheme();
   const [refreshing, setRefreshing] = useState(false);
+  const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set());
   const [selectedChallenge, setSelectedChallenge] = useState<typeof challenges[number] | null>(null);
   const isFirstFocus = useRef(true);
 
@@ -108,6 +111,25 @@ export default function GroveScreen() {
   const handleAddFriend = useCallback(() => {
     router.push('/(modals)/add-friends');
   }, []);
+
+  // Quick invite from a discovery (stranger) card in the feed
+  const handleInvite = useCallback(
+    async (userId: string) => {
+      setInvitedUserIds((prev) => new Set(prev).add(userId));
+      try {
+        await sendFriendRequest(userId);
+        showToast(t('gm.afSentToast'), 'success');
+      } catch {
+        setInvitedUserIds((prev) => {
+          const next = new Set(prev);
+          next.delete(userId);
+          return next;
+        });
+        showToast(t('gm.errSendRequest'), 'error');
+      }
+    },
+    [sendFriendRequest, t]
+  );
 
   const handleChallenges = useCallback(() => {
     router.push('/(modals)/challenges');
@@ -279,6 +301,8 @@ export default function GroveScreen() {
                   onReactionToggle={handleReactionToggle}
                   onAddFriend={handleAddFriend}
                   showAddFriend={!hasFriends}
+                  onInvite={handleInvite}
+                  invitedUserIds={invitedUserIds}
                 />
               ) : (
                 <View className="px-5 py-8 items-center">

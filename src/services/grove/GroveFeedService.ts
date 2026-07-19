@@ -22,115 +22,151 @@ export interface FeedItem {
   profile: GroveProfile;
   reactionCount: number;
   hasReacted: boolean;
+  // false → the author is a public stranger surfaced by the discovery feed
+  // (show an "invite" affordance). undefined/true → friend or own session.
+  isFriend?: boolean;
 }
+
+// Below this friend count the main feed also surfaces recent sessions from
+// public strangers (discovery), Instagram-stories style.
+const DISCOVERY_FRIEND_THRESHOLD = 5;
+const DISCOVERY_MAX_ITEMS = 30;
+
+type SessionRow = FeedSession & { user_id: string };
+
+// --- Internal helpers ---
+
+/** Accepted-friend user IDs for the given user (both request directions). */
+async function getAcceptedFriendIds(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('grove_friendships')
+    .select('requester_id, addressee_id')
+    .eq('status', 'accepted')
+    .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+  if (error) throw error;
+  return (data || []).map((f) =>
+    f.requester_id === userId ? f.addressee_id : f.requester_id
+  );
+}
+
+/** Hydrate raw session rows into FeedItems (profiles + reaction counts). */
+async function assembleFeedItems(
+  currentUserId: string,
+  sessions: SessionRow[],
+  isFriend: boolean
+): Promise<FeedItem[]> {
+  if (sessions.length === 0) return [];
+
+  const userIds = [...new Set(sessions.map((s) => s.user_id))];
+  const sessionIds = sessions.map((s) => s.id);
+
+  const [profilesResult, reactionsResult, userReactionsResult] = await Promise.all([
+    supabase.from('grove_profiles').select('*').in('user_id', userIds),
+    supabase.from('grove_reactions').select('session_id').in('session_id', sessionIds),
+    supabase
+      .from('grove_reactions')
+      .select('session_id')
+      .eq('user_id', currentUserId)
+      .in('session_id', sessionIds),
+  ]);
+
+  if (profilesResult.error) throw profilesResult.error;
+
+  const profileByUserId = new Map<string, GroveProfile>();
+  for (const profile of profilesResult.data || []) {
+    profileByUserId.set(profile.user_id, profile);
+  }
+
+  const reactionCounts = new Map<string, number>();
+  for (const r of reactionsResult.data || []) {
+    reactionCounts.set(r.session_id, (reactionCounts.get(r.session_id) || 0) + 1);
+  }
+
+  const userReactedSessions = new Set<string>();
+  for (const r of userReactionsResult.data || []) {
+    userReactedSessions.add(r.session_id);
+  }
+
+  return sessions
+    .map((session): FeedItem | null => {
+      const profile = profileByUserId.get(session.user_id);
+      if (!profile) return null;
+      return {
+        session: session as FeedSession,
+        profile,
+        reactionCount: reactionCounts.get(session.id) || 0,
+        hasReacted: userReactedSessions.has(session.id),
+        isFriend,
+      };
+    })
+    .filter((item): item is FeedItem => item !== null);
+}
+
+const SESSION_SELECT =
+  'id, user_id, tag_id, duration, start_time, end_time, notes, photo_url, created_at, session_tags(name, icon)';
 
 // --- Service ---
 
 export const GroveFeedService = {
   /**
-   * Fetch the social feed: focus sessions from friends (today + yesterday).
-   * Joins with session_tags for tag info and grove_profiles for display info.
-   * RLS handles friend + privacy filtering automatically.
+   * Fetch the social feed: recent focus sessions from friends (last 2 days).
+   * When the user has fewer than DISCOVERY_FRIEND_THRESHOLD friends, also mixes
+   * in recent sessions from public strangers (discovery, last 7 days) so the
+   * feed isn't empty — those items carry isFriend=false for the invite affordance.
    */
   async fetchFeed(): Promise<FeedItem[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Calculate the cutoff: start of yesterday in UTC
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const cutoff = yesterday.toISOString();
+    const friendIds = await getAcceptedFriendIds(user.id);
 
-    // Fetch focus sessions from the last 2 days (RLS handles friend + privacy filtering)
-    const { data: sessions, error: sessionsError } = await supabase
-      .from('focus_sessions')
-      .select('id, user_id, tag_id, duration, start_time, end_time, notes, photo_url, created_at, session_tags(name, icon)')
-      .gte('start_time', cutoff)
-      .neq('user_id', user.id)
-      .is('deleted_at', null)
-      .order('start_time', { ascending: false });
+    // Friends' recent sessions (last 2 days). Scoped explicitly to friend IDs —
+    // RLS now also exposes public strangers, so we can't rely on it to limit here.
+    const friendCutoff = new Date();
+    friendCutoff.setDate(friendCutoff.getDate() - 1);
+    friendCutoff.setHours(0, 0, 0, 0);
 
-    if (sessionsError) throw sessionsError;
-    if (!sessions || sessions.length === 0) return [];
-
-    // Get unique user IDs to fetch profiles
-    const userIds = [...new Set(sessions.map((s) => s.user_id))];
-
-    // Fetch profiles, privacy settings, and reactions in parallel
-    const [profilesResult, privacyResult, reactionsResult, userReactionsResult] = await Promise.all([
-      supabase
-        .from('grove_profiles')
-        .select('*')
-        .in('user_id', userIds),
-      supabase
-        .from('grove_privacy_settings')
-        .select('user_id, share_notes, shared_tag_ids')
-        .in('user_id', userIds),
-      supabase
-        .from('grove_reactions')
-        .select('session_id')
-        .in('session_id', sessions.map((s) => s.id)),
-      supabase
-        .from('grove_reactions')
-        .select('session_id')
-        .eq('user_id', user.id)
-        .in('session_id', sessions.map((s) => s.id)),
-    ]);
-
-    if (profilesResult.error) throw profilesResult.error;
-
-    const profileByUserId = new Map<string, GroveProfile>();
-    for (const profile of profilesResult.data || []) {
-      profileByUserId.set(profile.user_id, profile);
+    let friendItems: FeedItem[] = [];
+    if (friendIds.length > 0) {
+      const { data, error } = await supabase
+        .from('focus_sessions')
+        .select(SESSION_SELECT)
+        .in('user_id', friendIds)
+        .gte('start_time', friendCutoff.toISOString())
+        .is('deleted_at', null)
+        .order('start_time', { ascending: false });
+      if (error) throw error;
+      friendItems = await assembleFeedItems(user.id, (data ?? []) as unknown as SessionRow[], true);
     }
 
-    // Track which users allow sharing notes and which tags they share
-    const shareNotesByUserId = new Map<string, boolean>();
-    const sharedTagIdsByUserId = new Map<string, string[]>();
-    for (const p of privacyResult.data || []) {
-      shareNotesByUserId.set(p.user_id, p.share_notes);
-      sharedTagIdsByUserId.set(p.user_id, p.shared_tag_ids ?? []);
+    // Discovery: recent public strangers' sessions (last 7 days), only for users
+    // still building their friend list. RLS restricts these to public+active authors.
+    let discoveryItems: FeedItem[] = [];
+    if (friendIds.length < DISCOVERY_FRIEND_THRESHOLD) {
+      const discoveryCutoff = new Date();
+      discoveryCutoff.setDate(discoveryCutoff.getDate() - 7);
+
+      let query = supabase
+        .from('focus_sessions')
+        .select(SESSION_SELECT)
+        .neq('user_id', user.id)
+        .gte('start_time', discoveryCutoff.toISOString())
+        .is('deleted_at', null)
+        .order('start_time', { ascending: false })
+        .limit(DISCOVERY_MAX_ITEMS);
+      if (friendIds.length > 0) {
+        query = query.not('user_id', 'in', `(${friendIds.join(',')})`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      discoveryItems = await assembleFeedItems(user.id, (data ?? []) as unknown as SessionRow[], false);
     }
 
-    // Count reactions per session
-    const reactionCounts = new Map<string, number>();
-    for (const r of reactionsResult.data || []) {
-      reactionCounts.set(r.session_id, (reactionCounts.get(r.session_id) || 0) + 1);
-    }
-
-    // Track which sessions the current user has reacted to
-    const userReactedSessions = new Set<string>();
-    for (const r of userReactionsResult.data || []) {
-      userReactedSessions.add(r.session_id);
-    }
-
-    return sessions
-      .map((session) => {
-        const profile = profileByUserId.get(session.user_id);
-        if (!profile) return null;
-
-        // Only show sessions whose tag is in the friend's shared_tag_ids
-        const sharedTags = sharedTagIdsByUserId.get(session.user_id) ?? [];
-        if (!sharedTags.includes(session.tag_id)) return null;
-
-        // Respect share_notes privacy: null out notes and photo_url if the user has it disabled
-        const canShareNotes = shareNotesByUserId.get(session.user_id) ?? false;
-        const feedSession: FeedSession = {
-          ...(session as FeedSession),
-          notes: canShareNotes ? session.notes : null,
-          photo_url: canShareNotes ? (session as any).photo_url : null,
-        };
-
-        return {
-          session: feedSession,
-          profile,
-          reactionCount: reactionCounts.get(session.id) || 0,
-          hasReacted: userReactedSessions.has(session.id),
-        };
-      })
-      .filter((item): item is FeedItem => item !== null);
+    // Merge into a single recency-ordered feed (stories-style).
+    return [...friendItems, ...discoveryItems].sort(
+      (a, b) =>
+        new Date(b.session.start_time).getTime() - new Date(a.session.start_time).getTime()
+    );
   },
 
   /**
@@ -153,16 +189,11 @@ export const GroveFeedService = {
     if (sessionsError) throw sessionsError;
     if (!sessions || sessions.length === 0) return [];
 
-    // Fetch profile, privacy settings, and reactions in parallel
-    const [profileResult, privacyResult, reactionsResult, userReactionsResult] = await Promise.all([
+    // Fetch profile and reactions in parallel
+    const [profileResult, reactionsResult, userReactionsResult] = await Promise.all([
       supabase
         .from('grove_profiles')
         .select('*')
-        .eq('user_id', friendUserId)
-        .single(),
-      supabase
-        .from('grove_privacy_settings')
-        .select('share_notes, shared_tag_ids')
         .eq('user_id', friendUserId)
         .single(),
       supabase
@@ -180,9 +211,6 @@ export const GroveFeedService = {
     const profile = profileResult.data;
     if (!profile) return [];
 
-    const canShareNotes = privacyResult.data?.share_notes ?? false;
-    const sharedTagIds: string[] = privacyResult.data?.shared_tag_ids ?? [];
-
     // Count reactions per session
     const reactionCounts = new Map<string, number>();
     for (const r of reactionsResult.data || []) {
@@ -196,12 +224,11 @@ export const GroveFeedService = {
     }
 
     return sessions
-      .filter((session) => sharedTagIds.includes(session.tag_id))
       .map((session) => ({
         session: {
           ...(session as FeedSession),
-          notes: canShareNotes ? session.notes : null,
-          photo_url: canShareNotes ? (session as any).photo_url : null,
+          notes: session.notes,
+          photo_url: (session as any).photo_url,
         },
         profile,
         reactionCount: reactionCounts.get(session.id) || 0,

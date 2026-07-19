@@ -353,19 +353,10 @@ export class WidgetService {
 
   /**
    * Sync Grove privacy settings to shared UserDefaults so native intents
-   * can respect privacy when sharing sessions and setting focus status.
+   * can respect privacy when setting focus status.
    */
-  static syncGrovePrivacy(settings: {
-    sharedTagIds: string[];
-    shareNotes: boolean;
-    showLiveStatus: boolean;
-  }): void {
+  static syncGrovePrivacy(settings: { showLiveStatus: boolean }): void {
     try {
-      ReactNativeDeviceActivity.userDefaultsSet(
-        GROVE_SHARED_TAG_IDS_KEY,
-        JSON.stringify(settings.sharedTagIds)
-      );
-      ReactNativeDeviceActivity.userDefaultsSet(GROVE_SHARE_NOTES_KEY, settings.shareNotes);
       ReactNativeDeviceActivity.userDefaultsSet(GROVE_SHOW_LIVE_STATUS_KEY, settings.showLiveStatus);
     } catch (error) {
       console.error('📱 [Widget] Failed to sync grove privacy:', error);

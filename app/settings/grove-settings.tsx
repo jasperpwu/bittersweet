@@ -37,11 +37,12 @@ export default function GroveSettingsScreen() {
   const clearGroveCache = useAppStore((s) => s.grove.clearGroveCache);
   const privacySettings = useAppStore((s) => s.grove.privacySettings);
   const updatePrivacySettings = useAppStore((s) => s.grove.updatePrivacySettings);
-  const tags = useAppStore((s) => s.focus.tags);
+  const updateProfile = useAppStore((s) => s.grove.updateProfile);
 
-  // Privacy state
-  const [sharedTagIds, setSharedTagIds] = useState<string[]>(privacySettings?.shared_tag_ids ?? []);
-  const [shareNotes, setShareNotes] = useState(privacySettings?.share_notes ?? false);
+  // Privacy state — tags and notes are always shared; profile type + live status are opt-in
+  const [profileType, setProfileType] = useState<'public' | 'private'>(
+    profile?.profile_type ?? 'public'
+  );
   const [showLiveStatus, setShowLiveStatus] = useState(privacySettings?.show_live_status ?? false);
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
@@ -59,40 +60,28 @@ export default function GroveSettingsScreen() {
     }
   }, [pendingSetup, isAuthenticated, profileLoaded, profile]);
 
-  const activeTags = tags.allIds
-    .map((id) => tags.byId[id])
-    .filter((tag) => tag && !tag.deletedAt)
-    .map((tag) => ({ id: tag.id, name: tag.name, icon: tag.icon || '🎯' }));
-
-  const handleToggleTag = (tagId: string) => {
-    setSharedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-    );
-  };
-
-  const privacyChanged =
-    privacySettings &&
-    (shareNotes !== privacySettings.share_notes ||
-      showLiveStatus !== privacySettings.show_live_status ||
-      JSON.stringify([...sharedTagIds].sort()) !==
-        JSON.stringify([...privacySettings.shared_tag_ids].sort()));
+  const liveStatusChanged =
+    !!privacySettings && showLiveStatus !== privacySettings.show_live_status;
+  const profileTypeChanged = !!profile && profileType !== profile.profile_type;
+  const privacyChanged = liveStatusChanged || profileTypeChanged;
 
   const handleSavePrivacy = useCallback(async () => {
     if (!privacyChanged) return;
     setIsSavingPrivacy(true);
     try {
-      await updatePrivacySettings({
-        shared_tag_ids: sharedTagIds,
-        share_notes: shareNotes,
-        show_live_status: showLiveStatus,
-      });
+      if (liveStatusChanged) {
+        await updatePrivacySettings({ show_live_status: showLiveStatus });
+      }
+      if (profileTypeChanged) {
+        await updateProfile({ profile_type: profileType });
+      }
       triggerHaptic('success');
     } catch {
       Alert.alert(t('common.error'), t('groveSettings.failedPrivacy'));
     } finally {
       setIsSavingPrivacy(false);
     }
-  }, [sharedTagIds, shareNotes, showLiveStatus, privacyChanged]);
+  }, [showLiveStatus, profileType, liveStatusChanged, profileTypeChanged, privacyChanged]);
 
   const handleToggleActive = async () => {
     try {
@@ -285,12 +274,9 @@ export default function GroveSettingsScreen() {
               </View>
               <View className="rounded-2xl bg-light-border/30 px-4 py-3 dark:bg-dark-card">
                 <PrivacyToggleList
-                  tags={activeTags}
-                  sharedTagIds={sharedTagIds}
-                  shareNotes={shareNotes}
+                  profileType={profileType}
                   showLiveStatus={showLiveStatus}
-                  onToggleTag={handleToggleTag}
-                  onToggleShareNotes={setShareNotes}
+                  onChangeProfileType={setProfileType}
                   onToggleShowLiveStatus={setShowLiveStatus}
                 />
               </View>

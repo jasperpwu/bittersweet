@@ -14,6 +14,9 @@ export interface GroveProfile {
   interests: string[];
   is_active: boolean;
   is_focusing: boolean;
+  // 'public' → anyone can find + view this profile's feed (and it surfaces in the
+  // discovery feed for users with few friends). 'private' → accepted friends only.
+  profile_type: 'public' | 'private';
   // Read cursor for the Grove notifications bell. Synced so the red-dot state
   // (unread = notifications newer than this) survives reinstall / new device.
   notifications_last_seen_at: string | null;
@@ -24,8 +27,6 @@ export interface GroveProfile {
 export interface GrovePrivacySettings {
   id: string;
   user_id: string;
-  shared_tag_ids: string[];
-  share_notes: boolean;
   show_live_status: boolean;
   created_at: string;
   updated_at: string;
@@ -37,6 +38,7 @@ export interface CreateProfileInput {
   avatar_color: string;
   gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
   interests?: string[];
+  profile_type?: 'public' | 'private';
 }
 
 export interface UpdateProfileInput {
@@ -48,11 +50,10 @@ export interface UpdateProfileInput {
   is_active?: boolean;
   is_focusing?: boolean;
   notifications_last_seen_at?: string;
+  profile_type?: 'public' | 'private';
 }
 
 export interface UpdatePrivacyInput {
-  shared_tag_ids?: string[];
-  share_notes?: boolean;
   show_live_status?: boolean;
 }
 
@@ -93,6 +94,7 @@ export const GroveService = {
         avatar_color: input.avatar_color,
         gender: input.gender ?? null,
         interests: input.interests ?? [],
+        profile_type: input.profile_type ?? 'public',
       })
       .select()
       .single();
@@ -255,8 +257,6 @@ export const GroveService = {
       .from('grove_privacy_settings')
       .insert({
         user_id: user.id,
-        shared_tag_ids: input.shared_tag_ids ?? [],
-        share_notes: input.share_notes ?? false,
         show_live_status: input.show_live_status ?? false,
       })
       .select()

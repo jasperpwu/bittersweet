@@ -300,7 +300,12 @@ export default function AddFriendsModal() {
 
     if (searchResult) {
       return (
-        <View className="flex-row items-center py-3 px-5">
+        <Pressable
+          onPress={() =>
+            router.push(`/(modals)/friend-feed?userId=${searchResult.user_id}`)
+          }
+          className="flex-row items-center py-3 px-5 active:opacity-70"
+        >
           {renderAvatar(searchResult)}
           <View className="flex-1">
             <Typography variant="subtitle-14-medium" color="primary">
@@ -311,7 +316,7 @@ export default function AddFriendsModal() {
             </Typography>
           </View>
           {renderStatusButton(searchResult.user_id)}
-        </View>
+        </Pressable>
       );
     }
 

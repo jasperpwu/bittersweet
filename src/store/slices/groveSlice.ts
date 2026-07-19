@@ -236,8 +236,6 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
         // Sync privacy settings to UserDefaults for native intent REST calls
         if (privacy) {
           WidgetService.syncGrovePrivacy({
-            sharedTagIds: privacy.shared_tag_ids,
-            shareNotes: privacy.share_notes,
             showLiveStatus: privacy.show_live_status,
           });
         }
@@ -335,8 +333,6 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
 
       // Sync updated privacy to UserDefaults for native intent REST calls
       WidgetService.syncGrovePrivacy({
-        sharedTagIds: privacySettings.shared_tag_ids,
-        shareNotes: privacySettings.share_notes,
         showLiveStatus: privacySettings.show_live_status,
       });
     } catch (error: any) {

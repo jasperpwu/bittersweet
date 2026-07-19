@@ -11,6 +11,7 @@ import i18n from '../../src/i18n';
 import { FocusingBadge } from '../../src/components/grove/FocusingBadge';
 import { ReactionButton } from '../../src/components/grove/ReactionButton';
 import { useAppStore } from '../../src/store';
+import { showToast } from '../../src/components/ui/Toast';
 import type { FeedItem, FeedSession } from '../../src/services/grove/GroveFeedService';
 import type { GroveProfile } from '../../src/services/grove/GroveService';
 
@@ -53,6 +54,28 @@ export default function FriendFeedModal() {
   const fetchFriendFeed = useAppStore((s) => s.grove.fetchFriendFeed);
   const addReaction = useAppStore((s) => s.grove.addReaction);
   const removeReaction = useAppStore((s) => s.grove.removeReaction);
+  const friends = useAppStore((s) => s.grove.friends);
+  const sendFriendRequest = useAppStore((s) => s.grove.sendFriendRequest);
+
+  // Whether the viewed (non-current) user is already a friend — drives the
+  // "Add friend" affordance when reaching a public profile via search.
+  const isFriend = useMemo(
+    () => friends.some((f) => f.profile.user_id === userId),
+    [friends, userId]
+  );
+  const [invited, setInvited] = useState(false);
+
+  const handleInvite = useCallback(async () => {
+    if (!userId) return;
+    setInvited(true);
+    try {
+      await sendFriendRequest(userId);
+      showToast(t('gm.afSentToast'), 'success');
+    } catch {
+      setInvited(false);
+      showToast(t('gm.errSendRequest'), 'error');
+    }
+  }, [userId, sendFriendRequest, t]);
 
   // Local session data (used when viewing own sessions)
   const sessions = useAppStore((s) => s.focus.sessions);
@@ -376,6 +399,28 @@ export default function FriendFeedModal() {
                   @{friendProfile.handle}
                 </Typography>
               </View>
+              {/* Add-friend affordance for non-friends (e.g. reached via search) */}
+              {!isFriend && (
+                invited ? (
+                  <View className="flex-row items-center bg-light-border dark:bg-dark-border rounded-full px-4 h-8">
+                    <Ionicons name="checkmark" size={16} color={colors.light.textSecondary} />
+                    <Typography variant="body-12" color="secondary" className="ml-1">
+                      {t('gm.afSent')}
+                    </Typography>
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={handleInvite}
+                    className="flex-row items-center bg-primary rounded-full px-4 h-8 active:opacity-80"
+                    hitSlop={6}
+                  >
+                    <Ionicons name="person-add" size={15} color={colors.white} />
+                    <Typography variant="body-12" className="ml-1.5" style={{ color: colors.white }}>
+                      {t('gm.afAdd')}
+                    </Typography>
+                  </Pressable>
+                )
+              )}
             </View>
           </View>
         </View>

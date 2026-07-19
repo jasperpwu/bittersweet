@@ -1,6 +1,8 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../../config/theme';
 import { Typography } from '../ui/Typography';
 import { DefaultAvatar } from './DefaultAvatar';
 import { FocusingBadge } from './FocusingBadge';
@@ -12,6 +14,9 @@ interface FriendActivityCardProps {
   item: FeedItem;
   onReactionToggle: (sessionId: string) => void;
   isNew?: boolean;
+  // Provided for discovery (stranger) cards to offer a quick friend invite.
+  onInvite?: (userId: string) => void;
+  invited?: boolean;
 }
 
 // All cards share this height so a photo doesn't make one card taller than the
@@ -43,11 +48,14 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
   item,
   onReactionToggle,
   isNew = false,
+  onInvite,
+  invited = false,
 }) => {
   const { profile, session, reactionCount, hasReacted } = item;
 
   const tagIcon = session.session_tags?.icon ?? '🎯';
   const tagName = session.session_tags?.name ?? 'Focus';
+  const isStranger = item.isFriend === false;
 
   return (
     <View
@@ -84,6 +92,29 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
             {timeAgo(session.start_time)}
           </Typography>
         </View>
+
+        {/* Invite affordance for discovery (stranger) cards */}
+        {isStranger && onInvite && (
+          invited ? (
+            <View className="flex-row items-center bg-light-border dark:bg-dark-border rounded-full px-3 h-7">
+              <Ionicons name="checkmark" size={14} color={colors.light.textSecondary} />
+              <Typography variant="body-12" color="secondary" className="ml-1">
+                {i18n.t('gm.afSent')}
+              </Typography>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => onInvite(profile.user_id)}
+              className="flex-row items-center bg-primary rounded-full px-3 h-7 active:opacity-80"
+              hitSlop={6}
+            >
+              <Ionicons name="person-add" size={13} color={colors.white} />
+              <Typography variant="body-12" className="ml-1" style={{ color: colors.white }}>
+                {i18n.t('gm.afAdd')}
+              </Typography>
+            </Pressable>
+          )
+        )}
       </View>
 
       {/* Content zone — flex-1 so every card is the same height whether or not
