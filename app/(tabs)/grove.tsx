@@ -208,11 +208,9 @@ export default function GroveScreen() {
           Grove
         </Typography>
         <View className="flex-row items-center gap-4">
-          {hasFriends && (
-            <Pressable onPress={handleAddFriend} className="active:opacity-60" hitSlop={8}>
-              <Ionicons name="person-add-outline" size={22} color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
-            </Pressable>
-          )}
+          <Pressable onPress={handleAddFriend} className="active:opacity-60" hitSlop={8}>
+            <Ionicons name="person-add-outline" size={22} color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
+          </Pressable>
           <Pressable onPress={handleNotifications} className="active:opacity-60" hitSlop={8}>
             <View>
               <Ionicons name="notifications-outline" size={22} color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
@@ -303,6 +301,7 @@ export default function GroveScreen() {
                   showAddFriend={!hasFriends}
                   onInvite={handleInvite}
                   invitedUserIds={invitedUserIds}
+                  onCardPress={handleFriendPress}
                 />
               ) : (
                 <View className="px-5 py-8 items-center">

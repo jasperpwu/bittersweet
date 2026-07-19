@@ -17,6 +17,8 @@ interface FriendActivityCardProps {
   // Provided for discovery (stranger) cards to offer a quick friend invite.
   onInvite?: (userId: string) => void;
   invited?: boolean;
+  // Tapping the card opens the user's full session history feed.
+  onPress?: (userId: string) => void;
 }
 
 // All cards share this height so a photo doesn't make one card taller than the
@@ -50,6 +52,7 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
   isNew = false,
   onInvite,
   invited = false,
+  onPress,
 }) => {
   const { profile, session, reactionCount, hasReacted } = item;
 
@@ -58,8 +61,10 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
   const isStranger = item.isFriend === false;
 
   return (
-    <View
-      className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 w-[280px]"
+    <Pressable
+      onPress={onPress ? () => onPress(profile.user_id) : undefined}
+      disabled={!onPress}
+      className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 w-[280px] active:opacity-80"
       style={{ height: ACTIVITY_CARD_HEIGHT }}
     >
       {/* Header: avatar + name + time */}
@@ -174,6 +179,6 @@ export const FriendActivityCard: React.FC<FriendActivityCardProps> = ({
           onToggle={() => onReactionToggle(session.id)}
         />
       </View>
-    </View>
+    </Pressable>
   );
 };

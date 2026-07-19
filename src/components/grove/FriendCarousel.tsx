@@ -14,6 +14,8 @@ interface FriendCarouselProps {
   // Discovery (stranger) card invites
   onInvite?: (userId: string) => void;
   invitedUserIds?: Set<string>;
+  // Tapping a card opens that user's full session history feed.
+  onCardPress?: (userId: string) => void;
 }
 
 const CARD_WIDTH = 280;
@@ -28,6 +30,7 @@ export const FriendCarousel: React.FC<FriendCarouselProps> = ({
   showAddFriend = true,
   onInvite,
   invitedUserIds,
+  onCardPress,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -72,11 +75,12 @@ export const FriendCarousel: React.FC<FriendCarouselProps> = ({
             isNew={isNew}
             onInvite={onInvite}
             invited={invitedUserIds?.has(item.profile.user_id)}
+            onPress={onCardPress}
           />
         </View>
       );
     },
-    [feed.length, lastGroveVisit, onReactionToggle, onAddFriend, showAddFriend, onInvite, invitedUserIds]
+    [feed.length, lastGroveVisit, onReactionToggle, onAddFriend, showAddFriend, onInvite, invitedUserIds, onCardPress]
   );
 
   // Data array: feed items + optional null sentinel for add card
