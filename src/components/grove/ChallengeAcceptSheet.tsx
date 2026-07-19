@@ -7,6 +7,8 @@ import { colors } from '../../config/theme';
 import { BottomSheet } from '../ui/BottomSheet';
 import { showToast } from '../ui/Toast';
 import { useAppStore } from '../../store';
+import { useSubscriptionGate } from '../../hooks/useSubscriptionGate';
+import { useTagUpgradeFlow } from '../../hooks/useTagUpgradeFlow';
 import { tagMatchesChallenge } from '../../utils/challengeTag';
 import { formatTarget } from './ChallengeCard';
 import type { ChallengeItem } from '../../services/grove/GroveChallengeService';
@@ -30,6 +32,8 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
   const tags = useAppStore((s) => s.focus.tags);
   const createTag = useAppStore((s) => s.focus.createTag);
   const acceptChallenge = useAppStore((s) => s.grove.acceptChallenge);
+  const { canCreateTag } = useSubscriptionGate();
+  const { triggerUpgrade, upgradeModals } = useTagUpgradeFlow();
 
   const [mode, setMode] = useState<Mode>('create');
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
@@ -68,6 +72,15 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
       }
       tagId = tag.id;
     } else {
+      // Accepting via a brand-new tag counts against the free 3-tag cap; send
+      // over-limit free users to the paywall instead of silently creating one.
+      // Keep this sheet open — the paywall is nested in its overlay so iOS
+      // presents it on top; closing here would make it a sibling of a dismissing
+      // modal and it would fail to present.
+      if (!canCreateTag) {
+        triggerUpgrade();
+        return;
+      }
       const newTag = createTag({
         name: challenge.tagName,
         icon: challenge.tagIcon,
@@ -90,9 +103,9 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
   const canAccept = mode === 'create' || (mode === 'existing' && !!selectedTagId);
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose} height={560}>
+    <BottomSheet isVisible={isVisible} onClose={onClose} height={560} overlay={upgradeModals}>
       {/* Header */}
-      <View className="flex-row items-center mb-1">
+      <View className="mb-1 flex-row items-center">
         <Typography variant="body-14" className="mr-1.5">
           {challenge.tagIcon}
         </Typography>
@@ -101,33 +114,33 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
         </Typography>
       </View>
       <Typography variant="body-12" color="secondary" className="mb-4">
-        {formatTarget(challenge.targetMinutes, challenge.period)} · pick the tag that tracks your progress
+        {formatTarget(challenge.targetMinutes, challenge.period)} · pick the tag that tracks your
+        progress
       </Typography>
 
       {/* Mode toggle */}
-      <View className="flex-row gap-x-2 mb-4">
+      <View className="mb-4 flex-row gap-x-2">
         <Pressable
           onPress={() => hasMatch && setMode('existing')}
           disabled={!hasMatch}
-          className={`flex-1 py-2.5 rounded-xl ${mode === 'existing' ? '' : 'bg-light-border dark:bg-dark-border'}`}
-          style={{ backgroundColor: mode === 'existing' ? ACCENT : undefined, opacity: hasMatch ? 1 : 0.4 }}
-        >
+          className={`flex-1 rounded-xl py-2.5 ${mode === 'existing' ? '' : 'bg-light-border dark:bg-dark-border'}`}
+          style={{
+            backgroundColor: mode === 'existing' ? ACCENT : undefined,
+            opacity: hasMatch ? 1 : 0.4,
+          }}>
           <Typography
             variant="body-14"
-            className={`text-center ${mode === 'existing' ? 'text-white' : 'text-light-text-primary dark:text-white'}`}
-          >
+            className={`text-center ${mode === 'existing' ? 'text-white' : 'text-light-text-primary dark:text-white'}`}>
             Use my tag
           </Typography>
         </Pressable>
         <Pressable
           onPress={() => setMode('create')}
-          className={`flex-1 py-2.5 rounded-xl ${mode === 'create' ? '' : 'bg-light-border dark:bg-dark-border'}`}
-          style={{ backgroundColor: mode === 'create' ? ACCENT : undefined }}
-        >
+          className={`flex-1 rounded-xl py-2.5 ${mode === 'create' ? '' : 'bg-light-border dark:bg-dark-border'}`}
+          style={{ backgroundColor: mode === 'create' ? ACCENT : undefined }}>
           <Typography
             variant="body-14"
-            className={`text-center ${mode === 'create' ? 'text-white' : 'text-light-text-primary dark:text-white'}`}
-          >
+            className={`text-center ${mode === 'create' ? 'text-white' : 'text-light-text-primary dark:text-white'}`}>
             Create tag
           </Typography>
         </Pressable>
@@ -136,13 +149,17 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
       {/* Option (b): explain why "Use my tag" is unavailable */}
       {!hasMatch && (
         <View
-          className="flex-row items-start rounded-xl px-3 py-2.5 mb-4"
-          style={{ backgroundColor: `${ACCENT}1A` }}
-        >
-          <Ionicons name="information-circle-outline" size={16} color={ACCENT} style={{ marginTop: 1 }} />
+          className="mb-4 flex-row items-start rounded-xl px-3 py-2.5"
+          style={{ backgroundColor: `${ACCENT}1A` }}>
+          <Ionicons
+            name="information-circle-outline"
+            size={16}
+            color={ACCENT}
+            style={{ marginTop: 1 }}
+          />
           <Typography variant="body-12" color="secondary" className="ml-2 flex-1">
-            You have no tag named &quot;{challenge.tagName}&quot;. Create one to join — it comes with a goal you
-            can activate to track this challenge.
+            You have no tag named &quot;{challenge.tagName}&quot;. Create one to join — it comes
+            with a goal you can activate to track this challenge.
           </Typography>
         </View>
       )}
@@ -156,21 +173,19 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
               <Pressable
                 key={tag.id}
                 onPress={() => setSelectedTagId(tag.id)}
-                className="flex-row items-center py-3 active:opacity-70"
-              >
-                <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-dark-card items-center justify-center mr-3">
+                className="flex-row items-center py-3 active:opacity-70">
+                <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-light-border/30 dark:bg-dark-card">
                   <Typography variant="body-14">{tag.icon || ''}</Typography>
                 </View>
                 <Typography variant="subtitle-14-medium" color="primary" className="flex-1">
                   {tag.name}
                 </Typography>
                 <View
-                  className="w-6 h-6 rounded-full border-2 items-center justify-center"
+                  className="h-6 w-6 items-center justify-center rounded-full border-2"
                   style={{
                     backgroundColor: selected ? ACCENT : 'transparent',
                     borderColor: selected ? ACCENT : colors.light.textSecondary,
-                  }}
-                >
+                  }}>
                   {selected && <Ionicons name="checkmark" size={14} color={colors.white} />}
                 </View>
               </Pressable>
@@ -182,7 +197,7 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
       {/* Create tag preview */}
       {mode === 'create' && (
         <View className="flex-row items-center py-3">
-          <View className="w-10 h-10 rounded-xl bg-light-border/30 dark:bg-dark-card items-center justify-center mr-3">
+          <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-light-border/30 dark:bg-dark-card">
             <Typography variant="body-14">{challenge.tagIcon || ''}</Typography>
           </View>
           <View className="flex-1">
@@ -204,8 +219,7 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
         disabled={isSubmitting || !canAccept}
         className="mt-4"
         style={{ backgroundColor: ACCENT }}
-        onPress={handleAccept}
-      >
+        onPress={handleAccept}>
         {isSubmitting ? (
           <ActivityIndicator size="small" color={colors.white} />
         ) : (

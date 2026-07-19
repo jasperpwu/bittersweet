@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { View, ScrollView, SafeAreaView, Pressable, Alert, Text, TextInput, useColorScheme } from 'react-native';
+import {
+  View,
+  ScrollView,
+  SafeAreaView,
+  Pressable,
+  Alert,
+  Text,
+  TextInput,
+  useColorScheme,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
@@ -12,6 +21,8 @@ import { DEFAULT_TAG_COLOR } from '../../src/config/tagColors';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useAppStore } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
+import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
+import { useTagUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import {
   isHealthKitAvailable,
   requestWorkoutAuthorization,
@@ -30,6 +41,8 @@ export default function HealthScreen() {
   const { triggerHaptic } = useDeviceIntegration();
   const tags = useAppStore((s) => s.focus.tags);
   const createTag = useAppStore((s) => s.focus.createTag);
+  const { canCreateTag } = useSubscriptionGate();
+  const { triggerUpgrade, upgradeModals } = useTagUpgradeFlow();
 
   const hk = preferences.healthKit;
   const [tagSheetVisible, setTagSheetVisible] = useState(false);
@@ -72,7 +85,9 @@ export default function HealthScreen() {
       if (hk.linkedTagId) runSync();
     } catch (e) {
       console.error('[HealthKit] authorization failed', e);
-      Alert.alert(t('health.connFailedTitle'), t('health.connFailedBody'), [{ text: t('common.ok') }]);
+      Alert.alert(t('health.connFailedTitle'), t('health.connFailedBody'), [
+        { text: t('common.ok') },
+      ]);
     }
   };
 
@@ -89,6 +104,14 @@ export default function HealthScreen() {
   };
 
   const openCreateTagForm = () => {
+    // Free tier is capped at 3 tags; route over-limit users to the paywall
+    // instead of the inline create form. Keep the picker open — the paywall is
+    // nested in its overlay so iOS presents it on top; closing here would make
+    // it a sibling of a dismissing modal and it would fail to present.
+    if (!canCreateTag) {
+      triggerUpgrade();
+      return;
+    }
     triggerHaptic('light');
     // Reset to workout defaults each time the form is opened.
     setNewTagName(t('health.defaultWorkoutName'));
@@ -131,7 +154,11 @@ export default function HealthScreen() {
       {/* Header */}
       <View className="h-[56px] flex-row items-center px-5">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
-          <Ionicons name="chevron-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
+          />
         </Pressable>
         <Typography variant="headline-20" color="primary">
           {t('settings.tab.health')}
@@ -163,7 +190,9 @@ export default function HealthScreen() {
                 title={t('health.tag')}
                 subtitle={t('health.tagSub')}
                 hasChevron
-                valueLabel={linkedTag ? `${linkedTag.icon || '🎯'} ${linkedTag.name}` : t('health.choose')}
+                valueLabel={
+                  linkedTag ? `${linkedTag.icon || '🎯'} ${linkedTag.name}` : t('health.choose')
+                }
                 onPress={() => {
                   triggerHaptic('light');
                   setTagSheetVisible(true);
@@ -185,13 +214,17 @@ export default function HealthScreen() {
       </ScrollView>
 
       {/* Tag picker */}
-      <BottomSheet isVisible={tagSheetVisible} onClose={closeTagSheet}>
+      <BottomSheet isVisible={tagSheetVisible} onClose={closeTagSheet} overlay={upgradeModals}>
         {creatingTag ? (
           // Inline tag creator — defaults to a workout emoji + "Workout" name.
           <View className="px-5 pb-6">
             <View className="mb-4 flex-row items-center">
               <Pressable onPress={() => setCreatingTag(false)} className="mr-2 active:opacity-70">
-                <Ionicons name="chevron-back" size={22} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
+                <Ionicons
+                  name="chevron-back"
+                  size={22}
+                  color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
+                />
               </Pressable>
               <Typography variant="headline-20" color="primary">
                 {t('health.newWorkoutTag')}
@@ -231,7 +264,9 @@ export default function HealthScreen() {
               value={newTagName}
               onChangeText={setNewTagName}
               placeholder={t('health.tagNamePlaceholder')}
-              placeholderTextColor={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
+              placeholderTextColor={
+                isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary
+              }
               maxLength={30}
               className="mb-5"
               style={{
@@ -254,7 +289,11 @@ export default function HealthScreen() {
               className="mb-5"
               nestedScrollEnabled
               showsVerticalScrollIndicator={false}>
-              <TagColorPicker selectedColor={newTagColor} onSelectColor={setNewTagColor} swatchSize={32} />
+              <TagColorPicker
+                selectedColor={newTagColor}
+                onSelectColor={setNewTagColor}
+                swatchSize={32}
+              />
             </ScrollView>
 
             <Button
@@ -283,7 +322,11 @@ export default function HealthScreen() {
                   {tag.icon} {tag.name}
                 </Typography>
                 {hk.linkedTagId === tag.id && (
-                  <Ionicons name="checkmark" size={20} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
+                  <Ionicons
+                    name="checkmark"
+                    size={20}
+                    color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
+                  />
                 )}
               </Pressable>
             ))}
@@ -293,7 +336,10 @@ export default function HealthScreen() {
               onPress={openCreateTagForm}
               className="flex-row items-center py-3 active:opacity-70">
               <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-              <Typography variant="subtitle-14-medium" className="ml-2" style={{ color: colors.primary }}>
+              <Typography
+                variant="subtitle-14-medium"
+                className="ml-2"
+                style={{ color: colors.primary }}>
                 {t('health.createNewTag')}
               </Typography>
             </Pressable>

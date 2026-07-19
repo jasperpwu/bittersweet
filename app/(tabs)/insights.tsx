@@ -7,8 +7,7 @@ import { GoalProgress } from '../../src/components/analytics/GoalProgress';
 import { BadgeCollection } from '../../src/components/analytics/BadgeCollection';
 import { CoachSection } from '../../src/components/analytics/CoachCard';
 import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
-import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
-import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
+import { useUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { useFocusActions, useAppStore } from '../../src/store';
 import { useShallow } from 'zustand/react/shallow';
 import { SharedTagStats } from '../../src/components/analytics/SharedTagStats/SharedTagStats';
@@ -28,8 +27,7 @@ export default function InsightsScreen() {
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [activatingTagId, setActivatingTagId] = useState<string | undefined>(undefined);
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
-  const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
+  const { triggerUpgrade, upgradeModals } = useUpgradeFlow('goals');
   const { canActivateGoal } = useSubscriptionGate();
   const { preferences } = useAppSettings();
   const weekStartDay = 1; // Always Monday
@@ -262,7 +260,9 @@ export default function InsightsScreen() {
       const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
       const goalName =
         goal?.customName ||
-        (tag ? t('insights.goalSuffix', { icon: tag.icon, name: tag.name }) : t('insights.thisGoal'));
+        (tag
+          ? t('insights.goalSuffix', { icon: tag.icon, name: tag.name })
+          : t('insights.thisGoal'));
 
       Alert.alert(
         t('insights.deactivateTitle'),
@@ -288,7 +288,9 @@ export default function InsightsScreen() {
       const tag = goalTagId ? tags?.byId?.[goalTagId] : null;
       const goalName =
         goal?.customName ||
-        (tag ? t('insights.goalSuffix', { icon: tag.icon, name: tag.name }) : t('insights.thisGoal'));
+        (tag
+          ? t('insights.goalSuffix', { icon: tag.icon, name: tag.name })
+          : t('insights.thisGoal'));
 
       const hasExistingBadge = badges.some((b) => b.goalId === goalId);
       const message = hasExistingBadge
@@ -315,7 +317,7 @@ export default function InsightsScreen() {
   const handleActivateGoal = useCallback(
     (goalId: string) => {
       if (!canActivateGoal) {
-        setShowUpgradePrompt(true);
+        triggerUpgrade();
         return;
       }
       const goal = goals?.byId?.[goalId];
@@ -397,17 +399,13 @@ export default function InsightsScreen() {
           }}
           editingGoalId={editingGoalId}
           tagId={activatingTagId}
-          onUpgrade={() => setShowUpgradePrompt(true)}
+          onUpgrade={triggerUpgrade}
         />
 
-        <UpgradePrompt
-          isVisible={showUpgradePrompt}
-          onClose={() => setShowUpgradePrompt(false)}
-          onUpgrade={() => setShowUpgradeSheet(true)}
-          limitType="goals"
-        />
-
-        <UpgradeSheet isVisible={showUpgradeSheet} onClose={() => setShowUpgradeSheet(false)} />
+        {/* Goals paywall — GoalConfigModal fires onUpgrade only after it has
+            fully closed, and prompt→sheet is sequenced inside the hook, so no
+            modal ever presents over another that's still on screen. */}
+        {upgradeModals}
       </SwipeableTabWrapper>
     </SafeAreaView>
   );

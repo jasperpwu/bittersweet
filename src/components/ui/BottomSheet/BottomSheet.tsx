@@ -38,6 +38,11 @@ interface BottomSheetProps {
   // Return false to veto the close — the sheet snaps back open and the caller is
   // expected to drive the actual close itself (e.g. after a confirm dialog).
   beforeClose?: () => boolean;
+  // Fired once the sheet is FULLY dismissed (native Modal unmounted), on both
+  // gesture and programmatic closes. Use this to serialise modal hand-offs —
+  // e.g. open a second sheet only after this one is gone, since iOS can't
+  // present a modal over one that is still on screen or animating out.
+  onClosed?: () => void;
   // Full-screen content rendered inside the sheet's Modal, above the sheet
   // itself — for nested pickers/overlays (e.g. emoji/color) that must cover the
   // whole screen without stacking a second native modal. The caller gates it.
@@ -56,6 +61,7 @@ export const BottomSheet: FC<BottomSheetProps> = ({
   height: heightProp,
   scrollable = false,
   beforeClose,
+  onClosed,
   overlay,
   footer,
 }) => {
@@ -63,7 +69,8 @@ export const BottomSheet: FC<BottomSheetProps> = ({
   const height = heightProp ?? screenHeight * 0.8;
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const closeIconColor = colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary;
+  const closeIconColor =
+    colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary;
   const { t } = useTranslation();
   const translateY = useSharedValue(height);
   const contextY = useSharedValue(0);
@@ -77,6 +84,14 @@ export const BottomSheet: FC<BottomSheetProps> = ({
     onClose();
   }, [onClose]);
 
+  // Tear down the native Modal and notify the caller it's fully gone. Routed
+  // through one helper so both the gesture and programmatic close paths fire
+  // onClosed at the same point (Modal actually unmounted).
+  const handleFullyClosed = useCallback(() => {
+    setModalVisible(false);
+    onClosed?.();
+  }, [onClosed]);
+
   useEffect(() => {
     if (isVisible) {
       dismissedByGesture.current = false;
@@ -85,12 +100,12 @@ export const BottomSheet: FC<BottomSheetProps> = ({
       translateY.value = withTiming(0, { duration: 300 });
     } else if (modalVisible) {
       if (dismissedByGesture.current) {
-        setModalVisible(false);
         dismissedByGesture.current = false;
+        handleFullyClosed();
       } else {
         translateY.value = withTiming(height, { duration: 250 }, (finished) => {
           if (finished) {
-            runOnJS(setModalVisible)(false);
+            runOnJS(handleFullyClosed)();
           }
         });
       }

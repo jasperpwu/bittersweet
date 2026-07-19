@@ -15,6 +15,10 @@ interface UpgradePromptProps {
   onClose: () => void;
   onUpgrade: () => void;
   limitType: LimitType;
+  // Fired once the prompt is fully dismissed — lets a caller open the full
+  // UpgradeSheet only after this sheet is gone (avoids the iOS modal-over-modal
+  // present failure). Optional; unused by callers that render the sheet at root.
+  onClosed?: () => void;
 }
 
 // i18n key suffix per limit type → subscription.limit{Tags,Goals,Adhd,Health}{Title,Sub}
@@ -30,6 +34,7 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
   onClose,
   onUpgrade,
   limitType,
+  onClosed,
 }) => {
   const { t } = useTranslation();
   const copy = {
@@ -38,7 +43,7 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
   };
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose} height={480}>
+    <BottomSheet isVisible={isVisible} onClose={onClose} onClosed={onClosed} height={480}>
       <View className="mb-4 items-center">
         <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-primary/15">
           <Ionicons name="diamond-outline" size={28} color={colors.primary} />

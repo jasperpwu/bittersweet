@@ -15,6 +15,8 @@ import { BottomSheet } from '../../ui/BottomSheet';
 import { showToast } from '../../ui/Toast';
 import { HorizontalTagSelector } from '../../focus/TagSelector';
 import { CreateTagModal } from '../../focus';
+import { useSubscriptionGate } from '../../../hooks/useSubscriptionGate';
+import { useTagUpgradeFlow } from '../../../hooks/useTagUpgradeFlow';
 import { useFocus, useTodoActions } from '../../../store';
 import { colors } from '../../../config/theme';
 import { ensureTodoNotificationPermission } from '../../../services/notifications/todos';
@@ -49,6 +51,18 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
   const [name, setName] = useState('');
   const [tagId, setTagId] = useState('');
   const [showCreateTag, setShowCreateTag] = useState(false);
+  const { canCreateTag } = useSubscriptionGate();
+  const { triggerUpgrade, upgradeModals } = useTagUpgradeFlow();
+
+  // Guard the create-tag intent at the trigger: over-limit free users get the
+  // paywall instead of opening a form they can't submit.
+  const openCreateTag = () => {
+    if (!canCreateTag) {
+      triggerUpgrade();
+      return;
+    }
+    setShowCreateTag(true);
+  };
   const [startEnabled, setStartEnabled] = useState(false);
   const [startTimeEnabled, setStartTimeEnabled] = useState(false);
   const [startAt, setStartAt] = useState<Date>(new Date());
@@ -217,7 +231,21 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
       onClose={onClose}
       height={screenHeight * 0.85}
       scrollable
-      beforeClose={handleBeforeClose}>
+      beforeClose={handleBeforeClose}
+      overlay={
+        // Nested in the sheet's own Modal (not as content/siblings) so the tag
+        // creator and paywall present on top of this open sheet; a sibling modal
+        // over an already-presented one fails to present on iOS.
+        <>
+          <CreateTagModal
+            visible={showCreateTag}
+            onClose={() => setShowCreateTag(false)}
+            onUpgradeNeeded={triggerUpgrade}
+            onCreated={(tag) => setTagId(tag.id)}
+          />
+          {upgradeModals}
+        </>
+      }>
       {/* Header — close is provided by BottomSheet's built-in button */}
       <Typography variant="headline-20" color="primary" className="mb-4">
         {todo ? t('todos.editTitle') : t('todos.newTitle')}
@@ -246,7 +274,7 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
           selectedTags={tagId ? [tagId] : []}
           onTagSelect={(id) => setTagId(id)}
           maxSelections={1}
-          onCreateTag={() => setShowCreateTag(true)}
+          onCreateTag={openCreateTag}
         />
       </View>
 
@@ -472,12 +500,6 @@ export const TodoEditModal: FC<TodoEditModalProps> = ({
           </Typography>
         </Pressable>
       )}
-
-      <CreateTagModal
-        visible={showCreateTag}
-        onClose={() => setShowCreateTag(false)}
-        onCreated={(tag) => setTagId(tag.id)}
-      />
     </BottomSheet>
   );
 };

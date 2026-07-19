@@ -18,8 +18,7 @@ import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
 import { AccountActions } from '../../src/components/auth/AccountSection';
 import { GoogleSignInButton } from '../../src/components/auth/SignInSheet';
-import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
-import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
+import { useUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { useAppStore } from '../../src/store';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
@@ -89,9 +88,8 @@ export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { triggerHaptic, deviceInfo } = useDeviceIntegration();
-  const [upgradeSheetVisible, setUpgradeSheetVisible] = useState(false);
-  const [showHealthUpgrade, setShowHealthUpgrade] = useState(false);
   const { isPremium } = useSubscriptionGate();
+  const { triggerUpgrade, upgradeModals } = useUpgradeFlow('health');
 
   const {
     user,
@@ -300,7 +298,7 @@ export default function SettingsScreen() {
                 triggerHaptic('light');
                 // Premium gate: non-subscribers see the upgrade prompt instead of the screen.
                 if (!isPremium) {
-                  setShowHealthUpgrade(true);
+                  triggerUpgrade();
                   return;
                 }
                 router.push('/settings/health' as any);
@@ -427,19 +425,8 @@ export default function SettingsScreen() {
           <View className="h-20" />
         </ScrollView>
 
-        {/* Upgrade Sheet */}
-        <UpgradeSheet
-          isVisible={upgradeSheetVisible}
-          onClose={() => setUpgradeSheetVisible(false)}
-        />
-
-        {/* Apple Health premium gate */}
-        <UpgradePrompt
-          isVisible={showHealthUpgrade}
-          onClose={() => setShowHealthUpgrade(false)}
-          onUpgrade={() => router.push('/settings/subscription' as any)}
-          limitType="health"
-        />
+        {/* Apple Health premium gate — prompt → sign-in → subscription sheet */}
+        {upgradeModals}
       </SwipeableTabWrapper>
     </SafeAreaView>
   );

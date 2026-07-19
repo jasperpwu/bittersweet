@@ -53,6 +53,8 @@ import { SignInSheet } from '../../src/components/auth/SignInSheet';
 import { setHeldSessionId, clearHeldSessionId } from '../../src/services/sync/heldSession';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
+import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
+import { useTagUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { useTranslation } from 'react-i18next';
 
 export default function SessionCompleteModal() {
@@ -68,6 +70,18 @@ export default function SessionCompleteModal() {
   const [notes, setNotes] = useState(session?.notes ?? '');
   const [secondaryTag, setSecondaryTag] = useState<string>(session?.secondaryTagId ?? '');
   const [showCreateTag, setShowCreateTag] = useState(false);
+  const { canCreateTag } = useSubscriptionGate();
+  const { triggerUpgrade, upgradeModals } = useTagUpgradeFlow();
+
+  // Guard the create-tag intent at the trigger: over-limit free users get the
+  // paywall instead of opening a form they can't submit.
+  const openCreateTag = () => {
+    if (!canCreateTag) {
+      triggerUpgrade();
+      return;
+    }
+    setShowCreateTag(true);
+  };
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isSavingPhoto, setIsUploadingPhoto] = useState(false);
   const [showSignInSheet, setShowSignInSheet] = useState(false);
@@ -460,7 +474,7 @@ export default function SessionCompleteModal() {
                 selectedTags={secondaryTag ? [secondaryTag] : []}
                 onTagSelect={(id) => setSecondaryTag((prev) => (prev === id ? '' : id))}
                 maxSelections={1}
-                onCreateTag={() => setShowCreateTag(true)}
+                onCreateTag={openCreateTag}
               />
             </View>
           )}
@@ -673,8 +687,10 @@ export default function SessionCompleteModal() {
       <CreateTagModal
         visible={showCreateTag}
         onClose={() => setShowCreateTag(false)}
+        onUpgradeNeeded={triggerUpgrade}
         onCreated={(tag) => setSecondaryTag(tag.id)}
       />
+      {upgradeModals}
     </SafeAreaView>
   );
 }

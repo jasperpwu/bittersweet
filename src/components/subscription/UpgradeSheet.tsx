@@ -73,7 +73,10 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
     return { yearlyPerMonth, savePercent };
   }, [monthlyProduct, yearlyProduct]);
 
-  const handleContinue = async () => {
+  // Sign-in is gated BEFORE this sheet opens (the flow shows the sign-in sheet
+  // first), so a user reaching Continue is already authenticated and the
+  // purchase's entitlement will attach to their account.
+  const proceedPurchase = async () => {
     const product = selectedPlan === 'yearly' ? yearlyProduct : monthlyProduct;
     if (!product) return;
     await purchase(product.id);
@@ -145,7 +148,7 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
         </Typography>
       ) : null}
 
-      {/* Single Continue CTA */}
+      {/* Single Continue CTA — buys the selected plan. */}
       <Button
         variant="primary"
         size="large"
@@ -154,7 +157,7 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
         loading={isLoading}
         disabled={!productsReady}
         className="rounded-2xl"
-        onPress={handleContinue}>
+        onPress={proceedPurchase}>
         {t('subscription.continue')}
       </Button>
 

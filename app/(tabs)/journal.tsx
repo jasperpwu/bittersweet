@@ -30,6 +30,8 @@ import { Modal, Slider, Typography, TimePicker, DatePicker, Button } from '../..
 import { colors } from '../../src/config/theme';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { CreateTagModal } from '../../src/components/focus';
+import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
+import { useTagUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { DateSelector, Timeline, ThreeDayTimeline, TodoSheet } from '../../src/components/journal';
 import { THREE_DAY_COUNT } from '../../src/components/journal/Timeline/constants';
 import { TodoEditModal } from '../../src/components/journal/TodoSheet/TodoEditModal';
@@ -128,6 +130,18 @@ export default function JournalScreen() {
   const [createTagTarget, setCreateTagTarget] = useState<
     null | 'manual' | 'manualSecondary' | 'editSecondary'
   >(null);
+  const { canCreateTag } = useSubscriptionGate();
+  const { triggerUpgrade, upgradeModals } = useTagUpgradeFlow();
+
+  // Guard the create-tag intent at the trigger: over-limit free users get the
+  // paywall instead of opening a form they can't submit.
+  const openCreateTag = (target: 'manual' | 'manualSecondary' | 'editSecondary') => {
+    if (!canCreateTag) {
+      triggerUpgrade();
+      return;
+    }
+    setCreateTagTarget(target);
+  };
   const [manualNotes, setManualNotes] = useState('');
   const [manualPhotoUri, setManualPhotoUri] = useState<string | null>(null);
   const [manualEntryError, setManualEntryError] = useState<string | null>(null);
@@ -983,7 +997,7 @@ export default function JournalScreen() {
                   selectedTags={editSecondaryTag ? [editSecondaryTag] : []}
                   onTagSelect={(id) => setEditSecondaryTag((prev) => (prev === id ? '' : id))}
                   maxSelections={1}
-                  onCreateTag={() => setCreateTagTarget('editSecondary')}
+                  onCreateTag={() => openCreateTag('editSecondary')}
                 />
               </View>
             )}
@@ -1192,7 +1206,7 @@ export default function JournalScreen() {
                     if (manualSecondaryTag === id) setManualSecondaryTag('');
                   }}
                   maxSelections={1}
-                  onCreateTag={() => setCreateTagTarget('manual')}
+                  onCreateTag={() => openCreateTag('manual')}
                 />
               </View>
 
@@ -1210,7 +1224,7 @@ export default function JournalScreen() {
                       selectedTags={manualSecondaryTag ? [manualSecondaryTag] : []}
                       onTagSelect={(id) => setManualSecondaryTag((prev) => (prev === id ? '' : id))}
                       maxSelections={1}
-                      onCreateTag={() => setCreateTagTarget('manualSecondary')}
+                      onCreateTag={() => openCreateTag('manualSecondary')}
                     />
                   </View>
                 </>
@@ -1372,6 +1386,7 @@ export default function JournalScreen() {
       <CreateTagModal
         visible={createTagTarget !== null}
         onClose={() => setCreateTagTarget(null)}
+        onUpgradeNeeded={triggerUpgrade}
         onCreated={(tag) => {
           if (createTagTarget === 'manual') {
             setManualTag(tag.id);
@@ -1384,6 +1399,7 @@ export default function JournalScreen() {
           setCreateTagTarget(null);
         }}
       />
+      {upgradeModals}
     </View>
   );
 }

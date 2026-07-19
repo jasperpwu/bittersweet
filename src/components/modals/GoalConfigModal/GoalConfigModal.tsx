@@ -58,6 +58,10 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
     }
   }, [isVisible, editingGoalId]);
 
+  // Set when submit hits the subscription gate; consumed on full close to open
+  // the paywall without overlapping this sheet's dismissal.
+  const upgradeAfterClose = useRef(false);
+
   const handleSubmit = (goalData: {
     customName?: string;
     activePeriod: 'daily' | 'weekly' | 'monthly' | 'none';
@@ -74,10 +78,13 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
       return;
     }
 
-    // Check subscription gate for activation
+    // Check subscription gate for activation. Fire onUpgrade only after this
+    // sheet has fully closed (see onClosed below) — presenting the paywall while
+    // this modal is still dismissing makes it a sibling-over-a-dismissing-modal,
+    // which fails to present on iOS.
     if (isActivating && !canActivateGoal) {
+      upgradeAfterClose.current = true;
       onClose();
-      onUpgrade?.();
       return;
     }
 
@@ -122,7 +129,13 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
       onClose={onClose}
       height={screenHeight * 0.85}
       scrollable
-      beforeClose={handleBeforeClose}>
+      beforeClose={handleBeforeClose}
+      onClosed={() => {
+        if (upgradeAfterClose.current) {
+          upgradeAfterClose.current = false;
+          onUpgrade?.();
+        }
+      }}>
       {/* Header */}
       <View className="mb-6 flex-row items-center justify-between">
         <Typography variant="headline-20" color="primary">

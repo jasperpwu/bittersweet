@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, ScrollView, SafeAreaView, Pressable, Linking, useColorScheme } from 'react-native';
 import { colors } from '../../src/config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
 import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsItem';
-import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
 import { useAppStore } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
+import { useUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { useTranslation } from 'react-i18next';
 
 export default function SubscriptionScreen() {
@@ -15,15 +15,19 @@ export default function SubscriptionScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { triggerHaptic } = useDeviceIntegration();
-  const [upgradeSheetVisible, setUpgradeSheetVisible] = useState(false);
+  const { openPlans, upgradeModals } = useUpgradeFlow();
   const subscriptionTier = useAppStore((state) => state.subscription.tier);
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
-      <View className="h-[56px] px-5 flex-row items-center">
+      <View className="h-[56px] flex-row items-center px-5">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
-          <Ionicons name="chevron-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
+          />
         </Pressable>
         <Typography variant="headline-20" color="primary">
           {t('settings.tab.subscription')}
@@ -61,7 +65,7 @@ export default function SubscriptionScreen() {
               valueLabel={t('subscription.upgrade')}
               onPress={() => {
                 triggerHaptic('light');
-                setUpgradeSheetVisible(true);
+                openPlans();
               }}
               isLast
             />
@@ -71,10 +75,7 @@ export default function SubscriptionScreen() {
         <View className="h-20" />
       </ScrollView>
 
-      <UpgradeSheet
-        isVisible={upgradeSheetVisible}
-        onClose={() => setUpgradeSheetVisible(false)}
-      />
+      {upgradeModals}
     </SafeAreaView>
   );
 }

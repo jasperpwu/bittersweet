@@ -72,8 +72,7 @@ import * as Notifications from 'expo-notifications';
 import { router, useLocalSearchParams } from 'expo-router';
 import { STORAGE_KEYS } from '../../src/config/constants';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
-import { UpgradeSheet } from '../../src/components/subscription/UpgradeSheet';
-import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
+import { useTagUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 import { JoinSharedTagSheet } from '../../src/components/grove/JoinSharedTagSheet';
 import type { SharedTagResolveResult } from '../../src/services/sharedTag/types';
@@ -521,7 +520,9 @@ function ShareTagOverlay({
             <Ionicons
               name="close"
               size={20}
-              color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
+              color={
+                colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary
+              }
             />
           </Pressable>
         </View>
@@ -549,7 +550,10 @@ function ShareTagOverlay({
                     fontSize: 28,
                     fontWeight: '700',
                     letterSpacing: 4,
-                    color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
+                    color:
+                      colorScheme === 'dark'
+                        ? colors.dark.textPrimary
+                        : colors.light.screenTextPrimary,
                   }}>
                   {shareCode || '...'}
                 </Text>
@@ -670,7 +674,11 @@ function JoinTagModal({
                 <Ionicons
                   name="close"
                   size={20}
-                  color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
+                  color={
+                    colorScheme === 'dark'
+                      ? colors.dark.textPrimary
+                      : colors.light.screenTextPrimary
+                  }
                 />
               </Pressable>
             </View>
@@ -687,7 +695,11 @@ function JoinTagModal({
                   setError(null);
                 }}
                 placeholder={t('home.enterCode')}
-                placeholderTextColor={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
+                placeholderTextColor={
+                  colorScheme === 'dark'
+                    ? colors.dark.textSecondary
+                    : colors.light.screenTextSecondary
+                }
                 autoCapitalize="characters"
                 autoCorrect={false}
                 maxLength={6}
@@ -772,6 +784,8 @@ export default function FocusScreen() {
   const { preferences, updatePreferences } = useAppSettings();
   const timerPickerStyle = preferences.focus.timerPickerStyle ?? 'scroller';
   const { canCreateTag } = useSubscriptionGate();
+  const { triggerUpgrade: triggerTagUpgrade, upgradeModals: tagUpgradeModals } =
+    useTagUpgradeFlow();
   const challenges = useAppStore((s) => s.grove.challenges);
   const availableTags = tags.allIds
     .map((id) => tags.byId[id])
@@ -825,8 +839,6 @@ export default function FocusScreen() {
   }, [availableTags, selectedTag]);
   const [showTagModal, setShowTagModal] = useState(false);
   const [showNewTagModal, setShowNewTagModal] = useState(false);
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
-  const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
   // Edit-tag flow: the EditTagSheet (stacked on the picker) owns the form; the
   // home screen only tracks which tag is open.
   const [showEditTagModal, setShowEditTagModal] = useState(false);
@@ -1106,7 +1118,6 @@ export default function FocusScreen() {
     setShowTagModal(false);
   };
 
-
   const handleEditTag = (tag: any, event: any) => {
     event?.stopPropagation();
     // The EditTagSheet stacks on top of the picker, which stays open behind it.
@@ -1325,7 +1336,10 @@ export default function FocusScreen() {
     if (infinite) {
       // Infinite mode: no end time — use a count-up live activity
       sessionEndTimeRef.current = null;
-      const activityId = await LiveActivityService.startFocusTimerInfinite(new Date(), selectedTagLabel);
+      const activityId = await LiveActivityService.startFocusTimerInfinite(
+        new Date(),
+        selectedTagLabel
+      );
       if (activityId) {
         liveActivityId = activityId;
         liveActivityIdRef.current = activityId;
@@ -2241,7 +2255,11 @@ export default function FocusScreen() {
       : formatTime(remainingSeconds);
   const timerDisplayTime = isUnlockActive ? formatTime(unlockRemainingSeconds) : displayTime;
   const timerTextColor =
-    isBonusTime && !isUnlockActive ? colors.success : colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary;
+    isBonusTime && !isUnlockActive
+      ? colors.success
+      : colorScheme === 'dark'
+        ? colors.dark.textPrimary
+        : colors.light.screenTextPrimary;
 
   const selectedTagObj = selectedTag
     ? tags.byId[selectedTag] || challengeTags.find((ct) => ct.id === selectedTag) || null
@@ -2322,11 +2340,18 @@ export default function FocusScreen() {
               <Ionicons
                 name="ban-outline"
                 size={22}
-                color={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
+                color={
+                  colorScheme === 'dark'
+                    ? colors.dark.textSecondary
+                    : colors.light.screenTextSecondary
+                }
               />
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textSecondary
+                      : colors.light.screenTextSecondary,
                   fontSize: 13,
                   fontWeight: '500',
                   marginLeft: 6,
@@ -2365,9 +2390,7 @@ export default function FocusScreen() {
               that settles right after cold mount (store hydration, font measuring,
               selectedTag restore) would animate as an unwanted vertical jump. */}
           <Reanimated.View
-            layout={
-              isSessionActive || todoListVisible ? LinearTransition.duration(550) : undefined
-            }
+            layout={isSessionActive || todoListVisible ? LinearTransition.duration(550) : undefined}
             style={{
               height: 300,
               width: '100%',
@@ -2409,7 +2432,10 @@ export default function FocusScreen() {
                   {selectedTagName && (
                     <Text
                       style={{
-                        color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
+                        color:
+                          colorScheme === 'dark'
+                            ? colors.dark.textPrimary
+                            : colors.light.screenTextPrimary,
                         fontSize: 24,
                         lineHeight: 28,
                         fontFamily: 'Poppins-SemiBold',
@@ -2422,7 +2448,10 @@ export default function FocusScreen() {
                   )}
                   <Text
                     style={{
-                      color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
+                      color:
+                        colorScheme === 'dark'
+                          ? colors.dark.textSecondary
+                          : colors.light.screenTextSecondary,
                       fontSize: 12,
                       lineHeight: 18,
                       fontFamily: 'Poppins-Regular',
@@ -2489,7 +2518,11 @@ export default function FocusScreen() {
                   <Ionicons
                     name="chevron-forward"
                     size={20}
-                    color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary}
+                    color={
+                      colorScheme === 'dark'
+                        ? colors.dark.textPrimary
+                        : colors.light.screenTextPrimary
+                    }
                   />
                 </Pressable>
               </Animated.View>
@@ -2512,7 +2545,10 @@ export default function FocusScreen() {
             <Typography
               variant="subtitle-16"
               className="font-semibold"
-              style={{ color: colorScheme === 'dark' ? colors.dark.background : colors.light.screenTextPrimary }}>
+              style={{
+                color:
+                  colorScheme === 'dark' ? colors.dark.background : colors.light.screenTextPrimary,
+              }}>
               {isUnlockActive
                 ? t('home.stopUnlocked')
                 : isSessionActive
@@ -2563,8 +2599,11 @@ export default function FocusScreen() {
                 className="flex-1 rounded-2xl py-4"
                 onPress={() => {
                   if (!canCreateTag) {
-                    setShowTagModal(false);
-                    setShowUpgradePrompt(true);
+                    // Keep the picker open — the paywall is nested in its overlay
+                    // (below) so iOS presents it on top; closing the picker here
+                    // would make the paywall a sibling of a dismissing modal and
+                    // it would fail to present (dead, untappable overlay).
+                    triggerTagUpgrade();
                     return;
                   }
                   setShowNewTagModal(true);
@@ -2618,13 +2657,19 @@ export default function FocusScreen() {
               <CreateTagModal
                 visible={showNewTagModal}
                 onClose={() => setShowNewTagModal(false)}
-                onUpgradeNeeded={() => setShowUpgradePrompt(true)}
+                onUpgradeNeeded={triggerTagUpgrade}
                 onCreated={(newTag) => {
                   setSelectedTag(newTag.id);
                   setLastSelectedTagId(newTag.id);
                   WidgetService.syncSelectedTagId(newTag.id);
                 }}
               />
+
+              {/* Tag-limit paywall — nested here (not at screen root) so it
+                  presents on top of the still-open picker; a root sibling would
+                  fail to present over the picker's Modal. Prompt → sheet is
+                  sequenced inside the hook to avoid the same present failure. */}
+              {tagUpgradeModals}
             </>
           }>
           {/* Header */}
@@ -2643,10 +2688,7 @@ export default function FocusScreen() {
             </View>
           )}
           {orderedTags.map((tag, index) => (
-            <View
-              key={tag.id}
-              ref={index === 0 ? firstTagRef : undefined}
-              collapsable={false}>
+            <View key={tag.id} ref={index === 0 ? firstTagRef : undefined} collapsable={false}>
               <DraggableTagRow
                 tag={tag}
                 index={index}
@@ -2686,7 +2728,10 @@ export default function FocusScreen() {
               className="w-full max-w-sm overflow-hidden rounded-2xl bg-light-bg p-6 dark:bg-dark-bg">
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textPrimary
+                      : colors.light.screenTextPrimary,
                   fontSize: 17,
                   fontWeight: '600',
                   marginBottom: 12,
@@ -2695,7 +2740,10 @@ export default function FocusScreen() {
               </Text>
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textSecondary
+                      : colors.light.screenTextSecondary,
                   fontSize: 14,
                   lineHeight: 20,
                   marginBottom: 24,
@@ -2708,7 +2756,10 @@ export default function FocusScreen() {
                   style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
                   <Text
                     style={{
-                      color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
+                      color:
+                        colorScheme === 'dark'
+                          ? colors.dark.textSecondary
+                          : colors.light.screenTextSecondary,
                       fontSize: 15,
                       fontWeight: '500',
                     }}>
@@ -2746,7 +2797,10 @@ export default function FocusScreen() {
               className="w-full max-w-sm overflow-hidden rounded-2xl bg-light-bg p-6 dark:bg-dark-bg">
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textPrimary
+                      : colors.light.screenTextPrimary,
                   fontSize: 17,
                   fontWeight: '600',
                   marginBottom: 8,
@@ -2755,7 +2809,10 @@ export default function FocusScreen() {
               </Text>
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textSecondary
+                      : colors.light.screenTextSecondary,
                   fontSize: 14,
                   lineHeight: 20,
                   marginBottom: 16,
@@ -2804,7 +2861,10 @@ export default function FocusScreen() {
                   style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
                   <Text
                     style={{
-                      color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
+                      color:
+                        colorScheme === 'dark'
+                          ? colors.dark.textSecondary
+                          : colors.light.screenTextSecondary,
                       fontSize: 15,
                       fontWeight: '500',
                     }}>
@@ -2845,7 +2905,10 @@ export default function FocusScreen() {
               className="w-full max-w-sm overflow-hidden rounded-2xl bg-light-bg p-6 dark:bg-dark-bg">
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textPrimary
+                      : colors.light.screenTextPrimary,
                   fontSize: 17,
                   fontWeight: '600',
                   marginBottom: 12,
@@ -2854,7 +2917,10 @@ export default function FocusScreen() {
               </Text>
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textSecondary
+                      : colors.light.screenTextSecondary,
                   fontSize: 14,
                   lineHeight: 20,
                   marginBottom: 15,
@@ -2863,7 +2929,10 @@ export default function FocusScreen() {
               </Text>
               <Text
                 style={{
-                  color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
+                  color:
+                    colorScheme === 'dark'
+                      ? colors.dark.textPrimary
+                      : colors.light.screenTextPrimary,
                   fontSize: 15,
                   fontWeight: '500',
                   marginBottom: 15,
@@ -2881,7 +2950,10 @@ export default function FocusScreen() {
                   style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
                   <Text
                     style={{
-                      color: colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary,
+                      color:
+                        colorScheme === 'dark'
+                          ? colors.dark.textSecondary
+                          : colors.light.screenTextSecondary,
                       fontSize: 15,
                       fontWeight: '500',
                     }}>
@@ -2909,15 +2981,6 @@ export default function FocusScreen() {
             </Pressable>
           </Pressable>
         </Modal>
-
-        <UpgradePrompt
-          isVisible={showUpgradePrompt}
-          onClose={() => setShowUpgradePrompt(false)}
-          onUpgrade={() => setShowUpgradeSheet(true)}
-          limitType="tags"
-        />
-
-        <UpgradeSheet isVisible={showUpgradeSheet} onClose={() => setShowUpgradeSheet(false)} />
 
         {/* Join Tag — step 1: enter + resolve the share code */}
         <JoinTagModal

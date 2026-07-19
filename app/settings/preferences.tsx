@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, ScrollView, SafeAreaView, Pressable, Alert, Linking, useColorScheme } from 'react-native';
+import {
+  View,
+  ScrollView,
+  SafeAreaView,
+  Pressable,
+  Alert,
+  Linking,
+  useColorScheme,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
@@ -13,7 +21,7 @@ import { LanguageSelectorSheet } from '../../src/components/settings/LanguageSel
 import { getLanguageByCode } from '../../src/i18n/languages';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
-import { UpgradePrompt } from '../../src/components/subscription/UpgradePrompt';
+import { useUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import {
   getMotionPermissionStatus,
   ensureMotionPermission,
@@ -26,20 +34,17 @@ export default function PreferencesScreen() {
   const isDark = colorScheme === 'dark';
   const { preferences, updatePreferences } = useAppSettings();
   const { isPremium } = useSubscriptionGate();
-  const {
-    hasNotifications,
-    triggerHaptic,
-    requestNotificationPermissions,
-  } = useDeviceIntegration();
+  const { hasNotifications, triggerHaptic, requestNotificationPermissions } =
+    useDeviceIntegration();
   const [notificationSheetVisible, setNotificationSheetVisible] = useState(false);
   const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
-  const [showAdhdUpgrade, setShowAdhdUpgrade] = useState(false);
+  const { triggerUpgrade, upgradeModals } = useUpgradeFlow('adhd');
 
   const handleAdhdModeToggle = async (value: boolean) => {
     // Premium gate: non-subscribers see the upgrade prompt instead of toggling.
     if (!isPremium) {
       triggerHaptic('light');
-      setShowAdhdUpgrade(true);
+      triggerUpgrade();
       return;
     }
     try {
@@ -52,14 +57,10 @@ export default function PreferencesScreen() {
   };
 
   const promptOpenMotionSettings = () => {
-    Alert.alert(
-      t('preferences.motionDeniedTitle'),
-      t('preferences.motionDeniedBody'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('journal.openSettings'), onPress: () => Linking.openSettings() },
-      ]
-    );
+    Alert.alert(t('preferences.motionDeniedTitle'), t('preferences.motionDeniedBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('journal.openSettings'), onPress: () => Linking.openSettings() },
+    ]);
   };
 
   // Detailed (raw-accelerometer) focus rating. Off by default — turning it on is
@@ -95,11 +96,9 @@ export default function PreferencesScreen() {
     if (hasNotifications) return true;
     const granted = await requestNotificationPermissions();
     if (!granted) {
-      Alert.alert(
-        t('preferences.notifDisabledTitle'),
-        t('preferences.notifDisabledBody'),
-        [{ text: t('common.ok') }]
-      );
+      Alert.alert(t('preferences.notifDisabledTitle'), t('preferences.notifDisabledBody'), [
+        { text: t('common.ok') },
+      ]);
     }
     return granted;
   };
@@ -111,7 +110,11 @@ export default function PreferencesScreen() {
         if (!granted) return;
       }
       await updatePreferences({
-        notifications: { ...preferences.notifications, sound: value, enabled: value || preferences.notifications.vibration },
+        notifications: {
+          ...preferences.notifications,
+          sound: value,
+          enabled: value || preferences.notifications.vibration,
+        },
       });
       triggerHaptic('light');
     } catch (error) {
@@ -127,7 +130,11 @@ export default function PreferencesScreen() {
         if (!granted) return;
       }
       await updatePreferences({
-        notifications: { ...preferences.notifications, vibration: value, enabled: value || preferences.notifications.sound },
+        notifications: {
+          ...preferences.notifications,
+          vibration: value,
+          enabled: value || preferences.notifications.sound,
+        },
       });
       triggerHaptic('light');
     } catch (error) {
@@ -139,9 +146,13 @@ export default function PreferencesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Header */}
-      <View className="h-[56px] px-5 flex-row items-center">
+      <View className="h-[56px] flex-row items-center px-5">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
-          <Ionicons name="chevron-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
+          />
         </Pressable>
         <Typography variant="headline-20" color="primary">
           {t('settings.tab.preferences')}
@@ -176,10 +187,10 @@ export default function PreferencesScreen() {
               preferences.notifications.sound && preferences.notifications.vibration
                 ? t('preferences.soundVibrate')
                 : preferences.notifications.sound
-                ? t('preferences.sound')
-                : preferences.notifications.vibration
-                ? t('preferences.vibrate')
-                : t('preferences.off')
+                  ? t('preferences.sound')
+                  : preferences.notifications.vibration
+                    ? t('preferences.vibrate')
+                    : t('preferences.off')
             }
             onPress={() => {
               triggerHaptic('light');
@@ -199,33 +210,34 @@ export default function PreferencesScreen() {
               {t('preferences.restDaysSub')}
             </Typography>
             <View className="flex-row gap-x-2">
-              {t('preferences.dayInitials').split(',').map((label, dayIndex) => {
-                const isSelected = (preferences.restDays ?? [0, 6]).includes(dayIndex);
-                return (
-                  <Pressable
-                    key={dayIndex}
-                    onPress={async () => {
-                      const current = preferences.restDays ?? [0, 6];
-                      const next = isSelected
-                        ? current.filter((d: number) => d !== dayIndex)
-                        : [...current, dayIndex].sort((a: number, b: number) => a - b);
-                      try {
-                        await updatePreferences({ restDays: next } as any);
-                        triggerHaptic('light');
-                      } catch (error) {
-                        console.error('Failed to update rest days:', error);
-                      }
-                    }}
-                    className={`w-9 h-9 rounded-full items-center justify-center ${
-                      isSelected ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
-                    }`}
-                  >
-                    <Typography variant="body-12" className="text-white font-poppins-medium">
-                      {label}
-                    </Typography>
-                  </Pressable>
-                );
-              })}
+              {t('preferences.dayInitials')
+                .split(',')
+                .map((label, dayIndex) => {
+                  const isSelected = (preferences.restDays ?? [0, 6]).includes(dayIndex);
+                  return (
+                    <Pressable
+                      key={dayIndex}
+                      onPress={async () => {
+                        const current = preferences.restDays ?? [0, 6];
+                        const next = isSelected
+                          ? current.filter((d: number) => d !== dayIndex)
+                          : [...current, dayIndex].sort((a: number, b: number) => a - b);
+                        try {
+                          await updatePreferences({ restDays: next } as any);
+                          triggerHaptic('light');
+                        } catch (error) {
+                          console.error('Failed to update rest days:', error);
+                        }
+                      }}
+                      className={`h-9 w-9 items-center justify-center rounded-full ${
+                        isSelected ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
+                      }`}>
+                      <Typography variant="body-12" className="font-poppins-medium text-white">
+                        {label}
+                      </Typography>
+                    </Pressable>
+                  );
+                })}
             </View>
           </View>
         </SettingsSection>
@@ -254,7 +266,11 @@ export default function PreferencesScreen() {
             subtitle={t('preferences.timerStyleSub')}
             icon="timer-outline"
             hasChevron
-            valueLabel={preferences.focus.timerPickerStyle === 'wheel' ? t('preferences.wheel') : t('preferences.scroller')}
+            valueLabel={
+              preferences.focus.timerPickerStyle === 'wheel'
+                ? t('preferences.wheel')
+                : t('preferences.scroller')
+            }
             onPress={async () => {
               const current = preferences.focus.timerPickerStyle ?? 'scroller';
               const next = current === 'scroller' ? 'wheel' : 'scroller';
@@ -278,17 +294,20 @@ export default function PreferencesScreen() {
       <BottomSheet
         isVisible={notificationSheetVisible}
         onClose={() => setNotificationSheetVisible(false)}
-        height={340}
-      >
+        height={340}>
         <Typography variant="headline-20" color="primary" className="mb-4">
           {t('preferences.notifications')}
         </Typography>
 
-        <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl px-4">
-          <View className="flex-row items-center justify-between py-3 border-b border-light-border dark:border-dark-border">
-            <View className="flex-row items-center flex-1">
-              <View className="w-8 items-center mr-3">
-                <Ionicons name="volume-high-outline" size={20} color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
+        <View className="rounded-2xl bg-light-border/30 px-4 dark:bg-dark-card">
+          <View className="flex-row items-center justify-between border-b border-light-border py-3 dark:border-dark-border">
+            <View className="flex-1 flex-row items-center">
+              <View className="mr-3 w-8 items-center">
+                <Ionicons
+                  name="volume-high-outline"
+                  size={20}
+                  color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
+                />
               </View>
               <Typography variant="subtitle-14-medium" color="primary">
                 {t('preferences.sound')}
@@ -302,10 +321,14 @@ export default function PreferencesScreen() {
             />
           </View>
 
-          <View className="flex-row items-center justify-between py-3 border-b border-light-border dark:border-dark-border">
-            <View className="flex-row items-center flex-1">
-              <View className="w-8 items-center mr-3">
-                <Ionicons name="phone-portrait-outline" size={20} color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
+          <View className="flex-row items-center justify-between border-b border-light-border py-3 dark:border-dark-border">
+            <View className="flex-1 flex-row items-center">
+              <View className="mr-3 w-8 items-center">
+                <Ionicons
+                  name="phone-portrait-outline"
+                  size={20}
+                  color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
+                />
               </View>
               <Typography variant="subtitle-14-medium" color="primary">
                 {t('preferences.vibrate')}
@@ -321,9 +344,13 @@ export default function PreferencesScreen() {
 
           <View className="py-3">
             <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1">
-                <View className="w-8 items-center mr-3">
-                  <Ionicons name="flag-outline" size={20} color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
+              <View className="flex-1 flex-row items-center">
+                <View className="mr-3 w-8 items-center">
+                  <Ionicons
+                    name="flag-outline"
+                    size={20}
+                    color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
+                  />
                 </View>
                 <View className="flex-1">
                   <Typography variant="subtitle-14-medium" color="primary">
@@ -357,10 +384,12 @@ export default function PreferencesScreen() {
             </View>
 
             {preferences.notifications.goalReminderEnabled && (
-              <View className="mt-3 ml-11">
+              <View className="ml-11 mt-3">
                 <TimePicker
                   value={(() => {
-                    const [h, m] = (preferences.notifications.goalReminderTime || '20:00').split(':').map(Number);
+                    const [h, m] = (preferences.notifications.goalReminderTime || '20:00')
+                      .split(':')
+                      .map(Number);
                     const d = new Date();
                     d.setHours(h, m, 0, 0);
                     return d;
@@ -390,13 +419,8 @@ export default function PreferencesScreen() {
         onClose={() => setLanguageSheetVisible(false)}
       />
 
-      {/* Multi-Task Mode premium gate */}
-      <UpgradePrompt
-        isVisible={showAdhdUpgrade}
-        onClose={() => setShowAdhdUpgrade(false)}
-        onUpgrade={() => router.push('/settings/subscription' as any)}
-        limitType="adhd"
-      />
+      {/* Multi-Task Mode premium gate — prompt → sign-in → subscription sheet */}
+      {upgradeModals}
     </SafeAreaView>
   );
 }

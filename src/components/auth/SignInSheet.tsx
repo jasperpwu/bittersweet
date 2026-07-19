@@ -39,21 +39,15 @@ export const GoogleSignInButton: FC<{ onPress: () => void; disabled?: boolean }>
         backgroundColor: colors.white,
         borderWidth: 1,
         borderColor: colors.light.border,
-      }}
-    >
-      <Ionicons
-        name="logo-google"
-        size={BRAND_BUTTON_ICON_SIZE}
-        color={BRAND_BUTTON_LABEL_COLOR}
-      />
+      }}>
+      <Ionicons name="logo-google" size={BRAND_BUTTON_ICON_SIZE} color={BRAND_BUTTON_LABEL_COLOR} />
       <Text
         className="ml-2"
         style={{
           color: BRAND_BUTTON_LABEL_COLOR,
           fontSize: BRAND_BUTTON_FONT_SIZE,
           fontWeight: '500',
-        }}
-      >
+        }}>
         {t('common.continueWithGoogle')}
       </Text>
     </Pressable>
@@ -65,10 +59,21 @@ interface SignInSheetProps {
   onClose: () => void;
   /** Called after a successful sign-in (the sheet closes itself first). */
   onSignedIn?: () => void;
+  /** Fired once the sheet is fully dismissed — lets callers sequence a follow-on
+   *  sheet (e.g. the subscription sheet) without overlapping modal presents. */
+  onClosed?: () => void;
+  /** Override the default subtitle to explain why sign-in is being asked for. */
+  subtitle?: string;
 }
 
 /** Slide-up sheet offering both sign-in providers (Apple + Google). */
-export const SignInSheet: FC<SignInSheetProps> = ({ visible, onClose, onSignedIn }) => {
+export const SignInSheet: FC<SignInSheetProps> = ({
+  visible,
+  onClose,
+  onSignedIn,
+  onClosed,
+  subtitle,
+}) => {
   const { t } = useTranslation();
   const { height: screenHeight } = useWindowDimensions();
   const { isLoading, error } = useAppStore((state) => state.auth);
@@ -85,12 +90,16 @@ export const SignInSheet: FC<SignInSheetProps> = ({ visible, onClose, onSignedIn
   };
 
   return (
-    <BottomSheet isVisible={visible} onClose={onClose} height={Math.min(screenHeight * 0.4, 320)}>
+    <BottomSheet
+      isVisible={visible}
+      onClose={onClose}
+      onClosed={onClosed}
+      height={Math.min(screenHeight * 0.4, 320)}>
       <Typography variant="headline-20" color="primary" className="mb-2 text-center font-semibold">
         {t('common.signIn')}
       </Typography>
       <Typography variant="body-14" color="secondary" className="mb-6 text-center">
-        {t('account.signInPrompt')}
+        {subtitle ?? t('account.signInPrompt')}
       </Typography>
 
       {isLoading ? (
@@ -111,7 +120,7 @@ export const SignInSheet: FC<SignInSheetProps> = ({ visible, onClose, onSignedIn
       )}
 
       {error && (
-        <Typography variant="body-12" className="text-error mt-3 text-center">
+        <Typography variant="body-12" className="mt-3 text-center text-error">
           {error}
         </Typography>
       )}
