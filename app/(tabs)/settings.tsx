@@ -168,7 +168,7 @@ export default function SettingsScreen() {
                   </Typography>
                 )}
                 <View className="mt-3 flex-row items-center justify-center">
-                  <Pressable onPress={() => Linking.openURL('https://example.com/terms')}>
+                  <Pressable onPress={() => Linking.openURL('https://bittersweet-app.github.io/terms.html')}>
                     <Typography variant="body-12" color="secondary" className="underline">
                       {t('settings.tab.terms')}
                     </Typography>
@@ -176,7 +176,7 @@ export default function SettingsScreen() {
                   <Typography variant="body-12" color="secondary" className="mx-2">
                     ·
                   </Typography>
-                  <Pressable onPress={() => Linking.openURL('https://example.com/privacy')}>
+                  <Pressable onPress={() => Linking.openURL('https://bittersweet-app.github.io/privacy.html')}>
                     <Typography variant="body-12" color="secondary" className="underline">
                       {t('settings.tab.privacy')}
                     </Typography>

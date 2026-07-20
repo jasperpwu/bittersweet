@@ -6,10 +6,10 @@ title: Terms of Service
 # Terms of Service
 
 **Bittersweet**
-**Last Updated: May 30, 2026**
-**Effective Date: May 30, 2026**
+**Last Updated: July 19, 2026**
+**Effective Date: July 19, 2026**
 
-Please read these Terms of Service ("Terms") carefully before using the Bittersweet mobile application ("App") operated by [Your Company Name / Your Legal Name] ("we," "us," or "our").
+Please read these Terms of Service ("Terms") carefully before using the Bittersweet mobile application ("App") operated by Peijun Wu ("Jasper Wu"), an individual ("we," "us," or "our").
 
 By downloading, installing, or using the App, you agree to be bound by these Terms. If you do not agree, do not use the App.
 
@@ -34,11 +34,11 @@ Bittersweet is a focus timer and productivity app that allows you to:
 
 ### 3.1 Account Creation
 
-You may use the App without creating an account. Certain features, including cloud sync and social features, require you to sign in using Apple Sign-in. By signing in, you authorize us to access and store limited information from your Apple ID (email address, name) for account creation purposes.
+You may use the App without creating an account. Certain features, including cloud sync and social features, require you to sign in using Apple Sign-in or Google Sign-in. By signing in, you authorize us to access and store limited information from your Apple or Google account (email address, name) for account creation purposes.
 
 ### 3.2 Account Security
 
-You are responsible for maintaining the security of your device and Apple ID credentials. We are not liable for any loss arising from unauthorized access to your account.
+You are responsible for maintaining the security of your device and your sign-in credentials (Apple or Google). We are not liable for any loss arising from unauthorized access to your account.
 
 ### 3.3 Account Deletion
 
@@ -52,7 +52,7 @@ You may delete your account at any time through the App's settings. Upon deletio
 
 ### 4.1 Opt-In Nature
 
-Grove is an entirely optional social feature. You must explicitly create a Grove profile and configure sharing preferences to participate. You are not required to use Grove to access the core features of the App.
+Grove is an entirely optional social feature. You must explicitly create a Grove profile to participate. You are not required to use Grove to access the core features of the App. You choose whether your profile is **public** (discoverable by, and visible to, anyone) or **private** (visible only to friends whose requests you have accepted).
 
 ### 4.2 User Content
 
@@ -72,7 +72,7 @@ We reserve the right to suspend or terminate your Grove profile if you violate t
 
 ### 4.4 Privacy Controls
 
-You control what data is shared through Grove via your privacy settings, including which tags are shareable, whether notes are visible, whether your live focus status is shown, and what statistics are displayed to friends. We encourage you to review these settings regularly.
+You control what is shared through Grove via your privacy settings, including whether your profile is public or private and whether your live focus status is shown. When you participate in Grove, your focus session summaries (including tags and notes) are shared with your accepted friends, and with everyone if your profile is public. We encourage you to review these settings regularly.
 
 ## 5. Subscriptions and In-App Purchases
 
@@ -96,11 +96,11 @@ All purchases are processed by Apple. Refund requests must be directed to Apple 
 
 ## 6. In-App Rewards
 
-"Fruits" and other in-app rewards are virtual items with no monetary value. They cannot be exchanged for cash, transferred to other users, or redeemed outside the App. We reserve the right to modify, limit, or discontinue the rewards system at any time.
+"Fruits" and other in-app rewards are virtual items with no monetary value. They cannot be exchanged for cash or redeemed outside the App. Fruit balances themselves cannot be transferred between users; however, Grove users may create custom "gift" rewards for their friends, which the recipient redeems using their own fruits. We reserve the right to modify, limit, or discontinue the rewards system at any time.
 
 ## 7. Intellectual Property
 
-The App and its original content, features, and functionality (excluding User Content) are and will remain the exclusive property of [Your Company Name] and its licensors. The App is protected by copyright, trademark, and other laws. You may not copy, modify, distribute, or create derivative works based on the App.
+The App and its original content, features, and functionality (excluding User Content) are and will remain the exclusive property of Peijun Wu and their licensors. The App is protected by copyright, trademark, and other laws. You may not copy, modify, distribute, or create derivative works based on the App.
 
 ## 8. Data and Privacy
 
@@ -109,14 +109,13 @@ Your use of the App is also governed by our [Privacy Policy](privacy), which des
 - **Local Data**: Focus sessions, tags, goals, and rewards are stored locally on your device.
 - **Cloud Sync**: If you sign in, your data is synced to our servers for backup and cross-device access.
 - **Social Data**: Grove data is shared only with users you are connected with, subject to your privacy settings.
-- **Third-Party Services**: We use Apple Sign-in for authentication, Apple App Store for payments, and Crisp for customer support chat.
+- **Third-Party Services**: We use Apple Sign-in and Google Sign-in for authentication, Apple App Store for payments, and Crisp for customer support chat.
 
 ## 9. Device Permissions
 
 The App may request access to device features including:
 
 - **Push Notifications**: For reminders, friend activity, and goal updates.
-- **Contacts**: Optionally, to help you find friends on Grove. Contact data is used solely for friend matching and is not stored on our servers beyond what is necessary for this purpose.
 - **Camera/Photo Library**: Optionally, for setting an avatar or attaching photos to sessions.
 
 You can revoke these permissions at any time through your device settings.
@@ -133,7 +132,7 @@ We do not warrant that:
 
 ## 11. Limitation of Liability
 
-TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL [YOUR COMPANY NAME], ITS DIRECTORS, EMPLOYEES, PARTNERS, AGENTS, OR AFFILIATES BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING WITHOUT LIMITATION LOSS OF DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM:
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL PEIJUN WU OR THEIR AGENTS OR AFFILIATES BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING WITHOUT LIMITATION LOSS OF DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM:
 
 - Your use of or inability to use the App
 - Any unauthorized access to or alteration of your data
@@ -142,7 +141,7 @@ TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL [YOUR COMPA
 
 ## 12. Indemnification
 
-You agree to defend, indemnify, and hold harmless [Your Company Name] and its affiliates from and against any claims, damages, obligations, losses, and expenses arising from your use of the App or violation of these Terms.
+You agree to defend, indemnify, and hold harmless Peijun Wu and their affiliates from and against any claims, damages, obligations, losses, and expenses arising from your use of the App or violation of these Terms.
 
 ## 13. Modifications to Terms
 
@@ -154,11 +153,11 @@ We may terminate or suspend your access to the App at any time, without prior no
 
 ## 15. Governing Law
 
-These Terms shall be governed by and construed in accordance with the laws of [Your State/Country], without regard to its conflict of law provisions.
+These Terms shall be governed by and construed in accordance with the laws of the State of California, United States, without regard to its conflict of law provisions.
 
 ## 16. Dispute Resolution
 
-Any disputes arising from these Terms or the App shall first be attempted to be resolved through informal negotiation. If unresolved within 30 days, either party may pursue resolution through binding arbitration in accordance with the rules of [Arbitration Body, e.g., the American Arbitration Association], conducted in [Your City, State/Country].
+Any disputes arising from these Terms or the App shall first be attempted to be resolved through informal negotiation. If unresolved within 30 days, either party may pursue resolution through binding arbitration in accordance with the rules of the American Arbitration Association, conducted in California, United States.
 
 ## 17. Severability
 
@@ -166,11 +165,11 @@ If any provision of these Terms is found to be unenforceable or invalid, that pr
 
 ## 18. Entire Agreement
 
-These Terms, together with the Privacy Policy, constitute the entire agreement between you and [Your Company Name] regarding your use of the App and supersede any prior agreements.
+These Terms, together with the Privacy Policy, constitute the entire agreement between you and Peijun Wu regarding your use of the App and supersede any prior agreements.
 
 ## 19. Contact Us
 
 If you have questions about these Terms, please contact us at:
 
-**[Your Company Name]**
-Email: [your-email@example.com]
+**Peijun Wu (Jasper Wu)**
+Email: junxwoo@icloud.com

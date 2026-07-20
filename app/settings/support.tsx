@@ -9,12 +9,15 @@ import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { openChat } from '../../src/services/crisp';
 import { openFeedbackBoard } from '../../src/services/userjot';
 import { useTranslation } from 'react-i18next';
+import * as Application from 'expo-application';
 
 export default function SupportScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { triggerHaptic } = useDeviceIntegration();
+
+  const versionLabel = Application.nativeApplicationVersion ?? '1.0.0';
 
   const handleShareWithFriends = async () => {
     triggerHaptic('light');
@@ -81,7 +84,7 @@ export default function SupportScreen() {
           <SettingsItem
             title={t('support.version')}
             icon="information-circle-outline"
-            valueLabel="1.0.0"
+            valueLabel={versionLabel}
             isLast
           />
         </SettingsSection>

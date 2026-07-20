@@ -45,8 +45,6 @@ import { SubscriptionSlice, createSubscriptionSlice } from './slices/subscriptio
 import { SyncSlice, createSyncSlice } from './slices/syncSlice';
 import { GroveSlice, createGroveSlice } from './slices/groveSlice';
 import { ReferralSlice, createReferralSlice } from './slices/referralSlice';
-import { SharedTagService } from '../services/sharedTag/SharedTagService';
-import type { SharedTagResolveResult } from '../services/sharedTag/types';
 import { AnalyticsTracker } from '../services/analytics';
 import { SyncService } from '../services/sync/SyncService';
 import {
@@ -240,24 +238,6 @@ interface AppStore {
     };
     upsertCoachReport: (report: WeeklyCoachReport) => void;
     deleteCoachReport: (id: string) => void;
-
-    // Shared tag actions
-    shareTag: (tagId: string) => Promise<string>; // returns share code
-    stopSharingTag: (tagId: string) => Promise<void>;
-    resolveSharedTagCode: (code: string) => Promise<SharedTagResolveResult>;
-    // Join a resolved shared tag. Pass an existing local tag id to map onto it,
-    // or omit to clone a fresh tag. Returns the joiner's local tag either way.
-    joinSharedTag: (result: SharedTagResolveResult, existingTagId?: string) => Promise<SessionTag>;
-    leaveSharedTag: (tagId: string) => Promise<void>;
-    removeJoiner: (membershipId: string) => Promise<void>;
-    fetchJoinerStats: (ownerTagId: string, startDate: string, endDate: string) => Promise<any[]>;
-
-    // Shared tag stats (ephemeral)
-    sharedTagStats: {
-      joinerStats: any[];
-      loading: boolean;
-      currentTagId: string | null;
-    };
   };
 
   // UI
@@ -1941,15 +1921,6 @@ export const useAppStore = create<AppStore>()(
             console.log('🗑️ Soft-deleting tag:', tagId);
             const tag = get().focus.tags.byId[tagId];
 
-            // Weak link: if this tag is one the user joined from someone else,
-            // end the membership so the owner stops seeing them in shared stats.
-            // Fire-and-forget — deletion is never blocked on the server call.
-            if (tag?.sharedFromTagId) {
-              SharedTagService.leaveMembership(tagId).catch((e) =>
-                console.warn('Failed to end shared-tag membership on delete:', e?.message)
-              );
-            }
-
             if (tag) {
               set((state) => {
                 // Remove last duration entry for this tag
@@ -2020,258 +1991,6 @@ export const useAppStore = create<AppStore>()(
                 },
               };
             });
-          },
-
-          // --- Shared Tag Actions ---
-
-          sharedTagStats: {
-            joinerStats: [],
-            loading: false,
-            currentTagId: null,
-          },
-
-          shareTag: async (tagId: string) => {
-            const link = await SharedTagService.generateShareCode(tagId);
-
-            // Mark local tag as sharing
-            set((state) => {
-              const existingTag = state.focus.tags.byId[tagId];
-              if (!existingTag) return state;
-              return {
-                focus: {
-                  ...state.focus,
-                  tags: {
-                    ...state.focus.tags,
-                    byId: {
-                      ...state.focus.tags.byId,
-                      [tagId]: { ...existingTag, isSharing: true, updatedAt: new Date() },
-                    },
-                  },
-                },
-              };
-            });
-
-            return link.code;
-          },
-
-          stopSharingTag: async (tagId: string) => {
-            await SharedTagService.deactivateShareCode(tagId);
-
-            set((state) => {
-              const existingTag = state.focus.tags.byId[tagId];
-              if (!existingTag) return state;
-              return {
-                focus: {
-                  ...state.focus,
-                  tags: {
-                    ...state.focus.tags,
-                    byId: {
-                      ...state.focus.tags.byId,
-                      [tagId]: { ...existingTag, isSharing: false, updatedAt: new Date() },
-                    },
-                  },
-                },
-              };
-            });
-          },
-
-          resolveSharedTagCode: async (code: string) => {
-            return SharedTagService.resolveShareCode(code);
-          },
-
-          joinSharedTag: async (result: SharedTagResolveResult, existingTagId?: string) => {
-            const now = new Date();
-            // Fields stamped on the joiner's local tag so the UI shows the
-            // "from {owner}" / Shared badge. These are purely cosmetic — the
-            // owner→joiner link that drives stats lives in shared_tag_memberships.
-            const sharedFields = {
-              sharedFromTagId: result.owner_tag_id,
-              sharedFromUserId: result.owner_user_id,
-              sharedOwnerName: result.owner_display_name,
-            };
-
-            // --- Path A: map onto an existing local tag (challenge parity) ---
-            if (existingTagId) {
-              const existingTag = get().focus.tags.byId[existingTagId];
-              if (!existingTag) throw new Error('Tag no longer exists');
-
-              // Membership first so a server failure leaves local state untouched.
-              await SharedTagService.createMembership(
-                result.owner_tag_id,
-                result.owner_user_id,
-                existingTagId
-              );
-
-              const stampedTag: SessionTag = { ...existingTag, ...sharedFields, updatedAt: now };
-              set((state) => ({
-                focus: {
-                  ...state.focus,
-                  tags: {
-                    ...state.focus.tags,
-                    byId: { ...state.focus.tags.byId, [existingTagId]: stampedTag },
-                  },
-                },
-              }));
-
-              return stampedTag;
-            }
-
-            // --- Path B: clone a fresh local tag (copy of owner's tag) ---
-            const tagId = generateId();
-            const goalId = generateId();
-
-            const newTag: SessionTag = {
-              id: tagId,
-              name: result.tag_name,
-              icon: result.tag_icon,
-              color: result.tag_color,
-              usageCount: 0,
-              sortOrder: get().focus.tags.allIds.length,
-              createdAt: now,
-              updatedAt: now,
-              ...sharedFields,
-            };
-
-            const newGoal: FocusGoal = {
-              id: goalId,
-              userId: 'local-user',
-              tagId: tagId,
-              activePeriod: 'daily',
-              dailyTargetMinutes: 0,
-              dailyRestDayTargetMinutes: 0,
-              weeklyTargetMinutes: 0,
-              monthlyTargetMinutes: 0,
-              totalTargetMinutes: 0,
-              targetHistory: [],
-              isActive: false,
-              isRepeating: true,
-              showTotalHours: true,
-              currentProgress: 0,
-              sortOrder: get().focus.goals.allIds.length,
-              lastResetDate: now,
-              createdAt: now,
-              updatedAt: now,
-            };
-
-            // Create membership on server
-            await SharedTagService.createMembership(
-              result.owner_tag_id,
-              result.owner_user_id,
-              tagId
-            );
-
-            set((state) => ({
-              focus: {
-                ...state.focus,
-                tags: {
-                  ...state.focus.tags,
-                  byId: { ...state.focus.tags.byId, [tagId]: newTag },
-                  allIds: [...state.focus.tags.allIds, tagId],
-                },
-                goals: {
-                  ...state.focus.goals,
-                  byId: { ...state.focus.goals.byId, [goalId]: newGoal },
-                  allIds: [...state.focus.goals.allIds, goalId],
-                },
-              },
-            }));
-
-            return newTag;
-          },
-
-          leaveSharedTag: async (tagId: string) => {
-            await SharedTagService.leaveMembership(tagId);
-
-            // Unlink only — keep the tag, its sessions, and its goal. Clearing the
-            // shared-from fields turns it back into a plain tag (the swipe action
-            // reverts from Unlink to Delete). SyncMapper writes these as null, so
-            // the unlink propagates to the cloud copy too.
-            set((state) => {
-              const existingTag = state.focus.tags.byId[tagId];
-              if (!existingTag) return state;
-
-              const { sharedFromTagId, sharedFromUserId, sharedOwnerName, ...rest } = existingTag;
-              return {
-                focus: {
-                  ...state.focus,
-                  tags: {
-                    ...state.focus.tags,
-                    byId: {
-                      ...state.focus.tags.byId,
-                      [tagId]: { ...rest, updatedAt: new Date() },
-                    },
-                  },
-                },
-              };
-            });
-          },
-
-          removeJoiner: async (membershipId: string) => {
-            await SharedTagService.removeJoiner(membershipId);
-
-            // Refresh stats if currently viewing
-            const currentTagId = get().focus.sharedTagStats.currentTagId;
-            if (currentTagId) {
-              // Remove joiner from local stats
-              set((state) => ({
-                focus: {
-                  ...state.focus,
-                  sharedTagStats: {
-                    ...state.focus.sharedTagStats,
-                    joinerStats: state.focus.sharedTagStats.joinerStats.filter(
-                      (j: any) => j.membership_id !== membershipId
-                    ),
-                  },
-                },
-              }));
-            }
-          },
-
-          fetchJoinerStats: async (ownerTagId: string, startDate: string, endDate: string) => {
-            set((state) => ({
-              focus: {
-                ...state.focus,
-                sharedTagStats: {
-                  ...state.focus.sharedTagStats,
-                  loading: true,
-                  currentTagId: ownerTagId,
-                },
-              },
-            }));
-
-            try {
-              const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-              const stats = await SharedTagService.fetchJoinerStats(
-                ownerTagId,
-                startDate,
-                endDate,
-                tz
-              );
-
-              set((state) => ({
-                focus: {
-                  ...state.focus,
-                  sharedTagStats: {
-                    joinerStats: stats,
-                    loading: false,
-                    currentTagId: ownerTagId,
-                  },
-                },
-              }));
-
-              return stats;
-            } catch (error) {
-              set((state) => ({
-                focus: {
-                  ...state.focus,
-                  sharedTagStats: {
-                    ...state.focus.sharedTagStats,
-                    loading: false,
-                  },
-                },
-              }));
-              throw error;
-            }
           },
         },
 
@@ -3361,13 +3080,6 @@ export const useFocusActions = () =>
     deleteTodo: state.focus.deleteTodo,
     restoreTodo: state.focus.restoreTodo,
     reorderTodos: state.focus.reorderTodos,
-    shareTag: state.focus.shareTag,
-    stopSharingTag: state.focus.stopSharingTag,
-    resolveSharedTagCode: state.focus.resolveSharedTagCode,
-    joinSharedTag: state.focus.joinSharedTag,
-    leaveSharedTag: state.focus.leaveSharedTag,
-    removeJoiner: state.focus.removeJoiner,
-    fetchJoinerStats: state.focus.fetchJoinerStats,
   })));
 
 export const useUIActions = () =>
@@ -3559,7 +3271,6 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
       currentSession: { session: null, isRunning: false, remainingTime: 0, startedAt: null },
       lastSelectedTagId: null,
       lastDurationByTagId: {},
-      sharedTagStats: { joinerStats: [], loading: false, currentTagId: null },
     },
     rewards: {
       ...s.rewards,

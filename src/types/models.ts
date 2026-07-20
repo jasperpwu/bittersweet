@@ -60,12 +60,6 @@ export interface SessionTag {
   updatedAt: Date;
   deletedAt?: Date;
 
-  // Shared tag fields
-  isSharing?: boolean; // TRUE on owner's tag when actively shared
-  sharedFromTagId?: string; // Set on joiner's tag, references owner's tag ID
-  sharedFromUserId?: string; // Set on joiner's tag, references owner's user ID
-  sharedOwnerName?: string; // Cached owner display name on joiner's tag
-
   // Optional hint for motion-based focus rating. Unset is treated as 'stationary'.
   activityType?: ActivityType;
 }

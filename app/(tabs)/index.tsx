@@ -8,10 +8,7 @@ import {
   Modal,
   Image,
   Text,
-  TextInput,
   AppState,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   LayoutChangeEvent,
   useColorScheme,
@@ -67,15 +64,12 @@ import { SETUP_TASK_IDS } from '../../src/services/sync/SyncMapper';
 import { FamilyControlsModule } from '../../src/modules/BitterSweetFamilyControls';
 import { blockSelection, stopMonitoring } from 'react-native-device-activity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Clipboard from 'expo-clipboard';
 import * as Notifications from 'expo-notifications';
 import { router, useLocalSearchParams } from 'expo-router';
 import { STORAGE_KEYS } from '../../src/config/constants';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { useTagUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
-import { JoinSharedTagSheet } from '../../src/components/grove/JoinSharedTagSheet';
-import type { SharedTagResolveResult } from '../../src/services/sharedTag/types';
 import { colors } from '../../src/config/theme';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
@@ -89,9 +83,6 @@ type DraggableTagRowProps = {
     name: string;
     icon?: string;
     color?: string;
-    isSharing?: boolean;
-    sharedFromTagId?: string;
-    sharedOwnerName?: string;
   };
   index: number;
   selectedTag: string | null;
@@ -104,8 +95,6 @@ type DraggableTagRowProps = {
   onSelect: (id: string) => void;
   onEdit: (tag: any, event: any) => void;
   onDelete: (tag: any, event: any) => void;
-  onUnlink?: (tag: any) => void;
-  onShare?: (tag: any) => void;
   onStartSession?: (tag: any) => void;
   onSwipeOpen?: (ref: any) => void;
   onDragStart: (index: number) => void;
@@ -126,8 +115,6 @@ function DraggableTagRow({
   onSelect,
   onEdit,
   onDelete,
-  onUnlink,
-  onShare,
   onStartSession,
   onSwipeOpen,
   onDragStart,
@@ -174,11 +161,7 @@ function DraggableTagRow({
     displacement.value = withSpring(shift, SPRING_CONFIG);
   }, [isDragging, isBeingDragged, dragOriginalIndex, dragTargetIndex, index]);
 
-  const isSharedTag = !!tag.sharedFromTagId;
-  // Joined shared tags are a weak link, not a guarded state: the owner→joiner
-  // link lives server-side in shared_tag_memberships, so a joined tag stays a
-  // normal, fully-editable/deletable/shareable/reorderable tag. Only synthetic
-  // challenge rows (no real local tag yet) remain read-only.
+  // Synthetic challenge rows (no real local tag yet) are read-only.
   const isReadOnly = isChallenge;
 
   const panGesture = Gesture.Pan()
@@ -251,47 +234,17 @@ function DraggableTagRow({
           {t('common.edit')}
         </Typography>
       </Pressable>
-      {onShare && (
-        <Pressable
-          onPress={() => {
-            swipeableRef.current?.close();
-            onShare(tag);
-          }}
-          className="ml-2 h-full w-16 items-center justify-center rounded-lg"
-          style={{ backgroundColor: colors.link + '33' }}>
-          <Ionicons name="share-outline" size={16} color={colors.link} />
-          <Typography variant="tiny-10" style={{ color: colors.link }} className="mt-0.5">
-            {t('common.share')}
-          </Typography>
-        </Pressable>
-      )}
-      {isSharedTag ? (
-        // Joined tag: Unlink (non-destructive) keeps the tag + sessions and ends
-        // the membership. Once unlinked it's a plain tag and Delete returns.
-        <Pressable
-          onPress={() => {
-            swipeableRef.current?.close();
-            onUnlink?.(tag);
-          }}
-          className="ml-2 h-full w-16 items-center justify-center rounded-lg bg-danger">
-          <Ionicons name="unlink-outline" size={16} color={colors.white} />
-          <Typography variant="tiny-10" color="white" className="mt-0.5">
-            {t('home.unlink')}
-          </Typography>
-        </Pressable>
-      ) : (
-        <Pressable
-          onPress={() => {
-            swipeableRef.current?.close();
-            onDelete(tag, null);
-          }}
-          className="ml-2 h-full w-16 items-center justify-center rounded-lg bg-danger">
-          <Ionicons name="trash-outline" size={16} color={colors.white} />
-          <Typography variant="tiny-10" color="white" className="mt-0.5">
-            {t('common.delete')}
-          </Typography>
-        </Pressable>
-      )}
+      <Pressable
+        onPress={() => {
+          swipeableRef.current?.close();
+          onDelete(tag, null);
+        }}
+        className="ml-2 h-full w-16 items-center justify-center rounded-lg bg-danger">
+        <Ionicons name="trash-outline" size={16} color={colors.white} />
+        <Typography variant="tiny-10" color="white" className="mt-0.5">
+          {t('common.delete')}
+        </Typography>
+      </Pressable>
     </View>
   );
 
@@ -374,34 +327,12 @@ function DraggableTagRow({
                       </Text>
                     </View>
                   )}
-                  {tag.isSharing && (
-                    <View
-                      className="ml-2 rounded-full px-2 py-0.5"
-                      style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: colors.link }}>
-                        {t('home.badgeSharing')}
-                      </Text>
-                    </View>
-                  )}
-                  {isSharedTag && (
-                    <View
-                      className="ml-2 rounded-full px-2 py-0.5"
-                      style={{ backgroundColor: 'rgba(20, 184, 166, 0.2)' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#14B8A6' }}>
-                        {t('home.badgeShared')}
-                      </Text>
-                    </View>
-                  )}
                 </View>
                 <Typography
                   variant="body-12"
                   color={isSelected ? 'primary' : 'secondary'}
                   className="mt-1">
-                  {isSharedTag && tag.sharedOwnerName
-                    ? `${t('home.fromOwner', { owner: tag.sharedOwnerName })} \u00B7 ${lastDuration === 0 ? '\u221E' : t('home.minutesShort', { count: lastDuration })}`
-                    : lastDuration === 0
-                      ? '\u221E'
-                      : t('home.minutesShort', { count: lastDuration })}
+                  {lastDuration === 0 ? '\u221E' : t('home.minutesShort', { count: lastDuration })}
                 </Typography>
               </View>
               {todoCount > 0 && (
@@ -439,302 +370,6 @@ type PersistedSession = {
   notificationId?: string; // scheduled completion notification
 };
 
-// --- Share Tag Overlay (rendered inside tag selection modal) ---
-function ShareTagOverlay({
-  tag,
-  onClose,
-  onShareTag,
-  onStopSharing,
-}: {
-  tag: any;
-  onClose: () => void;
-  onShareTag: (tagId: string) => Promise<string>;
-  onStopSharing: (tagId: string) => Promise<void>;
-}) {
-  const { t } = useTranslation();
-  const colorScheme = useColorScheme();
-  const [shareCode, setShareCode] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    setShareCode(null);
-    setCopied(false);
-    // Auto-generate if already sharing
-    if (tag?.isSharing) {
-      handleGenerate();
-    }
-  }, [tag?.id]);
-
-  const handleGenerate = async () => {
-    if (!tag) return;
-    setLoading(true);
-    try {
-      const code = await onShareTag(tag.id);
-      setShareCode(code);
-    } catch (e: any) {
-      Alert.alert(t('common.error'), e.message || t('home.failedGenerateCode'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCopy = async () => {
-    if (!shareCode) return;
-    await Clipboard.setStringAsync(shareCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleStop = async () => {
-    if (!tag) return;
-    Alert.alert(t('home.stopSharingTitle'), t('home.stopSharingBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('home.stopSharing'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await onStopSharing(tag.id);
-            onClose();
-          } catch (e: any) {
-            Alert.alert(t('common.error'), e.message || t('home.failedStopSharing'));
-          }
-        },
-      },
-    ]);
-  };
-
-  return (
-    <View className="absolute inset-0 items-center justify-center bg-black/50 p-4">
-      <View className="w-full max-w-xs overflow-hidden rounded-2xl bg-light-bg dark:bg-dark-bg">
-        {/* Header */}
-        <View className="flex-row items-center justify-between border-b border-light-border p-4 dark:border-dark-border">
-          <Typography variant="headline-18" color="primary">
-            {tag?.isSharing ? t('home.sharingTagTitle') : t('home.shareTagTitle')}
-          </Typography>
-          <Pressable
-            onPress={onClose}
-            className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-dark-card"
-            hitSlop={8}>
-            <Ionicons
-              name="close"
-              size={20}
-              color={
-                colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary
-              }
-            />
-          </Pressable>
-        </View>
-
-        <View className="p-4">
-          {/* Tag preview */}
-          <View className="mb-4 flex-row items-center">
-            <View className="mr-3 h-10 w-10 items-center justify-center rounded-lg border border-gray-500 bg-gray-600">
-              <Text className="text-xl">{tag?.icon || '\uD83C\uDFF7\uFE0F'}</Text>
-            </View>
-            <Typography variant="subtitle-16" color="primary">
-              {tag?.name}
-            </Typography>
-          </View>
-
-          {/* Show code if already sharing or just generated */}
-          {tag?.isSharing || shareCode ? (
-            <View>
-              <Typography variant="body-14" color="secondary" className="mb-3">
-                {t('home.shareCodePrompt')}
-              </Typography>
-              <View className="mb-4 flex-row items-center justify-center rounded-xl bg-light-border/30 py-4 dark:bg-dark-card">
-                <Text
-                  style={{
-                    fontSize: 28,
-                    fontWeight: '700',
-                    letterSpacing: 4,
-                    color:
-                      colorScheme === 'dark'
-                        ? colors.dark.textPrimary
-                        : colors.light.screenTextPrimary,
-                  }}>
-                  {shareCode || '...'}
-                </Text>
-              </View>
-
-              <Button
-                variant="primary"
-                size="large"
-                fullWidth
-                className="mb-3 rounded-2xl py-3"
-                onPress={handleCopy}>
-                <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  {copied ? t('home.copied') : t('home.copyCode')}
-                </Typography>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="large"
-                fullWidth
-                className="rounded-2xl border border-danger py-3"
-                onPress={handleStop}>
-                <Typography
-                  variant="subtitle-16"
-                  style={{ color: colors.danger }}
-                  className="font-semibold">
-                  {t('home.stopSharing')}
-                </Typography>
-              </Button>
-            </View>
-          ) : (
-            <View>
-              <Typography variant="body-14" color="secondary" className="mb-4">
-                {t('home.shareGeneratePrompt')}
-              </Typography>
-              <Button
-                variant="primary"
-                size="large"
-                fullWidth
-                disabled={loading}
-                className="rounded-2xl py-4"
-                onPress={handleGenerate}>
-                <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  {loading ? t('home.generating') : t('home.shareThisTag')}
-                </Typography>
-              </Button>
-            </View>
-          )}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// --- Join Tag Modal ---
-// Step 1 of joining: collect + resolve the share code. On success it hands the
-// resolved tag info up to the parent, which opens JoinSharedTagSheet (step 2:
-// map onto an existing tag or clone a new one).
-function JoinTagModal({
-  visible,
-  onClose,
-  onResolve,
-  onResolved,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onResolve: (code: string) => Promise<SharedTagResolveResult>;
-  onResolved: (result: SharedTagResolveResult) => void;
-}) {
-  const { t } = useTranslation();
-  const colorScheme = useColorScheme();
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (visible) {
-      setCode('');
-      setError(null);
-    }
-  }, [visible]);
-
-  const handleJoin = async () => {
-    if (!code.trim()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await onResolve(code.trim());
-      onResolved(result);
-    } catch (e: any) {
-      setError(e.message || t('home.failedJoin'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!visible) return null;
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1">
-        <View className="flex-1 items-center justify-center bg-black/50 px-4">
-          <Pressable
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            onPress={onClose}
-          />
-          <View className="w-full max-w-sm overflow-hidden rounded-3xl bg-light-bg dark:bg-dark-bg">
-            <View className="flex-row items-center justify-between border-b border-light-border p-6 dark:border-dark-border">
-              <Typography variant="headline-20" color="primary">
-                {t('home.joinSharedTag')}
-              </Typography>
-              <Pressable
-                onPress={onClose}
-                className="h-8 w-8 items-center justify-center rounded-full bg-light-border/50 dark:bg-dark-card"
-                hitSlop={8}>
-                <Ionicons
-                  name="close"
-                  size={20}
-                  color={
-                    colorScheme === 'dark'
-                      ? colors.dark.textPrimary
-                      : colors.light.screenTextPrimary
-                  }
-                />
-              </Pressable>
-            </View>
-
-            <View className="p-6">
-              <Typography variant="body-14" color="secondary" className="mb-4">
-                {t('home.joinPrompt')}
-              </Typography>
-
-              <TextInput
-                value={code}
-                onChangeText={(t) => {
-                  setCode(t.toUpperCase());
-                  setError(null);
-                }}
-                placeholder={t('home.enterCode')}
-                placeholderTextColor={
-                  colorScheme === 'dark'
-                    ? colors.dark.textSecondary
-                    : colors.light.screenTextSecondary
-                }
-                autoCapitalize="characters"
-                autoCorrect={false}
-                maxLength={6}
-                className="mb-4 rounded-xl bg-light-border/30 px-4 py-4 text-center text-light-text-primary dark:bg-dark-card dark:text-dark-text-primary"
-                style={{ fontSize: 24, fontWeight: '700', letterSpacing: 4 }}
-              />
-
-              {error && (
-                <Typography
-                  variant="body-12"
-                  style={{ color: colors.danger }}
-                  className="mb-3 text-center">
-                  {error}
-                </Typography>
-              )}
-
-              <Button
-                variant="primary"
-                size="large"
-                fullWidth
-                disabled={loading || code.trim().length < 4}
-                className="rounded-2xl py-4"
-                onPress={handleJoin}>
-                <Typography variant="subtitle-16" color="white" className="font-semibold">
-                  {loading ? t('home.joining') : t('home.join')}
-                </Typography>
-              </Button>
-            </View>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
 export default function FocusScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
@@ -742,8 +377,8 @@ export default function FocusScreen() {
   // Get tags from store
   // Narrow subscription: this screen reads only these focus fields. Selecting
   // the whole `state.focus` slice (via useFocus) re-rendered this 3k-line screen
-  // on unrelated focus writes (e.g. sharedTagStats fetches). useShallow keeps it
-  // re-rendering only when one of these specific fields actually changes.
+  // on unrelated focus writes. useShallow keeps it re-rendering only when one of
+  // these specific fields actually changes.
   const { tags, sessions, lastSelectedTagId, lastDurationByTagId, goals, todos } = useAppStore(
     useShallow((s) => ({
       tags: s.focus.tags,
@@ -762,10 +397,6 @@ export default function FocusScreen() {
     createCompletedSession,
     setLastSelectedTagId,
     setLastDurationForTag,
-    shareTag,
-    stopSharingTag,
-    resolveSharedTagCode,
-    leaveSharedTag,
   } = useFocusActions();
   const rewards = useRewards();
   // Unclaimed setup-task rewards waiting in the fruit store (same filter as fruit-store.tsx).
@@ -843,13 +474,6 @@ export default function FocusScreen() {
   // home screen only tracks which tag is open.
   const [showEditTagModal, setShowEditTagModal] = useState(false);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
-  // Resolved shared tag awaiting the map-or-clone choice (step 2 of joining)
-  const [resolvedSharedTag, setResolvedSharedTag] = useState<SharedTagResolveResult | null>(null);
-
-  // Shared tag modals
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [sharingTag, setSharingTag] = useState<any>(null);
-  const [showJoinModal, setShowJoinModal] = useState(false);
 
   // Drag-to-reorder state
   const [dragOrderIds, setDragOrderIds] = useState<string[]>([]);
@@ -1189,57 +813,6 @@ export default function FocusScreen() {
       setLastSelectedTagId(fallbackId);
       WidgetService.syncSelectedTagId(fallbackId);
     }
-  };
-
-  const handleShareTag = (tag: any) => {
-    const { isAuthenticated, signInWithApple } = useAppStore.getState().auth;
-    if (!isAuthenticated) {
-      Alert.alert(t('home.shareSignInTitle'), t('home.shareSignInBody'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.continueWithApple'),
-          onPress: async () => {
-            await signInWithApple();
-            // Proceed to share only if sign-in actually completed
-            // (signInWithApple swallows user-cancellation without throwing).
-            if (useAppStore.getState().auth.isAuthenticated) {
-              setSharingTag(tag);
-              setShowShareModal(true);
-            }
-          },
-        },
-      ]);
-      return;
-    }
-    setSharingTag(tag);
-    setShowShareModal(true);
-  };
-
-  // Joiner unlinks from a shared tag: ends the membership but keeps the tag and
-  // its sessions. After unlinking it becomes a plain tag (Delete returns).
-  const handleUnlinkTag = (tag: any) => {
-    Alert.alert(
-      t('home.unlinkTitle'),
-      t('home.unlinkBody', {
-        owner: tag.sharedOwnerName ?? t('home.unlinkOwnerFallback'),
-        name: tag.name,
-      }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('home.unlink'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await leaveSharedTag(tag.id);
-              showToast(t('home.unlinkedToast'), 'success');
-            } catch (e: any) {
-              showToast(e?.message || t('home.failedUnlink'), 'error');
-            }
-          },
-        },
-      ]
-    );
   };
 
   const stopUnlockSession = (
@@ -2579,21 +2152,6 @@ export default function FocusScreen() {
           footer={
             <View className="flex-row gap-3 border-t border-light-border px-6 pb-2 pt-3 dark:border-dark-border">
               <Button
-                variant="ghost"
-                size="large"
-                className="flex-1 rounded-2xl border border-link py-4"
-                onPress={() => {
-                  setShowTagModal(false);
-                  setShowJoinModal(true);
-                }}>
-                <Typography
-                  variant="subtitle-16"
-                  className="font-semibold"
-                  style={{ color: colors.link }}>
-                  {t('home.joinTag')}
-                </Typography>
-              </Button>
-              <Button
                 variant="primary"
                 size="large"
                 className="flex-1 rounded-2xl py-4"
@@ -2627,19 +2185,6 @@ export default function FocusScreen() {
                   updatePreferences({ hasSeenTagSwipeHint: true });
                 }}
               />
-
-              {/* Share Tag Overlay */}
-              {showShareModal && sharingTag && (
-                <ShareTagOverlay
-                  tag={sharingTag}
-                  onClose={() => {
-                    setShowShareModal(false);
-                    setSharingTag(null);
-                  }}
-                  onShareTag={shareTag}
-                  onStopSharing={stopSharingTag}
-                />
-              )}
 
               {/* Edit Tag — stacked sheet. Nested inside the picker's Modal (not
                   a sibling) so iOS actually presents it on top; sibling modals
@@ -2702,8 +2247,6 @@ export default function FocusScreen() {
                 onSelect={handleTagSelect}
                 onEdit={handleEditTag}
                 onDelete={handleDeleteTag}
-                onUnlink={handleUnlinkTag}
-                onShare={handleShareTag}
                 onStartSession={handleStartSessionFromTag}
                 onSwipeOpen={handleSwipeOpen}
                 onDragStart={handleDragStart}
@@ -2982,30 +2525,12 @@ export default function FocusScreen() {
           </Pressable>
         </Modal>
 
-        {/* Join Tag — step 1: enter + resolve the share code */}
-        <JoinTagModal
-          visible={showJoinModal}
-          onClose={() => setShowJoinModal(false)}
-          onResolve={resolveSharedTagCode}
-          onResolved={(result) => {
-            setShowJoinModal(false);
-            setResolvedSharedTag(result);
-          }}
-        />
-
         {/* Create-todo sheet for the "Add a TODO" action under the running list */}
         <TodoEditModal
           isVisible={showAddTodoModal}
           onClose={() => setShowAddTodoModal(false)}
           todo={null}
           initialTagId={selectedTag}
-        />
-
-        {/* Join Tag — step 2: map onto an existing tag or clone a new one */}
-        <JoinSharedTagSheet
-          resolved={resolvedSharedTag}
-          isVisible={!!resolvedSharedTag}
-          onClose={() => setResolvedSharedTag(null)}
         />
       </SwipeableTabWrapper>
     </SafeAreaView>

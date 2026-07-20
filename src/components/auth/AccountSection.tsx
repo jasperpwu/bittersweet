@@ -438,7 +438,7 @@ export const AccountSection: React.FC = () => {
         )}
 
         <View className="flex-row justify-center items-center mt-3">
-          <Pressable onPress={() => Linking.openURL('https://example.com/terms')}>
+          <Pressable onPress={() => Linking.openURL('https://bittersweet-app.github.io/terms.html')}>
             <Typography variant="body-12" color="secondary" className="underline">
               {t('account.terms')}
             </Typography>
@@ -446,7 +446,7 @@ export const AccountSection: React.FC = () => {
           <Typography variant="body-12" color="secondary" className="mx-2">
             ·
           </Typography>
-          <Pressable onPress={() => Linking.openURL('https://example.com/privacy')}>
+          <Pressable onPress={() => Linking.openURL('https://bittersweet-app.github.io/privacy.html')}>
             <Typography variant="body-12" color="secondary" className="underline">
               {t('account.privacyPolicy')}
             </Typography>

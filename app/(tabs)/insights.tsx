@@ -10,7 +10,6 @@ import { GoalConfigModal } from '../../src/components/modals/GoalConfigModal';
 import { useUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { useFocusActions, useAppStore } from '../../src/store';
 import { useShallow } from 'zustand/react/shallow';
-import { SharedTagStats } from '../../src/components/analytics/SharedTagStats/SharedTagStats';
 import { useAppSettings } from '../../src/store/unified-store';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { TimePeriod, FocusGoal, Badge, ChartSegment } from '../../src/store/types';
@@ -35,16 +34,14 @@ export default function InsightsScreen() {
   // Get data from focus store
   // Narrow subscription: only re-render when one of these fields changes, not on
   // every focus write (e.g. currentSession ticking during an active session).
-  const { sessions, tags, goals, sharedTagStats } = useAppStore(
+  const { sessions, tags, goals } = useAppStore(
     useShallow((s) => ({
       sessions: s.focus.sessions,
       tags: s.focus.tags,
       goals: s.focus.goals,
-      sharedTagStats: s.focus.sharedTagStats,
     }))
   );
-  const { deleteGoal, concludeGoal, deleteBadge, reorderGoals, fetchJoinerStats, removeJoiner } =
-    useFocusActions();
+  const { deleteGoal, concludeGoal, deleteBadge, reorderGoals } = useFocusActions();
 
   // Extract sessions array from normalized state
   const safeSessions =
@@ -71,12 +68,6 @@ export default function InsightsScreen() {
         return !!tag && !tag.deletedAt;
       });
   }, [goals, tags]);
-
-  // Tags the user is actively sharing (for SharedTagStats)
-  const sharingTags = useMemo(() => {
-    if (!tags?.allIds || !tags?.byId) return [];
-    return tags.allIds.map((id) => tags.byId[id]).filter((t) => t && !t.deletedAt && t.isSharing);
-  }, [tags]);
 
   // Get badges from store
   const badgeStore = useAppStore((state) => state.focus.badges);
@@ -367,14 +358,6 @@ export default function InsightsScreen() {
 
             {/* AI Focus Coach — collapsible weekly reports */}
             <CoachSection />
-
-            {/* Shared Tag Stats */}
-            <SharedTagStats
-              sharingTags={sharingTags}
-              sharedTagStats={sharedTagStats}
-              onFetchStats={fetchJoinerStats}
-              onRemoveJoiner={removeJoiner}
-            />
 
             {/* Statistics View */}
             <StatisticsView

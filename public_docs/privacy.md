@@ -6,10 +6,10 @@ title: Privacy Policy
 # Privacy Policy
 
 **Bittersweet**
-**Last Updated: May 30, 2026**
-**Effective Date: May 30, 2026**
+**Last Updated: July 19, 2026**
+**Effective Date: July 19, 2026**
 
-This Privacy Policy describes how [Your Company Name / Your Legal Name] ("we," "us," or "our") collects, uses, and protects your information when you use the Bittersweet mobile application ("App"). Please read this policy carefully.
+This Privacy Policy describes how Peijun Wu ("Jasper Wu"), an individual ("we," "us," or "our"), collects, uses, and protects your information when you use the Bittersweet mobile application ("App"). Please read this policy carefully.
 
 By using the App, you agree to the collection and use of information as described in this policy.
 
@@ -19,7 +19,7 @@ By using the App, you agree to the collection and use of information as describe
 
 ### 1.1 Information You Provide
 
-- **Account Information**: If you sign in with Apple, we receive your name and email address (or an Apple-provided relay email) to create your account.
+- **Account Information**: If you sign in with Apple or Google, we receive your name and email address (or an Apple-provided relay email) to create your account.
 - **Focus Session Data**: Tags, durations, start/end times, pause history, and optional notes you enter for each session.
 - **Goals**: Goal names, target durations, schedules, and rest day preferences.
 - **Grove Profile** (optional): Display name, handle, avatar image, gender, and job/role. Gender and job/role are stored privately and are never displayed to other users.
@@ -58,7 +58,7 @@ If you use the App without signing in, all your data (sessions, tags, goals, rew
 
 ### 3.2 Cloud Storage
 
-If you sign in with Apple, your data is synced to our cloud servers for backup and cross-device access. Cloud data is associated with your account and protected by authentication.
+If you sign in with Apple or Google, your data is synced to our cloud servers for backup and cross-device access. Cloud data is associated with your account and protected by authentication.
 
 ### 3.3 Data Retention
 
@@ -70,13 +70,14 @@ If you sign in with Apple, your data is synced to our cloud servers for backup a
 
 ### 4.1 With Other Users (Grove)
 
-If you opt into Grove, certain data is shared with your friends and group members based on your privacy settings:
+If you opt into Grove, certain data is shared with other users based on your privacy settings:
 
-- **Shared by default** (for selected tags only): Completed focus session summaries (tag, duration, time)
-- **Shared if you enable it**: Session notes, live focus status, detailed statistics
+- **Shared with your friends** (and, if your profile is public, with anyone): Completed focus session summaries, including tags and notes
+- **Shared if you enable it**: Live focus status (whether you are currently in a session), detailed statistics
+- **Profile visibility**: You choose whether your profile is public (discoverable by, and visible to, anyone) or private (visible only to friends whose requests you have accepted)
 - **Never shared**: Gender, job/role, email address, device information
 
-You control exactly what is shared through your Grove privacy settings at all times.
+You control your profile visibility and live-status sharing through your Grove privacy settings at all times.
 
 ### 4.2 With Third-Party Services
 
@@ -85,6 +86,7 @@ We use the following third-party services to operate the App:
 | Service | Purpose | Data Accessed |
 |---------|---------|---------------|
 | **Apple Sign-in** | Account authentication | Name, email |
+| **Google Sign-in** | Account authentication | Name, email |
 | **Apple App Store** | Subscription and purchase processing | Purchase tokens, subscription status |
 | **Crisp** | In-app support chat | User ID, chat messages, basic device info |
 
@@ -99,7 +101,6 @@ We may disclose your information if required to do so by law or in response to v
 The App may request the following permissions. All are optional and can be revoked at any time in your device settings:
 
 - **Push Notifications**: To send reminders, friend activity updates, and goal notifications. You can customize which notifications you receive within the App.
-- **Contacts**: To help you find friends on Grove by matching contacts. Contact data is used solely for friend matching and is not stored on our servers permanently.
 - **Camera / Photo Library**: To set a profile avatar or attach photos to focus sessions.
 
 ## 6. Children's Privacy
@@ -115,13 +116,13 @@ You have the following rights regarding your data:
 - **Portability**: Your focus session history and analytics are accessible within the App.
 - **Opt-Out of Social Features**: You can disable Grove at any time, which hides your profile and pauses all sharing. Your data is retained but not visible to others.
 - **Notification Control**: You can manage notification preferences within the App or disable them entirely through device settings.
-- **Permission Revocation**: You can revoke any device permission (contacts, camera, notifications) at any time through your device settings.
+- **Permission Revocation**: You can revoke any device permission (camera, notifications) at any time through your device settings.
 
 ## 8. Data Security
 
 We implement appropriate technical and organizational measures to protect your personal information, including:
 
-- Authentication via Apple Sign-in (industry-standard OAuth)
+- Authentication via Apple Sign-in and Google Sign-in (industry-standard OAuth)
 - Encrypted data transmission (HTTPS/TLS)
 - Row-level security on our database ensuring users can only access their own data
 
@@ -139,5 +140,5 @@ We may update this Privacy Policy from time to time. We will notify you of mater
 
 If you have questions or concerns about this Privacy Policy or your data, please contact us at:
 
-**[Your Company Name]**
-Email: [your-email@example.com]
+**Peijun Wu (Jasper Wu)**
+Email: junxwoo@icloud.com
