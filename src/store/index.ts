@@ -2931,13 +2931,16 @@ export const useAppStore = create<AppStore>()(
 
               // Note: Re-blocking is now handled automatically by DeviceActivity schedule
 
-              // Show idle focus Live Activity so user can start a new session from lock screen
+              // Show idle focus Live Activity so user can start a new session from
+              // the lock screen. The unlock LA was just dismissed above, so this
+              // must CREATE a fresh idle activity (ensureIdleFocusActivity), not
+              // merely update — updateAllActivities would find nothing to update.
               const focus = get().focus;
               const tagId = focus.lastSelectedTagId;
               const tag = tagId ? focus.tags.byId[tagId] : undefined;
               const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
               const lastDuration = tagId ? focus.lastDurationByTagId[tagId] : undefined;
-              LiveActivityService.showIdleFocusActivity(tagLabel, tagId || undefined, lastDuration);
+              LiveActivityService.ensureIdleFocusActivity(tagLabel, tagId || undefined, lastDuration);
 
               console.log('🔒 Unlock session ended:', sessionId);
             }

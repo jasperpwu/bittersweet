@@ -43,6 +43,59 @@ struct LiveActivityAttributes: ActivityAttributes {
   }
 }
 
+// MARK: - Post-expiry idle tag resolution
+
+/// The last-used focus tag, resolved for the idle "Start" card that replaces an
+/// expired unlock. Read from the shared app group (the app keeps
+/// `selectedTagId` and the tag list in sync), so the card iOS renders when the
+/// unlock goes stale matches the idle card the app shows on foreground — and it
+/// appears the instant the unlock expires even while the app is backgrounded,
+/// because the stale rendering is driven locally by iOS at the stale date.
+struct ResolvedIdleTag {
+  let title: String
+  let tagId: String?
+  let duration: Int?
+
+  var durationLabel: String? {
+    guard let duration = duration else { return nil }
+    return duration > 0 ? "\(duration) min" : "\u{221E}"
+  }
+}
+
+func resolveIdleTag() -> ResolvedIdleTag {
+  let manager = WidgetDataManager.shared
+  let tags = manager.getTagList()
+  let selectedId = manager.getSelectedTagId()
+  // Prefer the currently selected tag; fall back to the most-recently-used one.
+  let selected = tags.first(where: { $0.id == selectedId })
+  let mostRecent = tags.max(by: { $0.lastUsedAt < $1.lastUsedAt })
+  guard let tag = selected ?? mostRecent else {
+    return ResolvedIdleTag(title: "Focus", tagId: nil, duration: nil)
+  }
+  let icon = tag.icon.isEmpty ? "\u{1F3AF}" : tag.icon
+  return ResolvedIdleTag(title: "\(icon) \(tag.name)", tagId: tag.id, duration: tag.lastDuration)
+}
+
+/// Rebuilds a content state as an idle "Start" state carrying the resolved tag,
+/// so the shared idle rendering (LiveActivityView.idleView) can be reused for an
+/// expired unlock without duplicating layout.
+func makeIdleContentState(
+  from state: LiveActivityAttributes.ContentState,
+  tag: ResolvedIdleTag
+) -> LiveActivityAttributes.ContentState {
+  var idle = state
+  idle.isIdle = true
+  idle.title = tag.title
+  idle.subtitle = tag.durationLabel
+  idle.tagId = tag.tagId
+  idle.durationMinutes = tag.duration
+  idle.dynamicIslandText = tag.title
+  idle.timerEndDateInMilliseconds = nil
+  idle.timerStartDateInMilliseconds = nil
+  idle.progress = nil
+  return idle
+}
+
 // MARK: - Adaptive Banner Wrapper
 
 struct LiveActivityBannerWrapper: View {
@@ -52,36 +105,6 @@ struct LiveActivityBannerWrapper: View {
   var body: some View {
     LiveActivityView(contentState: contentState, attributes: attributes)
       .activitySystemActionForegroundColor(Color(hex: attributes.titleColor ?? "#8B4513"))
-  }
-}
-
-// MARK: - Stale Unlock Banner
-
-struct StaleUnlockBannerView: View {
-  let attributes: LiveActivityAttributes
-  let state: LiveActivityAttributes.ContentState
-
-  private var textColor: Color { Color(hex: attributes.titleColor ?? "#8B4513") }
-  private var bgColor: Color { Color(hex: attributes.backgroundColor ?? "#F5E6D3") }
-
-  var body: some View {
-    VStack(alignment: .leading) {
-      HStack(alignment: .center) {
-        VStack(alignment: .leading, spacing: 2) {
-          Text(state.unblockExpiredLabel ?? "Unblock Expired")
-            .font(.title2)
-            .fontWeight(.semibold)
-            .foregroundStyle(textColor)
-        }
-        Spacer()
-        resizableImage(imageName: state.imageName ?? "default-coffee-bean")
-          .frame(maxWidth: 48, maxHeight: 48)
-      }
-    }
-    .padding(24)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(bgColor)
-    .activitySystemActionForegroundColor(textColor)
   }
 }
 
@@ -159,7 +182,8 @@ struct WatchActivityView: View {
 
   var body: some View {
     if isStale, attributes.sessionType == "unlock" {
-      watchStaleUnlockView
+      // Unlock expired → idle "Start" card (see phoneView).
+      watchStaleIdleView
     } else if isStale {
       watchBonusView
     } else if contentState.isIdle == true {
@@ -330,17 +354,38 @@ struct WatchActivityView: View {
     .padding(.vertical, 12)
   }
 
-  // MARK: - Stale Unlock Expired
+  // MARK: - Stale Unlock → Idle Start (tag name + duration + play glyph)
 
-  private var watchStaleUnlockView: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(contentState.unblockExpiredLabel ?? "Unblock Expired")
+  private var watchStaleIdleView: some View {
+    let tag = resolveIdleTag()
+    return VStack(alignment: .leading, spacing: 4) {
+      Text(tag.title)
         .font(.system(size: 14, weight: .semibold))
         .foregroundStyle(.primary)
+        .lineLimit(1)
+
+      HStack {
+        if let subtitle = tag.durationLabel {
+          Text(subtitle)
+            .font(.system(size: 28, weight: .bold, design: subtitle == "\u{221E}" ? .rounded : .monospaced))
+            .foregroundStyle(.primary)
+            .minimumScaleFactor(0.7)
+        }
+
+        Spacer()
+
+        Button(intent: StartSessionIntent(tagId: tag.tagId, duration: tag.duration)) {
+          Image(systemName: "play.fill")
+            .font(.system(size: 18))
+            .foregroundStyle(.white)
+            .frame(width: 36, height: 36)
+            .background(.tint, in: Circle())
+        }
+        .buttonStyle(.plain)
+      }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
-    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 
@@ -366,7 +411,13 @@ struct LiveActivityContentRouter: View {
   @ViewBuilder
   private var phoneView: some View {
     if isStale, attributes.sessionType == "unlock" {
-      StaleUnlockBannerView(attributes: attributes, state: contentState)
+      // Unlock expired → show the idle "Start" card (last tag + duration) so the
+      // user can begin their next focus session straight from the lock screen,
+      // matching the post-focus-session idle state.
+      LiveActivityBannerWrapper(
+        contentState: makeIdleContentState(from: contentState, tag: resolveIdleTag()),
+        attributes: attributes
+      )
     } else if isStale {
       StaleBonusBannerView(attributes: attributes, state: contentState)
     } else {
@@ -482,7 +533,12 @@ struct LiveActivityWidget: Widget {
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading, priority: 1) {
-          dynamicIslandExpandedLeading(title: context.state.title, subtitle: context.state.subtitle)
+          let staleUnlockTag =
+            context.isStale && context.attributes.sessionType == "unlock" ? resolveIdleTag() : nil
+          dynamicIslandExpandedLeading(
+            title: staleUnlockTag?.title ?? context.state.title,
+            subtitle: staleUnlockTag?.durationLabel ?? context.state.subtitle
+          )
             .dynamicIsland(verticalPlacement: .belowIfTooWide)
             .padding(.leading, 5)
             .applyWidgetURL(from: context.attributes.deepLinkUrl)
@@ -507,6 +563,14 @@ struct LiveActivityWidget: Widget {
               durationMinutes: context.state.durationMinutes,
               startLabel: context.state.startLabel
             )
+          } else if context.isStale, context.attributes.sessionType == "unlock" {
+            // Unlock expired → idle Start button (last tag + duration).
+            let tag = resolveIdleTag()
+            DynamicIslandIdleBottomView(
+              tagId: tag.tagId,
+              durationMinutes: tag.duration,
+              startLabel: context.state.startLabel
+            )
           } else if let date = context.state.timerEndDateInMilliseconds {
             DynamicIslandActiveBottomView(
               endDate: date,
@@ -519,7 +583,14 @@ struct LiveActivityWidget: Widget {
           }
         }
       } compactLeading: {
-        if let dynamicIslandText = context.state.dynamicIslandText {
+        if context.isStale, context.attributes.sessionType == "unlock" {
+          // Unlock expired → show the idle tag name.
+          Text(resolveIdleTag().title)
+            .font(.system(size: 15))
+            .minimumScaleFactor(0.8)
+            .fontWeight(.semibold)
+            .lineLimit(1)
+        } else if let dynamicIslandText = context.state.dynamicIslandText {
           Text(dynamicIslandText)
             .font(.system(size: 15))
             .minimumScaleFactor(0.8)
@@ -532,10 +603,10 @@ struct LiveActivityWidget: Widget {
             .font(.system(size: 14))
             .foregroundStyle(.white)
         } else if context.isStale, context.attributes.sessionType == "unlock" {
-          // Unlock expired
-          Text("Expired")
+          // Unlock expired → idle Start glyph
+          Image(systemName: "play.fill")
             .font(.system(size: 14))
-            .fontWeight(.semibold)
+            .foregroundStyle(.white)
         } else if context.isStale, let date = context.state.timerEndDateInMilliseconds {
           // Focus session — count up from the expired end date
           Text(Date(timeIntervalSince1970: date / 1000), style: .timer)
@@ -559,9 +630,10 @@ struct LiveActivityWidget: Widget {
             .font(.system(size: 14))
             .foregroundStyle(.white)
         } else if context.isStale, context.attributes.sessionType == "unlock" {
-          // Unlock expired
-          Image(systemName: "lock.fill")
+          // Unlock expired → idle Start glyph
+          Image(systemName: "play.fill")
             .font(.system(size: 14))
+            .foregroundStyle(.white)
         } else if context.isStale, let date = context.state.timerEndDateInMilliseconds {
           // Focus session — count up from the expired end date
           Text(Date(timeIntervalSince1970: date / 1000), style: .timer)

@@ -231,12 +231,14 @@ export default function RootLayout() {
             useAppStore.getState().blocklist.endUnlock(data.unlockSessionId as string);
           } else if (data.liveActivityId) {
             LiveActivityService.stopUnlockCountdown(data.liveActivityId as string, 'expired');
-            // Show idle focus LA after unlock ends
+            // Show idle focus LA after unlock ends. The unlock LA was just
+            // dismissed, so CREATE a fresh idle activity (ensureIdleFocusActivity)
+            // rather than update-only — otherwise nothing shows.
             const focus = useAppStore.getState().focus;
             const tagId = focus.lastSelectedTagId;
             const tag = tagId ? focus.tags.byId[tagId] : undefined;
             const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
-            LiveActivityService.showIdleFocusActivity(
+            LiveActivityService.ensureIdleFocusActivity(
               tagLabel,
               tagId || undefined,
               tagId ? focus.lastDurationByTagId[tagId] : undefined

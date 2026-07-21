@@ -479,4 +479,65 @@ export class LiveActivityService {
       console.error('❌ Error updating all idle focus LAs:', error);
     }
   }
+
+  /**
+   * Show an idle focus Live Activity, CREATING one if none is on screen.
+   *
+   * Used after an unlock countdown ends. Unlike showIdleFocusActivity (which
+   * uses updateAllActivities and only transitions an already-alive focus LA),
+   * this uses startOrUpdateActivity so a fresh idle activity is created when
+   * none exists. That is exactly the unlock-end situation: stopUnlockCountdown
+   * has just dismissed the unlock LA (and updateAllActivities deliberately skips
+   * unlock-type activities anyway), so there is nothing left to update. The
+   * result matches the post-focus-session idle LA — last-used tag + duration +
+   * Start button — letting the user relaunch a session from the lock screen.
+   */
+  static async ensureIdleFocusActivity(
+    tagName: string,
+    tagId?: string,
+    durationMinutes?: number
+  ): Promise<void> {
+    if (!this.isAvailable()) return;
+
+    const durationLabel =
+      durationMinutes != null ? (durationMinutes > 0 ? `${durationMinutes} min` : '∞') : undefined;
+
+    const idleState: LiveActivity.LiveActivityState = {
+      title: tagName,
+      subtitle: durationLabel,
+      imageName: 'app_icon',
+      dynamicIslandImageName: 'app_icon',
+      dynamicIslandText: tagName,
+      isIdle: true,
+      tagId,
+      durationMinutes,
+      ...laLabels(),
+    };
+
+    if (!LiveActivity?.startOrUpdateActivity) return;
+
+    // Config is only used when creating a fresh activity; pick colors for the
+    // current appearance so the created idle LA matches the focus-timer LA.
+    const palette = Appearance.getColorScheme() === 'dark' ? LA_COLORS.dark : LA_COLORS.light;
+    const config: LiveActivity.LiveActivityConfig = {
+      backgroundColor: palette.backgroundColor,
+      titleColor: palette.titleColor,
+      subtitleColor: palette.subtitleColor,
+      progressViewTint: '#FF6347',
+      progressViewLabelColor: palette.progressViewLabelColor,
+      // Empty path → bare scheme → Focus tab (root index), matching focus LAs.
+      deepLinkUrl: '',
+      timerType: 'digital',
+    };
+
+    try {
+      await LiveActivity.startOrUpdateActivity(idleState, config);
+      this.lastTagName = tagName;
+      this.lastTagId = tagId;
+      this.lastDurationMinutes = durationMinutes;
+      console.log('✅ Ensured idle focus LA (create-if-missing) with tag:', tagName);
+    } catch (error: any) {
+      console.error('❌ Error ensuring idle focus LA:', error);
+    }
+  }
 }
