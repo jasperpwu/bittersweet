@@ -1,4 +1,4 @@
-import { FC, useRef, useCallback, useEffect } from 'react';
+import { FC, memo, useRef, useCallback, useEffect } from 'react';
 import { View, Animated, NativeSyntheticEvent, NativeScrollEvent, useColorScheme } from 'react-native';
 import { colors } from '../../../config/theme';
 import * as Haptics from 'expo-haptics';
@@ -9,12 +9,18 @@ const VISIBLE_ITEMS = 5;
 const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 const FONT_BOLD = 'Poppins-Bold';
 
+// In loop mode the value list is repeated this many times; the middle copy is
+// "home". The picker silently recenters onto the home copy while scrolling so a
+// modest buffer is enough for even a fast fling (decelerationRate="fast" keeps
+// single-fling travel well under one copy of runway).
+const LOOP_COPIES = 3;
+
 const WheelItem: FC<{
   index: number;
   display: string;
   scrollY: Animated.Value;
   textColor: string;
-}> = ({ index, display, scrollY, textColor }) => {
+}> = memo(({ index, display, scrollY, textColor }) => {
   const itemCenter = index * ITEM_HEIGHT;
 
   const inputRange = [
@@ -52,7 +58,8 @@ const WheelItem: FC<{
       </Animated.Text>
     </View>
   );
-};
+});
+WheelItem.displayName = 'WheelItem';
 
 interface WheelColumnProps {
   values: number[];
@@ -61,6 +68,15 @@ interface WheelColumnProps {
   label: string;
   formatValue?: (v: number) => string;
   indicatorPadding?: number;
+  /** Enable infinite wraparound scrolling (the ends of the list connect). */
+  loop?: boolean;
+  /**
+   * Fired once per seam crossing while looping: +1 when the wheel scrolls
+   * forward past the last value into the first (e.g. minute 59 → 0), -1 for the
+   * reverse. Lets a parent carry the crossing into an adjacent wheel (e.g. bump
+   * the hour). Fires only during user-driven scrolls, never programmatic ones.
+   */
+  onWrap?: (direction: 1 | -1) => void;
 }
 
 export const WheelColumn: FC<WheelColumnProps> = ({
@@ -69,7 +85,9 @@ export const WheelColumn: FC<WheelColumnProps> = ({
   onValueChange,
   label,
   formatValue,
-  indicatorPadding = 8
+  indicatorPadding = 8,
+  loop = false,
+  onWrap,
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -78,30 +96,66 @@ export const WheelColumn: FC<WheelColumnProps> = ({
   const scrollRef = useRef<any>(null);
   const lastSnappedRef = useRef(selectedValue);
   const isUserScrollingRef = useRef(false);
-  const initialOffsetRef = useRef({
-    x: 0,
-    y: Math.max(0, values.indexOf(selectedValue)) * ITEM_HEIGHT,
-  });
-  const scrollY = useRef(new Animated.Value(initialOffsetRef.current.y)).current;
+
+  const N = values.length;
+  const cycle = N * ITEM_HEIGHT; // scroll distance of one full loop
+  const homeStart = loop ? N : 0; // index of the home copy's first item
+  const displayValues = loop ? [...values, ...values, ...values] : values;
+
+  const initialIndex = Math.max(0, values.indexOf(selectedValue));
+  const initialY = (homeStart + initialIndex) * ITEM_HEIGHT;
+
+  const initialOffsetRef = useRef({ x: 0, y: initialY });
+  const scrollY = useRef(new Animated.Value(initialY)).current;
+
+  // Loop bookkeeping. `logical` is a free-running offset that keeps accumulating
+  // across silent recenters, so seam crossings can be counted reliably even when
+  // the raw scroll position is being shifted back to the home copy.
+  const prevRawRef = useRef(initialY);
+  const logicalRef = useRef(initialY);
+  const wrapBucketRef = useRef(cycle > 0 ? Math.floor(initialY / cycle) : 0);
+
+  /** Value shown at a given raw scroll offset. */
+  const valueAtOffset = useCallback(
+    (offsetY: number) => {
+      const rawIdx = Math.round(offsetY / ITEM_HEIGHT);
+      if (loop) {
+        return values[((rawIdx % N) + N) % N];
+      }
+      const clamped = Math.max(0, Math.min(N - 1, rawIdx));
+      return values[clamped];
+    },
+    [loop, values, N]
+  );
+
+  const scrollToValue = useCallback(
+    (value: number, resetLoopState: boolean) => {
+      const idx = values.indexOf(value);
+      if (idx < 0 || !scrollRef.current) return;
+      const y = (homeStart + idx) * ITEM_HEIGHT;
+      scrollRef.current.scrollTo({ y, animated: false });
+      if (loop && resetLoopState) {
+        prevRawRef.current = y;
+        logicalRef.current = y;
+        wrapBucketRef.current = cycle > 0 ? Math.floor(y / cycle) : 0;
+        lastSnappedRef.current = value;
+      }
+    },
+    [values, homeStart, loop, cycle]
+  );
 
   const hasMountedRef = useRef(false);
   useEffect(() => {
     if (!hasMountedRef.current) return;
     if (isUserScrollingRef.current) return;
-    const idx = values.indexOf(selectedValue);
-    if (idx >= 0 && scrollRef.current) {
-      scrollRef.current.scrollTo({ y: idx * ITEM_HEIGHT, animated: false });
-    }
-  }, [selectedValue, values]);
+    scrollToValue(selectedValue, true);
+  }, [selectedValue, values, scrollToValue]);
 
   const handleLayout = useCallback(() => {
     if (hasMountedRef.current) return;
     hasMountedRef.current = true;
-    const idx = values.indexOf(selectedValue);
-    if (idx >= 0 && scrollRef.current) {
-      scrollRef.current.scrollTo({ y: idx * ITEM_HEIGHT, animated: false });
-    }
-  }, [values, selectedValue]);
+    scrollToValue(selectedValue, true);
+  }, [selectedValue, scrollToValue]);
 
   const handleScrollBeginDrag = useCallback(() => {
     isUserScrollingRef.current = true;
@@ -112,15 +166,47 @@ export const WheelColumn: FC<WheelColumnProps> = ({
     {
       useNativeDriver: true,
       listener: (e: any) => {
-        const offsetY = e.nativeEvent.contentOffset.y;
-        if (!isUserScrollingRef.current) return;
-        const idx = Math.round(offsetY / ITEM_HEIGHT);
-        const clamped = Math.max(0, Math.min(values.length - 1, idx));
-        const snappedValue = values[clamped];
+        const raw = e.nativeEvent.contentOffset.y;
+        if (!isUserScrollingRef.current) {
+          prevRawRef.current = raw;
+          return;
+        }
+
+        if (loop) {
+          // Accumulate travel and emit a carry for every seam crossed.
+          logicalRef.current += raw - prevRawRef.current;
+          prevRawRef.current = raw;
+          const bucket = Math.floor(logicalRef.current / cycle);
+          while (wrapBucketRef.current < bucket) {
+            wrapBucketRef.current += 1;
+            onWrap?.(1);
+          }
+          while (wrapBucketRef.current > bucket) {
+            wrapBucketRef.current -= 1;
+            onWrap?.(-1);
+          }
+        }
+
+        const snappedValue = valueAtOffset(raw);
         if (snappedValue !== lastSnappedRef.current) {
           lastSnappedRef.current = snappedValue;
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           onValueChange(snappedValue);
+        }
+
+        // Silently recenter onto the home copy so the buffer never runs out.
+        // The shift is a whole number of copies, so the value under the finger
+        // and the snap alignment are unchanged — invisible to the user.
+        if (loop) {
+          if (raw < cycle * 0.5) {
+            const newRaw = raw + cycle;
+            scrollRef.current?.scrollTo({ y: newRaw, animated: false });
+            prevRawRef.current = newRaw;
+          } else if (raw > cycle * 2.5) {
+            const newRaw = raw - cycle;
+            scrollRef.current?.scrollTo({ y: newRaw, animated: false });
+            prevRawRef.current = newRaw;
+          }
         }
       },
     }
@@ -128,17 +214,16 @@ export const WheelColumn: FC<WheelColumnProps> = ({
 
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetY = e.nativeEvent.contentOffset.y;
-      const idx = Math.round(offsetY / ITEM_HEIGHT);
-      const clamped = Math.max(0, Math.min(values.length - 1, idx));
-      const value = values[clamped];
+      const raw = e.nativeEvent.contentOffset.y;
+      const value = valueAtOffset(raw);
       if (value !== selectedValue) {
         onValueChange(value);
       }
       lastSnappedRef.current = value;
+      prevRawRef.current = raw;
       isUserScrollingRef.current = false;
     },
-    [values, selectedValue, onValueChange]
+    [valueAtOffset, selectedValue, onValueChange]
   );
 
   const paddingVertical = (PICKER_HEIGHT - ITEM_HEIGHT) / 2;
@@ -180,7 +265,6 @@ export const WheelColumn: FC<WheelColumnProps> = ({
           showsVerticalScrollIndicator={false}
           snapToInterval={ITEM_HEIGHT}
           decelerationRate="fast"
-          disableIntervalMomentum={true}
           contentOffset={initialOffsetRef.current}
           onLayout={handleLayout}
           onScrollBeginDrag={handleScrollBeginDrag}
@@ -188,9 +272,9 @@ export const WheelColumn: FC<WheelColumnProps> = ({
           onScroll={handleScroll}
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingVertical }}>
-          {values.map((v, idx) => {
+          {displayValues.map((v, idx) => {
             const display = formatValue ? formatValue(v) : String(v);
-            return <WheelItem key={v} index={idx} display={display} scrollY={scrollY} textColor={textColor} />;
+            return <WheelItem key={idx} index={idx} display={display} scrollY={scrollY} textColor={textColor} />;
           })}
         </Animated.ScrollView>
       </View>

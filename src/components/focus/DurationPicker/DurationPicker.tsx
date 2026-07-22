@@ -67,12 +67,27 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
     setIsOpen(false);
   }, [pendingHours, pendingMinutes, onTimeChange]);
 
+  // Mirror of pendingHours so rapid, same-frame minute carries compound correctly
+  // (multiple onWrap calls in one scroll frame would otherwise read stale state).
+  const hoursRef = useRef(pendingHours);
+  useEffect(() => {
+    hoursRef.current = pendingHours;
+  }, [pendingHours]);
+
   const handleHourChange = useCallback((h: number) => {
     setPendingHours(h);
   }, []);
 
   const handleMinuteChange = useCallback((m: number) => {
     setPendingMinutes(m);
+  }, []);
+
+  // Minute wheel crossing its 59↔0 seam carries into the hours wheel, which
+  // itself loops 0↔8 (8h59m + 1min → 0h00m).
+  const handleMinuteWrap = useCallback((direction: 1 | -1) => {
+    const next = ((hoursRef.current + direction) % HOURS.length + HOURS.length) % HOURS.length;
+    hoursRef.current = next;
+    setPendingHours(next);
   }, []);
 
   return (
@@ -108,6 +123,7 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
               onValueChange={handleHourChange}
               label="Hours"
               indicatorPadding={16}
+              loop
             />
             <WheelColumn
               values={MINUTES}
@@ -116,6 +132,8 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
               label="Minutes"
               formatValue={(v) => String(v).padStart(2, '0')}
               indicatorPadding={16}
+              loop
+              onWrap={handleMinuteWrap}
             />
           </View>
 

@@ -41,6 +41,17 @@ const dateTo12h = (date: Date) => {
   return { hour12: h, minute: m, period };
 };
 
+/** Convert 12h clock parts → hour of day (0-23). */
+const to24Hour = (hour12: number, period: number): number =>
+  (hour12 % 12) + (period === 1 ? 12 : 0);
+
+/** Convert hour of day (0-23) → { hour12 (1-12), period (0=AM,1=PM) }. */
+const from24Hour = (h24: number): { hour12: number; period: number } => {
+  const period = h24 >= 12 ? 1 : 0;
+  const hour12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return { hour12, period };
+};
+
 /** Convert { hour12, minute, period } → Date (preserving year/month/day from base) */
 const to24hDate = (base: Date, hour12: number, minute: number, period: number): Date => {
   const d = new Date(base);
@@ -88,6 +99,23 @@ export const TimePicker: FC<TimePickerProps> = ({
     if (selectedTime) {
       onChange(selectedTime);
     }
+  };
+
+  // Mirror of the current hour-of-day so rapid, same-frame minute carries
+  // compound correctly (stale-closure-safe) and can cascade AM/PM.
+  const hour24Ref = useRef(to24Hour(pendingHour, pendingPeriod));
+  useEffect(() => {
+    hour24Ref.current = to24Hour(pendingHour, pendingPeriod);
+  }, [pendingHour, pendingPeriod]);
+
+  // Minute wheel crossing its 59↔0 seam carries a full clock hour, cascading
+  // into AM/PM (11:59 AM + 1min → 12:00 PM) and wrapping across midnight.
+  const handleMinuteWrap = (direction: 1 | -1) => {
+    const next = (hour24Ref.current + direction + 24) % 24;
+    hour24Ref.current = next;
+    const { hour12, period } = from24Hour(next);
+    setPendingHour(hour12);
+    setPendingPeriod(period);
   };
 
   const handleConfirm = () => {
@@ -161,6 +189,7 @@ export const TimePicker: FC<TimePickerProps> = ({
                     selectedValue={pendingHour}
                     onValueChange={setPendingHour}
                     label="Hour"
+                    loop
                   />
                   <WheelColumn
                     values={MINUTES_60}
@@ -168,6 +197,8 @@ export const TimePicker: FC<TimePickerProps> = ({
                     onValueChange={setPendingMinute}
                     label="Min"
                     formatValue={(v) => String(v).padStart(2, '0')}
+                    loop
+                    onWrap={handleMinuteWrap}
                   />
                   <WheelColumn
                     values={PERIODS}
