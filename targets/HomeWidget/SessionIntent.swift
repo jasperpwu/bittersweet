@@ -80,9 +80,22 @@ struct StartSessionIntent: LiveActivityIntent {
       return .result(dialog: "A focus session is already running.")
     }
 
-    // Guard: don't start a focus session during an active unlock
+    // Guard: don't start a focus session during an active unlock — but only while
+    // the unlock is genuinely still within its window. When an unlock expires while
+    // the app is closed, JS isn't running to clear widgetUnlockSessionData (it clears
+    // on foreground via checkActiveUnlocks), so isActive can be stale-true even though
+    // the widget has already flipped to idle (its timeline schedules an idle entry at
+    // the unlock end). Apps are re-blocked at expiry by the DeviceActivity reblock
+    // schedule, so an already-expired unlock must not block a start — otherwise the
+    // widget Start button silently no-ops until the app is next opened.
+    let nowMs = Date().timeIntervalSince1970 * 1000
     if let unlock = WidgetDataManager.shared.getUnlockSessionData(), unlock.isActive {
-      return .result(dialog: "Can't start while apps are unlocked.")
+      if unlock.endTime > nowMs {
+        return .result(dialog: "Can't start while apps are unlocked.")
+      }
+      // Expired but not yet cleared: drop the stale flag so it can't resurface in
+      // the widget after this focus session ends. JS reconciles fully on foreground.
+      WidgetDataManager.shared.clearUnlockSessionData()
     }
 
     // Resolve the tag from the Siri entity (tag) or the widget-supplied tagId.
