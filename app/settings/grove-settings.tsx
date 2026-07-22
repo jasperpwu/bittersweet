@@ -31,8 +31,6 @@ export default function GroveSettingsScreen() {
   const profile = useAppStore((s) => s.grove.profile);
   const profileLoaded = useAppStore((s) => s.grove.profileLoaded);
   const isActive = useAppStore((s) => s.grove.isActive);
-  const isGroveLoading = useAppStore((s) => s.grove.isLoading);
-  const toggleGroveActive = useAppStore((s) => s.grove.toggleGroveActive);
   const friendCount = useAppStore((s) => s.grove.friends.length);
   const clearGroveCache = useAppStore((s) => s.grove.clearGroveCache);
   const privacySettings = useAppStore((s) => s.grove.privacySettings);
@@ -82,14 +80,6 @@ export default function GroveSettingsScreen() {
       setIsSavingPrivacy(false);
     }
   }, [showLiveStatus, profileType, liveStatusChanged, profileTypeChanged, privacyChanged]);
-
-  const handleToggleActive = async () => {
-    try {
-      await toggleGroveActive(!isActive);
-    } catch {
-      Alert.alert(t('common.error'), t('groveSettings.failedStatus'));
-    }
-  };
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
@@ -204,47 +194,11 @@ export default function GroveSettingsScreen() {
                 </SettingsSection>
               )}
 
-              {/* Profile Status */}
-              <SettingsSection title={t('groveSettings.visibility')}>
-                <Pressable
-                  onPress={handleToggleActive}
-                  disabled={isGroveLoading}
-                  className="flex-row items-center justify-between py-3 active:opacity-70">
-                  <View className="flex-1 flex-row items-center">
-                    <View className="mr-3 w-8 items-center">
-                      <Ionicons
-                        name={isActive ? 'eye-outline' : 'eye-off-outline'}
-                        size={20}
-                        color={iconColor}
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Typography variant="subtitle-14-medium" color="primary">
-                        {isActive
-                          ? t('groveSettings.profileActive')
-                          : t('groveSettings.profilePaused')}
-                      </Typography>
-                      <Typography variant="body-12" color="secondary">
-                        {isActive ? t('groveSettings.activeDesc') : t('groveSettings.pausedDesc')}
-                      </Typography>
-                    </View>
-                  </View>
-                  {isGroveLoading ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <View
-                      className={`h-8 w-8 items-center justify-center rounded-full ${
-                        isActive ? 'bg-success' : 'bg-light-border dark:bg-dark-border'
-                      }`}>
-                      <Ionicons
-                        name={isActive ? 'checkmark' : 'pause'}
-                        size={16}
-                        color={colors.white}
-                      />
-                    </View>
-                  )}
-                </Pressable>
-              </SettingsSection>
+              {/* Profile Status (pause/resume) intentionally hidden: once a Grove
+                  profile is set up we keep it active so the Grove tab stays visible.
+                  Prioritizing Grove adoption over letting users silently opt out.
+                  Restore this SettingsSection (and handleToggleActive) if we decide
+                  to expose pausing again. */}
             </>
           )}
 
