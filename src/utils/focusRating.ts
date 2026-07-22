@@ -11,7 +11,8 @@
  *
  * Two signal sources, in priority order:
  *  1. `RecordedAccelSummary` — fine-grained raw-accelerometer summary from
- *     CMSensorRecorder (preferred; can detect occasional in-seat handling).
+ *     CMSensorRecorder (preferred; graded on its `activeFraction`, i.e. the
+ *     percentage of time in motion).
  *  2. `MotionActivitySummary` — CMMotionActivity stationary/walking/running
  *     fractions (reliable fallback when the recorder buffer is empty).
  */
@@ -31,7 +32,11 @@ export interface RecordedAccelSummary {
   durationSec: number;
   /** Fraction (0–1) of windows whose motion magnitude exceeded the still threshold. */
   activeFraction: number;
-  /** Count of distinct movement bursts — a proxy for "times the phone was handled". */
+  /**
+   * Count of distinct movement bursts. Still captured by the native module and
+   * shown for reference, but intentionally NOT used in the rating — burst counts
+   * proved too inaccurate to grade focus.
+   */
   handlingEvents: number;
 }
 
@@ -71,18 +76,61 @@ export const RATING_FRUIT_MULTIPLIER: Record<number, number> = {
 export const MIN_RATEABLE_MINUTES = 5;
 
 // --- Classification thresholds (tunable starting heuristics) ---
+// Rating is graded purely on the percentage of time the phone was in motion.
+// Movement-burst counts (handlingEvents) are intentionally ignored — they proved
+// too noisy/inaccurate to distinguish a fidget from a desk-side phone pickup.
 const ACCEL_CONSTANT_ACTIVE_FRACTION = 0.5; // ≥ this active ⇒ constant motion
-const ACCEL_STILL_ACTIVE_FRACTION = 0.08; // < this active (and few bursts) ⇒ still
-const ACCEL_OCCASIONAL_MIN_EVENTS = 2; // ≥ this many bursts ⇒ at least occasional
+const ACCEL_STILL_ACTIVE_FRACTION = 0.08; // < this active ⇒ still
 const ACTIVITY_CONSTANT_MOVING_FRACTION = 0.5; // ≥ this in walking/running ⇒ constant
 const ACTIVITY_STILL_STATIONARY_FRACTION = 0.9; // must be at least this stationary to be "still"
 const ACTIVITY_STILL_STEPS_PER_MIN = 0.5; // and below this step rate (≈ <1 step / 2 min)
-// Handling caps are rates, not absolute counts — 8 bursts in 2 hours is normal
-// desk behavior while 8 in 15 minutes is fidgeting. The absolute floor keeps a
-// short session from being capped by just a couple of bursts.
-const HANDLING_HEAVY_PER_HOUR = 8; // ≥ this many bursts/hour ⇒ cap at 2★
-const HANDLING_LIGHT_PER_HOUR = 3; // ≥ this many bursts/hour ⇒ cap at 3★
-const HANDLING_MIN_EVENTS = 3; // never cap below this many total bursts
+
+// Every session begins and ends with an unavoidable phone pickup (to tap
+// start/stop), which registers as motion. That's a roughly fixed chunk of time,
+// so it's a big slice of a 5-min session but a rounding error on a 60-min one.
+// We forgive this many seconds of active time before computing the motion
+// fraction, so short sessions aren't penalised for the mandatory start/stop tap.
+const HANDLING_GRACE_SEC = 25;
+// The same exit walk also shows up as steps; forgive a matching count (~a short
+// stand-up-and-leave) so the step-rate override doesn't re-penalise it.
+const HANDLING_GRACE_STEPS = 30;
+
+/**
+ * Fraction (0–1) of the session spent genuinely in motion, after forgiving the
+ * fixed start/stop-pickup handling. Falls back to the raw fraction when we don't
+ * have a duration to prorate against.
+ */
+function effectiveActiveFraction(r: RecordedAccelSummary): number {
+  if (r.durationSec <= 0) return r.activeFraction;
+  const activeSec = r.activeFraction * r.durationSec;
+  return Math.max(0, (activeSec - HANDLING_GRACE_SEC) / r.durationSec);
+}
+
+/**
+ * Moving / stationary fractions after forgiving the same fixed start/stop
+ * handling on the CMMotionActivity path — e.g. standing up and taking a few
+ * steps to leave when ending a session. Up to HANDLING_GRACE_SEC of locomotion
+ * is reattributed to stationary time so short stationary sessions aren't
+ * penalised for the unavoidable exit walk. On long sessions it's negligible.
+ */
+function effectiveActivityFractions(a: MotionActivitySummary): {
+  movingFrac: number;
+  stationaryFrac: number;
+} {
+  if (a.totalSec <= 0) return { movingFrac: 0, stationaryFrac: 0 };
+  const movingSec = a.walkingSec + a.runningSec + a.cyclingSec + a.automotiveSec;
+  const forgiven = Math.min(movingSec, HANDLING_GRACE_SEC);
+  return {
+    movingFrac: (movingSec - forgiven) / a.totalSec,
+    stationaryFrac: (a.stationarySec + forgiven) / a.totalSec,
+  };
+}
+
+/** Steps after forgiving the short stand-up-and-leave walk (stationary path only). */
+function effectiveSteps(steps?: number | null): number | null {
+  if (steps == null) return null;
+  return Math.max(0, steps - HANDLING_GRACE_STEPS);
+}
 
 const clampRating = (r: number): number => Math.max(1, Math.min(5, Math.round(r)));
 
@@ -103,22 +151,18 @@ export function shouldAutoRate(opts: {
 
 function classifyFromRecorder(r: RecordedAccelSummary): MotionProfile {
   if (r.sampleCount <= 0) return 'unknown';
-  if (r.activeFraction >= ACCEL_CONSTANT_ACTIVE_FRACTION) return 'constant';
-  if (
-    r.handlingEvents >= ACCEL_OCCASIONAL_MIN_EVENTS ||
-    r.activeFraction >= ACCEL_STILL_ACTIVE_FRACTION
-  ) {
-    return 'occasional';
-  }
+  const active = effectiveActiveFraction(r);
+  if (active >= ACCEL_CONSTANT_ACTIVE_FRACTION) return 'constant';
+  if (active >= ACCEL_STILL_ACTIVE_FRACTION) return 'occasional';
   return 'still';
 }
 
 function classifyFromActivity(a: MotionActivitySummary, steps?: number | null): MotionProfile {
   if (a.totalSec <= 0) return 'unknown';
-  const movingFrac = (a.walkingSec + a.runningSec + a.cyclingSec + a.automotiveSec) / a.totalSec;
-  const stationaryFrac = a.stationarySec / a.totalSec;
+  const { movingFrac, stationaryFrac } = effectiveActivityFractions(a);
   const totalMin = a.totalSec / 60;
-  const stepsPerMin = steps != null && totalMin > 0 ? steps / totalMin : 0;
+  const gracedSteps = effectiveSteps(steps);
+  const stepsPerMin = gracedSteps != null && totalMin > 0 ? gracedSteps / totalMin : 0;
 
   // Clear locomotion ⇒ constant motion.
   if (movingFrac >= ACTIVITY_CONSTANT_MOVING_FRACTION) return 'constant';
@@ -190,29 +234,18 @@ function stepsPerMinOf(a: MotionActivitySummary, steps?: number | null): number 
  */
 function stationaryStars(snapshot: MotionSnapshot): number {
   if (snapshot.signal === 'recorder' && snapshot.recorder) {
-    const r = snapshot.recorder;
-    let stars =
-      r.activeFraction <= 0.05
-        ? 5
-        : r.activeFraction <= 0.15
-          ? 4
-          : r.activeFraction <= 0.3
-            ? 3
-            : r.activeFraction <= 0.5
-              ? 2
-              : 1;
-    const hours = r.durationSec / 3600;
-    const burstsPerHour = hours > 0 ? r.handlingEvents / hours : r.handlingEvents;
-    if (r.handlingEvents >= HANDLING_MIN_EVENTS) {
-      if (burstsPerHour >= HANDLING_HEAVY_PER_HOUR) stars = Math.min(stars, 2);
-      else if (burstsPerHour >= HANDLING_LIGHT_PER_HOUR) stars = Math.min(stars, 3);
-    }
+    // Graded purely on the fraction of time in motion (minus the forgiven
+    // start/stop-pickup handling) — no burst-count capping.
+    const active = effectiveActiveFraction(snapshot.recorder);
+    const stars =
+      active <= 0.05 ? 5 : active <= 0.15 ? 4 : active <= 0.3 ? 3 : active <= 0.5 ? 2 : 1;
     return clampStars(stars);
   }
   if (snapshot.signal === 'activity' && snapshot.activity) {
-    const a = snapshot.activity;
-    if (movingFractionOf(a) >= 0.5) return 1; // walked/ran most of the session
-    const stationaryFrac = a.stationarySec / a.totalSec;
+    // Fractions forgive the fixed start/stop handling (getting up + a few exit
+    // steps) so short stationary sessions aren't penalised for it.
+    const { movingFrac, stationaryFrac } = effectiveActivityFractions(snapshot.activity);
+    if (movingFrac >= 0.5) return 1; // walked/ran most of the session
     let stars =
       stationaryFrac >= 0.95
         ? 5
@@ -223,7 +256,7 @@ function stationaryStars(snapshot: MotionSnapshot): number {
             : stationaryFrac >= 0.5
               ? 2
               : 1;
-    const spm = stepsPerMinOf(a, snapshot.steps);
+    const spm = stepsPerMinOf(snapshot.activity, effectiveSteps(snapshot.steps));
     if (spm > 8) stars = Math.min(stars, 2);
     else if (spm > 3) stars = Math.min(stars, 3);
     return clampStars(stars);

@@ -57,10 +57,7 @@ export function FocusRatingInsightsSheet({
     }
     if (snapshot.signal === 'recorder' && snapshot.recorder) {
       const r = snapshot.recorder;
-      return [
-        t('ratingInsights.inMotionPct', { pct: Math.round(r.activeFraction * 100) }),
-        t('ratingInsights.movementBursts', { count: r.handlingEvents }),
-      ];
+      return [t('ratingInsights.inMotionPct', { pct: Math.round(r.activeFraction * 100) })];
     }
     if (snapshot.signal === 'activity' && snapshot.activity) {
       const a = snapshot.activity;
