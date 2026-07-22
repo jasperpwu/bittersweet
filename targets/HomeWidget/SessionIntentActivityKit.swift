@@ -206,18 +206,30 @@ class WidgetActivityKitLoader: NSObject {
 
       for activity in Activity<LiveActivityAttributes>.activities {
         let id = activity.id
+
+        // No resolvable tag → dismiss instead of transitioning to a blank
+        // "Focus" idle card (e.g. a Live Activity left over after a sign-out
+        // wipe cleared the shared tag list). Mirrors the JS-side guard.
+        guard let tag = tag else {
+          Task {
+            await activity.end(nil, dismissalPolicy: .immediate)
+            print("🧹 [Widget] Dismissed blank idle LA (no resolvable tag): \(id)")
+          }
+          continue
+        }
+
         Task {
           let tagTitle: String = {
-            guard let t = tag else { return "Focus" }
-            let icon = t.icon.isEmpty ? "🎯" : t.icon
-            return "\(icon) \(t.name)"
+            let icon = tag.icon.isEmpty ? "🎯" : tag.icon
+            return "\(icon) \(tag.name)"
+          }()
+          let idleSubtitle: String? = {
+            guard let d = tag.lastDuration else { return nil }
+            return d > 0 ? "\(d) min" : "∞"
           }()
           let idleState = LiveActivityAttributes.ContentState(
             title: tagTitle,
-            subtitle: tag.flatMap { t in
-              guard let d = t.lastDuration else { return nil }
-              return d > 0 ? "\(d) min" : "∞"
-            },
+            subtitle: idleSubtitle,
             timerEndDateInMilliseconds: nil,
             timerStartDateInMilliseconds: nil,
             progress: nil,
@@ -225,8 +237,8 @@ class WidgetActivityKitLoader: NSObject {
             dynamicIslandImageName: "app_icon",
             dynamicIslandText: tagTitle,
             isIdle: true,
-            tagId: tag?.id,
-            durationMinutes: tag?.lastDuration,
+            tagId: tag.id,
+            durationMinutes: tag.lastDuration,
             startLabel: activity.content.state.startLabel,
             endLabel: activity.content.state.endLabel,
             unlockedLabel: activity.content.state.unlockedLabel,

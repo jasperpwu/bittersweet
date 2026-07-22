@@ -54,6 +54,33 @@ export class LiveActivityService {
   private static lastDurationMinutes: number | undefined;
 
   /**
+   * Whether we have a real tag to show on an idle "Start" card. Without a
+   * resolvable tag name the card degrades to a bare "Focus" label with no
+   * duration — the blank state we never want to render. When this is false the
+   * idle-producing paths dismiss the activity instead of reloading a blank one.
+   */
+  private static hasResolvableTag(tagName: string | undefined): boolean {
+    const name = tagName?.trim();
+    // 'Focus' is the generic fallback used everywhere a tag lookup fails; a real
+    // tag label is always prefixed with its icon (e.g. "🎯 Focus").
+    return !!name && name !== 'Focus';
+  }
+
+  /**
+   * Dismiss every focus Live Activity (ID-free). Used when there is no
+   * resolvable tag, so a blank idle card is removed rather than left/reloaded.
+   */
+  private static async dismissBlankIdle(context: string): Promise<void> {
+    if (!LiveActivity?.endAllFocusActivities) return;
+    try {
+      await LiveActivity.endAllFocusActivities();
+      console.log(`🧹 Dismissed blank idle focus LA (no resolvable tag) [${context}]`);
+    } catch (error) {
+      console.error('❌ Error dismissing blank idle focus LA:', error);
+    }
+  }
+
+  /**
    * Start a new Live Activity for unlock countdown
    * @param endTime - When the unlock expires
    * @param durationMinutes - Total unlock duration in minutes
@@ -372,6 +399,13 @@ export class LiveActivityService {
     }
 
     try {
+      // No resolvable tag → dismiss instead of transitioning to a blank
+      // "Focus" idle card (statics can be lost across a JS process restart).
+      if (!this.hasResolvableTag(this.lastTagName)) {
+        await this.dismissBlankIdle('stopFocusTimer');
+        return;
+      }
+
       // Build idle state with tag info so the LA shows a "Start" button
       const durationLabel =
         this.lastDurationMinutes != null
@@ -454,6 +488,12 @@ export class LiveActivityService {
   ): Promise<void> {
     if (!this.isAvailable()) return;
 
+    // No resolvable tag → dismiss any idle card rather than reload a blank one.
+    if (!this.hasResolvableTag(tagName)) {
+      await this.dismissBlankIdle('showIdleFocusActivity');
+      return;
+    }
+
     const durationLabel =
       durationMinutes != null ? (durationMinutes > 0 ? `${durationMinutes} min` : '∞') : undefined;
 
@@ -498,6 +538,12 @@ export class LiveActivityService {
     durationMinutes?: number
   ): Promise<void> {
     if (!this.isAvailable()) return;
+
+    // No resolvable tag → don't create a blank idle card; dismiss any leftover.
+    if (!this.hasResolvableTag(tagName)) {
+      await this.dismissBlankIdle('ensureIdleFocusActivity');
+      return;
+    }
 
     const durationLabel =
       durationMinutes != null ? (durationMinutes > 0 ? `${durationMinutes} min` : '∞') : undefined;
