@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
-import { Image } from 'expo-image';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
@@ -16,12 +15,12 @@ import { Button } from '../../src/components/ui/Button';
 import { colors } from '../../src/config/theme';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
-import { AccountActions } from '../../src/components/auth/AccountSection';
+import { AccountActions } from '../../src/components/auth/AccountActions';
 import { GoogleSignInButton } from '../../src/components/auth/SignInSheet';
 import { useUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { useAppStore } from '../../src/store';
-import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
+import { ProfileAvatar } from '../../src/components/grove/ProfileAvatar';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 import { useReferralLink } from '../../src/hooks/useReferralLink';
 import { useTranslation } from 'react-i18next';
@@ -191,16 +190,12 @@ export default function SettingsScreen() {
             <View className="mt-4 px-5">
               <View className="rounded-2xl bg-light-border/30 px-4 py-4 dark:bg-dark-card">
                 <View className="flex-row items-center">
-                  {profile?.avatar_url ? (
-                    <Image
-                      source={{ uri: profile.avatar_url }}
-                      style={{ width: 56, height: 56, borderRadius: 28, marginRight: 14 }}
-                    />
-                  ) : profile ? (
+                  {profile ? (
                     <View className="mr-3.5">
-                      <DefaultAvatar
+                      <ProfileAvatar
+                        avatarUrl={profile.avatar_url}
                         displayName={profile.display_name}
-                        color={profile.avatar_color}
+                        avatarColor={profile.avatar_color}
                         size={56}
                       />
                     </View>

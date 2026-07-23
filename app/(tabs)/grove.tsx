@@ -1,11 +1,10 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, SafeAreaView, ScrollView, Pressable, useColorScheme, RefreshControl, Alert } from 'react-native';
-import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { colors } from '../../src/config/theme';
-import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
+import { ProfileAvatar } from '../../src/components/grove/ProfileAvatar';
 import { FriendCarousel } from '../../src/components/grove/FriendCarousel';
 import { ChallengeCard } from '../../src/components/grove/ChallengeCard';
 import { ChallengeDetailSheet } from '../../src/components/grove/ChallengeDetailSheet';
@@ -251,20 +250,14 @@ export default function GroveScreen() {
           >
             <View className="bg-light-border/30 dark:bg-dark-card rounded-2xl p-4 mt-1">
               <View className="flex-row items-center">
-                {profile.avatar_url ? (
-                  <Image
-                    source={{ uri: profile.avatar_url }}
-                    style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
+                <View className="mr-3">
+                  <ProfileAvatar
+                    avatarUrl={profile.avatar_url}
+                    displayName={profile.display_name}
+                    avatarColor={profile.avatar_color}
+                    size={48}
                   />
-                ) : (
-                  <View className="mr-3">
-                    <DefaultAvatar
-                      displayName={profile.display_name}
-                      color={profile.avatar_color}
-                      size={48}
-                    />
-                  </View>
-                )}
+                </View>
                 <View className="flex-1">
                   <Typography variant="headline-18" color="primary">
                     {profile.display_name}
