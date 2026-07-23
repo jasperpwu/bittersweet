@@ -222,6 +222,7 @@
     "activityActive": "活动"
   },
   "journal": {
+    "sessionDeleted": "已删除专注会话",
     "emptyTitle": "你的日志还是空的",
     "emptyDesc": "完成你的第一次专注会话，就能在这里记录进度。",
     "emptyButton": "开始一次专注",

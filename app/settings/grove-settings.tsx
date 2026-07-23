@@ -5,7 +5,6 @@ import {
   SafeAreaView,
   Pressable,
   Alert,
-  ActivityIndicator,
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,12 +36,13 @@ export default function GroveSettingsScreen() {
   const updatePrivacySettings = useAppStore((s) => s.grove.updatePrivacySettings);
   const updateProfile = useAppStore((s) => s.grove.updateProfile);
 
-  // Privacy state — tags and notes are always shared; profile type + live status are opt-in
+  // Privacy state — tags and notes are always shared; profile type + live status are opt-in.
+  // Local state mirrors the store for instant UI feedback; each change auto-saves (optimistic,
+  // reverts on failure) just like every other setting — no explicit save button.
   const [profileType, setProfileType] = useState<'public' | 'private'>(
     profile?.profile_type ?? 'public'
   );
   const [showLiveStatus, setShowLiveStatus] = useState(privacySettings?.show_live_status ?? false);
-  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
   // Sign-in CTA for unauthenticated users; after signing in from here we wait
   // for the post-sign-in profile fetch (fetchProfile in _layout's auth listener
@@ -58,28 +58,34 @@ export default function GroveSettingsScreen() {
     }
   }, [pendingSetup, isAuthenticated, profileLoaded, profile]);
 
-  const liveStatusChanged =
-    !!privacySettings && showLiveStatus !== privacySettings.show_live_status;
-  const profileTypeChanged = !!profile && profileType !== profile.profile_type;
-  const privacyChanged = liveStatusChanged || profileTypeChanged;
+  const handleChangeProfileType = useCallback(
+    async (value: 'public' | 'private') => {
+      if (value === profileType) return;
+      const prev = profileType;
+      setProfileType(value);
+      try {
+        await updateProfile({ profile_type: value });
+      } catch {
+        setProfileType(prev);
+        Alert.alert(t('common.error'), t('groveSettings.failedPrivacy'));
+      }
+    },
+    [profileType, updateProfile, t]
+  );
 
-  const handleSavePrivacy = useCallback(async () => {
-    if (!privacyChanged) return;
-    setIsSavingPrivacy(true);
-    try {
-      if (liveStatusChanged) {
-        await updatePrivacySettings({ show_live_status: showLiveStatus });
+  const handleToggleLiveStatus = useCallback(
+    async (value: boolean) => {
+      const prev = showLiveStatus;
+      setShowLiveStatus(value);
+      try {
+        await updatePrivacySettings({ show_live_status: value });
+      } catch {
+        setShowLiveStatus(prev);
+        Alert.alert(t('common.error'), t('groveSettings.failedPrivacy'));
       }
-      if (profileTypeChanged) {
-        await updateProfile({ profile_type: profileType });
-      }
-      triggerHaptic('success');
-    } catch {
-      Alert.alert(t('common.error'), t('groveSettings.failedPrivacy'));
-    } finally {
-      setIsSavingPrivacy(false);
-    }
-  }, [showLiveStatus, profileType, liveStatusChanged, profileTypeChanged, privacyChanged]);
+    },
+    [showLiveStatus, updatePrivacySettings, t]
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
@@ -205,33 +211,19 @@ export default function GroveSettingsScreen() {
           {/* Privacy & Sharing */}
           {profile && isActive && (
             <View className="mt-6 px-5">
-              <View className="mb-3 flex-row items-center justify-between">
+              <View className="mb-3">
                 <Typography
                   variant="subtitle-14-medium"
                   className="text-primary-light dark:text-primary">
                   {t('groveSettings.privacySharing')}
                 </Typography>
-                {privacyChanged && (
-                  <Pressable
-                    onPress={handleSavePrivacy}
-                    disabled={isSavingPrivacy}
-                    className="active:opacity-70">
-                    {isSavingPrivacy ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <Typography variant="subtitle-14-medium" className="text-primary">
-                        {t('common.save')}
-                      </Typography>
-                    )}
-                  </Pressable>
-                )}
               </View>
               <View className="rounded-2xl bg-light-border/30 px-4 py-3 dark:bg-dark-card">
                 <PrivacyToggleList
                   profileType={profileType}
                   showLiveStatus={showLiveStatus}
-                  onChangeProfileType={setProfileType}
-                  onToggleShowLiveStatus={setShowLiveStatus}
+                  onChangeProfileType={handleChangeProfileType}
+                  onToggleShowLiveStatus={handleToggleLiveStatus}
                 />
               </View>
             </View>

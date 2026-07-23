@@ -223,6 +223,7 @@
     "activityActive": "Aktiv"
   },
   "journal": {
+    "sessionDeleted": "Fokus-Sitzung gelöscht",
     "emptyTitle": "Dein Journal ist leer",
     "emptyDesc": "Schließe deine erste Fokus-Sitzung ab, um hier deinen Fortschritt zu verfolgen.",
     "emptyButton": "Fokus-Sitzung starten",

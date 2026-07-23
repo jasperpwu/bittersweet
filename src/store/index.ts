@@ -121,6 +121,7 @@ interface AppStore {
     applyFocusRating: (id: string, rating: number, source: RatingSource) => void;
     autoRateSessionFromMotion: (id: string) => Promise<void>;
     deleteSession: (id: string) => void;
+    restoreSession: (session: FocusSession) => void;
     startSession: (id: string) => void;
     completeSession: (id?: string) => void;
     createCompletedSession: (params: {
@@ -1001,6 +1002,62 @@ export const useAppStore = create<AppStore>()(
                   .grove.recomputeChallengeHitsForTag(sessionToDelete.secondaryTagId)
                   .catch(() => {});
               }
+            }
+          },
+
+          // Exact inverse of deleteSession, for the delete toast's Undo. Re-inserts
+          // the captured session and re-grants the fruits deleteSession deducted, then
+          // makes the restore durable: persistStateNow + enqueueSessionNow re-upserts the
+          // row (sessionToRow now emits deleted_at:null, un-tombstoning the cloud row the
+          // soft_delete created), refreshes the shield balance, and recomputes challenge
+          // hits for the session's tag(s). Idempotent — no-ops if the id is already present.
+          restoreSession: (session) => {
+            if (get().focus.sessions.byId[session.id]) return;
+            console.log('♻️ Restoring session:', session.id);
+
+            // Mirror deleteSession's deduction rule exactly so we add back precisely
+            // what was removed (manual entries earned/deducted 0).
+            const fruitsToReAdd = !session.isManualEntry
+              ? calculateFruitsEarnedForDuration(
+                  session.adjustedDuration ?? session.duration ?? 0,
+                  session.initialSetDuration ?? session.duration ?? 0,
+                  session.accelerateMultiplier ?? 1
+                )
+              : 0;
+
+            set((state) => ({
+              focus: {
+                ...state.focus,
+                sessions: {
+                  ...state.focus.sessions,
+                  byId: { ...state.focus.sessions.byId, [session.id]: session },
+                  allIds: [...state.focus.sessions.allIds, session.id],
+                },
+              },
+              rewards: {
+                ...state.rewards,
+                balance: state.rewards.balance + fruitsToReAdd,
+                totalEarned: state.rewards.totalEarned + fruitsToReAdd,
+                updatedAt: new Date().toISOString(),
+              },
+            }));
+
+            persistStateNow(get());
+            enqueueSessionNow(get(), session);
+
+            const newBalance = get().rewards.balance;
+            const focusActive = get().focus.currentSession.isRunning;
+            FamilyControlsModule.updateShieldBalance(newBalance, focusActive).catch((error) => {
+              console.error('Failed to update shield balance after restoring session:', error);
+            });
+
+            get()
+              .grove.recomputeChallengeHitsForTag(session.tagId)
+              .catch(() => {});
+            if (session.secondaryTagId && session.secondaryTagId !== session.tagId) {
+              get()
+                .grove.recomputeChallengeHitsForTag(session.secondaryTagId)
+                .catch(() => {});
             }
           },
 
@@ -2241,7 +2298,9 @@ export const useAppStore = create<AppStore>()(
             const productId = themeProductId(themeId);
             const purchases = get().rewards.purchases ?? { byId: {}, allIds: [] };
             // Backstop — the store UI shows owned themes as applyable, not buyable.
-            const owned = purchases.allIds.some((id) => purchases.byId[id]?.productId === productId);
+            const owned = purchases.allIds.some(
+              (id) => purchases.byId[id]?.productId === productId
+            );
             if (owned) {
               throw new Error(`Theme already owned: ${themeId}`);
             }
@@ -2319,12 +2378,16 @@ export const useAppStore = create<AppStore>()(
             }
             const balance = get().rewards.balance;
             if (balance < reward.cost) {
-              throw new Error(`Insufficient fruits. Required: ${reward.cost}, Available: ${balance}`);
+              throw new Error(
+                `Insufficient fruits. Required: ${reward.cost}, Available: ${balance}`
+              );
             }
             const productId = customRewardProductId(rewardId);
             const purchases = get().rewards.purchases ?? { byId: {}, allIds: [] };
             // Backstop — bought rewards are filtered out of the catalog.
-            const owned = purchases.allIds.some((id) => purchases.byId[id]?.productId === productId);
+            const owned = purchases.allIds.some(
+              (id) => purchases.byId[id]?.productId === productId
+            );
             if (owned) {
               throw new Error(`Custom reward already bought: ${rewardId}`);
             }
@@ -2879,17 +2942,12 @@ export const useAppStore = create<AppStore>()(
               // this unlock was purchased (keyed by startTime, matching requestUnlock),
               // so the chart reflects minutes actually used, not just purchased.
               const startTimeMs =
-                session.startTime instanceof Date
-                  ? session.startTime
-                  : new Date(session.startTime);
+                session.startTime instanceof Date ? session.startTime : new Date(session.startTime);
               const dayKey = startTimeMs.toLocaleDateString('en-CA');
               const currentHistory = get().rewards.unlockHistory ?? {};
               const adjustedHistory = { ...currentHistory };
               if (remainingMinutes > 0 && adjustedHistory[dayKey] !== undefined) {
-                adjustedHistory[dayKey] = Math.max(
-                  0,
-                  adjustedHistory[dayKey] - remainingMinutes
-                );
+                adjustedHistory[dayKey] = Math.max(0, adjustedHistory[dayKey] - remainingMinutes);
               }
 
               set((state) => ({
@@ -2940,7 +2998,11 @@ export const useAppStore = create<AppStore>()(
               const tag = tagId ? focus.tags.byId[tagId] : undefined;
               const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
               const lastDuration = tagId ? focus.lastDurationByTagId[tagId] : undefined;
-              LiveActivityService.ensureIdleFocusActivity(tagLabel, tagId || undefined, lastDuration);
+              LiveActivityService.ensureIdleFocusActivity(
+                tagLabel,
+                tagId || undefined,
+                lastDuration
+              );
 
               console.log('🔒 Unlock session ended:', sessionId);
             }
@@ -3047,94 +3109,107 @@ export const useGroveActions = () =>
  * Store actions hooks
  */
 export const useFocusActions = () =>
-  useAppStore(useShallow((state) => ({
-    createSession: state.focus.createSession,
-    updateSession: state.focus.updateSession,
-    adjustSessionDuration: state.focus.adjustSessionDuration,
-    applyFocusRating: state.focus.applyFocusRating,
-    autoRateSessionFromMotion: state.focus.autoRateSessionFromMotion,
-    deleteSession: state.focus.deleteSession,
-    startSession: state.focus.startSession,
-    completeSession: state.focus.completeSession,
-    createCompletedSession: state.focus.createCompletedSession,
-    setSelectedDate: state.focus.setSelectedDate,
-    setViewMode: state.focus.setViewMode,
-    goToPreviousWeek: state.focus.goToPreviousWeek,
-    goToNextWeek: state.focus.goToNextWeek,
-    goToCurrentWeek: state.focus.goToCurrentWeek,
-    setLastSelectedTagId: state.focus.setLastSelectedTagId,
-    setLastDurationForTag: state.focus.setLastDurationForTag,
-    createTag: state.focus.createTag,
-    updateTag: state.focus.updateTag,
-    deleteTag: state.focus.deleteTag,
-    reorderTags: state.focus.reorderTags,
-    addGoal: state.focus.addGoal,
-    updateGoal: state.focus.updateGoal,
-    deleteGoal: state.focus.deleteGoal,
-    concludeGoal: state.focus.concludeGoal,
-    deleteBadge: state.focus.deleteBadge,
-    upsertCoachReport: state.focus.upsertCoachReport,
-    deleteCoachReport: state.focus.deleteCoachReport,
-    reorderGoals: state.focus.reorderGoals,
-    getActiveGoals: state.focus.getActiveGoals,
-    createTodo: state.focus.createTodo,
-    updateTodo: state.focus.updateTodo,
-    toggleTodo: state.focus.toggleTodo,
-    deleteTodo: state.focus.deleteTodo,
-    restoreTodo: state.focus.restoreTodo,
-    reorderTodos: state.focus.reorderTodos,
-  })));
+  useAppStore(
+    useShallow((state) => ({
+      createSession: state.focus.createSession,
+      updateSession: state.focus.updateSession,
+      adjustSessionDuration: state.focus.adjustSessionDuration,
+      applyFocusRating: state.focus.applyFocusRating,
+      autoRateSessionFromMotion: state.focus.autoRateSessionFromMotion,
+      deleteSession: state.focus.deleteSession,
+      restoreSession: state.focus.restoreSession,
+      startSession: state.focus.startSession,
+      completeSession: state.focus.completeSession,
+      createCompletedSession: state.focus.createCompletedSession,
+      setSelectedDate: state.focus.setSelectedDate,
+      setViewMode: state.focus.setViewMode,
+      goToPreviousWeek: state.focus.goToPreviousWeek,
+      goToNextWeek: state.focus.goToNextWeek,
+      goToCurrentWeek: state.focus.goToCurrentWeek,
+      setLastSelectedTagId: state.focus.setLastSelectedTagId,
+      setLastDurationForTag: state.focus.setLastDurationForTag,
+      createTag: state.focus.createTag,
+      updateTag: state.focus.updateTag,
+      deleteTag: state.focus.deleteTag,
+      reorderTags: state.focus.reorderTags,
+      addGoal: state.focus.addGoal,
+      updateGoal: state.focus.updateGoal,
+      deleteGoal: state.focus.deleteGoal,
+      concludeGoal: state.focus.concludeGoal,
+      deleteBadge: state.focus.deleteBadge,
+      upsertCoachReport: state.focus.upsertCoachReport,
+      deleteCoachReport: state.focus.deleteCoachReport,
+      reorderGoals: state.focus.reorderGoals,
+      getActiveGoals: state.focus.getActiveGoals,
+      createTodo: state.focus.createTodo,
+      updateTodo: state.focus.updateTodo,
+      toggleTodo: state.focus.toggleTodo,
+      deleteTodo: state.focus.deleteTodo,
+      restoreTodo: state.focus.restoreTodo,
+      reorderTodos: state.focus.reorderTodos,
+    }))
+  );
 
 export const useUIActions = () =>
-  useAppStore(useShallow((state) => ({
-    showModal: state.ui.showModal,
-    hideModal: state.ui.hideModal,
-    setLoading: state.ui.setLoading,
-    addError: state.ui.addError,
-    clearError: state.ui.clearError,
-    clearAllErrors: state.ui.clearAllErrors,
-  })));
+  useAppStore(
+    useShallow((state) => ({
+      showModal: state.ui.showModal,
+      hideModal: state.ui.hideModal,
+      setLoading: state.ui.setLoading,
+      addError: state.ui.addError,
+      clearError: state.ui.clearError,
+      clearAllErrors: state.ui.clearAllErrors,
+    }))
+  );
 
 export const useSettingsActions = () =>
-  useAppStore(useShallow((state) => ({
-    updateTheme: state.settings.updateTheme,
-    updateLanguage: state.settings.updateLanguage,
-    updateNotifications: state.settings.updateNotifications,
-  })));
+  useAppStore(
+    useShallow((state) => ({
+      updateTheme: state.settings.updateTheme,
+      updateLanguage: state.settings.updateLanguage,
+      updateNotifications: state.settings.updateNotifications,
+    }))
+  );
 
 export const useRewardsActions = () =>
-  useAppStore(useShallow((state) => ({
-    earnFruits: state.rewards.earnFruits,
-    spendFruits: state.rewards.spendFruits,
-    unlockApp: state.rewards.unlockApp,
-  })));
+  useAppStore(
+    useShallow((state) => ({
+      earnFruits: state.rewards.earnFruits,
+      spendFruits: state.rewards.spendFruits,
+      unlockApp: state.rewards.unlockApp,
+    }))
+  );
 
 export const useBlocklistActions = () =>
-  useAppStore(useShallow((state) => ({
-    checkAuthorizationStatus: state.blocklist.checkAuthorizationStatus,
-    requestAuthorization: state.blocklist.requestAuthorization,
-    updateBlockedApps: state.blocklist.updateBlockedApps,
-    updateSettings: state.blocklist.updateSettings,
-    requestUnlock: state.blocklist.requestUnlock,
-    endUnlock: state.blocklist.endUnlock,
-    checkActiveUnlocks: state.blocklist.checkActiveUnlocks,
-    getBlocklistEditCost: state.blocklist.getBlocklistEditCost,
-  })));
+  useAppStore(
+    useShallow((state) => ({
+      checkAuthorizationStatus: state.blocklist.checkAuthorizationStatus,
+      requestAuthorization: state.blocklist.requestAuthorization,
+      updateBlockedApps: state.blocklist.updateBlockedApps,
+      updateSettings: state.blocklist.updateSettings,
+      requestUnlock: state.blocklist.requestUnlock,
+      endUnlock: state.blocklist.endUnlock,
+      checkActiveUnlocks: state.blocklist.checkActiveUnlocks,
+      getBlocklistEditCost: state.blocklist.getBlocklistEditCost,
+    }))
+  );
 
 export const useBlocklistEditCost = () =>
-  useAppStore(useShallow((state) => {
-    const { editHistory } = state.blocklist;
-    const currentWeekStart = getWeekStart().toISOString();
-    const editsThisWeek =
-      editHistory.weekStart === currentWeekStart ? editHistory.editsThisWeek : 0;
-    const cost = Math.pow(2, editsThisWeek); // 1, 2, 4, 8, 16...
-    return {
-      cost,
-      editsThisWeek,
-      canAfford: state.rewards.balance >= cost,
-      balance: state.rewards.balance,
-    };
-  }));
+  useAppStore(
+    useShallow((state) => {
+      const { editHistory } = state.blocklist;
+      const currentWeekStart = getWeekStart().toISOString();
+      const editsThisWeek =
+        editHistory.weekStart === currentWeekStart ? editHistory.editsThisWeek : 0;
+      const cost = Math.pow(2, editsThisWeek); // 1, 2, 4, 8, 16...
+      return {
+        cost,
+        editsThisWeek,
+        canAfford: state.rewards.balance >= cost,
+        balance: state.rewards.balance,
+      };
+    })
+  );
 
 /**
  * Store selectors hooks

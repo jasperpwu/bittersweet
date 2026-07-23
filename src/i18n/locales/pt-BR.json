@@ -223,6 +223,7 @@
     "activityActive": "Ativo"
   },
   "journal": {
+    "sessionDeleted": "Sessão de foco excluída",
     "emptyTitle": "Seu diário está vazio",
     "emptyDesc": "Conclua sua primeira sessão de foco para começar a acompanhar seu progresso aqui.",
     "emptyButton": "Começar uma sessão",

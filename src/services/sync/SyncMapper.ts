@@ -47,7 +47,15 @@ const DATE_FIELDS: Record<string, string[]> = {
   session_tags: ['created_at', 'updated_at', 'deleted_at'],
   focus_goals: ['created_at', 'updated_at', 'last_reset_date', 'deleted_at'],
   todos: ['created_at', 'updated_at', 'start_at', 'completed_at', 'deleted_at'],
-  coach_reports: ['week_start', 'week_end', 'generated_at', 'seen_at', 'created_at', 'updated_at', 'deleted_at'],
+  coach_reports: [
+    'week_start',
+    'week_end',
+    'generated_at',
+    'seen_at',
+    'created_at',
+    'updated_at',
+    'deleted_at',
+  ],
 };
 
 // --- Session mapper ---
@@ -72,6 +80,15 @@ export function sessionToRow(session: any, userId: string): Record<string, any> 
     focus_rating: session.focusRating ?? null,
     rating_source: session.ratingSource ?? null,
     motion_summary: session.motionSummary ?? null,
+    // Always emit deleted_at (null when active) so an undo/restore explicitly
+    // un-tombstones the cloud row. Sessions are hard-deleted locally, so a live
+    // session never carries deletedAt → this resolves to null, and re-upserting a
+    // restored session clears the deleted_at set by an earlier soft_delete. Without
+    // this the row stays tombstoned in the cloud and the next pull drops it.
+    deleted_at:
+      session.deletedAt instanceof Date
+        ? session.deletedAt.toISOString()
+        : (session.deletedAt ?? null),
   };
   if (session.createdAt instanceof Date) row.created_at = session.createdAt.toISOString();
   if (session.updatedAt instanceof Date) row.updated_at = session.updatedAt.toISOString();
@@ -98,6 +115,7 @@ export function rowToSession(row: Record<string, any>): any {
     motionSummary: row.motion_summary ?? undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
+    ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
   };
 }
 
@@ -185,7 +203,7 @@ export function rowToGoal(row: Record<string, any>): any {
 // --- Todo mapper ---
 
 export function todoToRow(todo: any, userId: string): Record<string, any> {
-  const toIso = (v: any) => (v instanceof Date ? v.toISOString() : v ?? null);
+  const toIso = (v: any) => (v instanceof Date ? v.toISOString() : (v ?? null));
   const row: Record<string, any> = {
     id: todo.id,
     user_id: userId,
@@ -220,7 +238,9 @@ export function rowToTodo(row: Record<string, any>): any {
     tagId: row.tag_id,
     // Legacy rows predate start_has_time (null) but always carried a real time,
     // so default null → true; an explicit false marks a date-only todo.
-    ...(row.start_at ? { startAt: new Date(row.start_at), startHasTime: row.start_has_time ?? true } : {}),
+    ...(row.start_at
+      ? { startAt: new Date(row.start_at), startHasTime: row.start_has_time ?? true }
+      : {}),
     ...(row.deadline_at
       ? { deadlineAt: new Date(row.deadline_at), deadlineHasTime: row.deadline_has_time ?? false }
       : {}),
@@ -307,9 +327,7 @@ export function rowToRewards(row: Record<string, any>): any {
     totalSpent: row.total_spent ?? 0,
     tasks: normalizeSetupTasks(row.tasks),
     unlockHistory:
-      row.unlock_history && typeof row.unlock_history === 'object'
-        ? row.unlock_history
-        : {},
+      row.unlock_history && typeof row.unlock_history === 'object' ? row.unlock_history : {},
     updatedAt: row.updated_at ?? null,
   };
 }

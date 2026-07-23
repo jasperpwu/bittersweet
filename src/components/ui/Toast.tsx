@@ -42,7 +42,7 @@ export function showToast(
   variant: ToastVariant = 'success',
   action?: ToastAction,
   durationMs?: number,
-  position: ToastPosition = 'top',
+  position: ToastPosition = 'top'
 ) {
   toastListener?.({
     message,
@@ -81,7 +81,9 @@ export const Toast: React.FC = () => {
   // Register global listener
   useEffect(() => {
     toastListener = handleToast;
-    return () => { toastListener = null; };
+    return () => {
+      toastListener = null;
+    };
   }, [handleToast]);
 
   // Animate when toast changes. The hidden offset points off-screen toward the
@@ -99,9 +101,17 @@ export const Toast: React.FC = () => {
     );
     opacity.value = withSequence(
       withTiming(1, { duration: 250 }),
-      withDelay(toast.durationMs, withTiming(0, { duration: 250 }, () => {
-        runOnJS(clearToast)();
-      }))
+      withDelay(
+        toast.durationMs,
+        withTiming(0, { duration: 250 }, (finished) => {
+          // Only clear on a natural fade-out. When a new toast interrupts this one
+          // (e.g. delete → undo → delete again), reassigning opacity cancels this
+          // animation and fires the callback with finished === false; clearing then
+          // would null out the just-shown toast. Guarding on `finished` keeps the
+          // new toast visible.
+          if (finished) runOnJS(clearToast)();
+        })
+      )
     );
   }, [toast]);
 
@@ -127,9 +137,9 @@ export const Toast: React.FC = () => {
           zIndex: 9999,
         },
         animatedStyle,
-      ]}
-    >
-      <View className={`${variantClasses[toast.variant]} px-5 py-3 rounded-2xl shadow-lg flex-row items-center`}>
+      ]}>
+      <View
+        className={`${variantClasses[toast.variant]} flex-row items-center rounded-2xl px-5 py-3 shadow-lg`}>
         <Typography variant="body-14" color="white">
           {toast.message}
         </Typography>

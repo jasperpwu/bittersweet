@@ -223,6 +223,7 @@
     "activityActive": "Actif"
   },
   "journal": {
+    "sessionDeleted": "Session de concentration supprimée",
     "emptyTitle": "Votre journal est vide",
     "emptyDesc": "Terminez votre première session de concentration pour suivre votre progression ici.",
     "emptyButton": "Démarrer une session",

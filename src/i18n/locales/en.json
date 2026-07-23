@@ -223,6 +223,7 @@
     "activityActive": "Active"
   },
   "journal": {
+    "sessionDeleted": "Focus session deleted",
     "emptyTitle": "Your journal is empty",
     "emptyDesc": "Complete your first focus session to start tracking your progress here.",
     "emptyButton": "Start a Focus Session",

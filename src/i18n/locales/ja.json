@@ -222,6 +222,7 @@
     "activityActive": "アクティブ"
   },
   "journal": {
+    "sessionDeleted": "集中セッションを削除しました",
     "emptyTitle": "ジャーナルはまだ空です",
     "emptyDesc": "最初の集中セッションを終えると、ここで進捗を記録できます。",
     "emptyButton": "集中セッションを始める",

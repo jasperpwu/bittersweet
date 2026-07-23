@@ -70,8 +70,13 @@ export default function JournalScreen() {
   const [selectedSession, setSelectedSession] = useState<FocusSession | null>(null);
   const [adjustedDuration, setAdjustedDuration] = useState(0);
   const { sessions, tags } = useFocus();
-  const { adjustSessionDuration, deleteSession, createCompletedSession, updateSession } =
-    useFocusActions();
+  const {
+    adjustSessionDuration,
+    deleteSession,
+    restoreSession,
+    createCompletedSession,
+    updateSession,
+  } = useFocusActions();
   const secondaryTagEnabled = useSecondaryTagEnabled();
 
   // Which calendar is showing: the single-day Sessions timeline or the 3-day
@@ -538,7 +543,20 @@ export default function JournalScreen() {
 
   const handleSessionDelete = () => {
     if (selectedSession) {
-      deleteSession(selectedSession.id);
+      // Capture the full session before deleting so Undo can restore it exactly
+      // (deleteSession hard-removes the row and deducts its fruits).
+      const deleted = selectedSession;
+      deleteSession(deleted.id);
+      showToast(
+        t('journal.sessionDeleted'),
+        'neutral',
+        {
+          label: t('todos.undo'),
+          onPress: () => restoreSession(deleted),
+        },
+        undefined,
+        'bottom'
+      );
     }
     closeSessionModal();
   };
