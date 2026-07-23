@@ -359,10 +359,57 @@ export class SyncService {
     await syncQueue.enqueue({ table, operation, data });
   }
 
+  // Single-flight guard. Nine call sites can invoke flush() (both debounces, foreground
+  // reconcile, sign-out, cold-start…). Because dequeue() only READS the queue (rows leave
+  // only via remove()), two overlapping flushes would grab the SAME rows and fire duplicate
+  // upserts at once — saturating iOS's small per-host connection pool, which itself stalls
+  // sockets into "Network request failed". We serialize: while a flush runs, later callers
+  // await the in-flight promise; a `rerun` flag guarantees exactly one more pass afterward so
+  // rows enqueued during the current flush still go out (and awaiters see them flushed).
+  private static inFlight: Promise<{ flushed: number; failed: number }> | null = null;
+  private static rerun = false;
+
   /**
-   * Flush the offline queue to Supabase.
+   * Flush the offline queue to Supabase. Concurrency-safe: concurrent calls coalesce onto a
+   * single in-flight run (plus at most one trailing pass to cover late enqueues).
    */
-  static async flush(): Promise<{ flushed: number; failed: number }> {
+  static flush(): Promise<{ flushed: number; failed: number }> {
+    if (SyncService.inFlight) {
+      SyncService.rerun = true;
+      return SyncService.inFlight;
+    }
+
+    SyncService.inFlight = (async () => {
+      try {
+        let result = await SyncService.flushOnce();
+        while (SyncService.rerun) {
+          SyncService.rerun = false;
+          const next = await SyncService.flushOnce();
+          result = {
+            flushed: result.flushed + next.flushed,
+            failed: next.failed,
+          };
+        }
+        return result;
+      } finally {
+        SyncService.inFlight = null;
+        SyncService.rerun = false;
+      }
+    })();
+
+    return SyncService.inFlight;
+  }
+
+  // rewards and user_settings tables use user_id as primary key, not id; coach_reports has a
+  // composite (user_id, id) PK because report ids are deterministic per week and shared
+  // across users (see migration). Everything else conflicts on `id`.
+  private static conflictColFor(table: string): string {
+    if (table === 'rewards' || table === 'user_settings') return 'user_id';
+    if (table === 'coach_reports') return 'user_id,id';
+    return 'id';
+  }
+
+  private static async flushOnce(): Promise<{ flushed: number; failed: number }> {
     // Never flush without a valid auth session. Every syncable table's RLS policy is
     // WITH CHECK (auth.uid() = user_id), so flushing post-sign-out (or mid-token-loss)
     // fails every row. A debounced flush scheduled while authenticated can fire after
@@ -386,72 +433,38 @@ export class SyncService {
     const quarantined: string[] = [];
     let failed = 0;
 
+    // Group into contiguous same-(table, operation) runs. `entries` is already sorted by
+    // FLUSH_PRIORITY (tags before sessions for the FK, soft_deletes last), so grouping runs
+    // preserves that order — we just collapse each run into one batched request instead of
+    // one request per row.
+    const groups: { table: string; operation: SyncQueueEntry['operation']; items: SyncQueueEntry[] }[] = [];
     for (const entry of entries) {
-      try {
-        if (entry.operation === 'upsert') {
-          // rewards and user_settings tables use user_id as primary key, not id;
-          // coach_reports has a composite (user_id, id) PK because report ids are
-          // deterministic per week and shared across users (see migration).
-          const conflictCol = (entry.table === 'rewards' || entry.table === 'user_settings')
-            ? 'user_id'
-            : entry.table === 'coach_reports'
-              ? 'user_id,id'
-              : 'id';
-          const { error } = await supabase
-            .from(entry.table)
-            .upsert(entry.data, { onConflict: conflictCol });
-          if (error) throw error;
-        } else if (entry.operation === 'soft_delete') {
-          const { error } = await supabase
-            .from(entry.table)
-            .update({ deleted_at: new Date().toISOString() })
-            .eq('id', entry.data.id);
-          if (error) throw error;
-        }
-        succeeded.push(entry.id);
-      } catch (error: any) {
-        console.error(`[SyncFlush] ✗ FAILED entry ${entry.id} (${entry.table} ${entry.operation}):`, error?.message || error, JSON.stringify(error));
-        if (entry.table === 'focus_sessions') {
-          console.error(
-            `[SyncFlush] Failed focus session payload: id=${entry.data?.id ?? '?'} user_id=${entry.data?.user_id ?? '?'} tag_id=${entry.data?.tag_id ?? '?'}`
-          );
-        }
+      const last = groups[groups.length - 1];
+      if (last && last.table === entry.table && last.operation === entry.operation) {
+        last.items.push(entry);
+      } else {
+        groups.push({ table: entry.table, operation: entry.operation, items: [entry] });
+      }
+    }
 
-        // Telemetry so a persistently-stuck ("poison") queue entry is visible in
-        // PostHog — this is the class that silently strands a session until a
-        // reinstall wipes it. Fires per failed entry per flush; a stuck row that
-        // keeps failing across flushes is exactly the signal we want to surface.
-        AnalyticsTracker.track('sync_flush_entry_failed', {
-          table: entry.table,
-          operation: entry.operation,
-          code: error?.code ?? null,
-          message: error?.message ?? String(error),
-        });
+    for (const group of groups) {
+      for (let i = 0; i < group.items.length; i += BATCH_SIZE) {
+        const chunk = group.items.slice(i, i + BATCH_SIZE);
+        const batchError = await SyncService.flushBatch(group.table, group.operation, chunk);
 
-        // Quarantine the one known non-retryable case: a HealthKit-imported
-        // session (`hk-` id, derived from the global Apple Health workout UUID)
-        // whose cloud row is owned by a different account that previously
-        // imported the same physical workout on this device. The PK collides on
-        // `id`, so the upsert takes the UPDATE path and Postgres rejects it with
-        // 42501 (RLS USING: auth.uid() != the existing row's user_id). Local
-        // wipes can't remove another account's cloud row, so this would retry
-        // forever. Drop it — the import already exists locally and stays.
-        const id = entry.data?.id;
-        if (
-          entry.operation === 'upsert' &&
-          entry.table === 'focus_sessions' &&
-          typeof id === 'string' &&
-          id.startsWith('hk-') &&
-          error?.code === '42501'
-        ) {
-          console.warn(
-            `[SyncFlush] Quarantining cross-account HealthKit session ${id} (owned by another account in cloud) — dropping from queue`
-          );
-          quarantined.push(entry.id);
+        if (!batchError) {
+          for (const entry of chunk) succeeded.push(entry.id);
           continue;
         }
 
-        failed++;
+        // Batch failed as a whole — fall back to per-entry so one poison row can't strand
+        // the rest of the chunk, and so per-entry telemetry + quarantine still apply.
+        for (const entry of chunk) {
+          const outcome = await SyncService.flushEntry(entry);
+          if (outcome === 'ok') succeeded.push(entry.id);
+          else if (outcome === 'quarantine') quarantined.push(entry.id);
+          else failed++;
+        }
       }
     }
 
@@ -462,6 +475,101 @@ export class SyncService {
     );
 
     return { flushed: succeeded.length, failed };
+  }
+
+  /**
+   * Attempt one batched request for a same-(table, operation) chunk. Returns the error on
+   * failure (caller falls back to per-entry) or null on success.
+   */
+  private static async flushBatch(
+    table: string,
+    operation: SyncQueueEntry['operation'],
+    chunk: SyncQueueEntry[]
+  ): Promise<any> {
+    try {
+      if (operation === 'upsert') {
+        const { error } = await supabase
+          .from(table)
+          .upsert(chunk.map((e) => e.data), { onConflict: SyncService.conflictColFor(table) });
+        if (error) throw error;
+      } else if (operation === 'soft_delete') {
+        const ids = chunk.map((e) => e.data.id);
+        const { error } = await supabase
+          .from(table)
+          .update({ deleted_at: new Date().toISOString() })
+          .in('id', ids);
+        if (error) throw error;
+      }
+      return null;
+    } catch (error: any) {
+      return error ?? new Error('unknown batch error');
+    }
+  }
+
+  /**
+   * Flush a single queue entry. Used as the per-entry fallback when a batch fails, preserving
+   * the original telemetry + quarantine behavior. Returns 'ok' | 'quarantine' | 'fail'.
+   */
+  private static async flushEntry(
+    entry: SyncQueueEntry
+  ): Promise<'ok' | 'quarantine' | 'fail'> {
+    try {
+      if (entry.operation === 'upsert') {
+        const { error } = await supabase
+          .from(entry.table)
+          .upsert(entry.data, { onConflict: SyncService.conflictColFor(entry.table) });
+        if (error) throw error;
+      } else if (entry.operation === 'soft_delete') {
+        const { error } = await supabase
+          .from(entry.table)
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', entry.data.id);
+        if (error) throw error;
+      }
+      return 'ok';
+    } catch (error: any) {
+      console.error(`[SyncFlush] ✗ FAILED entry ${entry.id} (${entry.table} ${entry.operation}):`, error?.message || error, JSON.stringify(error));
+      if (entry.table === 'focus_sessions') {
+        console.error(
+          `[SyncFlush] Failed focus session payload: id=${entry.data?.id ?? '?'} user_id=${entry.data?.user_id ?? '?'} tag_id=${entry.data?.tag_id ?? '?'}`
+        );
+      }
+
+      // Telemetry so a persistently-stuck ("poison") queue entry is visible in
+      // PostHog — this is the class that silently strands a session until a
+      // reinstall wipes it. Fires per failed entry per flush; a stuck row that
+      // keeps failing across flushes is exactly the signal we want to surface.
+      AnalyticsTracker.track('sync_flush_entry_failed', {
+        table: entry.table,
+        operation: entry.operation,
+        code: error?.code ?? null,
+        message: error?.message ?? String(error),
+      });
+
+      // Quarantine the one known non-retryable case: a HealthKit-imported
+      // session (`hk-` id, derived from the global Apple Health workout UUID)
+      // whose cloud row is owned by a different account that previously
+      // imported the same physical workout on this device. The PK collides on
+      // `id`, so the upsert takes the UPDATE path and Postgres rejects it with
+      // 42501 (RLS USING: auth.uid() != the existing row's user_id). Local
+      // wipes can't remove another account's cloud row, so this would retry
+      // forever. Drop it — the import already exists locally and stays.
+      const id = entry.data?.id;
+      if (
+        entry.operation === 'upsert' &&
+        entry.table === 'focus_sessions' &&
+        typeof id === 'string' &&
+        id.startsWith('hk-') &&
+        error?.code === '42501'
+      ) {
+        console.warn(
+          `[SyncFlush] Quarantining cross-account HealthKit session ${id} (owned by another account in cloud) — dropping from queue`
+        );
+        return 'quarantine';
+      }
+
+      return 'fail';
+    }
   }
 
   // --- Private helpers ---
