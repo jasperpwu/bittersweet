@@ -61,25 +61,6 @@ export async function ensureMotionPermission(): Promise<boolean> {
   }
 }
 
-/**
- * Start recording raw accelerometer for the session's duration. Call at session
- * start. No-op (and never throws) when the native module/CMSensorRecorder is
- * unavailable.
- */
-export async function startSessionMotionRecording(durationSec: number): Promise<void> {
-  if (!MotionInsights || durationSec <= 0) return;
-  try {
-    // Never prompt at session start — authorization is obtained ahead of time
-    // (the user enabled the detailed-rating setting). Only record if already
-    // granted; otherwise the CMMotionActivity fallback covers this session.
-    const status = await getMotionPermissionStatus();
-    if (status !== 'granted') return;
-    await MotionInsights.startAccelerometerRecording(Math.round(durationSec));
-  } catch {
-    // Recording is best-effort; the CMMotionActivity fallback covers failures.
-  }
-}
-
 async function getStepCount(startMs: number, endMs: number): Promise<number | null> {
   try {
     const available = await Pedometer.isAvailableAsync();
@@ -108,9 +89,9 @@ export async function getSessionMotionSnapshot(
     safe<MotionActivitySummary>(() => MotionInsights?.getMotionActivitySummary(startMs, endMs)),
     getStepCount(startMs, endMs),
   ]);
-  // Diagnostic: shows in Metro which signal won. recorder=null means the
-  // CMSensorRecorder buffer was empty (the known iPhone failure mode) and we
-  // fell back to CMMotionActivity.
+  // Diagnostic: shows in Metro which signal won. recorder is expected to be null
+  // now that we no longer forward-record (no motion access at session start), so
+  // the rating is driven by the retroactive CMMotionActivity query below.
   console.log('[motionInsights] nativeModule=', !!MotionInsights, 'recorder=', recorder, 'activity=', activity, 'steps=', steps);
   return classifyMotion({ recorder, activity, steps });
 }

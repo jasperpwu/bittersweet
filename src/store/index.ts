@@ -33,7 +33,6 @@ import {
   type RatingSource,
 } from '../utils/focusRating';
 import {
-  startSessionMotionRecording,
   getMotionPermissionStatus,
   getSessionMotionSnapshot,
 } from '../services/motionInsights';
@@ -1077,13 +1076,13 @@ export const useAppStore = create<AppStore>()(
                 },
               }));
 
-              // Begin recording raw accelerometer for the session window so we can
-              // suggest a focus rating at completion. Best-effort, fire-and-forget;
-              // self-guards on the Motion & Fitness permission (no-ops when not
-              // granted) and no-ops if CMSensorRecorder is empty — in which case
-              // the summary falls back to retroactive CMMotionActivity/pedometer.
-              // There is no separate opt-in: motion access IS the rating switch.
-              startSessionMotionRecording(session.duration * 60);
+              // NOTE: motion is intentionally NOT touched at session start. The
+              // Motion & Fitness permission is only requested when the user
+              // FINISHES a session (session-complete primer), and the rating then
+              // reads motion retroactively via getSessionMotionSnapshot
+              // (CMMotionActivity is queryable over any past window). Do not
+              // re-introduce forward recording here — it would inject motion access
+              // at start before the user has opted in.
             }
           },
 
