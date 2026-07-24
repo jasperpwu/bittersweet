@@ -256,8 +256,11 @@ export interface CoachWeeklyStats {
   ratedCount: number;
   peakHour: number | null; // 0–23, null if no sessions
   peakDay: string | null; // 'Monday'… null if no sessions
-  trailingAvgMinutes: number; // user's own trailing 4-week average
-  deltaMinutesVsTrailingAvg: number; // thisWeekMinutes − trailingAvgMinutes
+  trailingAvgMinutes: number; // user's own trailing 4-week average (raw)
+  // Fraction of the week [0,1] deliberately taken off via paid Off-Marker slots.
+  // Scales the trailing baseline so planned rest isn't read as a slowdown.
+  restFraction: number;
+  deltaMinutesVsTrailingAvg: number; // thisWeekMinutes − rest-adjusted trailing avg
   byTag: CoachTagStat[];
   goalsTracked: number; // active goals during the week
   goalsMet: number; // goals whose weekly-equivalent target was met

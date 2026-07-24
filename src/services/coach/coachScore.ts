@@ -5,6 +5,7 @@
  * so it's stable, reproducible, and explainable in the UI via its sub-scores.
  */
 import type { CoachWeeklyStats, CoachSubScores } from '../../store/types';
+import { availableWeekFraction } from './coachStats';
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
@@ -36,12 +37,16 @@ export function computeFocusScore(stats: CoachWeeklyStats): ScoreResult {
   const quality = hasQuality ? clamp(stats.avgRating! / 5, 0, 1) * 100 : 0;
 
   // Volume — relative to the user's own trailing average so low-volume users aren't
-  // punished absolutely; first weeks (no history) fall back to days-shown-up.
+  // punished absolutely; first weeks (no history) fall back to days-shown-up. The
+  // baseline is scaled to the days not taken off (paid Off-Marker slots), so a
+  // planned-rest week is judged on the days the user meant to show up, not dinged
+  // for the rest.
+  const availFrac = availableWeekFraction(stats.restFraction ?? 0);
+  const effectiveTrailing = stats.trailingAvgMinutes * availFrac;
   const volume =
-    stats.trailingAvgMinutes > 0
-      ? (clamp(stats.totalMinutes / stats.trailingAvgMinutes, 0, VOLUME_STRETCH) / VOLUME_STRETCH) *
-        100
-      : clamp(stats.activeDays / FIRST_WEEK_TARGET_DAYS, 0, 1) * 100;
+    effectiveTrailing > 0
+      ? (clamp(stats.totalMinutes / effectiveTrailing, 0, VOLUME_STRETCH) / VOLUME_STRETCH) * 100
+      : clamp(stats.activeDays / (FIRST_WEEK_TARGET_DAYS * availFrac), 0, 1) * 100;
 
   // Weighted blend; renormalize without quality when nothing was rated.
   const wq = hasQuality ? W_QUALITY : 0;
