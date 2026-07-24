@@ -2294,8 +2294,11 @@ export const useAppStore = create<AppStore>()(
             }
             const now = new Date();
             const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 1 day
+            // Accelerate is a consumable that applies immediately (24h harvest
+            // boost tracked on `accelerateCard`), not an owned item — so we log
+            // the fruit spend but do NOT add a purchase row. It never belongs in
+            // the store's "My Items" list.
             get().rewards.spendFruits(cost, 'accelerate_card', { duration: '1 day' });
-            get().rewards.addPurchase('accelerate_card', cost);
             set((state) => ({
               rewards: {
                 ...state.rewards,

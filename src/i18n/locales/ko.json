@@ -312,7 +312,7 @@
     "back": "뒤로",
     "tasks": "할 일",
     "products": "상품",
-    "history": "구매 내역",
+    "history": "내 아이템",
     "accelerateTitle": "가속 카드",
     "accelerateDesc": "하루 동안 사과 수확 속도가 2배",
     "accelerateActive": "사용 중 — {{time}}",

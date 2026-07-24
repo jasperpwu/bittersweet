@@ -69,7 +69,6 @@ const purchaseIcon = (
   customRewards: Record<string, CustomReward>,
   gifts: Record<string, GiftItem>
 ): string => {
-  if (purchase.productId === 'accelerate_card') return '🚀';
   const themeId = themeIdFromProductId(purchase.productId);
   if (themeId) return getSliderTheme(themeId)?.flag ?? '⚽';
   const rewardId = customRewardIdFromProductId(purchase.productId);
@@ -85,7 +84,6 @@ const purchaseTitle = (
   customRewards: Record<string, CustomReward>,
   gifts: Record<string, GiftItem>
 ): string => {
-  if (purchase.productId === 'accelerate_card') return t('store.accelerateTitle');
   const themeId = themeIdFromProductId(purchase.productId);
   if (themeId) {
     return getSliderTheme(themeId)
@@ -248,12 +246,16 @@ export default function FruitStoreScreen() {
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [purchaseHistory, groveGifts]);
 
-  // Each tab shows only its own slice of the history: Products ↔ accelerate/tip
-  // purchases, Themes ↔ theme purchases, Custom ↔ custom rewards + gifts,
-  // All ↔ everything.
+  // Each tab shows only its own slice of the history: Products ↔ tip purchases,
+  // Themes ↔ theme purchases, Custom ↔ custom rewards + gifts, All ↔ everything.
   const visibleHistory = useMemo(() => {
-    if (activeTab === 'all') return historyEntries;
-    return historyEntries.filter((entry) => {
+    // Accelerate cards are consumables that apply immediately, not owned items,
+    // so they never appear in My Items — this also hides any legacy synced rows.
+    const items = historyEntries.filter(
+      (entry) => entry.kind !== 'purchase' || entry.purchase.productId !== 'accelerate_card'
+    );
+    if (activeTab === 'all') return items;
+    return items.filter((entry) => {
       if (entry.kind === 'sentGift') return activeTab === 'custom';
       const p = entry.purchase;
       const isTheme = !!themeIdFromProductId(p.productId);
