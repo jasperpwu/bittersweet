@@ -176,7 +176,8 @@ export default function GroveScreen() {
               await deleteChallengeAction(challengeId);
             }
             setSelectedChallenge(null);
-          } catch {
+          } catch (e) {
+            console.error('Challenge delete/dismiss failed:', { useDismiss, status: challenge?.status, error: e });
             Alert.alert(t('common.error'), t('grove.failedDeleteChallenge'));
           }
         },

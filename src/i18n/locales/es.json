@@ -721,7 +721,11 @@
     "createLink": "Crear y vincular etiqueta",
     "chooseTag": "Elige una etiqueta",
     "createNewTag": "Crear etiqueta",
-    "defaultWorkoutName": "Entrenamiento"
+    "defaultWorkoutName": "Entrenamiento",
+    "reconnectTitle": "Volver a conectar Apple Health",
+    "reconnectBody": "Apple Health está activado en la app, pero no se ha concedido el acceso en este dispositivo. ¿Quieres concederlo de nuevo para seguir importando tus entrenamientos? Si lo desactivas, dejaremos de sincronizar Apple Health.",
+    "reconnectConfirm": "Conceder acceso",
+    "reconnectCancel": "Desactivar"
   },
   "sessionComplete": {
     "notFound": "Sesión no encontrada",

@@ -721,7 +721,11 @@
     "createLink": "Criar e vincular tag",
     "chooseTag": "Escolha uma tag",
     "createNewTag": "Criar tag",
-    "defaultWorkoutName": "Treino"
+    "defaultWorkoutName": "Treino",
+    "reconnectTitle": "Reconectar a Apple Saúde",
+    "reconnectBody": "A Apple Saúde está ativada no app, mas o acesso não foi concedido neste dispositivo. Deseja conceder o acesso novamente para continuar importando seus treinos? Se desativar, vamos parar de sincronizar a Apple Saúde.",
+    "reconnectConfirm": "Conceder acesso",
+    "reconnectCancel": "Desativar"
   },
   "sessionComplete": {
     "notFound": "Sessão não encontrada",

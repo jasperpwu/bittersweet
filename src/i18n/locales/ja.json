@@ -720,7 +720,11 @@
     "createLink": "タグを作成してリンク",
     "chooseTag": "タグを選択",
     "createNewTag": "タグを作成",
-    "defaultWorkoutName": "ワークアウト"
+    "defaultWorkoutName": "ワークアウト",
+    "reconnectTitle": "Appleヘルスケアを再接続",
+    "reconnectBody": "アプリではAppleヘルスケアがオンになっていますが、この端末ではアクセスが許可されていません。ワークアウトの読み込みを続けるには、もう一度アクセスを許可しますか？オフにすると、Appleヘルスケアの同期を停止します。",
+    "reconnectConfirm": "アクセスを許可",
+    "reconnectCancel": "オフにする"
   },
   "sessionComplete": {
     "notFound": "セッションが見つかりません",

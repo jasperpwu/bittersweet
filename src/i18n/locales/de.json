@@ -721,7 +721,11 @@
     "createLink": "Label erstellen & verknüpfen",
     "chooseTag": "Label wählen",
     "createNewTag": "Label erstellen",
-    "defaultWorkoutName": "Workout"
+    "defaultWorkoutName": "Workout",
+    "reconnectTitle": "Apple Health erneut verbinden",
+    "reconnectBody": "Apple Health ist in der App aktiviert, aber auf diesem Gerät ist der Zugriff nicht erlaubt. Möchtest du den Zugriff erneut erlauben, um deine Workouts weiter zu importieren? Wenn du es deaktivierst, synchronisieren wir Apple Health nicht mehr.",
+    "reconnectConfirm": "Zugriff erlauben",
+    "reconnectCancel": "Deaktivieren"
   },
   "sessionComplete": {
     "notFound": "Sitzung nicht gefunden",

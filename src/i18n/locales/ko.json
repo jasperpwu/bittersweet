@@ -720,7 +720,11 @@
     "createLink": "태그 만들고 연결",
     "chooseTag": "태그 선택",
     "createNewTag": "태그 만들기",
-    "defaultWorkoutName": "운동"
+    "defaultWorkoutName": "운동",
+    "reconnectTitle": "Apple 건강 다시 연결",
+    "reconnectBody": "앱에서는 Apple 건강이 켜져 있지만 이 기기에서는 접근이 허용되지 않았어요. 운동 기록을 계속 가져오려면 다시 접근을 허용할까요? 끄면 Apple 건강 동기화가 중단돼요.",
+    "reconnectConfirm": "접근 허용",
+    "reconnectCancel": "끄기"
   },
   "sessionComplete": {
     "notFound": "세션을 찾을 수 없어요",

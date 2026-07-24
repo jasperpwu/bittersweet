@@ -720,7 +720,11 @@
     "createLink": "创建并关联标签",
     "chooseTag": "选择一个标签",
     "createNewTag": "创建标签",
-    "defaultWorkoutName": "锻炼"
+    "defaultWorkoutName": "锻炼",
+    "reconnectTitle": "重新连接 Apple 健康",
+    "reconnectBody": "Apple 健康在应用内已开启，但本设备尚未授予访问权限。要再次授权以继续导入你的锻炼吗？若选择关闭，我们将停止同步 Apple 健康。",
+    "reconnectConfirm": "授予权限",
+    "reconnectCancel": "关闭"
   },
   "sessionComplete": {
     "notFound": "未找到会话",

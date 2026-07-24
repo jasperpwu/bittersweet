@@ -80,7 +80,12 @@ export default function HealthScreen() {
       await requestWorkoutAuthorization();
       // iOS never tells us whether read access was granted, so we optimistically
       // enable. If access was denied the sync simply returns no workouts.
-      await updatePreferences({ healthKit: { ...hk, enabled: true } });
+      // Stamp `enabledAt` and clear any stale `anchor` so the first import floors
+      // at this moment — we only pull workouts recorded from connect onward, never
+      // backfilling the user's workout history.
+      await updatePreferences({
+        healthKit: { ...hk, enabled: true, enabledAt: Date.now(), anchor: null },
+      });
       // Kick off an initial import if a tag is already linked.
       if (hk.linkedTagId) runSync();
     } catch (e) {
@@ -201,14 +206,18 @@ export default function HealthScreen() {
               />
             </SettingsSection>
 
-            <SettingsSection title={t('health.options')}>
-              <SettingsItem
-                title={isSyncing ? t('health.syncing') : t('health.syncNow')}
-                subtitle={t('health.syncSub')}
-                onPress={isSyncing || !hk.linkedTagId ? undefined : runSync}
-                isLast
-              />
-            </SettingsSection>
+            {/* Manual sync is a dev-only testing affordance. Regular users rely on
+                the automatic foreground/cold-start sync in _layout.tsx. */}
+            {__DEV__ && (
+              <SettingsSection title={t('health.options')}>
+                <SettingsItem
+                  title={isSyncing ? t('health.syncing') : t('health.syncNow')}
+                  subtitle={t('health.syncSub')}
+                  onPress={isSyncing || !hk.linkedTagId ? undefined : runSync}
+                  isLast
+                />
+              </SettingsSection>
+            )}
           </>
         )}
       </ScrollView>

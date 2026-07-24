@@ -26,6 +26,10 @@ interface HealthKitPreferences {
   enabled: boolean;            // user connected Apple Health and wants workout import
   linkedTagId: string | null;  // tag that imported workouts are filed under
   anchor: string | null;       // opaque HealthKit query anchor for incremental fetch
+  enabledAt: number | null;    // ms epoch of last enable — floors the first import so we
+                               // only pull workouts recorded since connect (no history backfill).
+                               // Device-local like `anchor` (not synced): a new device floors
+                               // at its own first sync, never re-importing that device's history.
 }
 
 interface AppPreferences {
@@ -173,6 +177,7 @@ const createDefaultPreferences = (): AppPreferences => ({
     enabled: false,
     linkedTagId: null,
     anchor: null,
+    enabledAt: null,
   },
   rawAccelRatingEnabled: false,
   hasSeenMotionPrimer: false,

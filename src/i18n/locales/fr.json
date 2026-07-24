@@ -721,7 +721,11 @@
     "createLink": "Créer et lier l'étiquette",
     "chooseTag": "Choisir une étiquette",
     "createNewTag": "Créer une étiquette",
-    "defaultWorkoutName": "Entraînement"
+    "defaultWorkoutName": "Entraînement",
+    "reconnectTitle": "Reconnecter Apple Santé",
+    "reconnectBody": "Apple Santé est activé dans l'app, mais l'accès n'est pas autorisé sur cet appareil. Voulez-vous l'autoriser à nouveau pour continuer à importer vos entraînements ? Si vous le désactivez, nous cesserons de synchroniser Apple Santé.",
+    "reconnectConfirm": "Autoriser l'accès",
+    "reconnectCancel": "Désactiver"
   },
   "sessionComplete": {
     "notFound": "Session introuvable",

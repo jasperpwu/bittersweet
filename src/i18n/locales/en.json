@@ -721,7 +721,11 @@
     "createLink": "Create & link tag",
     "chooseTag": "Choose a tag",
     "createNewTag": "Create new tag",
-    "defaultWorkoutName": "Workout"
+    "defaultWorkoutName": "Workout",
+    "reconnectTitle": "Reconnect Apple Health",
+    "reconnectBody": "Apple Health is enabled in the app, but access isn't granted on this device. Grant access again to keep importing your workouts? If you turn it off, we'll stop syncing Apple Health.",
+    "reconnectConfirm": "Grant Access",
+    "reconnectCancel": "Turn Off"
   },
   "sessionComplete": {
     "notFound": "Session not found",
