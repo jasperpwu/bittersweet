@@ -1,6 +1,5 @@
 import React, { FC } from 'react';
 import { View, Pressable } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { Typography } from '../../ui/Typography';
 import { Badge } from '../../../store/types';
@@ -64,10 +63,10 @@ export const BadgeSummarySheet: FC<BadgeSummarySheetProps> = ({
   };
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <BottomSheet isVisible={isVisible} onClose={onClose} scrollable>
+      <View>
         {/* Header */}
-        <View className="flex-row items-center justify-between mb-4">
+        <View className="flex-row items-center justify-between mb-4 pr-10">
           <View className="flex-row items-center flex-1">
             <View className="flex-1">
               <Typography variant="headline-20" color="primary" numberOfLines={1}>
@@ -78,11 +77,6 @@ export const BadgeSummarySheet: FC<BadgeSummarySheetProps> = ({
               </Typography>
             </View>
           </View>
-          <Pressable onPress={onClose} className="p-2 active:opacity-70">
-            <Typography variant="headline-18" color="secondary">
-              ✕
-            </Typography>
-          </Pressable>
         </View>
 
         {/* Overview */}
@@ -179,7 +173,7 @@ export const BadgeSummarySheet: FC<BadgeSummarySheetProps> = ({
             {t('badge.deleteButton')}
           </Typography>
         </Pressable>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 };
