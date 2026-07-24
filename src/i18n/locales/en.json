@@ -319,6 +319,8 @@
     "timeRemaining": "{{hours}}h {{minutes}}m left",
     "tipTitle": "Product Usage Tip",
     "tipDesc": "Get a pro tip for the app",
+    "offMarkerTitle": "Off-Marker",
+    "offMarkerDesc": "Mark days off so a missed slot won’t break your streak",
     "tipsExhausted": "You’ve collected every tip — check back for new ones!",
     "comingSoon": "Coming Soon",
     "comingSoonDesc": "We’re teaming up with merchants to bring you coupons!",
@@ -456,6 +458,29 @@
       "scotland": "Scotland",
       "turkey": "Türkiye"
     }
+  },
+  "offMarker": {
+    "title": "Off-Marker",
+    "day": "Day",
+    "week": "Week",
+    "month": "Month",
+    "costHint": "🍎 {{cost}} per slot marked off",
+    "streak": "{{count}} streak",
+    "selectedCount": "{{count}} slots selected",
+    "emptyTitle": "No goals for this view",
+    "emptyBody": "Set up a goal with this period to mark slots off.",
+    "confirmAction": "Confirm",
+    "confirmTitle": "Mark slots off?",
+    "confirmBody": "Mark {{count}} slot(s) off for 🍎 {{cost}}? This can’t be undone.",
+    "marked": "Marked {{count}} slot(s) off",
+    "notEnough": "Not enough apples"
+  },
+  "streakShare": {
+    "label_day": "Day Streak",
+    "label_week": "Week Streak",
+    "label_month": "Month Streak",
+    "reachedOn": "Reached on {{date}}",
+    "share": "Share"
   },
   "badge": {
     "deleteTitle": "Delete Badge?",

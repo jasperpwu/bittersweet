@@ -1,5 +1,29 @@
 import { FocusGoal, FocusSession, TargetHistoryEntry } from '../store/types';
 
+// Fruit cost of marking one slot off, per period type (Off-Marker store item).
+export const OFF_MARK_COSTS: Record<'daily' | 'weekly' | 'monthly', number> = {
+  daily: 20,
+  weekly: 50,
+  monthly: 100,
+};
+
+// Canonical key for an off-mark: the local-calendar START of the slot, "YYYY-MM-DD".
+// Derived from the same periodStart the streak walker and calendar compute, so
+// membership checks line up cell-for-cell with the consistency calendar.
+export const getPeriodKey = (periodStart: Date): string => {
+  const y = periodStart.getFullYear();
+  const m = String(periodStart.getMonth() + 1).padStart(2, '0');
+  const d = String(periodStart.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+// The set of off-marked slot keys for a goal at a given period type. Missing
+// goal.offMarks (older goals) yields an empty set.
+export const getGoalOffKeys = (
+  goal: FocusGoal,
+  period: 'daily' | 'weekly' | 'monthly'
+): Set<string> => new Set(goal.offMarks?.[period] ?? []);
+
 export interface GoalPeriodProgress {
   goalId: string;
   minutesCompleted: number;
@@ -15,7 +39,7 @@ export interface GoalPeriodProgress {
 export const getSessionMinutesInPeriod = (
   session: FocusSession,
   periodStart: Date,
-  periodEnd: Date,
+  periodEnd: Date
 ): number => {
   const sessionStart = new Date(session.startTime).getTime();
 
@@ -35,7 +59,10 @@ export const getSessionMinutesInPeriod = (
   const totalWallTime = sessionEnd - sessionStart;
 
   // Session fits entirely within period, or wall time is zero/negative
-  if (totalWallTime <= 0 || (sessionStart >= periodStart.getTime() && sessionEnd <= periodEnd.getTime())) {
+  if (
+    totalWallTime <= 0 ||
+    (sessionStart >= periodStart.getTime() && sessionEnd <= periodEnd.getTime())
+  ) {
     return session.duration;
   }
 
@@ -52,7 +79,7 @@ export const calculateGoalProgress = (
   goals: FocusGoal[],
   sessions: FocusSession[],
   _tagMap?: Record<string, { id: string; name: string }>,
-  weekStartDay: number = 1,
+  weekStartDay: number = 1
 ): Record<string, number> => {
   const now = new Date();
   const progress: Record<string, number> = {};
@@ -61,7 +88,7 @@ export const calculateGoalProgress = (
   if (!goals || !Array.isArray(goals)) return progress;
   if (!sessions || !Array.isArray(sessions)) return progress;
 
-  goals.forEach(goal => {
+  goals.forEach((goal) => {
     // Use activePeriod (new model) with fallback to period (legacy)
     const period = (goal as any).activePeriod || (goal as any).period || 'daily';
 
@@ -78,7 +105,8 @@ export const calculateGoalProgress = (
       // Tag filter (new model: tagId). A session counts toward the goal if either
       // its primary OR secondary tag matches — dual-tagged sessions credit both.
       if (goal.tagId) {
-        const matches = (session as any).tagId === goal.tagId || (session as any).secondaryTagId === goal.tagId;
+        const matches =
+          (session as any).tagId === goal.tagId || (session as any).secondaryTagId === goal.tagId;
         if (!matches) return sum;
       } else {
         // Legacy fallback: tagIds array
@@ -86,7 +114,8 @@ export const calculateGoalProgress = (
         if (goalTagIds.length > 0) {
           const hasMatchingTag =
             ((session as any).tagId && goalTagIds.includes((session as any).tagId)) ||
-            ((session as any).secondaryTagId && goalTagIds.includes((session as any).secondaryTagId));
+            ((session as any).secondaryTagId &&
+              goalTagIds.includes((session as any).secondaryTagId));
           if (!hasMatchingTag) return sum;
         }
       }
@@ -103,7 +132,7 @@ export const calculateGoalProgress = (
 export const getGoalPeriodRange = (
   period: 'daily' | 'weekly' | 'monthly',
   referenceDate: Date = new Date(),
-  weekStartDay: number = 1,
+  weekStartDay: number = 1
 ): { periodStart: Date; periodEnd: Date } => {
   const now = new Date(referenceDate);
 
@@ -152,7 +181,7 @@ export const getHistoricalPeriodRanges = (
   period: 'daily' | 'weekly' | 'monthly',
   count: number,
   referenceDate: Date = new Date(),
-  weekStartDay: number = 1,
+  weekStartDay: number = 1
 ): { periodStart: Date; periodEnd: Date; label: string }[] => {
   const ranges: { periodStart: Date; periodEnd: Date; label: string }[] = [];
 
@@ -210,7 +239,7 @@ export const calculateGoalStreak = (
   sessions: FocusSession[],
   restDays: number[],
   weekStartDay: number = 1,
-  referenceDate: Date = new Date(),
+  referenceDate: Date = new Date()
 ): number => {
   const period = (goal as any).activePeriod || (goal as any).period || 'daily';
   // No-period (cumulative) goals have no concept of a per-period streak.
@@ -224,22 +253,33 @@ export const calculateGoalStreak = (
   const goalTagId = (goal as any).tagId;
   const relevant = goalTagId
     ? sessions.filter(
-        (s) => (s as any).tagId === goalTagId || (s as any).secondaryTagId === goalTagId,
+        (s) => (s as any).tagId === goalTagId || (s as any).secondaryTagId === goalTagId
       )
     : sessions;
+
+  // Off-marked slots are skipped entirely — they neither extend nor break the
+  // streak, as if the period never existed.
+  const offKeys = getGoalOffKeys(goal, normalized);
+
+  const now = referenceDate.getTime();
 
   let streak = 0;
   // Ranges are oldest-first; walk from the most recent period backward.
   for (let i = ranges.length - 1; i >= 0; i--) {
     const { periodStart, periodEnd } = ranges[i];
+    if (offKeys.has(getPeriodKey(periodStart))) continue; // skip off slots
     const totalMinutes = relevant.reduce(
       (sum, s) => sum + getSessionMinutesInPeriod(s, periodStart, periodEnd),
-      0,
+      0
     );
     const target = getTargetForDate(goal, periodStart, restDays, normalized);
     const hit = target > 0 ? totalMinutes >= target : true;
     if (hit) {
       streak++;
+    } else if (periodEnd.getTime() >= now) {
+      // The current period is still in progress — not hitting it *yet* isn't a
+      // miss, so don't break the streak; just don't count it until it's hit.
+      continue;
     } else {
       break;
     }
@@ -259,13 +299,17 @@ export const getActiveGoals = (goals: FocusGoal[]): FocusGoal[] => {
 export const shouldResetGoalProgress = (
   goal: FocusGoal,
   currentDate: Date = new Date(),
-  weekStartDay: number = 1,
+  weekStartDay: number = 1
 ): boolean => {
   const period = (goal as any).activePeriod || (goal as any).period || 'daily';
   // No-period (cumulative) goals never reset.
   if (period === 'none') return false;
   const normalizedPeriod = period === 'yearly' ? 'monthly' : period;
-  const { periodStart } = getGoalPeriodRange(normalizedPeriod as 'daily' | 'weekly' | 'monthly', currentDate, weekStartDay);
+  const { periodStart } = getGoalPeriodRange(
+    normalizedPeriod as 'daily' | 'weekly' | 'monthly',
+    currentDate,
+    weekStartDay
+  );
   return new Date(goal.lastResetDate) < periodStart;
 };
 
@@ -302,7 +346,7 @@ export const getTargetForDate = (
   goal: FocusGoal,
   date: Date,
   currentRestDays: number[],
-  period?: 'daily' | 'weekly' | 'monthly',
+  period?: 'daily' | 'weekly' | 'monthly'
 ): number => {
   const goalPeriod = period || (goal as any).activePeriod || (goal as any).period || 'daily';
   // No-period (cumulative) goals have a single flat target — no rest days, no history.

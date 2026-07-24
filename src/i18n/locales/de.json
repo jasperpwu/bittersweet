@@ -319,6 +319,8 @@
     "timeRemaining": "noch {{hours}} Std. {{minutes}} Min.",
     "tipTitle": "Nutzungstipp",
     "tipDesc": "Hol dir einen Profi-Tipp für die App",
+    "offMarkerTitle": "Frei-Marker",
+    "offMarkerDesc": "Markiere freie Tage, damit ein verpasster Slot deine Serie nicht bricht",
     "tipsExhausted": "Du hast alle Tipps gesammelt – schau später für neue vorbei!",
     "comingSoon": "Bald verfügbar",
     "comingSoonDesc": "Wir arbeiten mit Händlern zusammen, um dir Gutscheine zu bringen!",
@@ -456,6 +458,29 @@
       "scotland": "Schottland",
       "turkey": "Türkei"
     }
+  },
+  "offMarker": {
+    "title": "Frei-Marker",
+    "day": "Tag",
+    "week": "Woche",
+    "month": "Monat",
+    "costHint": "🍎 {{cost}} pro markiertem Slot",
+    "streak": "{{count}} Serie",
+    "selectedCount": "{{count}} Slots ausgewählt",
+    "emptyTitle": "Keine Ziele für diese Ansicht",
+    "emptyBody": "Richte ein Ziel mit diesem Zeitraum ein, um Slots freizugeben.",
+    "confirmAction": "Bestätigen",
+    "confirmTitle": "Slots freigeben?",
+    "confirmBody": "{{count}} Slot(s) für 🍎 {{cost}} freigeben? Das kann nicht rückgängig gemacht werden.",
+    "marked": "{{count}} Slot(s) freigegeben",
+    "notEnough": "Nicht genug Äpfel"
+  },
+  "streakShare": {
+    "label_day": "Tagesserie",
+    "label_week": "Wochenserie",
+    "label_month": "Monatsserie",
+    "reachedOn": "Erreicht am {{date}}",
+    "share": "Teilen"
   },
   "badge": {
     "deleteTitle": "Abzeichen löschen?",

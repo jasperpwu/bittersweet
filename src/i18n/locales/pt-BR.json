@@ -319,6 +319,8 @@
     "timeRemaining": "restam {{hours}}h {{minutes}}min",
     "tipTitle": "Dica de uso",
     "tipDesc": "Receba uma dica de especialista para o app",
+    "offMarkerTitle": "Marcador de folga",
+    "offMarkerDesc": "Marque dias de folga para que um espaço perdido não quebre sua sequência",
     "tipsExhausted": "Você já coletou todas as dicas — volte depois para conferir as novas!",
     "comingSoon": "Em breve",
     "comingSoonDesc": "Estamos nos unindo a lojas para trazer cupons para você!",
@@ -456,6 +458,29 @@
       "scotland": "Escócia",
       "turkey": "Turquia"
     }
+  },
+  "offMarker": {
+    "title": "Marcador de folga",
+    "day": "Dia",
+    "week": "Semana",
+    "month": "Mês",
+    "costHint": "🍎 {{cost}} por espaço marcado",
+    "streak": "sequência de {{count}}",
+    "selectedCount": "{{count}} espaços selecionados",
+    "emptyTitle": "Nenhuma meta para esta visualização",
+    "emptyBody": "Crie uma meta com este período para marcar espaços.",
+    "confirmAction": "Confirmar",
+    "confirmTitle": "Marcar espaços como folga?",
+    "confirmBody": "Marcar {{count}} espaço(s) como folga por 🍎 {{cost}}? Isso não pode ser desfeito.",
+    "marked": "{{count}} espaço(s) marcado(s) como folga",
+    "notEnough": "Maçãs insuficientes"
+  },
+  "streakShare": {
+    "label_day": "Sequência diária",
+    "label_week": "Sequência semanal",
+    "label_month": "Sequência mensal",
+    "reachedOn": "Alcançada em {{date}}",
+    "share": "Compartilhar"
   },
   "badge": {
     "deleteTitle": "Excluir medalha?",

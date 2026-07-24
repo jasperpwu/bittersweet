@@ -1,7 +1,7 @@
 import React, { FC, useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { View, Text, Pressable, Share, Platform, useColorScheme } from 'react-native';
+import { View, Text, Pressable, Share, Platform } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
@@ -26,7 +26,18 @@ import { useTranslation } from 'react-i18next';
 import { FocusGoal } from '../../../store/types';
 import { useFocus } from '../../../store';
 import { useAppSettings } from '../../../store/unified-store';
-import { calculateGoalProgress, getHistoricalPeriodRanges, getTargetForDate, getSessionMinutesInPeriod, getGoalCurrentTarget } from '../../../utils/goalProgress';
+import {
+  calculateGoalProgress,
+  calculateGoalStreak,
+  getHistoricalPeriodRanges,
+  getTargetForDate,
+  getSessionMinutesInPeriod,
+  getGoalCurrentTarget,
+  getGoalOffKeys,
+  getPeriodKey,
+} from '../../../utils/goalProgress';
+import { Modal } from '../../ui/Modal';
+import { Button } from '../../ui/Button';
 import { calculateUrgency, UrgencyLevel } from '../../../utils/goalUrgency';
 import { colors } from '../../../config/theme';
 import { useSliderTheme } from '../../../hooks/useSliderTheme';
@@ -63,12 +74,13 @@ const getGoalBarSegments = (currentMinutes: number, targetMinutes: number) => {
     (currentMinutes / targetMinutes) * GOAL_THRESHOLD_PERCENT,
     GOAL_THRESHOLD_PERCENT
   );
-  const exceededWidth = currentMinutes > targetMinutes
-    ? Math.min(
-      ((currentMinutes - targetMinutes) / targetMinutes) * GOAL_THRESHOLD_PERCENT,
-      GOAL_OVERFLOW_PERCENT
-    )
-    : 0;
+  const exceededWidth =
+    currentMinutes > targetMinutes
+      ? Math.min(
+          ((currentMinutes - targetMinutes) / targetMinutes) * GOAL_THRESHOLD_PERCENT,
+          GOAL_OVERFLOW_PERCENT
+        )
+      : 0;
 
   return {
     progressWidth,
@@ -101,8 +113,21 @@ type DraggableGoalRowProps = {
 };
 
 function DraggableGoalRow({
-  goal, index, tags, isDragging, dragOriginalIndex, dragTargetIndex,
-  onPress, onEdit, onDelete, onConclude, onStartSession, onSwipeOpen, onDragStart, onDragMove, onDragEnd,
+  goal,
+  index,
+  tags,
+  isDragging,
+  dragOriginalIndex,
+  dragTargetIndex,
+  onPress,
+  onEdit,
+  onDelete,
+  onConclude,
+  onStartSession,
+  onSwipeOpen,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
   shouldNudge,
 }: DraggableGoalRowProps) {
   const { t } = useTranslation();
@@ -126,8 +151,8 @@ function DraggableGoalRow({
       delay,
       withSequence(
         withTiming(-30, { duration: 250, easing: Easing.out(Easing.cubic) }),
-        withSpring(0, { damping: 12, stiffness: 180 }),
-      ),
+        withSpring(0, { damping: 12, stiffness: 180 })
+      )
     );
   }, [shouldNudge]);
 
@@ -195,14 +220,13 @@ function DraggableGoalRow({
   // Swipe left→right reveals the management actions (moved here from the right so
   // the right edge is free for the start-session gesture).
   const renderLeftActions = () => (
-    <View className="flex-row items-center mr-2">
+    <View className="mr-2 flex-row items-center">
       <Pressable
         onPress={() => {
           swipeableRef.current?.close();
           onEdit?.(goal.id);
         }}
-        className="bg-primary rounded-lg w-16 h-full items-center justify-center ml-2"
-      >
+        className="ml-2 h-full w-16 items-center justify-center rounded-lg bg-primary">
         <Typography variant="body-14" color="white">
           {t('common.edit')}
         </Typography>
@@ -212,9 +236,8 @@ function DraggableGoalRow({
           swipeableRef.current?.close();
           onConclude?.(goal.id);
         }}
-        className="rounded-lg w-16 h-full items-center justify-center ml-2"
-        style={{ backgroundColor: '#F59E0B' }}
-      >
+        className="ml-2 h-full w-16 items-center justify-center rounded-lg"
+        style={{ backgroundColor: '#F59E0B' }}>
         <Typography variant="body-14" color="white">
           {t('goalProgress.badge')}
         </Typography>
@@ -224,8 +247,7 @@ function DraggableGoalRow({
           swipeableRef.current?.close();
           onDelete?.(goal.id);
         }}
-        className="bg-red-500 rounded-lg w-16 h-full items-center justify-center ml-2"
-      >
+        className="ml-2 h-full w-16 items-center justify-center rounded-lg bg-red-500">
         <Typography variant="body-14" color="white">
           {t('goalProgress.pause')}
         </Typography>
@@ -292,8 +314,7 @@ function DraggableGoalRow({
             shadowRadius: 12,
             elevation: 12,
           },
-        ]}
-      >
+        ]}>
         <Swipeable
           ref={swipeableRef}
           renderLeftActions={renderLeftActions}
@@ -303,15 +324,17 @@ function DraggableGoalRow({
           onSwipeableWillOpen={handleWillOpen}
           onSwipeableClose={() => {
             firedRef.current = false;
-            setTimeout(() => { didSwipe.current = false; }, 100);
-          }}
-        >
+            setTimeout(() => {
+              didSwipe.current = false;
+            }, 100);
+          }}>
           <Pressable
             onPress={handlePress}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            disabled={!goal.isRepeating || ((goal as any).activePeriod || (goal as any).period) === 'none'}
-          >
+            disabled={
+              !goal.isRepeating || ((goal as any).activePeriod || (goal as any).period) === 'none'
+            }>
             <Reanimated.View style={pressAnimatedStyle}>
               <GoalRowItem goal={goal} tags={tags} />
             </Reanimated.View>
@@ -338,16 +361,13 @@ export const SwipeStartAction: FC<{ progress: SharedValue<number> }> = ({ progre
   const { t } = useTranslation();
   const iconStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.5, 1], [0, 0.6, 1], Extrapolation.CLAMP),
-    transform: [
-      { scale: interpolate(progress.value, [0, 1], [0.7, 1], Extrapolation.CLAMP) },
-    ],
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.7, 1], Extrapolation.CLAMP) }],
   }));
 
   return (
     <View
-      className="flex-1 ml-2 rounded-lg justify-center items-end"
-      style={{ backgroundColor: COMPLETED_FILL, paddingHorizontal: 22 }}
-    >
+      className="ml-2 flex-1 items-end justify-center rounded-lg"
+      style={{ backgroundColor: COMPLETED_FILL, paddingHorizontal: 22 }}>
       <Reanimated.View style={iconStyle} className="items-center">
         <Ionicons name="play" size={22} color={colors.white} />
         <Typography variant="tiny-10" color="white">
@@ -416,70 +436,80 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   const weekStartDay = 1; // Always Monday
 
   // Extract sessions array from normalized state
-  const safeSessions = (sessions && sessions.allIds && sessions.byId)
-    ? sessions.allIds.map(id => sessions.byId[id]).filter(Boolean)
-    : [];
+  const safeSessions =
+    sessions && sessions.allIds && sessions.byId
+      ? sessions.allIds.map((id) => sessions.byId[id]).filter(Boolean)
+      : [];
 
   // Create tag map for name/ID conversion
-  const tagMap = useMemo(() =>
-    (tags && tags.allIds && tags.byId ? tags.allIds : []).reduce((map, id) => {
-      if (tags && tags.byId) {
-        const tag = tags.byId[id];
-        if (tag) {
-          map[id] = { id: tag.id, name: tag.name };
-        }
-      }
-      return map;
-    }, {} as Record<string, { id: string; name: string }>),
+  const tagMap = useMemo(
+    () =>
+      (tags && tags.allIds && tags.byId ? tags.allIds : []).reduce(
+        (map, id) => {
+          if (tags && tags.byId) {
+            const tag = tags.byId[id];
+            if (tag) {
+              map[id] = { id: tag.id, name: tag.name };
+            }
+          }
+          return map;
+        },
+        {} as Record<string, { id: string; name: string }>
+      ),
     [tags]
   );
 
   // Calculate fresh goal progress from current session data
-  const freshGoalProgress = useMemo(() =>
-    calculateGoalProgress(goals || [], safeSessions, tagMap, weekStartDay),
+  const freshGoalProgress = useMemo(
+    () => calculateGoalProgress(goals || [], safeSessions, tagMap, weekStartDay),
     [goals, safeSessions, tagMap, weekStartDay]
   );
 
   // Process goals to calculate progress (flat list, preserving allIds order)
-  const processedGoals: ProcessedGoal[] = useMemo(() => (goals || []).map(goal => {
-    const currentProgress = freshGoalProgress[goal.id] || 0;
-    const effectiveTarget = getTargetForDate(goal, new Date(), restDays);
-    const percentage = effectiveTarget > 0
-      ? (currentProgress / effectiveTarget) * 100
-      : 0;
-    return { ...goal, currentProgress, percentage, _effectiveTarget: effectiveTarget };
-  }), [goals, freshGoalProgress, restDays]);
+  const processedGoals: ProcessedGoal[] = useMemo(
+    () =>
+      (goals || []).map((goal) => {
+        const currentProgress = freshGoalProgress[goal.id] || 0;
+        const effectiveTarget = getTargetForDate(goal, new Date(), restDays);
+        const percentage = effectiveTarget > 0 ? (currentProgress / effectiveTarget) * 100 : 0;
+        return { ...goal, currentProgress, percentage, _effectiveTarget: effectiveTarget };
+      }),
+    [goals, freshGoalProgress, restDays]
+  );
 
   const handleGoalPress = useCallback((goal: ProcessedGoal) => {
     // No-period (cumulative) goals have no consistency calendar to expand into.
     const goalPeriod = (goal as any).activePeriod || (goal as any).period || 'daily';
     if (goal.isRepeating && goalPeriod !== 'none') {
-      setExpandedGoalId(prev => prev === goal.id ? null : goal.id);
+      setExpandedGoalId((prev) => (prev === goal.id ? null : goal.id));
     }
   }, []);
 
   // Start a focus session for the goal's tag, pre-filled with the goal's remaining
   // minutes. Reuses the home tab's autostart path (same as the Journal TODO swipe).
-  const handleStartSession = useCallback((goal: ProcessedGoal) => {
-    const tagId = (goal as any).tagId;
-    if (!tagId) return;
-    const target = goal._effectiveTarget ?? getGoalCurrentTarget(goal);
-    const remaining = Math.round(target - goal.currentProgress);
-    // Goal already met (or no target) → fall back to the tag's last-used duration.
-    const duration = remaining >= 1 ? remaining : (lastDurationByTagId?.[tagId] ?? 15);
-    // navigate() switches to the already-mounted focus tab instantly. push() would
-    // add a new stack entry and run a full push transition + re-render of the heavy
-    // focus screen, which is the ~1s "lingers on insights" delay before the jump.
-    router.navigate({
-      pathname: '/(tabs)',
-      params: {
-        startTagId: tagId,
-        startDuration: String(duration),
-        autostart: '1',
-        ts: String(Date.now()),
-      },
-    });
-  }, [lastDurationByTagId]);
+  const handleStartSession = useCallback(
+    (goal: ProcessedGoal) => {
+      const tagId = (goal as any).tagId;
+      if (!tagId) return;
+      const target = goal._effectiveTarget ?? getGoalCurrentTarget(goal);
+      const remaining = Math.round(target - goal.currentProgress);
+      // Goal already met (or no target) → fall back to the tag's last-used duration.
+      const duration = remaining >= 1 ? remaining : (lastDurationByTagId?.[tagId] ?? 15);
+      // navigate() switches to the already-mounted focus tab instantly. push() would
+      // add a new stack entry and run a full push transition + re-render of the heavy
+      // focus screen, which is the ~1s "lingers on insights" delay before the jump.
+      router.navigate({
+        pathname: '/(tabs)',
+        params: {
+          startTagId: tagId,
+          startDuration: String(duration),
+          autostart: '1',
+          ts: String(Date.now()),
+        },
+      });
+    },
+    [lastDurationByTagId]
+  );
 
   const handleSwipeOpen = useCallback((ref: any) => {
     if (openSwipeableRef.current && openSwipeableRef.current !== ref) {
@@ -496,24 +526,27 @@ export const GoalProgress: FC<GoalProgressProps> = ({
     dragTargetIdxRef.current = index;
   }, []);
 
-  const handleDragMove = useCallback((translationY: number) => {
-    const origIdx = dragOriginalIdxRef.current;
-    const total = processedGoals.length;
-    const offset = Math.round(translationY / ROW_HEIGHT);
-    const newTarget = Math.max(0, Math.min(total - 1, origIdx + offset));
+  const handleDragMove = useCallback(
+    (translationY: number) => {
+      const origIdx = dragOriginalIdxRef.current;
+      const total = processedGoals.length;
+      const offset = Math.round(translationY / ROW_HEIGHT);
+      const newTarget = Math.max(0, Math.min(total - 1, origIdx + offset));
 
-    if (newTarget !== dragTargetIdxRef.current) {
-      dragTargetIdxRef.current = newTarget;
-      setDragTargetIdx(newTarget);
-    }
-  }, [processedGoals.length]);
+      if (newTarget !== dragTargetIdxRef.current) {
+        dragTargetIdxRef.current = newTarget;
+        setDragTargetIdx(newTarget);
+      }
+    },
+    [processedGoals.length]
+  );
 
   const handleDragEnd = useCallback(() => {
     const orig = dragOriginalIdxRef.current;
     const target = dragTargetIdxRef.current;
 
     if (orig !== target && orig >= 0 && target >= 0 && onReorderGoals) {
-      const ids = processedGoals.map(g => g.id);
+      const ids = processedGoals.map((g) => g.id);
       const [moved] = ids.splice(orig, 1);
       ids.splice(target, 0, moved);
       onReorderGoals(ids);
@@ -531,7 +564,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   const hasInactiveGoals = inactiveGoals && inactiveGoals.length > 0;
 
   return (
-    <View className="px-5 mb-6">
+    <View className="mb-6 px-5">
       {/* CTA when no active goals */}
       {!hasActiveGoals && <GoalCTAHeader />}
 
@@ -540,7 +573,8 @@ export const GoalProgress: FC<GoalProgressProps> = ({
         <View className="gap-y-3">
           {processedGoals.map((goal, index) => {
             const goalPeriod = (goal as any).activePeriod || (goal as any).period || 'daily';
-            const isExpanded = goal.isRepeating && goalPeriod !== 'none' && expandedGoalId === goal.id;
+            const isExpanded =
+              goal.isRepeating && goalPeriod !== 'none' && expandedGoalId === goal.id;
             return (
               <View key={goal.id}>
                 {!isExpanded && (
@@ -584,12 +618,12 @@ export const GoalProgress: FC<GoalProgressProps> = ({
         <View className={hasActiveGoals ? 'mt-6' : ''}>
           {/* Divider only distinguishes inactive from active — skip it when there are no active goals */}
           {hasActiveGoals && (
-            <View className="flex-row items-center mb-3">
-              <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
+            <View className="mb-3 flex-row items-center">
+              <View className="h-px flex-1 bg-light-border dark:bg-dark-border" />
               <Typography variant="body-12" color="secondary" className="mx-3">
                 {t('goalProgress.notActivated')}
               </Typography>
-              <View className="flex-1 h-px bg-light-border dark:bg-dark-border" />
+              <View className="h-px flex-1 bg-light-border dark:bg-dark-border" />
             </View>
           )}
           <View className="gap-y-2">
@@ -600,15 +634,15 @@ export const GoalProgress: FC<GoalProgressProps> = ({
               return (
                 <View
                   key={goal.id}
-                  className="flex-row items-center bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-3"
-                >
-                  <Typography variant="body-14" className="text-light-text-primary dark:text-white flex-1">
+                  className="flex-row items-center rounded-xl border border-light-border bg-light-bg px-4 py-3 dark:border-dark-border dark:bg-dark-bg">
+                  <Typography
+                    variant="body-14"
+                    className="flex-1 text-light-text-primary dark:text-white">
                     {derivedName}
                   </Typography>
                   <Pressable
                     onPress={() => onActivateGoal?.(goal.id)}
-                    className="bg-primary rounded-lg px-4 py-2 active:opacity-70"
-                  >
+                    className="rounded-lg bg-primary px-4 py-2 active:opacity-70">
                     <Typography variant="body-12" color="white">
                       {t('goalProgress.activate')}
                     </Typography>
@@ -644,34 +678,45 @@ const COMPLETED_FILL = '#79B591';
 // strong amber/red to signal falling behind.
 const TRACK_COLORS: Record<UrgencyLevel | 'healthy', string> = {
   healthy: COMPLETED_FILL, // brand success green
-  low: COMPLETED_FILL,     // brand success green
-  medium: '#FF9536',       // strong amber/orange
-  high: '#D9364B',         // strong urgent red
+  low: COMPLETED_FILL, // brand success green
+  medium: '#FF9536', // strong amber/orange
+  high: '#D9364B', // strong urgent red
 };
 
 // Duolingo-style streak cell: a filled green circle with a white checkmark when
 // the period's target was hit; otherwise a circular track with a bottom-up
 // partial fill showing how close the period came.
-const StreakCell: FC<{ hit: boolean; fillPercent: number; size: number }> = ({
+const StreakCell: FC<{ hit: boolean; fillPercent: number; size: number; off?: boolean }> = ({
   hit,
   fillPercent,
   size,
+  off,
 }) => {
+  // Off-marked (paid skip): a solid coral cell with a white dash — same
+  // solid-fill treatment as the green hit cell, so it stays obvious on both
+  // light and dark backgrounds while reading as "intentionally skipped".
+  if (off) {
+    return (
+      <View
+        className="items-center justify-center rounded-full"
+        style={{ width: size, height: size, backgroundColor: colors.error }}>
+        <Ionicons name="remove" size={Math.round(size * 0.62)} color={colors.white} />
+      </View>
+    );
+  }
   if (hit) {
     return (
       <View
         className="items-center justify-center rounded-full"
-        style={{ width: size, height: size, backgroundColor: COMPLETED_FILL }}
-      >
+        style={{ width: size, height: size, backgroundColor: COMPLETED_FILL }}>
         <Ionicons name="checkmark-sharp" size={Math.round(size * 0.62)} color={colors.white} />
       </View>
     );
   }
   return (
     <View
-      className="rounded-full bg-light-border dark:bg-dark-border overflow-hidden"
-      style={{ width: size, height: size }}
-    >
+      className="overflow-hidden rounded-full bg-light-border dark:bg-dark-border"
+      style={{ width: size, height: size }}>
       <View
         className="absolute bottom-0 left-0 right-0 bg-primary"
         style={{ height: `${fillPercent}%` }}
@@ -685,7 +730,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   const effectiveTarget = goal._effectiveTarget ?? getGoalCurrentTarget(goal);
   const urgency = useMemo(
     () => calculateUrgency(goal, goal.currentProgress, effectiveTarget),
-    [goal, effectiveTarget],
+    [goal, effectiveTarget]
   );
 
   const formatTime = (minutes: number): string => {
@@ -699,7 +744,10 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   };
 
   const goalTagId = (goal as any).tagId;
-  const { progressWidth, exceededWidth } = getGoalBarSegments(goal.currentProgress, effectiveTarget);
+  const { progressWidth, exceededWidth } = getGoalBarSegments(
+    goal.currentProgress,
+    effectiveTarget
+  );
 
   const goalPeriod = (goal as any).activePeriod || (goal as any).period || 'daily';
   // No-period (cumulative) goals don't show a period pill.
@@ -746,22 +794,20 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
   }));
 
   return (
-    <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-3">
+    <View className="rounded-xl border border-light-border bg-light-bg px-4 py-3 dark:border-dark-border dark:bg-dark-bg">
       <View className="flex-row items-center">
         {/* Compact progress indicator — checkmark once the target is hit */}
         <View
-          className={`mr-3 items-center justify-center w-10 h-10 rounded-full ${
+          className={`mr-3 h-10 w-10 items-center justify-center rounded-full ${
             goal.percentage >= 100 ? '' : 'bg-light-border dark:bg-dark-border'
           }`}
-          style={goal.percentage >= 100 ? { backgroundColor: COMPLETED_FILL } : undefined}
-        >
+          style={goal.percentage >= 100 ? { backgroundColor: COMPLETED_FILL } : undefined}>
           {goal.percentage >= 100 ? (
             <Ionicons name="checkmark-sharp" size={22} color={colors.white} />
           ) : (
             <Typography
               variant="body-12"
-              className="text-light-text-primary dark:text-white font-poppins-semibold"
-            >
+              className="font-poppins-semibold text-light-text-primary dark:text-white">
               {Math.round(goal.percentage)}%
             </Typography>
           )}
@@ -772,14 +818,15 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
           <View className="flex-row items-center">
             <Typography
               variant="body-14"
-              className="text-light-text-primary dark:text-white font-poppins-semibold"
-            >
+              className="font-poppins-semibold text-light-text-primary dark:text-white">
               {displayName}
             </Typography>
           </View>
 
-          <View className="flex-row items-center mt-0.5">
-            <Typography variant="body-12" className="text-light-text-primary dark:text-white font-poppins-medium">
+          <View className="mt-0.5 flex-row items-center">
+            <Typography
+              variant="body-12"
+              className="font-poppins-medium text-light-text-primary dark:text-white">
               {formatTime(goal.currentProgress)} / {formatTime(effectiveTarget)}
             </Typography>
           </View>
@@ -787,8 +834,8 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
 
         {/* Period Badge — hidden for no-period (cumulative) goals */}
         {showPeriodBadge && (
-          <View className="rounded-full px-3 py-1 bg-primary">
-            <Typography variant="body-12" className="text-white font-poppins-medium">
+          <View className="rounded-full bg-primary px-3 py-1">
+            <Typography variant="body-12" className="font-poppins-medium text-white">
               {periodLabel}
             </Typography>
           </View>
@@ -797,15 +844,14 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
 
       {/* Tag Pill — only show if customName is set (to clarify which tag) */}
       {(goal as any).customName && tag && (
-        <View className="flex-row flex-wrap gap-1.5 mt-2">
+        <View className="mt-2 flex-row flex-wrap gap-1.5">
           <View
             className="flex-row items-center rounded-full px-2.5 py-1"
-            style={{ backgroundColor: tag.color || colors.primary }}
-          >
+            style={{ backgroundColor: tag.color || colors.primary }}>
             <Typography variant="tiny-10" className="mr-1">
               {tag.icon}
             </Typography>
-            <Typography variant="tiny-10" className="text-white font-poppins-medium">
+            <Typography variant="tiny-10" className="font-poppins-medium text-white">
               {tag.name}
             </Typography>
           </View>
@@ -817,15 +863,18 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
           BOTH absolute children here (not later siblings) so the ball, rendered
           last, paints on top of the hint line — otherwise the red/amber line
           overlays the soccer ball as the goal falls behind. */}
-      <View className="mt-2 relative">
-        <View className="h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden relative">
+      <View className="relative mt-2">
+        <View className="relative h-2 overflow-hidden rounded-full bg-light-border dark:bg-dark-border">
           <View
             className={`h-full ${goal.percentage >= 100 ? '' : 'bg-primary'}`}
-            style={{ width: `${progressWidth}%`, ...(goal.percentage >= 100 && { backgroundColor: COMPLETED_FILL }) }}
+            style={{
+              width: `${progressWidth}%`,
+              ...(goal.percentage >= 100 && { backgroundColor: COMPLETED_FILL }),
+            }}
           />
           {exceededWidth > 0 && (
             <View
-              className="h-full bg-orange-500 absolute top-0"
+              className="absolute top-0 h-full bg-orange-500"
               style={{
                 left: `${GOAL_THRESHOLD_PERCENT}%`,
                 width: `${exceededWidth}%`,
@@ -833,7 +882,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
             />
           )}
           <View
-            className="absolute top-0 bottom-0 bg-white"
+            className="absolute bottom-0 top-0 bg-white"
             style={{
               left: `${GOAL_THRESHOLD_PERCENT}%`,
               width: 2,
@@ -856,8 +905,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
               overflow: 'hidden',
               borderTopRightRadius: 999,
               borderBottomRightRadius: 999,
-            }}
-          >
+            }}>
             {/* Static base line */}
             <View
               style={{
@@ -911,8 +959,7 @@ const GoalRowItem: FC<GoalRowItemProps> = ({ goal, tags }) => {
               height: 18,
               marginLeft: -9,
               marginTop: -9,
-            }}
-          >
+            }}>
             <Text allowFontScaling={false} style={{ fontSize: 13, lineHeight: 18 }}>
               {sliderTheme.thumbEmoji}
             </Text>
@@ -934,10 +981,18 @@ interface GoalConsistencyCalendarProps {
   weekStartDay: number;
 }
 
-const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessions, tagMap: _tagMap, onCollapse, restDays, weekStartDay }) => {
-  const { t } = useTranslation();
+const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({
+  goal,
+  sessions,
+  tagMap: _tagMap,
+  onCollapse,
+  restDays,
+  weekStartDay,
+}) => {
+  const { t, i18n } = useTranslation();
   const captureAreaRef = useRef<View>(null);
-  const colorScheme = useColorScheme();
+  const streakCardRef = useRef<View>(null);
+  const [showStreakModal, setShowStreakModal] = useState(false);
   const { tags: calendarTags } = useFocus();
   const calendarTag = (goal as any).tagId ? calendarTags.byId[(goal as any).tagId] : null;
   const calendarGoalName =
@@ -946,17 +1001,23 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
       ? t('insights.goalSuffix', { icon: calendarTag.icon, name: calendarTag.name })
       : (goal as any).name || t('goalProgress.goalFallback'));
 
-  const handleShare = async () => {
+  // Shares the glorified streak card (not the raw calendar) — captures the
+  // off-screen-styled card view opened in the streak modal.
+  const handleShareStreak = async () => {
     try {
-      const uri = await captureRef(captureAreaRef, {
-        format: 'png',
-        quality: 1,
-      });
-
+      const uri = await captureRef(streakCardRef, { format: 'png', quality: 1 });
       await Share.share(
         Platform.OS === 'ios'
           ? { url: uri }
-          : { message: t('goalProgress.shareMessage', { name: (goal as any).customName || (goal as any).name || t('goalProgress.shareGoalFallback') }), url: uri }
+          : {
+              message: t('goalProgress.shareMessage', {
+                name:
+                  (goal as any).customName ||
+                  (goal as any).name ||
+                  t('goalProgress.shareGoalFallback'),
+              }),
+              url: uri,
+            }
       );
     } catch (_e) {
       // User cancelled or share failed silently
@@ -968,14 +1029,21 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
   const count = periodCounts[goalPeriod] || 12;
   const ranges = getHistoricalPeriodRanges(goalPeriod, count, new Date(), weekStartDay);
 
+  // Off-marked slots (paid streak-skips) render distinctly and drop out of the
+  // hit/total tally — the streak treats them as if they never existed.
+  const offKeys = getGoalOffKeys(
+    goal as any,
+    goalPeriod === 'monthly' || goalPeriod === 'weekly' ? goalPeriod : 'daily'
+  );
+
   // Compute hit/miss for each range
-  const results = ranges.map(range => {
+  const results = ranges.map((range) => {
     // A session counts toward the goal if either its primary OR secondary tag
     // matches — dual-tagged sessions credit both, matching calculateGoalProgress.
     const goalTagId = (goal as any).tagId;
     const relevant = goalTagId
       ? sessions.filter(
-          s => (s as any).tagId === goalTagId || (s as any).secondaryTagId === goalTagId,
+          (s) => (s as any).tagId === goalTagId || (s as any).secondaryTagId === goalTagId
         )
       : sessions;
 
@@ -985,14 +1053,16 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
     }, 0);
     // Use historical target for this period's date
     const periodTarget = getTargetForDate(goal, range.periodStart, restDays);
+    const off = offKeys.has(getPeriodKey(range.periodStart));
     const hit = totalMinutes >= periodTarget;
-    const fillPercent = periodTarget > 0
-      ? Math.min(totalMinutes / periodTarget, 1) * 100
-      : 0;
-    return { ...range, hit, totalMinutes, fillPercent };
+    const fillPercent = periodTarget > 0 ? Math.min(totalMinutes / periodTarget, 1) * 100 : 0;
+    return { ...range, hit, off, totalMinutes, fillPercent };
   });
 
-  const hitCount = results.filter(r => r.hit).length;
+  // Off slots are excluded from both the numerator and denominator of the ratio.
+  const offCount = results.filter((r) => r.off).length;
+  const hitCount = results.filter((r) => r.hit && !r.off).length;
+  const ratioCount = count - offCount;
   const totalMinutesAll = results.reduce((sum, r) => sum + r.totalMinutes, 0);
 
   const formatTotalHours = (minutes: number): string => {
@@ -1007,26 +1077,124 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
   // Goal header for the screenshot capture
   const goalHeader = (
     <View className="mb-3">
-      <Typography variant="subtitle-16" className="text-light-text-primary dark:text-dark-text-primary">
+      <Typography
+        variant="subtitle-16"
+        className="text-light-text-primary dark:text-dark-text-primary">
         {calendarGoalName}
       </Typography>
     </View>
   );
 
-  // Footer row with total hours + share button
+  // Current streak for this goal (off-marked slots already skipped inside).
+  const streak = calculateGoalStreak(goal, sessions, restDays, weekStartDay);
+  const goalEmoji = '🎯';
+  const streakUnit = goalPeriod === 'weekly' ? 'week' : goalPeriod === 'monthly' ? 'month' : 'day';
+  const streakLabel = t(`streakShare.label_${streakUnit}`);
+  const shareDate = new Date().toLocaleDateString(i18n.language, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  // Footer row with total hours + a streak badge (opens the shareable card).
   const footerRow = (
-    <View className="mt-3 pt-3 border-t border-light-border dark:border-dark-border flex-row items-center justify-between">
+    <View className="mt-3 flex-row items-center justify-between border-t border-light-border pt-3 dark:border-dark-border">
       <View className="flex-1">
         {(goal as any).showTotalHours && (
-          <Typography variant="body-14" className="text-light-text-primary dark:text-dark-text-primary font-poppins-semibold">
+          <Typography
+            variant="body-14"
+            className="font-poppins-semibold text-light-text-primary dark:text-dark-text-primary">
             {t('goalProgress.totalTime', { time: formatTotalHours(totalMinutesAll) })}
           </Typography>
         )}
       </View>
-      <Pressable onPress={handleShare} className="active:opacity-70 p-1">
-        <Ionicons name="share-outline" size={18} color={colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
-      </Pressable>
+      <View className="flex-row items-center">
+        <Pressable
+          onPress={() => setShowStreakModal(true)}
+          className="flex-row items-center rounded-full bg-primary/15 px-3 py-1 active:opacity-70">
+          <Text style={{ fontSize: 13 }}>{goalEmoji}</Text>
+          <Typography variant="subtitle-14-semibold" color="primary" className="ml-1">
+            {streak}
+          </Typography>
+        </Pressable>
+        <Pressable
+          onPress={() => setShowStreakModal(true)}
+          hitSlop={8}
+          className="ml-2 p-1 active:opacity-70">
+          <Ionicons name="share-outline" size={18} color={colors.primary} />
+        </Pressable>
+      </View>
     </View>
+  );
+
+  // Glorified, shareable streak card shown in a modal. The card view itself is
+  // captured (react-native-view-shot) for the share sheet.
+  const streakModal = (
+    <Modal isVisible={showStreakModal} onClose={() => setShowStreakModal(false)}>
+      <View className="items-center">
+        <View
+          ref={streakCardRef}
+          collapsable={false}
+          className="w-full items-center overflow-hidden rounded-3xl bg-primary p-8"
+          style={{ backgroundColor: colors.primary }}>
+          {/* Decorative translucent circles for a bit of art */}
+          <View
+            className="absolute rounded-full bg-white/10"
+            style={{ width: 160, height: 160, top: -50, right: -40 }}
+          />
+          <View
+            className="absolute rounded-full bg-white/10"
+            style={{ width: 110, height: 110, bottom: -30, left: -30 }}
+          />
+
+          {/* Goal emoji beside the number (not stacked on top — that looked like a candle) */}
+          <View className="flex-row items-center" style={{ marginBottom: 2 }}>
+            <Text style={{ fontSize: 40, marginRight: 10 }}>{goalEmoji}</Text>
+            <Text
+              className="font-poppins-bold"
+              style={{ fontSize: 72, lineHeight: 80, color: colors.white }}>
+              {streak}
+            </Text>
+          </View>
+          <Text
+            className="font-poppins-semibold"
+            style={{
+              fontSize: 15,
+              letterSpacing: 3,
+              textTransform: 'uppercase',
+              color: colors.white,
+              opacity: 0.9,
+            }}>
+            {streakLabel}
+          </Text>
+
+          <View className="my-5 h-px w-16 bg-white/40" />
+
+          <Text
+            className="text-center font-poppins-semibold"
+            style={{ fontSize: 18, color: colors.white }}>
+            {calendarGoalName}
+          </Text>
+          <Text
+            className="mt-1 text-center"
+            style={{ fontSize: 12, color: colors.white, opacity: 0.85 }}>
+            {t('streakShare.reachedOn', { date: shareDate })}
+          </Text>
+
+          <Text
+            className="mt-6 font-poppins-semibold"
+            style={{ fontSize: 12, letterSpacing: 1, color: colors.white, opacity: 0.8 }}>
+            Bittersweet
+          </Text>
+        </View>
+
+        <View className="mt-6">
+          <Button onPress={handleShareStreak} size="medium">
+            {t('streakShare.share')}
+          </Button>
+        </View>
+      </View>
+    </Modal>
   );
 
   if (goalPeriod === 'daily') {
@@ -1034,40 +1202,51 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
     const paddedResults = [...Array(firstDay).fill(null), ...results];
 
     return (
-      <Pressable className="mt-2" onPress={onCollapse}>
-        <View ref={captureAreaRef} collapsable={false} className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4">
-          {goalHeader}
-          <View className="flex-row items-center justify-between mb-3">
-            <Typography variant="body-12" color="secondary">
-              {t('goalProgress.last30days')}
-            </Typography>
-            <Typography variant="body-12" color="primary">
-              {t('goalProgress.hitCount', { hit: hitCount, count })}
-            </Typography>
+      <>
+        <Pressable className="mt-2" onPress={onCollapse}>
+          <View
+            ref={captureAreaRef}
+            collapsable={false}
+            className="rounded-xl border border-light-border bg-light-bg p-4 dark:border-dark-border dark:bg-dark-bg">
+            {goalHeader}
+            <View className="mb-3 flex-row items-center justify-between">
+              <Typography variant="body-12" color="secondary">
+                {t('goalProgress.last30days')}
+              </Typography>
+              <Typography variant="body-12" color="primary">
+                {t('goalProgress.hitCount', { hit: hitCount, count: ratioCount })}
+              </Typography>
+            </View>
+            {/* Day headers */}
+            <View className="mb-1 flex-row">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                <View key={i} className="flex-1 items-center">
+                  <Typography variant="tiny-10" color="secondary">
+                    {d}
+                  </Typography>
+                </View>
+              ))}
+            </View>
+            {/* Grid */}
+            <View className="flex-row flex-wrap">
+              {paddedResults.map((r, i) => (
+                <View
+                  key={i}
+                  className="items-center justify-center"
+                  style={{ width: '14.28%', aspectRatio: 1 }}>
+                  {r ? (
+                    <StreakCell hit={r.hit} off={r.off} fillPercent={r.fillPercent} size={20} />
+                  ) : (
+                    <View className="h-5 w-5" />
+                  )}
+                </View>
+              ))}
+            </View>
+            {footerRow}
           </View>
-          {/* Day headers */}
-          <View className="flex-row mb-1">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <View key={i} className="flex-1 items-center">
-                <Typography variant="tiny-10" color="secondary">{d}</Typography>
-              </View>
-            ))}
-          </View>
-          {/* Grid */}
-          <View className="flex-row flex-wrap">
-            {paddedResults.map((r, i) => (
-              <View key={i} className="items-center justify-center" style={{ width: '14.28%', aspectRatio: 1 }}>
-                {r ? (
-                  <StreakCell hit={r.hit} fillPercent={r.fillPercent} size={20} />
-                ) : (
-                  <View className="w-5 h-5" />
-                )}
-              </View>
-            ))}
-          </View>
-          {footerRow}
-        </View>
-      </Pressable>
+        </Pressable>
+        {streakModal}
+      </>
     );
   }
 
@@ -1082,68 +1261,85 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
     };
 
     return (
-      <Pressable className="mt-2" onPress={onCollapse}>
-        <View ref={captureAreaRef} collapsable={false} className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4">
-          {goalHeader}
-          <View className="flex-row items-center justify-between mb-3">
-            <Typography variant="body-12" color="secondary">
-              {t('goalProgress.last12months')}
-            </Typography>
-            <Typography variant="body-12" color="primary">
-              {t('goalProgress.hitCount', { hit: hitCount, count })}
-            </Typography>
-          </View>
-          {[topRow, bottomRow].map((row, rowIdx) => (
-            <View key={rowIdx} className={`flex-row justify-between ${rowIdx === 0 ? 'mb-2' : ''}`}>
-              {row.map((r, i) => (
-                <View key={i} className="items-center" style={{ flex: 1 }}>
-                  <View className="mb-1">
-                    <StreakCell hit={r.hit} fillPercent={r.fillPercent} size={28} />
-                  </View>
-                  <Typography variant="tiny-10" color="secondary" className="text-center">
-                    {r.label}
-                  </Typography>
-                  <Typography variant="tiny-10" color={r.hit ? 'primary' : 'secondary'} className="text-center">
-                    {formatMinutes(r.totalMinutes)}
-                  </Typography>
-                </View>
-              ))}
+      <>
+        <Pressable className="mt-2" onPress={onCollapse}>
+          <View
+            ref={captureAreaRef}
+            collapsable={false}
+            className="rounded-xl border border-light-border bg-light-bg p-4 dark:border-dark-border dark:bg-dark-bg">
+            {goalHeader}
+            <View className="mb-3 flex-row items-center justify-between">
+              <Typography variant="body-12" color="secondary">
+                {t('goalProgress.last12months')}
+              </Typography>
+              <Typography variant="body-12" color="primary">
+                {t('goalProgress.hitCount', { hit: hitCount, count: ratioCount })}
+              </Typography>
             </View>
-          ))}
-          {footerRow}
-        </View>
-      </Pressable>
+            {[topRow, bottomRow].map((row, rowIdx) => (
+              <View
+                key={rowIdx}
+                className={`flex-row justify-between ${rowIdx === 0 ? 'mb-2' : ''}`}>
+                {row.map((r, i) => (
+                  <View key={i} className="items-center" style={{ flex: 1 }}>
+                    <View className="mb-1">
+                      <StreakCell hit={r.hit} off={r.off} fillPercent={r.fillPercent} size={28} />
+                    </View>
+                    <Typography variant="tiny-10" color="secondary" className="text-center">
+                      {r.label}
+                    </Typography>
+                    <Typography
+                      variant="tiny-10"
+                      color={r.hit ? 'primary' : 'secondary'}
+                      className="text-center">
+                      {formatMinutes(r.totalMinutes)}
+                    </Typography>
+                  </View>
+                ))}
+              </View>
+            ))}
+            {footerRow}
+          </View>
+        </Pressable>
+        {streakModal}
+      </>
     );
   }
 
   // Weekly — horizontal row of blocks
   return (
-    <Pressable className="mt-2" onPress={onCollapse}>
-      <View ref={captureAreaRef} collapsable={false} className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4">
-        {goalHeader}
-        <View className="flex-row items-center justify-between mb-3">
-          <Typography variant="body-12" color="secondary">
-            {t('goalProgress.lastWeeks', { count })}
-          </Typography>
-          <Typography variant="body-12" color="primary">
-            {t('goalProgress.hitCount', { hit: hitCount, count })}
-          </Typography>
-        </View>
-        <View className="flex-row justify-between">
-          {results.map((r, i) => (
-            <View key={i} className="items-center" style={{ flex: 1 }}>
-              <View className="mb-1">
-                <StreakCell hit={r.hit} fillPercent={r.fillPercent} size={20} />
+    <>
+      <Pressable className="mt-2" onPress={onCollapse}>
+        <View
+          ref={captureAreaRef}
+          collapsable={false}
+          className="rounded-xl border border-light-border bg-light-bg p-4 dark:border-dark-border dark:bg-dark-bg">
+          {goalHeader}
+          <View className="mb-3 flex-row items-center justify-between">
+            <Typography variant="body-12" color="secondary">
+              {t('goalProgress.lastWeeks', { count })}
+            </Typography>
+            <Typography variant="body-12" color="primary">
+              {t('goalProgress.hitCount', { hit: hitCount, count: ratioCount })}
+            </Typography>
+          </View>
+          <View className="flex-row justify-between">
+            {results.map((r, i) => (
+              <View key={i} className="items-center" style={{ flex: 1 }}>
+                <View className="mb-1">
+                  <StreakCell hit={r.hit} off={r.off} fillPercent={r.fillPercent} size={20} />
+                </View>
+                <Typography variant="tiny-10" color="secondary" className="text-center">
+                  {r.label}
+                </Typography>
               </View>
-              <Typography variant="tiny-10" color="secondary" className="text-center">
-                {r.label}
-              </Typography>
-            </View>
-          ))}
+            ))}
+          </View>
+          {footerRow}
         </View>
-        {footerRow}
-      </View>
-    </Pressable>
+      </Pressable>
+      {streakModal}
+    </>
   );
 };
 
@@ -1152,8 +1348,10 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({ goal, sessi
 const GoalCTAHeader: FC = () => {
   const { t } = useTranslation();
   return (
-    <View className="items-center mb-4">
-      <Typography variant="headline-18" className="text-light-text-primary dark:text-white text-center">
+    <View className="mb-4 items-center">
+      <Typography
+        variant="headline-18"
+        className="text-center text-light-text-primary dark:text-white">
         {t('goalProgress.activateGoals')}
       </Typography>
     </View>
@@ -1176,7 +1374,7 @@ const GoalPlaceholderExample: FC = () => {
     { hours: 11, hit: true },
     { hours: 12, hit: true },
     { hours: 5, hit: false },
-  ].map(w => ({ ...w, fillPercent: Math.min(w.hours / targetHours, 1) * 100 }));
+  ].map((w) => ({ ...w, fillPercent: Math.min(w.hours / targetHours, 1) * 100 }));
 
   return (
     <View className="mt-6">
@@ -1188,55 +1386,60 @@ const GoalPlaceholderExample: FC = () => {
       </View>
 
       {/* Placeholder Goal Row */}
-      <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-3 mb-3 opacity-60">
+      <View className="mb-3 rounded-xl border border-light-border bg-light-bg px-4 py-3 opacity-60 dark:border-dark-border dark:bg-dark-bg">
         <View className="flex-row items-center">
-          <View className="mr-3 items-center justify-center w-10 h-10 rounded-full bg-light-border dark:bg-dark-border">
-            <Typography variant="body-12" className="text-light-text-primary dark:text-white font-poppins-semibold">
+          <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-light-border dark:bg-dark-border">
+            <Typography
+              variant="body-12"
+              className="font-poppins-semibold text-light-text-primary dark:text-white">
               72%
             </Typography>
           </View>
           <View className="flex-1">
             <View className="flex-row items-center">
-              <Typography variant="body-14" className="text-light-text-primary dark:text-white font-poppins-semibold">
+              <Typography
+                variant="body-14"
+                className="font-poppins-semibold text-light-text-primary dark:text-white">
                 {t('goalProgress.exampleGoalName')}
               </Typography>
             </View>
-            <View className="flex-row items-center mt-0.5">
-              <Typography variant="body-12" className="text-light-text-primary dark:text-white font-poppins-medium">
+            <View className="mt-0.5 flex-row items-center">
+              <Typography
+                variant="body-12"
+                className="font-poppins-medium text-light-text-primary dark:text-white">
                 7h 12m / 10h 0m
               </Typography>
             </View>
           </View>
-          <View className="rounded-full px-3 py-1 bg-primary">
-            <Typography variant="body-12" className="text-white font-poppins-medium">
+          <View className="rounded-full bg-primary px-3 py-1">
+            <Typography variant="body-12" className="font-poppins-medium text-white">
               {t('goalProgress.periodWeekly')}
             </Typography>
           </View>
         </View>
 
         {/* Tag Pills */}
-        <View className="flex-row flex-wrap gap-1.5 mt-2">
+        <View className="mt-2 flex-row flex-wrap gap-1.5">
           <View
             className="flex-row items-center rounded-full px-2.5 py-1"
-            style={{ backgroundColor: colors.primary }}
-          >
+            style={{ backgroundColor: colors.primary }}>
             <Typography variant="tiny-10" className="mr-1">
               📚
             </Typography>
-            <Typography variant="tiny-10" className="text-white font-poppins-medium">
+            <Typography variant="tiny-10" className="font-poppins-medium text-white">
               {t('goalProgress.exampleTag')}
             </Typography>
           </View>
         </View>
 
         {/* Progress bar */}
-        <View className="mt-2 h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden relative">
+        <View className="relative mt-2 h-2 overflow-hidden rounded-full bg-light-border dark:bg-dark-border">
           <View
             className="h-full bg-primary"
             style={{ width: `${72 * (GOAL_THRESHOLD_PERCENT / 100)}%` }}
           />
           <View
-            className="absolute top-0 bottom-0 bg-white"
+            className="absolute bottom-0 top-0 bg-white"
             style={{
               left: `${GOAL_THRESHOLD_PERCENT}%`,
               width: 2,
@@ -1247,8 +1450,8 @@ const GoalPlaceholderExample: FC = () => {
       </View>
 
       {/* Placeholder Weekly Calendar */}
-      <View className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-4 mb-4 opacity-60">
-        <View className="flex-row items-center justify-between mb-3">
+      <View className="mb-4 rounded-xl border border-light-border bg-light-bg p-4 opacity-60 dark:border-dark-border dark:bg-dark-bg">
+        <View className="mb-3 flex-row items-center justify-between">
           <Typography variant="body-12" color="secondary">
             {t('goalProgress.lastWeeks', { count: 12 })}
           </Typography>
@@ -1263,13 +1466,14 @@ const GoalPlaceholderExample: FC = () => {
             </View>
           ))}
         </View>
-        <View className="mt-3 pt-3 border-t border-light-border dark:border-dark-border items-center">
-          <Typography variant="body-14" className="text-light-text-primary dark:text-dark-text-primary font-poppins-semibold">
+        <View className="mt-3 items-center border-t border-light-border pt-3 dark:border-dark-border">
+          <Typography
+            variant="body-14"
+            className="font-poppins-semibold text-light-text-primary dark:text-dark-text-primary">
             {t('goalProgress.totalTime', { time: '116h' })}
           </Typography>
         </View>
       </View>
-
     </View>
   );
 };

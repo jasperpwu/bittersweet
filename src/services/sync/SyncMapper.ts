@@ -175,6 +175,13 @@ export function goalToRow(goal: any, userId: string): Record<string, any> {
   if (goal.lastResetDate instanceof Date) row.last_reset_date = goal.lastResetDate.toISOString();
   if (goal.createdAt instanceof Date) row.created_at = goal.createdAt.toISOString();
   if (goal.updatedAt instanceof Date) row.updated_at = goal.updatedAt.toISOString();
+  // Off-Marker skips — only emit when the goal actually has some, so goal sync
+  // keeps working against a remote that predates the off_marks column (the
+  // column ships in migration 20260723; a goal with no marks never sends it).
+  const om = goal.offMarks;
+  if (om && (om.daily?.length ?? 0) + (om.weekly?.length ?? 0) + (om.monthly?.length ?? 0) > 0) {
+    row.off_marks = om;
+  }
   return row;
 }
 
@@ -190,6 +197,8 @@ export function rowToGoal(row: Record<string, any>): any {
     monthlyTargetMinutes: row.monthly_target_minutes ?? 0,
     totalTargetMinutes: row.total_target_minutes ?? 0,
     targetHistory: row.target_history ?? [],
+    // Symmetric with goalToRow: restore off-marks (absent on pre-migration rows).
+    offMarks: row.off_marks ?? undefined,
     isActive: row.is_active ?? true,
     isRepeating: row.is_repeating ?? true,
     showTotalHours: row.show_total_hours ?? false,

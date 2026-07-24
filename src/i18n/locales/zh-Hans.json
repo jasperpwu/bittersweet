@@ -318,6 +318,8 @@
     "timeRemaining": "剩余 {{hours}} 小时 {{minutes}} 分",
     "tipTitle": "使用小贴士",
     "tipDesc": "获取一条 App 使用小贴士",
+    "offMarkerTitle": "休息标记",
+    "offMarkerDesc": "标记休息日，错过的格子也不会中断你的连续记录",
     "tipsExhausted": "所有小贴士都已集齐——之后再来看看新的吧！",
     "comingSoon": "敬请期待",
     "comingSoonDesc": "我们正与商家携手，为你带来优惠券！",
@@ -455,6 +457,29 @@
       "scotland": "苏格兰",
       "turkey": "土耳其"
     }
+  },
+  "offMarker": {
+    "title": "休息标记",
+    "day": "日",
+    "week": "周",
+    "month": "月",
+    "costHint": "每个格子🍎{{cost}}",
+    "streak": "连续{{count}}",
+    "selectedCount": "已选{{count}}个格子",
+    "emptyTitle": "此视图暂无目标",
+    "emptyBody": "设置一个该周期的目标即可标记格子。",
+    "confirmAction": "确认",
+    "confirmTitle": "将格子标记为休息？",
+    "confirmBody": "用🍎{{cost}}将{{count}}个格子标记为休息？此操作无法撤销。",
+    "marked": "已将{{count}}个格子标记为休息",
+    "notEnough": "苹果不足"
+  },
+  "streakShare": {
+    "label_day": "每日连续",
+    "label_week": "每周连续",
+    "label_month": "每月连续",
+    "reachedOn": "达成于 {{date}}",
+    "share": "分享"
   },
   "badge": {
     "deleteTitle": "删除徽章？",

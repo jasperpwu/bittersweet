@@ -865,6 +865,37 @@ export default function FruitStoreScreen() {
                 </View>
               </View>
             </Pressable>
+
+            {/* Off-Marker — opens the slot-marking screen instead of an Alert,
+                since the user picks which goal slots to skip before paying */}
+            <Pressable
+              onPress={() => router.push('/(modals)/off-marker')}
+              className="
+            mb-4 rounded-2xl
+            border border-light-border bg-light-border/30 p-5
+            active:opacity-80 dark:border-dark-border dark:bg-dark-card
+          ">
+              <View className="flex-row items-start justify-between">
+                <View className="mr-4 flex-1">
+                  <View className="mb-2 flex-row items-center">
+                    <Text style={{ fontSize: 28 }}>🗓️</Text>
+                    <View className="ml-3 flex-1">
+                      <Typography variant="subtitle-14-semibold">
+                        {t('store.offMarkerTitle')}
+                      </Typography>
+                    </View>
+                  </View>
+                  <Typography variant="body-14" color="secondary">
+                    {t('store.offMarkerDesc')}
+                  </Typography>
+                </View>
+                <View className="rounded-xl bg-primary/15 px-3 py-1.5">
+                  <Typography variant="subtitle-14-semibold" color="primary">
+                    🍎 20+
+                  </Typography>
+                </View>
+              </View>
+            </Pressable>
           </>
         )}
 

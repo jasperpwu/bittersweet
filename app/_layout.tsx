@@ -1166,6 +1166,14 @@ export default function RootLayout() {
                 <Stack.Screen name="refer/[code]" options={{ headerShown: false }} />
                 <Stack.Screen name="fruit-store" options={{ headerShown: false }} />
                 <Stack.Screen
+                  name="(modals)/off-marker"
+                  options={{
+                    headerShown: false,
+                    presentation: 'card',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
                   name="settings/preferences"
                   options={{ headerShown: false, presentation: 'card' }}
                 />

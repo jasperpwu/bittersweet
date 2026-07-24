@@ -319,6 +319,8 @@
     "timeRemaining": "encore {{hours}} h {{minutes}} min",
     "tipTitle": "Astuce d’utilisation",
     "tipDesc": "Obtiens une astuce de pro pour l’app",
+    "offMarkerTitle": "Marqueur de repos",
+    "offMarkerDesc": "Marque des jours de repos pour qu’un créneau manqué ne casse pas ta série",
     "tipsExhausted": "Tu as déjà toutes les astuces : reviens plus tard pour en découvrir de nouvelles !",
     "comingSoon": "Bientôt disponible",
     "comingSoonDesc": "On s’associe à des commerçants pour t’offrir des bons de réduction !",
@@ -456,6 +458,29 @@
       "scotland": "Écosse",
       "turkey": "Türkiye"
     }
+  },
+  "offMarker": {
+    "title": "Marqueur de repos",
+    "day": "Jour",
+    "week": "Semaine",
+    "month": "Mois",
+    "costHint": "🍎 {{cost}} par créneau marqué",
+    "streak": "série de {{count}}",
+    "selectedCount": "{{count}} créneaux sélectionnés",
+    "emptyTitle": "Aucun objectif pour cette vue",
+    "emptyBody": "Crée un objectif avec cette période pour marquer des créneaux.",
+    "confirmAction": "Confirmer",
+    "confirmTitle": "Marquer des créneaux comme repos ?",
+    "confirmBody": "Marquer {{count}} créneau(x) comme repos pour 🍎 {{cost}} ? C’est irréversible.",
+    "marked": "{{count}} créneau(x) marqué(s) comme repos",
+    "notEnough": "Pas assez de pommes"
+  },
+  "streakShare": {
+    "label_day": "Série de jours",
+    "label_week": "Série de semaines",
+    "label_month": "Série de mois",
+    "reachedOn": "Atteinte le {{date}}",
+    "share": "Partager"
   },
   "badge": {
     "deleteTitle": "Supprimer le badge ?",

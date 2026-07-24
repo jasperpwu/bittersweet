@@ -139,6 +139,18 @@ export interface TargetHistoryEntry {
   restDays: number[]; // which days (0=Sun..6=Sat) were rest days at this point
 }
 
+// Off-Marker slots: periods the user paid fruit to skip in a goal's streak — the
+// streak/calendar treat them as if they never existed (no hit, no miss). Bucketed
+// by period type so a goal can flip its activePeriod back and forth and keep each
+// type's marks independently. Keys are the slot's START in local calendar terms,
+// "YYYY-MM-DD" (the day itself / the week's start day / the month's 1st) — the same
+// periodStart the streak walker and consistency calendar already compute.
+export interface GoalOffMarks {
+  daily: string[];
+  weekly: string[];
+  monthly: string[];
+}
+
 export interface FocusGoal extends BaseEntity {
   userId: string;
   customName?: string; // if empty/undefined, derive from tag
@@ -158,6 +170,10 @@ export interface FocusGoal extends BaseEntity {
   currentProgress: number;
   lastResetDate: Date;
   sortOrder: number;
+  // Paid streak-skip slots (Off-Marker store item). Optional — goals created
+  // before the feature (and hydrated older rows) simply have none. Read with a
+  // per-bucket `?? []` fallback.
+  offMarks?: GoalOffMarks;
 }
 
 export interface Badge extends BaseEntity {

@@ -319,6 +319,8 @@
     "timeRemaining": "quedan {{hours}} h {{minutes}} min",
     "tipTitle": "Consejo de uso",
     "tipDesc": "Consigue un consejo experto para la app",
+    "offMarkerTitle": "Marcador libre",
+    "offMarkerDesc": "Marca días libres para que un hueco perdido no rompa tu racha",
     "tipsExhausted": "¡Ya tienes todos los consejos! Vuelve pronto para descubrir nuevos.",
     "comingSoon": "Próximamente",
     "comingSoonDesc": "¡Estamos uniéndonos con comercios para traerte cupones!",
@@ -456,6 +458,29 @@
       "scotland": "Escocia",
       "turkey": "Turquía"
     }
+  },
+  "offMarker": {
+    "title": "Marcador libre",
+    "day": "Día",
+    "week": "Semana",
+    "month": "Mes",
+    "costHint": "🍎 {{cost}} por casilla marcada",
+    "streak": "racha de {{count}}",
+    "selectedCount": "{{count}} casillas seleccionadas",
+    "emptyTitle": "No hay metas para esta vista",
+    "emptyBody": "Crea una meta con este período para marcar casillas.",
+    "confirmAction": "Confirmar",
+    "confirmTitle": "¿Marcar casillas como libres?",
+    "confirmBody": "¿Marcar {{count}} casilla(s) como libres por 🍎 {{cost}}? No se puede deshacer.",
+    "marked": "{{count}} casilla(s) marcada(s) como libres",
+    "notEnough": "No tienes suficientes manzanas"
+  },
+  "streakShare": {
+    "label_day": "Racha diaria",
+    "label_week": "Racha semanal",
+    "label_month": "Racha mensual",
+    "reachedOn": "Alcanzada el {{date}}",
+    "share": "Compartir"
   },
   "badge": {
     "deleteTitle": "¿Eliminar insignia?",

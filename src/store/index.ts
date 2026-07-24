@@ -167,6 +167,13 @@ interface AppStore {
     // Goal management
     addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
     updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
+    // Off-Marker purchase: pay fruit to mark missed slots as "off" across one or
+    // more goals in a single transaction. Spends the total once, appends each
+    // goal's keys to its offMarks bucket. Throws on insufficient balance.
+    applyOffMarks: (
+      marks: { goalId: string; period: 'daily' | 'weekly' | 'monthly'; periodKeys: string[] }[],
+      totalCost: number,
+    ) => void;
     deleteGoal: (id: string) => void;
     concludeGoal: (id: string) => void;
     deleteBadge: (id: string) => void;
@@ -1447,6 +1454,39 @@ export const useAppStore = create<AppStore>()(
               // Activating a goal is the "set up goals" signal — unlock its setup-task claim.
               get().rewards.markTaskSetup('goal');
             }
+          },
+
+          applyOffMarks: (marks, totalCost) => {
+            const balance = get().rewards.balance;
+            if (balance < totalCost) {
+              throw new Error(
+                `Insufficient fruits. Required: ${totalCost}, Available: ${balance}`,
+              );
+            }
+            const now = new Date();
+            set((state) => {
+              const byId = { ...state.focus.goals.byId };
+              for (const { goalId, period, periodKeys } of marks) {
+                const goal = byId[goalId];
+                if (!goal || periodKeys.length === 0) continue;
+                const existing = goal.offMarks ?? { daily: [], weekly: [], monthly: [] };
+                // Union so re-confirming the same slot is idempotent.
+                const merged = Array.from(new Set([...(existing[period] ?? []), ...periodKeys]));
+                byId[goalId] = {
+                  ...goal,
+                  offMarks: { ...existing, [period]: merged },
+                  updatedAt: now, // bump so the goal-diff sync pushes off_marks
+                };
+              }
+              return {
+                focus: { ...state.focus, goals: { ...state.focus.goals, byId } },
+              };
+            });
+            // Single debit for the whole batch.
+            get().rewards.spendFruits(totalCost, 'off_marker', {
+              goalCount: marks.length,
+              slotCount: marks.reduce((n, m) => n + m.periodKeys.length, 0),
+            });
           },
 
           deleteGoal: (goalId) => {

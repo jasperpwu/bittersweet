@@ -318,6 +318,8 @@
     "timeRemaining": "残り{{hours}}時間{{minutes}}分",
     "tipTitle": "使い方のヒント",
     "tipDesc": "アプリのプロのコツを手に入れる",
+    "offMarkerTitle": "お休みマーカー",
+    "offMarkerDesc": "お休みの日を記録して、抜けた枠で連続記録が途切れないようにします",
     "tipsExhausted": "コツをすべて集めました。新しいコツをお楽しみに！",
     "comingSoon": "近日公開",
     "comingSoonDesc": "お店と協力して、クーポンをお届けする準備を進めています！",
@@ -455,6 +457,29 @@
       "scotland": "スコットランド",
       "turkey": "トルコ"
     }
+  },
+  "offMarker": {
+    "title": "お休みマーカー",
+    "day": "日",
+    "week": "週",
+    "month": "月",
+    "costHint": "1枠につき🍎{{cost}}",
+    "streak": "連続{{count}}",
+    "selectedCount": "{{count}}枠を選択中",
+    "emptyTitle": "このビューに目標はありません",
+    "emptyBody": "この期間の目標を設定すると枠をお休みにできます。",
+    "confirmAction": "確定",
+    "confirmTitle": "枠をお休みにしますか？",
+    "confirmBody": "{{count}}枠を🍎{{cost}}でお休みにしますか？取り消せません。",
+    "marked": "{{count}}枠をお休みにしました",
+    "notEnough": "りんごが足りません"
+  },
+  "streakShare": {
+    "label_day": "連続日数",
+    "label_week": "連続週数",
+    "label_month": "連続月数",
+    "reachedOn": "{{date}} 達成",
+    "share": "シェア"
   },
   "badge": {
     "deleteTitle": "バッジを削除しますか？",

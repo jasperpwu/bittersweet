@@ -318,6 +318,8 @@
     "timeRemaining": "{{hours}}시간 {{minutes}}분 남음",
     "tipTitle": "활용 팁",
     "tipDesc": "앱을 위한 프로 팁을 받아요",
+    "offMarkerTitle": "휴무 마커",
+    "offMarkerDesc": "쉬는 날을 표시해 놓친 칸이 연속 기록을 끊지 않게 하세요",
     "tipsExhausted": "모든 팁을 모았어요! 새 팁이 나오면 다시 확인해 주세요.",
     "comingSoon": "곧 출시",
     "comingSoonDesc": "여러 매장과 손잡고 쿠폰을 준비하고 있어요!",
@@ -455,6 +457,29 @@
       "scotland": "스코틀랜드",
       "turkey": "튀르키예"
     }
+  },
+  "offMarker": {
+    "title": "휴무 마커",
+    "day": "일",
+    "week": "주",
+    "month": "월",
+    "costHint": "칸당 🍎 {{cost}}",
+    "streak": "연속 {{count}}",
+    "selectedCount": "{{count}}칸 선택됨",
+    "emptyTitle": "이 보기에 목표가 없어요",
+    "emptyBody": "이 기간의 목표를 설정하면 칸을 휴무로 표시할 수 있어요.",
+    "confirmAction": "확인",
+    "confirmTitle": "칸을 휴무로 표시할까요?",
+    "confirmBody": "{{count}}칸을 🍎 {{cost}}에 휴무로 표시할까요? 되돌릴 수 없어요.",
+    "marked": "{{count}}칸을 휴무로 표시했어요",
+    "notEnough": "사과가 부족해요"
+  },
+  "streakShare": {
+    "label_day": "일일 연속 기록",
+    "label_week": "주간 연속 기록",
+    "label_month": "월간 연속 기록",
+    "reachedOn": "{{date}} 달성",
+    "share": "공유"
   },
   "badge": {
     "deleteTitle": "배지를 삭제할까요?",
