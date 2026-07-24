@@ -774,7 +774,7 @@
     "setActivityType": "Set activity type",
     "changeActivityType": "Change activity type",
     "enableMotion": "Open Settings",
-    "signalRecorder": "raw accelerometer",
+    "signalRecorder": "motion sensor",
     "signalActivity": "motion activity",
     "signalNone": "no signal"
   },

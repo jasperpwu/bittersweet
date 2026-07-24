@@ -771,7 +771,7 @@
     "setActivityType": "アクティビティの種類を設定",
     "changeActivityType": "アクティビティの種類を変更",
     "enableMotion": "設定を開く",
-    "signalRecorder": "加速度センサー",
+    "signalRecorder": "モーションセンサー",
     "signalActivity": "モーションアクティビティ",
     "signalNone": "信号なし"
   },

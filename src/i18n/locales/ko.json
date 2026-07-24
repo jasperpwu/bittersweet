@@ -771,7 +771,7 @@
     "setActivityType": "활동 유형 설정",
     "changeActivityType": "활동 유형 변경",
     "enableMotion": "설정 열기",
-    "signalRecorder": "가속도 센서",
+    "signalRecorder": "모션 센서",
     "signalActivity": "모션 활동",
     "signalNone": "신호 없음"
   },

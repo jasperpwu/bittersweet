@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -9,7 +9,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
 import { colors } from '../../src/config/theme';
 import { Toggle } from '../../src/components/ui/Toggle';
@@ -40,6 +40,20 @@ export default function PreferencesScreen() {
   const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
   const { triggerUpgrade, upgradeModals } = useUpgradeFlow('adhd');
 
+  // The motion-rating toggle mirrors the iOS Motion & Fitness permission directly
+  // (motion is used for nothing else), so its displayed state is derived from the
+  // live permission rather than a stored flag. Refresh on focus so returning from
+  // iOS Settings — where the permission is granted/revoked — updates the toggle.
+  const [motionGranted, setMotionGranted] = useState(false);
+  const refreshMotionStatus = useCallback(async () => {
+    setMotionGranted((await getMotionPermissionStatus()) === 'granted');
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      refreshMotionStatus();
+    }, [refreshMotionStatus])
+  );
+
   const handleAdhdModeToggle = async (value: boolean) => {
     // Premium gate: non-subscribers see the upgrade prompt instead of toggling.
     if (!isPremium) {
@@ -65,8 +79,8 @@ export default function PreferencesScreen() {
 
   // Turning the rating OFF: motion is used for nothing but this rating, so the
   // Motion & Fitness permission IS the switch — we can't revoke it in-app. Send
-  // the user to Settings; the cold-start/foreground reconcile in _layout then
-  // re-mirrors the toggle to the new permission state.
+  // the user to Settings; the on-focus refresh above then re-reads the permission
+  // and updates the toggle when they return.
   const promptDisableMotionSettings = () => {
     Alert.alert(t('preferences.motionDisableTitle'), t('preferences.motionDisableBody'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -84,14 +98,14 @@ export default function PreferencesScreen() {
     }
     const status = await getMotionPermissionStatus();
     if (status === 'granted') {
-      await updatePreferences({ rawAccelRatingEnabled: true });
+      setMotionGranted(true);
       triggerHaptic('light');
       return;
     }
     if (status === 'undetermined') {
       const granted = await ensureMotionPermission();
       if (granted) {
-        await updatePreferences({ rawAccelRatingEnabled: true });
+        setMotionGranted(true);
         triggerHaptic('light');
       } else {
         promptOpenMotionSettings();
@@ -268,7 +282,7 @@ export default function PreferencesScreen() {
             subtitle={t('preferences.detailedRatingSub')}
             icon="walk-outline"
             hasToggle
-            toggleValue={!!preferences.rawAccelRatingEnabled}
+            toggleValue={motionGranted}
             onToggleChange={handleMotionRatingToggle}
           />
           <SettingsItem

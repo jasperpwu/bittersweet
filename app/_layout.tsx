@@ -46,7 +46,6 @@ import { useDeepLinkHandler } from '../src/hooks/useDeepLinkHandler';
 import { useQuickActionHandler } from '../src/hooks/useQuickActionHandler';
 import { PushNotificationService } from '../src/services/notifications/push';
 import { ActivityPingService } from '../src/services/notifications/activity';
-import { getMotionPermissionStatus } from '../src/services/motionInsights';
 import { AnalyticsTracker } from '../src/services/analytics';
 import { getInstalledWidgetFamilies } from '../modules/widget-info';
 import { installNavigationGuard } from '../src/utils/navigationGuard';
@@ -125,20 +124,6 @@ export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: '(tabs)',
 };
-
-// Mirror the "Motion-based focus rating" toggle to the iOS Motion & Fitness
-// permission. Motion is used for nothing but the rating, so the permission IS
-// the switch: granted → on, denied/undetermined → off. READ-only (never prompts)
-// — the request lives in the preferences toggle / summary primer. Run on cold
-// start and on app-foreground so a change made in iOS Settings is picked up.
-async function reconcileMotionRatingToggle() {
-  const shouldBeEnabled = (await getMotionPermissionStatus()) === 'granted';
-  const { useUnifiedStore } = require('../src/store/unified-store');
-  const store = useUnifiedStore.getState();
-  if (store.preferences.rawAccelRatingEnabled !== shouldBeEnabled) {
-    await store.updatePreferences({ rawAccelRatingEnabled: shouldBeEnabled });
-  }
-}
 
 export default function RootLayout() {
   const { fontsLoaded } = useFonts();
@@ -923,10 +908,6 @@ export default function RootLayout() {
         // user is still around and resets any inactivity streak.
         ActivityPingService.ping();
 
-        // Re-mirror the motion-rating toggle in case Motion & Fitness was
-        // toggled in iOS Settings while the app was backgrounded.
-        reconcileMotionRatingToggle();
-
         // Pull any new Apple Health workouts as sessions (no-ops if disconnected)
         syncHealthKitWorkouts();
 
@@ -995,13 +976,6 @@ export default function RootLayout() {
     // Backfill the goal setup-task for existing users with an active goal.
     useAppStore.getState().rewards.reconcileSetupTasks();
   }, [fontsLoaded, isHydrated]);
-
-  // Mirror the motion-rating toggle to the iOS Motion & Fitness permission on
-  // cold start (foreground handled in the AppState effect below).
-  useEffect(() => {
-    if (!isHydrated) return;
-    reconcileMotionRatingToggle();
-  }, [isHydrated]);
 
   // The app must not become interactive before the MAIN store's hydration settles.
   // The running-timer UI restores from AsyncStorage independently of the store, so

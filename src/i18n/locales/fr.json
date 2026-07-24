@@ -774,7 +774,7 @@
     "setActivityType": "Définir le type d'activité",
     "changeActivityType": "Modifier le type d'activité",
     "enableMotion": "Ouvrir Réglages",
-    "signalRecorder": "accéléromètre",
+    "signalRecorder": "capteur de mouvement",
     "signalActivity": "activité de mouvement",
     "signalNone": "aucun signal"
   },

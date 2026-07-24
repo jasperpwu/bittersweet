@@ -45,12 +45,9 @@ interface AppPreferences {
   weekStartDay: number;  // 0=Sun..6=Sat, default 0
   adhdModeEnabled: boolean; // premium-only; unlocks a secondary tag per session
   healthKit: HealthKitPreferences;
-  // Focus-rating motion consent (device-local — like healthKit, intentionally NOT synced).
-  // Off by default: the suggested rating uses only retroactive CMMotionActivity/pedometer.
-  // When on (explicit consent), we also record raw accelerometer during sessions for a
-  // finer-grained estimate.
-  rawAccelRatingEnabled: boolean;
   // Whether the one-time motion-permission priming pop-up has been shown on the summary.
+  // Device-local (not synced): resets on reinstall so the primer re-prompts for the
+  // Motion & Fitness permission — which is itself per-device and reset on reinstall.
   hasSeenMotionPrimer: boolean;
   // Whether the one-time post-session Grove profile setup prompt has been shown.
   hasSeenGroveSetupPrompt: boolean;
@@ -179,7 +176,6 @@ const createDefaultPreferences = (): AppPreferences => ({
     anchor: null,
     enabledAt: null,
   },
-  rawAccelRatingEnabled: false,
   hasSeenMotionPrimer: false,
   hasSeenGroveSetupPrompt: false,
   sliderThemeId: null,

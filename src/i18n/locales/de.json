@@ -774,7 +774,7 @@
     "setActivityType": "Aktivitätstyp festlegen",
     "changeActivityType": "Aktivitätstyp ändern",
     "enableMotion": "Einstellungen öffnen",
-    "signalRecorder": "Roh-Beschleunigungssensor",
+    "signalRecorder": "Bewegungssensor",
     "signalActivity": "Bewegungsaktivität",
     "signalNone": "kein Signal"
   },

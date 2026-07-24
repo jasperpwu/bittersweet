@@ -771,7 +771,7 @@
     "setActivityType": "设置活动类型",
     "changeActivityType": "更改活动类型",
     "enableMotion": "打开设置",
-    "signalRecorder": "加速度传感器",
+    "signalRecorder": "运动传感器",
     "signalActivity": "运动活动",
     "signalNone": "无信号"
   },
