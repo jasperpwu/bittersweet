@@ -1729,6 +1729,19 @@ export default function FocusScreen() {
 
   useEffect(() => {
     if (focusParams.autostart === '1' && focusParams.startTagId) {
+      // Bail before touching selectedTag/selectedTime when a session is already live.
+      // Mutating those mid-session would retag the ongoing session (it's finalized with
+      // `selectedTag` on stop), so we abort with a toast instead of silently corrupting it.
+      if (isRunning || isSessionActive) {
+        showToast(t('home.sessionAlreadyRunning'), 'neutral');
+        router.setParams({
+          startTagId: undefined,
+          startDuration: undefined,
+          autostart: undefined,
+          ts: undefined,
+        });
+        return;
+      }
       const dur = Number(focusParams.startDuration) || 15;
       pendingStartRef.current = { tagId: String(focusParams.startTagId), duration: dur };
       setSelectedTag(String(focusParams.startTagId));
@@ -1762,7 +1775,10 @@ export default function FocusScreen() {
   // Journal TODO / goal-row swipes use.
   const handleStartSessionFromTag = useCallback(
     (tag: { id: string }) => {
-      if (isRunning || isSessionActive) return;
+      if (isRunning || isSessionActive) {
+        showToast(t('home.sessionAlreadyRunning'), 'neutral');
+        return;
+      }
       const duration = lastDurationByTagId[tag.id] ?? 15;
       pendingStartRef.current = { tagId: tag.id, duration };
       setSelectedTag(tag.id);
@@ -1772,7 +1788,7 @@ export default function FocusScreen() {
       setShowTagModal(false);
       setAutostartNonce((n) => n + 1);
     },
-    [isRunning, isSessionActive, lastDurationByTagId, setLastSelectedTagId]
+    [isRunning, isSessionActive, lastDurationByTagId, setLastSelectedTagId, t]
   );
 
   const handleTimeChange = (time: number) => {

@@ -63,13 +63,23 @@ export default function PreferencesScreen() {
     ]);
   };
 
-  // Detailed (raw-accelerometer) focus rating. Off by default — turning it on is
-  // explicit consent to record device motion during sessions. Requires the iOS
-  // Motion & Fitness permission; deep-links to Settings if it was denied.
-  const handleDetailedRatingToggle = async (value: boolean) => {
+  // Turning the rating OFF: motion is used for nothing but this rating, so the
+  // Motion & Fitness permission IS the switch — we can't revoke it in-app. Send
+  // the user to Settings; the cold-start/foreground reconcile in _layout then
+  // re-mirrors the toggle to the new permission state.
+  const promptDisableMotionSettings = () => {
+    Alert.alert(t('preferences.motionDisableTitle'), t('preferences.motionDisableBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('journal.openSettings'), onPress: () => Linking.openSettings() },
+    ]);
+  };
+
+  // Motion-based focus rating. The toggle mirrors the iOS Motion & Fitness
+  // permission (motion is used for nothing else): ON == granted. Turning it on
+  // requests the permission; turning it off deep-links to Settings to revoke.
+  const handleMotionRatingToggle = async (value: boolean) => {
     if (!value) {
-      await updatePreferences({ rawAccelRatingEnabled: false });
-      triggerHaptic('light');
+      promptDisableMotionSettings();
       return;
     }
     const status = await getMotionPermissionStatus();
@@ -259,7 +269,7 @@ export default function PreferencesScreen() {
             icon="walk-outline"
             hasToggle
             toggleValue={!!preferences.rawAccelRatingEnabled}
-            onToggleChange={handleDetailedRatingToggle}
+            onToggleChange={handleMotionRatingToggle}
           />
           <SettingsItem
             title={t('preferences.timerStyle')}

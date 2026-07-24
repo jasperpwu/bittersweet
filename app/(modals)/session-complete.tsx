@@ -32,6 +32,7 @@ import {
   FocusRatingBlock,
   FocusRatingInsightsSheet,
   CreateTagModal,
+  EditTagSheet,
 } from '../../src/components/focus';
 import { FruitCounter } from '../../src/components/rewards';
 import {
@@ -95,7 +96,17 @@ export default function SessionCompleteModal() {
   const [analyzingRating, setAnalyzingRating] = useState(false);
   const [showRatingInsights, setShowRatingInsights] = useState(false);
   const [showMotionPrimer, setShowMotionPrimer] = useState(false);
+  const [showEditTag, setShowEditTag] = useState(false);
   const ratingComputedRef = useRef(false);
+
+  // From the insights sheet: edit this session's tag to set/fix its activity
+  // type. Dismiss the insights Modal first, then present the Edit Tag sheet —
+  // stacking a second native modal before the first has dismissed fails
+  // silently on iOS (the slide-out takes ~300ms).
+  const handleEditActivityType = () => {
+    setShowRatingInsights(false);
+    setTimeout(() => setShowEditTag(true), 350);
+  };
 
   // Rate the session via the shared store logic (motion when permitted, full
   // reward otherwise), showing the "Analyzing focus…" state while it runs.
@@ -626,6 +637,14 @@ export default function SessionCompleteModal() {
         snapshot={session.motionSummary ?? null}
         activityType={tag?.activityType}
         rating={session.focusRating ?? null}
+        onEditActivityType={tag ? handleEditActivityType : undefined}
+      />
+
+      {/* Set/fix the session tag's activity type from the rating disclaimer */}
+      <EditTagSheet
+        visible={showEditTag}
+        tagId={tag?.id ?? null}
+        onClose={() => setShowEditTag(false)}
       />
 
       {/* Motion permission priming — explains why before the one-shot OS prompt */}

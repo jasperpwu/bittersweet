@@ -1,8 +1,13 @@
-import { View, Modal, Pressable, useColorScheme } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Modal, Pressable, Linking, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui';
 import { colors } from '../../../config/theme';
+import {
+  getMotionPermissionStatus,
+  type MotionPermissionStatus,
+} from '../../../services/motionInsights';
 import {
   describeMotionKey,
   RATING_FRUIT_MULTIPLIER,
@@ -16,6 +21,8 @@ interface FocusRatingInsightsSheetProps {
   snapshot: MotionSnapshot | null;
   activityType?: ActivityType;
   rating: number | null;
+  /** Opens the Edit Tag sheet for the session's tag; omit when there is no tag. */
+  onEditActivityType?: () => void;
 }
 
 const pct = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0);
@@ -45,10 +52,46 @@ export function FocusRatingInsightsSheet({
   snapshot,
   activityType,
   rating,
+  onEditActivityType,
 }: FocusRatingInsightsSheetProps) {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const rewardPct = rating != null ? Math.round((RATING_FRUIT_MULTIPLIER[rating] ?? 1) * 100) : 100;
+
+  // Read (never prompt) the Motion & Fitness permission while the sheet is open,
+  // so the disclaimer can distinguish "motion is off" from "activity type wrong".
+  const [motionStatus, setMotionStatus] = useState<MotionPermissionStatus | null>(null);
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    getMotionPermissionStatus().then((s) => {
+      if (!cancelled) setMotionStatus(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
+  // The disclaimer targets whichever gap most limits rating accuracy, in order:
+  //  1. Tag has no activity type    → ratings assume "stationary"; prompt to set it.
+  //  2. Type set but motion is off  → ratings can't read movement; deep-link Settings.
+  //  3. Both in place               → offer to fix a mis-set activity type.
+  // While the async permission read is pending we fall through to (3), the benign
+  // informational case, and switch to (2) only once we know motion is off.
+  const disclaimerBody = !activityType
+    ? t('ratingInsights.disclaimerNoActivityType')
+    : motionStatus && motionStatus !== 'granted'
+      ? t('ratingInsights.disclaimerMotionOff')
+      : t('ratingInsights.disclaimerActivityMismatch');
+  const disclaimerAction: { label: string; onPress: () => void } | null = !activityType
+    ? onEditActivityType
+      ? { label: t('ratingInsights.setActivityType'), onPress: onEditActivityType }
+      : null
+    : motionStatus && motionStatus !== 'granted'
+      ? { label: t('ratingInsights.enableMotion'), onPress: () => Linking.openSettings() }
+      : onEditActivityType
+        ? { label: t('ratingInsights.changeActivityType'), onPress: onEditActivityType }
+        : null;
 
   /** Human-readable breakdown of whichever signal was used. */
   const breakdownLines = (): string[] => {
@@ -125,10 +168,24 @@ export function FocusRatingInsightsSheet({
             </Typography>
           </View>
 
-          {/* Disclaimer */}
-          <Typography variant="body-12" color="secondary" className="mt-4" style={{ opacity: 0.7 }}>
-            {t('ratingInsights.disclaimer', { signal: t(SIGNAL_KEY[snapshot?.signal ?? 'none']) })}
-          </Typography>
+          {/* Disclaimer — conditional guidance + an action to close the gap */}
+          <View className="mt-4">
+            <Typography variant="body-12" color="secondary" style={{ opacity: 0.7 }}>
+              {`${t('ratingInsights.disclaimerBase', {
+                signal: t(SIGNAL_KEY[snapshot?.signal ?? 'none']),
+              })} ${disclaimerBody}`}
+            </Typography>
+            {disclaimerAction && (
+              <Pressable
+                onPress={disclaimerAction.onPress}
+                hitSlop={6}
+                className="mt-2 active:opacity-60">
+                <Typography variant="subtitle-14-medium" style={{ color: colors.primary }}>
+                  {disclaimerAction.label}
+                </Typography>
+              </Pressable>
+            )}
+          </View>
         </Pressable>
       </Pressable>
     </Modal>

@@ -1079,12 +1079,11 @@ export const useAppStore = create<AppStore>()(
 
               // Begin recording raw accelerometer for the session window so we can
               // suggest a focus rating at completion. Best-effort, fire-and-forget;
-              // no-ops if motion APIs are unavailable. Gated on the user's explicit
-              // opt-in — when off, the summary falls back to retroactive
-              // CMMotionActivity/pedometer (no continuous recording).
-              if (useUnifiedStore.getState().preferences.rawAccelRatingEnabled) {
-                startSessionMotionRecording(session.duration * 60);
-              }
+              // self-guards on the Motion & Fitness permission (no-ops when not
+              // granted) and no-ops if CMSensorRecorder is empty — in which case
+              // the summary falls back to retroactive CMMotionActivity/pedometer.
+              // There is no separate opt-in: motion access IS the rating switch.
+              startSessionMotionRecording(session.duration * 60);
             }
           },
 
