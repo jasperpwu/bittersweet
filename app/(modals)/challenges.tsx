@@ -22,6 +22,7 @@ export default function ChallengesModal() {
   const fetchChallenges = useAppStore((s) => s.grove.fetchChallenges);
   const declineChallenge = useAppStore((s) => s.grove.declineChallenge);
   const deleteChallengeAction = useAppStore((s) => s.grove.deleteChallenge);
+  const dismissChallengeAction = useAppStore((s) => s.grove.dismissChallenge);
 
   const [selectedChallenge, setSelectedChallenge] = useState<ChallengeItem | null>(null);
   const [acceptingChallenge, setAcceptingChallenge] = useState<ChallengeItem | null>(null);
@@ -40,10 +41,19 @@ export default function ChallengesModal() {
 
   const handleDelete = useCallback(async (challengeId: string) => {
     const challenge = challenges.find(c => c.id === challengeId);
+    const isCreator = challenge?.creatorId === currentUserId;
+    // A finished (completed/failed) challenge is removed per-user via dismiss for
+    // anyone; a cancelled one dismisses for the invitee (they can't delete the
+    // shared row) while the creator keeps the shared hard-delete. Status here is
+    // already the current user's own outcome.
+    const isFinished = challenge?.status === 'completed' || challenge?.status === 'failed';
     const isActive = challenge?.status === 'active';
-    const message = isActive
-      ? t('grove.deleteChallengeActive')
-      : t('grove.deleteChallengeConfirm');
+    const useDismiss = isFinished || (challenge?.status === 'cancelled' && !isCreator);
+    const message = useDismiss
+      ? t('grove.dismissChallengeConfirm')
+      : isActive
+        ? t('grove.deleteChallengeActive')
+        : t('grove.deleteChallengeConfirm');
 
     Alert.alert(
       t('grove.deleteChallengeTitle'),
@@ -55,7 +65,11 @@ export default function ChallengesModal() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteChallengeAction(challengeId);
+              if (useDismiss) {
+                await dismissChallengeAction(challengeId);
+              } else {
+                await deleteChallengeAction(challengeId);
+              }
               setSelectedChallenge(null);
             } catch {
               Alert.alert(t('common.error'), t('grove.failedDeleteChallenge'));
@@ -64,7 +78,7 @@ export default function ChallengesModal() {
         },
       ],
     );
-  }, [deleteChallengeAction, challenges]);
+  }, [deleteChallengeAction, dismissChallengeAction, challenges, currentUserId]);
 
   // Group into sections
   const pendingIncoming = challenges.filter(c => c.status === 'pending' && c.isIncoming);

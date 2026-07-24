@@ -273,6 +273,7 @@
     "deleteChallengeTitle": "Challenge löschen",
     "deleteChallengeActive": "Diese Challenge läuft gerade. Wenn du sie löschst, wird sie für alle Teilnehmer entfernt. Bist du sicher?",
     "deleteChallengeConfirm": "Möchtest du diese Challenge wirklich löschen?",
+    "dismissChallengeConfirm": "Entfernt die Challenge nur aus deiner Liste. Andere Teilnehmer sehen sie weiterhin.",
     "failedDeleteChallenge": "Challenge konnte nicht gelöscht werden.",
     "profileNotFound": "Profil nicht gefunden",
     "friendCount_one": "{{count}} Freund",

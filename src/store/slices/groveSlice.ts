@@ -114,6 +114,7 @@ export interface GroveSlice {
   ) => Promise<{ challenge: ChallengeItem; myHits: number; totalPeriods: number }[]>;
   fetchChallengePeriodDetails: (challengeId: string) => Promise<ChallengePeriodDetailsResult>;
   deleteChallenge: (challengeId: string) => Promise<void>;
+  dismissChallenge: (challengeId: string) => Promise<void>;
   claimChallengeReward: (challengeId: string) => Promise<{ claimed: boolean; fruitReward: number }>;
 
   // Gift reward actions
@@ -977,6 +978,25 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       });
     } catch (error: any) {
       console.error('Failed to delete challenge:', error);
+      throw error;
+    }
+  },
+
+  dismissChallenge: async (challengeId: string) => {
+    try {
+      await GroveChallengeService.dismissChallenge(challengeId);
+      // Remove from this user's local list; the shared row stays for others.
+      set((state: any) => {
+        const updated = state.grove.challenges.filter((c: ChallengeItem) => c.id !== challengeId);
+        return {
+          grove: {
+            ...state.grove,
+            challenges: updated,
+          },
+        };
+      });
+    } catch (error: any) {
+      console.error('Failed to dismiss challenge:', error);
       throw error;
     }
   },

@@ -223,8 +223,10 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
           </View>
         )}
 
-        {/* Delete button for creator */}
-        {isCreator && (
+        {/* Delete/remove button: creator can always remove; either party can
+            remove a finished (completed/failed) or cancelled challenge from
+            their own list. */}
+        {(isCreator || isCompleted || isFailed || isCancelled) && (
           <Pressable
             onPress={() => onDelete(challenge.id)}
             className="flex-row items-center justify-center mt-1 mb-4 py-3 rounded-xl bg-red-500/10 active:opacity-70"

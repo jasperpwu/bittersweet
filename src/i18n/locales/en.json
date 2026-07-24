@@ -273,6 +273,7 @@
     "deleteChallengeTitle": "Delete Challenge",
     "deleteChallengeActive": "This challenge is currently active. Deleting it will remove it for all participants. Are you sure?",
     "deleteChallengeConfirm": "Are you sure you want to delete this challenge?",
+    "dismissChallengeConfirm": "This removes the challenge from your list only. Other participants will still see it.",
     "failedDeleteChallenge": "Failed to delete challenge.",
     "profileNotFound": "Profile not found",
     "friendCount_one": "{{count}} friend",

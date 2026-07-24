@@ -272,6 +272,7 @@
     "deleteChallengeTitle": "删除挑战",
     "deleteChallengeActive": "该挑战正在进行中。删除后将对所有参与者移除。确定吗？",
     "deleteChallengeConfirm": "确定要删除这个挑战吗？",
+    "dismissChallengeConfirm": "仅从你的列表中移除该挑战，其他参与者仍会看到它。",
     "failedDeleteChallenge": "无法删除挑战。",
     "profileNotFound": "未找到资料",
     "friendCount_one": "{{count}} 位好友",

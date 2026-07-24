@@ -49,6 +49,7 @@ export default function GroveScreen() {
   const recordHeartbeatActivity = useAppStore((s) => s.grove.recordHeartbeatActivity);
 
   const deleteChallengeAction = useAppStore((s) => s.grove.deleteChallenge);
+  const dismissChallengeAction = useAppStore((s) => s.grove.dismissChallenge);
 
   const colorScheme = useColorScheme();
   const [refreshing, setRefreshing] = useState(false);
@@ -148,10 +149,19 @@ export default function GroveScreen() {
 
   const handleDeleteChallenge = useCallback((challengeId: string) => {
     const challenge = challenges.find(c => c.id === challengeId);
+    const isCreator = challenge?.creatorId === currentUserId;
+    // Finished (completed/failed) challenges are removed per-user via dismiss for
+    // anyone; a cancelled one dismisses for the invitee (they can't delete the
+    // shared row) while the creator keeps the shared hard-delete. Status is the
+    // current user's own outcome.
+    const isFinished = challenge?.status === 'completed' || challenge?.status === 'failed';
     const isActive = challenge?.status === 'active';
-    const message = isActive
-      ? t('grove.deleteChallengeActive')
-      : t('grove.deleteChallengeConfirm');
+    const useDismiss = isFinished || (challenge?.status === 'cancelled' && !isCreator);
+    const message = useDismiss
+      ? t('grove.dismissChallengeConfirm')
+      : isActive
+        ? t('grove.deleteChallengeActive')
+        : t('grove.deleteChallengeConfirm');
 
     Alert.alert(t('grove.deleteChallengeTitle'), message, [
       { text: t('common.cancel'), style: 'cancel' },
@@ -160,7 +170,11 @@ export default function GroveScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deleteChallengeAction(challengeId);
+            if (useDismiss) {
+              await dismissChallengeAction(challengeId);
+            } else {
+              await deleteChallengeAction(challengeId);
+            }
             setSelectedChallenge(null);
           } catch {
             Alert.alert(t('common.error'), t('grove.failedDeleteChallenge'));
@@ -168,7 +182,7 @@ export default function GroveScreen() {
         },
       },
     ]);
-  }, [deleteChallengeAction, challenges]);
+  }, [deleteChallengeAction, dismissChallengeAction, challenges, currentUserId]);
 
   const unreadNotificationCount = useMemo(() => {
     const notifications = buildGroveNotifications({

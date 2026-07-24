@@ -191,16 +191,20 @@ export const GroveChallengeService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Find all challenge IDs the user participates in
+    // Find all challenge IDs the user participates in. Skip any the user has
+    // dismissed (per-user hide) — the shared row stays for the other party.
     const { data: myParticipations, error: partError } = await supabase
       .from('grove_challenge_participants')
-      .select('challenge_id')
+      .select('challenge_id, dismissed_at')
       .eq('user_id', user.id);
 
     if (partError) throw partError;
     if (!myParticipations || myParticipations.length === 0) return [];
 
-    const challengeIds = myParticipations.map(p => p.challenge_id);
+    const challengeIds = myParticipations
+      .filter(p => !p.dismissed_at)
+      .map(p => p.challenge_id);
+    if (challengeIds.length === 0) return [];
 
     // Fetch challenges
     const { data: challenges, error: challengeError } = await supabase
@@ -403,6 +407,24 @@ export const GroveChallengeService = {
       .from('grove_challenges')
       .delete()
       .eq('id', challengeId);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Dismiss a finished challenge (completed/failed) from the current user's
+   * own list without deleting the shared row. Either party may do this; the
+   * challenge stays visible to the other participant until they dismiss it too.
+   */
+  async dismissChallenge(challengeId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('grove_challenge_participants')
+      .update({ dismissed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('challenge_id', challengeId)
+      .eq('user_id', user.id);
 
     if (error) throw error;
   },

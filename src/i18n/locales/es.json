@@ -273,6 +273,7 @@
     "deleteChallengeTitle": "Eliminar reto",
     "deleteChallengeActive": "Este reto está activo. Si lo eliminas, desaparecerá para todos los participantes. ¿Seguro?",
     "deleteChallengeConfirm": "¿Seguro que quieres eliminar este reto?",
+    "dismissChallengeConfirm": "Esto quita el reto solo de tu lista. Los demás participantes seguirán viéndolo.",
     "failedDeleteChallenge": "No se pudo eliminar el reto.",
     "profileNotFound": "Perfil no encontrado",
     "friendCount_one": "{{count}} amigo",

@@ -273,6 +273,7 @@
     "deleteChallengeTitle": "Excluir desafio",
     "deleteChallengeActive": "Este desafio está ativo. Excluí-lo o removerá para todos os participantes. Tem certeza?",
     "deleteChallengeConfirm": "Tem certeza de que deseja excluir este desafio?",
+    "dismissChallengeConfirm": "Isso remove o desafio apenas da sua lista. Os outros participantes continuarão vendo.",
     "failedDeleteChallenge": "Não foi possível excluir o desafio.",
     "profileNotFound": "Perfil não encontrado",
     "friendCount_one": "{{count}} amigo",

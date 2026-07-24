@@ -273,6 +273,7 @@
     "deleteChallengeTitle": "Supprimer le défi",
     "deleteChallengeActive": "Ce défi est en cours. Le supprimer le retirera pour tous les participants. Êtes-vous sûr ?",
     "deleteChallengeConfirm": "Voulez-vous vraiment supprimer ce défi ?",
+    "dismissChallengeConfirm": "Le défi sera retiré uniquement de votre liste. Les autres participants le verront toujours.",
     "failedDeleteChallenge": "Échec de la suppression du défi.",
     "profileNotFound": "Profil introuvable",
     "friendCount_one": "{{count}} ami",

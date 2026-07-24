@@ -272,6 +272,7 @@
     "deleteChallengeTitle": "チャレンジを削除",
     "deleteChallengeActive": "このチャレンジは進行中です。削除すると、参加者全員から削除されます。よろしいですか？",
     "deleteChallengeConfirm": "このチャレンジを削除してもよろしいですか？",
+    "dismissChallengeConfirm": "あなたのリストからのみ削除します。他の参加者には引き続き表示されます。",
     "failedDeleteChallenge": "チャレンジを削除できませんでした。",
     "profileNotFound": "プロフィールが見つかりません",
     "friendCount_one": "フレンド{{count}}人",

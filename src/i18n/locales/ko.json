@@ -272,6 +272,7 @@
     "deleteChallengeTitle": "챌린지 삭제",
     "deleteChallengeActive": "이 챌린지는 진행 중이에요. 삭제하면 모든 참가자에게서 사라져요. 정말 삭제할까요?",
     "deleteChallengeConfirm": "이 챌린지를 삭제하시겠어요?",
+    "dismissChallengeConfirm": "내 목록에서만 삭제돼요. 다른 참가자에게는 계속 표시돼요.",
     "failedDeleteChallenge": "챌린지를 삭제하지 못했어요.",
     "profileNotFound": "프로필을 찾을 수 없어요",
     "friendCount_one": "친구 {{count}}명",
