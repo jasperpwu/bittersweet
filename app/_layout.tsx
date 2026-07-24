@@ -55,12 +55,11 @@ import { installNavigationGuard } from '../src/utils/navigationGuard';
 installNavigationGuard();
 
 // Where each re-engagement nudge (data.feature from reengagement-cron) lands
-// when tapped. 'suggest' is handled separately (opens the support chat), and
+// when tapped. 'suggest' and 'grove' are handled separately (see below), and
 // anything unknown falls back to the focus tab.
 const REENGAGE_ROUTES: Record<string, string> = {
   goals: '/(tabs)/insights',
   todos: '/(tabs)/journal',
-  grove: '/(tabs)/grove',
   store: '/fruit-store',
   blocklist: '/(modals)/app-selection',
   health: '/settings/health',
@@ -72,6 +71,15 @@ function handleReengageTap(feature: unknown) {
     // Mirror the "Chat with us" button: open Support, then the chat overlay.
     router.navigate('/settings/support');
     openChat();
+    return;
+  }
+  if (feature === 'grove') {
+    // The "Grow your Grove" nudge only targets users who haven't set up a Grove
+    // profile yet — landing them on the Grove tab shows a dead-end "profile not
+    // found". Send them to the setup flow instead. If they've since created a
+    // profile, go to the tab as usual.
+    const hasProfile = !!useAppStore.getState().grove.profile;
+    router.push(hasProfile ? '/(tabs)/grove' : '/(modals)/grove-setup');
     return;
   }
   const route =
