@@ -46,6 +46,7 @@ import { GroveSlice, createGroveSlice } from './slices/groveSlice';
 import { ReferralSlice, createReferralSlice } from './slices/referralSlice';
 import { AnalyticsTracker } from '../services/analytics';
 import { SyncService } from '../services/sync/SyncService';
+import { BlocklistSyncService } from '../services/sync/BlocklistSyncService';
 import {
   sessionToRow,
   tagToRow,
@@ -407,6 +408,7 @@ interface AppStore {
     requestUnlock: (appTokens: any[], duration: number) => Promise<UnlockSession | null>;
     endUnlock: (sessionId: string, reason?: 'expired' | 'manual', endedAtMs?: number) => void;
     checkActiveUnlocks: () => void;
+    reconcileBlocking: () => void;
     getBlocklistEditCost: () => number;
   };
 }
@@ -2660,6 +2662,16 @@ export const useAppStore = create<AppStore>()(
                     },
                   },
                 }));
+
+                // Persist the bumped counter to the cloud so the escalating price
+                // survives reinstall (fire-and-forget; merged weekly-max on pull).
+                const editUserId = get().auth?.user?.id;
+                if (editUserId) {
+                  BlocklistSyncService.pushEditHistory(editUserId, {
+                    weekStart: currentWeekStart,
+                    editsThisWeek,
+                  }).catch((e) => console.error('Failed to push blocklist editHistory:', e));
+                }
               }
 
               const currentState = get();
@@ -3072,6 +3084,29 @@ export const useAppStore = create<AppStore>()(
                 get().blocklist.endUnlock(session.id, 'expired');
               }
             });
+          },
+
+          reconcileBlocking: () => {
+            // Re-assert native blocking from the captured intent. The blocklist
+            // selection IS the intent — a non-null currentSelectionId means the
+            // user wants those apps blocked — so no separate "blocking enabled"
+            // flag is needed. Runs on cold start / foreground (like the Apple
+            // Health workout reconcile) to repair native state that iOS may have
+            // dropped while the app was killed (reinstall, Screen Time reset, etc.).
+            // Always free: charging lives at the Save button (the picker's Cancel
+            // now discards unpaid edits, so nothing unpaid reaches here).
+            const { currentSelectionId, activeSessions } = get().blocklist;
+            if (!currentSelectionId) return; // no intent captured — nothing to block
+
+            // Don't re-block while an unlock window is still open — the user paid
+            // to keep those apps reachable. reapplyBlocking(skipBlocking=true)
+            // no-ops in that case; the block resumes when the unlock expires.
+            const now = new Date();
+            const hasActiveUnlock = Object.values(activeSessions.byId).some(
+              (s) => s.isActive && new Date(s.endTime) > now
+            );
+
+            BlocklistSyncService.reapplyBlocking(currentSelectionId, hasActiveUnlock);
           },
 
           getBlocklistEditCost: () => {

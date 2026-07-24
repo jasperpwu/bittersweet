@@ -525,6 +525,10 @@ export const persistenceConfig = {
       lastUnlockDuration: state.blocklist.lastUnlockDuration,
       isAuthorized: state.blocklist.isAuthorized,
       authorizationStatus: state.blocklist.authorizationStatus,
+      // Persist the weekly edit-cost escalation so it survives app restarts —
+      // without this the doubling (1,2,4,8…) resets on every cold start instead
+      // of weekly. Reinstall-persistence rides the cloud sync (blocklist_selections).
+      editHistory: state.blocklist.editHistory,
     },
     settings: state.settings,
     auth: {

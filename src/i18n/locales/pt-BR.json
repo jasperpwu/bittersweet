@@ -1147,6 +1147,13 @@
     "asInstructions": "Selecione os apps e categorias que deseja bloquear durante as sessões de foco.",
     "asHeaderText": "Escolha apps e categorias para bloquear",
     "asFooterText": "Os apps selecionados serão bloqueados durante as sessões de foco. Você pode desbloqueá-los temporariamente usando frutos.",
-    "asInsufficientFruits": "Frutos insuficientes. Necessários: {{required}}, disponíveis: {{available}}."
+    "asInsufficientFruits": "Frutos insuficientes. Necessários: {{required}}, disponíveis: {{available}}.",
+    "asDiscardTitle": "Descartar alterações?",
+    "asDiscardMessage": "Sua seleção de apps não salva será perdida.",
+    "asKeepEditing": "Continuar editando",
+    "asDiscard": "Descartar",
+    "asEditCostTitle": "Atualizar lista de bloqueio?",
+    "asEditCostMessage": "Esta alteração custa {{cost}} 🍎. O preço dobra a cada edição e é reiniciado no começo de cada semana.",
+    "asEditCostConfirm": "Pagar {{cost}} 🍎"
   }
 }

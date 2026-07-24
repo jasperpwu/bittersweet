@@ -1147,6 +1147,13 @@
     "asInstructions": "Wähle die Apps und Kategorien, die du während Fokus-Sessions blockieren möchtest.",
     "asHeaderText": "Apps und Kategorien zum Blockieren wählen",
     "asFooterText": "Ausgewählte Apps werden während Fokus-Sessions blockiert. Mit Früchten kannst du sie vorübergehend freischalten.",
-    "asInsufficientFruits": "Nicht genug Früchte. Benötigt: {{required}}, verfügbar: {{available}}."
+    "asInsufficientFruits": "Nicht genug Früchte. Benötigt: {{required}}, verfügbar: {{available}}.",
+    "asDiscardTitle": "Änderungen verwerfen?",
+    "asDiscardMessage": "Deine nicht gespeicherte App-Auswahl geht verloren.",
+    "asKeepEditing": "Weiter bearbeiten",
+    "asDiscard": "Verwerfen",
+    "asEditCostTitle": "Blockliste ändern?",
+    "asEditCostMessage": "Diese Änderung kostet {{cost}} 🍎. Der Preis verdoppelt sich mit jeder Änderung und wird zu Wochenbeginn zurückgesetzt.",
+    "asEditCostConfirm": "{{cost}} 🍎 zahlen"
   }
 }

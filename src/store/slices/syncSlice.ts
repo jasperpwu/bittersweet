@@ -43,6 +43,25 @@ function buildLegacySelection(
   };
 }
 
+// Reconcile the weekly blocklist edit-cost counter with the cloud so the
+// escalating price survives reinstall. Pull → weekly-normalized max merge with
+// local → apply if it changed → push the reconciled value back. Single-device, so
+// max() is sufficient: cloud wins over a fresh (empty) install, and both sides
+// reset together on the calendar week boundary.
+async function reconcileEditHistory(userId: string, get: any, set: any) {
+  try {
+    const cloud = await BlocklistSyncService.pullEditHistory(userId);
+    const local = get().blocklist.editHistory;
+    const merged = BlocklistSyncService.mergeEditHistory(local, cloud);
+    if (merged.weekStart !== local.weekStart || merged.editsThisWeek !== local.editsThisWeek) {
+      set((s: any) => ({ blocklist: { ...s.blocklist, editHistory: merged } }));
+    }
+    await BlocklistSyncService.pushEditHistory(userId, merged);
+  } catch (e) {
+    console.error('[Sync] editHistory reconcile error:', e);
+  }
+}
+
 export type SyncStatus = 'idle' | 'syncing' | 'error' | 'offline';
 
 export interface SyncSlice {
@@ -287,6 +306,9 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
       } catch (error) {
         console.error('[Sync] Blocklist sync error:', error);
       }
+
+      // Reconcile the weekly edit-cost counter (reinstall-proof escalation).
+      await reconcileEditHistory(userId, get, set);
     } catch (error: any) {
       console.error('Sync error:', error);
       set((s: any) => ({
@@ -444,6 +466,10 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
       } catch (error) {
         console.error('[Sync] Blocklist pull-and-apply error:', error);
       }
+
+      // Reconcile the weekly edit-cost counter — on reinstall/sign-in the local
+      // counter is empty, so this restores the escalation from the cloud.
+      await reconcileEditHistory(userId, get, set);
 
       console.log('☁️ Pull and apply complete');
     } catch (error: any) {

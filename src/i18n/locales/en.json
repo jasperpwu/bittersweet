@@ -1147,6 +1147,13 @@
     "asInstructions": "Select the apps and categories you want to block during focus sessions.",
     "asHeaderText": "Choose apps and categories to block",
     "asFooterText": "Selected apps will be blocked during focus sessions. You can unlock them temporarily using fruits.",
-    "asInsufficientFruits": "Not enough 🍎. Required: {{required}}, available: {{available}}."
+    "asInsufficientFruits": "Not enough 🍎. Required: {{required}}, available: {{available}}.",
+    "asDiscardTitle": "Discard changes?",
+    "asDiscardMessage": "Your unsaved app selection will be lost.",
+    "asKeepEditing": "Keep Editing",
+    "asDiscard": "Discard",
+    "asEditCostTitle": "Update blocklist?",
+    "asEditCostMessage": "This change costs {{cost}} 🍎. The price doubles with each edit and resets at the start of every week.",
+    "asEditCostConfirm": "Pay {{cost}} 🍎"
   }
 }

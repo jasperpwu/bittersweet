@@ -1144,6 +1144,13 @@
     "asInstructions": "フォーカスセッション中にブロックしたいアプリやカテゴリを選択してください。",
     "asHeaderText": "ブロックするアプリとカテゴリを選択",
     "asFooterText": "選択したアプリはフォーカスセッション中にブロックされます。実を使って一時的にアンロックできます。",
-    "asInsufficientFruits": "実が足りません。必要：{{required}}、利用可能：{{available}}。"
+    "asInsufficientFruits": "実が足りません。必要：{{required}}、利用可能：{{available}}。",
+    "asDiscardTitle": "変更を破棄しますか？",
+    "asDiscardMessage": "保存していないアプリの選択は失われます。",
+    "asKeepEditing": "編集を続ける",
+    "asDiscard": "破棄",
+    "asEditCostTitle": "ブロックリストを変更しますか？",
+    "asEditCostMessage": "この変更には {{cost}} 🍎 かかります。料金は編集のたびに倍増し、毎週始めにリセットされます。",
+    "asEditCostConfirm": "{{cost}} 🍎 を支払う"
   }
 }

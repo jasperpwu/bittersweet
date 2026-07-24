@@ -1144,6 +1144,13 @@
     "asInstructions": "집중 세션 동안 차단할 앱과 카테고리를 선택하세요.",
     "asHeaderText": "차단할 앱과 카테고리 선택",
     "asFooterText": "선택한 앱은 집중 세션 동안 차단돼요. 열매를 사용해 잠시 잠금 해제할 수 있어요.",
-    "asInsufficientFruits": "열매가 부족해요. 필요: {{required}}, 보유: {{available}}."
+    "asInsufficientFruits": "열매가 부족해요. 필요: {{required}}, 보유: {{available}}.",
+    "asDiscardTitle": "변경 사항을 취소할까요?",
+    "asDiscardMessage": "저장하지 않은 앱 선택이 사라집니다.",
+    "asKeepEditing": "계속 편집",
+    "asDiscard": "취소",
+    "asEditCostTitle": "차단 목록을 변경할까요?",
+    "asEditCostMessage": "이 변경에는 {{cost}} 🍎가 필요해요. 요금은 편집할 때마다 두 배가 되고 매주 초에 초기화돼요.",
+    "asEditCostConfirm": "{{cost}} 🍎 결제"
   }
 }

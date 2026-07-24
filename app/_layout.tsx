@@ -866,6 +866,13 @@ export default function RootLayout() {
     // the main store (erased if hydration applies afterwards) and validates the
     // linked tag against focus.tags (empty before hydration → import skipped).
     if (isHydrated && mainStoreHydrated) {
+      // Re-assert native app blocking from the captured blocklist intent before
+      // the Health reconcile, repairing any native restriction iOS dropped while
+      // the app was killed (reinstall, Screen Time reset). Always free — charging
+      // lives at the Save button. No-ops if nothing is selected or an unlock
+      // window is still open.
+      useAppStore.getState().blocklist.reconcileBlocking();
+
       syncHealthKitWorkouts();
     }
   }, [fontsLoaded, isHydrated, mainStoreHydrated]);
@@ -907,6 +914,13 @@ export default function RootLayout() {
         // Record app activity (debounced) so the re-engagement cron knows the
         // user is still around and resets any inactivity streak.
         ActivityPingService.ping();
+
+        // Re-assert native app blocking from the captured blocklist intent (before
+        // the Health reconcile), repairing any native restriction iOS dropped while
+        // backgrounded. Runs after checkExpiredUnlockSessions above so a just-expired
+        // unlock re-blocks. Always free — charging lives at the Save button; no-ops
+        // while an unlock window is still open.
+        useAppStore.getState().blocklist.reconcileBlocking();
 
         // Pull any new Apple Health workouts as sessions (no-ops if disconnected)
         syncHealthKitWorkouts();

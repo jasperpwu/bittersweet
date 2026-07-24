@@ -1144,6 +1144,13 @@
     "asInstructions": "选择你想在专注会话期间屏蔽的应用和类别。",
     "asHeaderText": "选择要屏蔽的应用和类别",
     "asFooterText": "所选应用将在专注会话期间被屏蔽。你可以用果实临时解锁它们。",
-    "asInsufficientFruits": "果实不足。需要 {{required}}，可用 {{available}}。"
+    "asInsufficientFruits": "果实不足。需要 {{required}}，可用 {{available}}。",
+    "asDiscardTitle": "放弃更改？",
+    "asDiscardMessage": "尚未保存的应用选择将会丢失。",
+    "asKeepEditing": "继续编辑",
+    "asDiscard": "放弃",
+    "asEditCostTitle": "更新屏蔽列表？",
+    "asEditCostMessage": "此更改需要 {{cost}} 🍎。价格每次编辑翻倍，并在每周开始时重置。",
+    "asEditCostConfirm": "支付 {{cost}} 🍎"
   }
 }

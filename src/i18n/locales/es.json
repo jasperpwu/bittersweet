@@ -1147,6 +1147,13 @@
     "asInstructions": "Selecciona las apps y categorías que quieres bloquear durante las sesiones de concentración.",
     "asHeaderText": "Elige apps y categorías para bloquear",
     "asFooterText": "Las apps seleccionadas se bloquearán durante las sesiones de concentración. Puedes desbloquearlas temporalmente con fruta.",
-    "asInsufficientFruits": "No tienes suficiente fruta. Necesarias: {{required}}, disponibles: {{available}}."
+    "asInsufficientFruits": "No tienes suficiente fruta. Necesarias: {{required}}, disponibles: {{available}}.",
+    "asDiscardTitle": "¿Descartar cambios?",
+    "asDiscardMessage": "Se perderá tu selección de apps sin guardar.",
+    "asKeepEditing": "Seguir editando",
+    "asDiscard": "Descartar",
+    "asEditCostTitle": "¿Actualizar lista de bloqueo?",
+    "asEditCostMessage": "Este cambio cuesta {{cost}} 🍎. El precio se duplica con cada edición y se reinicia al comenzar cada semana.",
+    "asEditCostConfirm": "Pagar {{cost}} 🍎"
   }
 }

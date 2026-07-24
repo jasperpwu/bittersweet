@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   SafeAreaView,
@@ -20,7 +20,7 @@ export default function AppSelectionScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { triggerHaptic } = useDeviceIntegration();
-  const { updateBlockedApps } = useBlocklistActions();
+  const { updateBlockedApps, getBlocklistEditCost } = useBlocklistActions();
   const { settings, currentSelectionId } = useBlocklist();
 
   // Capture whether this is initial setup at mount time
@@ -36,6 +36,29 @@ export default function AppSelectionScreen() {
     categoryCount: 0,
     webDomainCount: 0
   });
+
+  // The native picker (DeviceActivitySelectionViewPersisted) writes every tap
+  // straight to the 'bittersweet-blocklist' UserDefaults blob — there is no
+  // Save/Cancel gate on the native side. So to make Cancel *actually* cancel, we
+  // snapshot the applied selection on mount and restore it on any dismissal that
+  // wasn't a Save (Cancel button, swipe-down, hardware back). Without this, an
+  // edit sticks even after Cancel.
+  const originalBlobRef = useRef<string | null>(null);
+  const savedRef = useRef(false);
+
+  useEffect(() => {
+    originalBlobRef.current = getFamilyActivitySelectionId('bittersweet-blocklist') ?? null;
+    return () => {
+      if (!savedRef.current) {
+        // Discard the picker's live edits by restoring the pre-edit blob (or
+        // clearing it if there was no prior selection — first-time setup).
+        setFamilyActivitySelectionId({
+          id: 'bittersweet-blocklist',
+          familyActivitySelection: originalBlobRef.current ?? '',
+        });
+      }
+    };
+  }, []);
 
   // Generate unique selection ID
   const generateSelectionId = () => {
@@ -70,6 +93,15 @@ export default function AppSelectionScreen() {
 
   const handleClose = () => {
     triggerHaptic('light');
+    // Guard against throwing away unsaved edits. The unmount effect restores the
+    // original selection once we actually navigate back.
+    if (hasUserEdited) {
+      Alert.alert(t('gm.asDiscardTitle'), t('gm.asDiscardMessage'), [
+        { text: t('gm.asKeepEditing'), style: 'cancel' },
+        { text: t('gm.asDiscard'), style: 'destructive', onPress: () => router.back() },
+      ]);
+      return;
+    }
     router.back();
   };
 
@@ -120,6 +152,8 @@ export default function AppSelectionScreen() {
       // Pass the selectionId (or empty string to clear) and metadata to updateBlockedApps
       await updateBlockedApps(selectionId || '', metadata, chargeFruit);
       console.log('✅ updateBlockedApps completed successfully');
+      // Mark as saved so the unmount effect does NOT restore the pre-edit blob.
+      savedRef.current = true;
       triggerHaptic('success');
 
       // Navigate back without showing alert
@@ -138,10 +172,23 @@ export default function AppSelectionScreen() {
   };
 
   const handleSave = () => {
-    // Charge fruit only if: not initial setup AND user actually changed the selection
+    // Charge fruit only if: not initial setup AND user actually changed the selection.
     // When no edits were made, still re-apply blocking (free) — handles the case
     // where apps were synced but native blocking wasn't active yet.
-    executeSave(!isInitialSetup && hasUserEdited);
+    const willCharge = !isInitialSetup && hasUserEdited;
+
+    if (willCharge) {
+      // Disclose the escalating price before charging: it doubles with each edit
+      // and resets weekly (getBlocklistEditCost / editHistory).
+      const cost = getBlocklistEditCost();
+      Alert.alert(t('gm.asEditCostTitle'), t('gm.asEditCostMessage', { cost }), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('gm.asEditCostConfirm', { cost }), onPress: () => executeSave(true) },
+      ]);
+      return;
+    }
+
+    executeSave(false);
   };
 
   const handleSelectionChange = (event: any) => {

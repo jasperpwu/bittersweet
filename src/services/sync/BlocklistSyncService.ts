@@ -1,5 +1,6 @@
 import { supabase } from '../../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getWeekStart } from '../grove/GroveRankingService';
 import {
   union,
   difference,
@@ -21,6 +22,11 @@ const TEMP_BASELINE_ID = '_sync-temp-baseline';
 const TEMP_ADDED_ID = '_sync-temp-added';
 const TEMP_REMOVED_ID = '_sync-temp-removed';
 const TEMP_SERVER_PLUS_ADDED_ID = '_sync-temp-server-plus-added';
+
+export interface BlocklistEditHistory {
+  weekStart: string; // ISO week start (Monday 00:00 local) the count belongs to
+  editsThisWeek: number;
+}
 
 export class BlocklistSyncService {
   /**
@@ -252,6 +258,57 @@ export class BlocklistSyncService {
       return;
     }
     blockSelection({ activitySelectionId: selectionId });
+  }
+
+  // --- Edit-cost escalation (weekly, reinstall-proof) ---
+
+  /** Push the weekly edit-cost counter to the user's blocklist row. */
+  static async pushEditHistory(userId: string, editHistory: BlocklistEditHistory): Promise<void> {
+    const { error } = await supabase.from('blocklist_selections').upsert(
+      {
+        user_id: userId,
+        edit_week_start: editHistory.weekStart,
+        edits_this_week: editHistory.editsThisWeek,
+      },
+      { onConflict: 'user_id' }
+    );
+    if (error) {
+      console.error('[BlocklistSync] pushEditHistory failed:', error);
+    }
+  }
+
+  /** Pull the weekly edit-cost counter, or null if the row/columns are empty. */
+  static async pullEditHistory(userId: string): Promise<BlocklistEditHistory | null> {
+    const { data, error } = await supabase
+      .from('blocklist_selections')
+      .select('edit_week_start, edits_this_week')
+      .eq('user_id', userId)
+      .single();
+    if (error) {
+      if (error.code !== 'PGRST116') {
+        console.error('[BlocklistSync] pullEditHistory failed:', error);
+      }
+      return null;
+    }
+    if (!data || data.edit_week_start == null) return null;
+    return { weekStart: data.edit_week_start, editsThisWeek: data.edits_this_week ?? 0 };
+  }
+
+  /**
+   * Merge two edit-cost counters. Both are first normalized to the CURRENT week
+   * (a counter from a past week contributes 0 — that's the weekly reset), then we
+   * take the max. Single-device app, so max() is the whole story: it preserves the
+   * escalation across reinstall (cloud wins over an empty fresh install) while
+   * still resetting on the calendar week boundary — never by reinstalling.
+   */
+  static mergeEditHistory(
+    a: BlocklistEditHistory | null,
+    b: BlocklistEditHistory | null
+  ): BlocklistEditHistory {
+    const week = getWeekStart().toISOString();
+    const inWeek = (h: BlocklistEditHistory | null) =>
+      h && h.weekStart === week ? h.editsThisWeek ?? 0 : 0;
+    return { weekStart: week, editsThisWeek: Math.max(inWeek(a), inWeek(b)) };
   }
 
   // --- Private helpers ---
