@@ -29,9 +29,9 @@ const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 const SHEET_HEIGHT = 420;
 const FONT_BOLD = 'Poppins-Bold';
 
-/** Format a total-minutes value into a display string like "0m", "1h30m", "8h" */
+/** Format a total-minutes value into a display string like "∞", "1h30m", "8h". 0 = infinite session. */
 const formatDisplay = (totalMinutes: number): string => {
-  if (totalMinutes === 0) return '0m';
+  if (totalMinutes === 0) return '∞'; // ∞ — 0 minutes means an infinite (count-up) session
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
   if (h === 0) return `${m}m`;

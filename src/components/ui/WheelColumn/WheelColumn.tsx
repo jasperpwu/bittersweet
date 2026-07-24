@@ -9,11 +9,21 @@ const VISIBLE_ITEMS = 5;
 const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 const FONT_BOLD = 'Poppins-Bold';
 
-// In loop mode the value list is repeated this many times; the middle copy is
-// "home". The picker silently recenters onto the home copy while scrolling so a
-// modest buffer is enough for even a fast fling (decelerationRate="fast" keeps
-// single-fling travel well under one copy of runway).
-const LOOP_COPIES = 3;
+// In loop mode the value list is stacked `loopCopies` times and the middle
+// ("home") copy is where the wheel rests. We recenter onto home only at rest
+// (drag/momentum end) — never mid-fling, because programmatically setting
+// contentOffset during a fling cancels the deceleration on iOS, which made short
+// wheels (hours, N=9) dead-stop on one fixed value. The runway must therefore be
+// long enough that a single hard fling can't reach an edge before it settles, so
+// short lists get more copies; long lists (minutes, N=60) already have ample
+// runway at the minimum, so we don't bloat them with hundreds of extra items.
+const MAX_FLING_PX = 1200; // generous upper bound on one fling's travel
+const computeLoopCopies = (cycle: number): number => {
+  const minForFling = Math.ceil((2 * MAX_FLING_PX) / cycle) + 1;
+  let copies = Math.max(3, minForFling);
+  if (copies % 2 === 0) copies += 1; // odd → a single middle "home" copy
+  return copies;
+};
 
 const WheelItem: FC<{
   index: number;
@@ -99,8 +109,11 @@ export const WheelColumn: FC<WheelColumnProps> = ({
 
   const N = values.length;
   const cycle = N * ITEM_HEIGHT; // scroll distance of one full loop
-  const homeStart = loop ? N : 0; // index of the home copy's first item
-  const displayValues = loop ? [...values, ...values, ...values] : values;
+  const loopCopies = loop ? computeLoopCopies(cycle) : 1;
+  const homeStart = loop ? ((loopCopies - 1) / 2) * N : 0; // middle copy's first item
+  const displayValues = loop
+    ? Array.from({ length: loopCopies }, () => values).flat()
+    : values;
 
   const initialIndex = Math.max(0, values.indexOf(selectedValue));
   const initialY = (homeStart + initialIndex) * ITEM_HEIGHT;
@@ -193,37 +206,66 @@ export const WheelColumn: FC<WheelColumnProps> = ({
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           onValueChange(snappedValue);
         }
-
-        // Silently recenter onto the home copy so the buffer never runs out.
-        // The shift is a whole number of copies, so the value under the finger
-        // and the snap alignment are unchanged — invisible to the user.
-        if (loop) {
-          if (raw < cycle * 0.5) {
-            const newRaw = raw + cycle;
-            scrollRef.current?.scrollTo({ y: newRaw, animated: false });
-            prevRawRef.current = newRaw;
-          } else if (raw > cycle * 2.5) {
-            const newRaw = raw - cycle;
-            scrollRef.current?.scrollTo({ y: newRaw, animated: false });
-            prevRawRef.current = newRaw;
-          }
-        }
+        // NOTE: recentering onto the home copy happens only at rest (see
+        // recenterToHome / settleAt below), never here — doing it mid-fling
+        // cancels iOS momentum. The runway (loopCopies) is sized so a single
+        // fling can't reach an edge before settling.
       },
     }
   );
 
-  const handleMomentumScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const raw = e.nativeEvent.contentOffset.y;
+  // Shift onto the home copy once the wheel is at rest. Safe here (no active
+  // fling to cancel) and invisible: moving by a whole number of copies lands on
+  // an item boundary with the same value under the indicator.
+  const recenterToHome = useCallback(
+    (value: number) => {
+      if (!loop) return;
+      const idx = values.indexOf(value);
+      if (idx < 0) return;
+      const homeY = (homeStart + idx) * ITEM_HEIGHT;
+      scrollRef.current?.scrollTo({ y: homeY, animated: false });
+      prevRawRef.current = homeY;
+      logicalRef.current = homeY;
+      wrapBucketRef.current = cycle > 0 ? Math.floor(homeY / cycle) : 0;
+    },
+    [loop, values, homeStart, cycle]
+  );
+
+  const settleAt = useCallback(
+    (raw: number) => {
       const value = valueAtOffset(raw);
       if (value !== selectedValue) {
         onValueChange(value);
       }
       lastSnappedRef.current = value;
-      prevRawRef.current = raw;
       isUserScrollingRef.current = false;
+      if (loop) {
+        recenterToHome(value);
+      } else {
+        prevRawRef.current = raw;
+      }
     },
-    [valueAtOffset, selectedValue, onValueChange]
+    [valueAtOffset, selectedValue, onValueChange, loop, recenterToHome]
+  );
+
+  const handleMomentumScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      settleAt(e.nativeEvent.contentOffset.y);
+    },
+    [settleAt]
+  );
+
+  // A slow release with no fling produces no momentum event on iOS, so settle
+  // here instead. Skip when there's real velocity — momentum will follow and
+  // recentering now would cancel its deceleration (the bug we're avoiding).
+  const handleScrollEndDrag = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const velocityY = e.nativeEvent.velocity?.y ?? 0;
+      if (Math.abs(velocityY) < 0.05) {
+        settleAt(e.nativeEvent.contentOffset.y);
+      }
+    },
+    [settleAt]
   );
 
   const paddingVertical = (PICKER_HEIGHT - ITEM_HEIGHT) / 2;
@@ -268,6 +310,7 @@ export const WheelColumn: FC<WheelColumnProps> = ({
           contentOffset={initialOffsetRef.current}
           onLayout={handleLayout}
           onScrollBeginDrag={handleScrollBeginDrag}
+          onScrollEndDrag={handleScrollEndDrag}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           onScroll={handleScroll}
           scrollEventThrottle={16}

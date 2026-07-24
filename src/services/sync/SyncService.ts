@@ -173,11 +173,15 @@ export class SyncService {
           .select('*')
           .eq('user_id', userId)
           .is('deleted_at', null),
+        // Pull soft-deleted tags too: live historical sessions still reference
+        // deleted tags (tag_id FK), and deleteTag keeps tombstones in byId. All
+        // tag pickers/lists filter !deletedAt, so deleted tags never leak into a
+        // selector — but session history can still resolve their label, and the
+        // sync guard stops warning about "missing local tag".
         supabase
           .from('session_tags')
           .select('*')
-          .eq('user_id', userId)
-          .is('deleted_at', null),
+          .eq('user_id', userId),
         supabase
           .from('focus_goals')
           .select('*')

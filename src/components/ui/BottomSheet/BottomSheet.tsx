@@ -92,12 +92,22 @@ export const BottomSheet: FC<BottomSheetProps> = ({
     onClosed?.();
   }, [onClosed]);
 
+  // Entrance animation. Driven off the Modal's onShow (below) rather than here,
+  // because the Modal is kept always-mounted (visible toggles) — starting
+  // withTiming in the same tick that flips `visible` races the native modal
+  // presentation, and the reanimated view (whose mapper attached while the modal
+  // window was hidden) can miss it, leaving the sheet stuck off-screen while the
+  // Modal still swallows every touch. onShow fires only once the window is live.
+  const handleShow = useCallback(() => {
+    translateY.value = height;
+    translateY.value = withTiming(0, { duration: 300 });
+  }, [height, translateY]);
+
   useEffect(() => {
     if (isVisible) {
       dismissedByGesture.current = false;
+      translateY.value = height; // park off-screen until onShow drives it up
       setModalVisible(true);
-      translateY.value = height;
-      translateY.value = withTiming(0, { duration: 300 });
     } else if (modalVisible) {
       if (dismissedByGesture.current) {
         dismissedByGesture.current = false;
@@ -210,6 +220,7 @@ export const BottomSheet: FC<BottomSheetProps> = ({
       visible={modalVisible}
       transparent
       animationType="none"
+      onShow={handleShow}
       onRequestClose={requestClose}
       statusBarTranslucent>
       <GestureHandlerRootView style={styles.flex}>
