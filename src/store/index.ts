@@ -898,7 +898,6 @@ export const useAppStore = create<AppStore>()(
                 motionSummary: {
                   signal: 'none',
                   profile: 'unknown',
-                  recorder: null,
                   activity: null,
                   steps: null,
                 },

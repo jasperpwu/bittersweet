@@ -5,16 +5,12 @@
  * 1–5★ rating, and maps that rating onto a fruit-reward multiplier. The rating
  * is applied automatically and shown read-only in the summary modal; the tag's
  * activity type is the user's lever for accuracy. Because the underlying motion
- * signal is an on-device estimate, not ground truth (CMSensorRecorder is
- * unreliable on iPhone, and stationary motion can't distinguish a phone on a
- * desk from one fidgeted in-hand), ambiguous/no-signal cases err toward 5★.
+ * signal is an on-device estimate, not ground truth (stationary motion can't
+ * distinguish a phone resting on a desk from one fidgeted in-hand), ambiguous /
+ * no-signal cases err toward 5★.
  *
- * Two signal sources, in priority order:
- *  1. `RecordedAccelSummary` — fine-grained raw-accelerometer summary from
- *     CMSensorRecorder (preferred; graded on its `activeFraction`, i.e. the
- *     percentage of time in motion).
- *  2. `MotionActivitySummary` — CMMotionActivity stationary/walking/running
- *     fractions (reliable fallback when the recorder buffer is empty).
+ * Signal source: `MotionActivitySummary` — CMMotionActivity stationary/walking/
+ * running fractions, queried retroactively over the session window.
  */
 
 export type ActivityType = 'stationary' | 'on_phone' | 'active';
@@ -24,21 +20,7 @@ export type RatingSource = 'suggested' | 'user';
 export type MotionProfile = 'still' | 'occasional' | 'constant' | 'unknown';
 
 /** Which signal produced the classification (surfaced in the "why" sheet). */
-export type MotionSignal = 'recorder' | 'activity' | 'none';
-
-/** Raw-accelerometer summary from CMSensorRecorder (motion-insights native module). */
-export interface RecordedAccelSummary {
-  sampleCount: number;
-  durationSec: number;
-  /** Fraction (0–1) of windows whose motion magnitude exceeded the still threshold. */
-  activeFraction: number;
-  /**
-   * Count of distinct movement bursts. Still captured by the native module and
-   * shown for reference, but intentionally NOT used in the rating — burst counts
-   * proved too inaccurate to grade focus.
-   */
-  handlingEvents: number;
-}
+export type MotionSignal = 'activity' | 'none';
 
 /** CMMotionActivity time breakdown (motion-insights native module). */
 export interface MotionActivitySummary {
@@ -58,7 +40,6 @@ export interface MotionActivitySummary {
 export interface MotionSnapshot {
   signal: MotionSignal;
   profile: MotionProfile;
-  recorder?: RecordedAccelSummary | null;
   activity?: MotionActivitySummary | null;
   steps?: number | null;
 }
@@ -77,10 +58,6 @@ export const MIN_RATEABLE_MINUTES = 5;
 
 // --- Classification thresholds (tunable starting heuristics) ---
 // Rating is graded purely on the percentage of time the phone was in motion.
-// Movement-burst counts (handlingEvents) are intentionally ignored — they proved
-// too noisy/inaccurate to distinguish a fidget from a desk-side phone pickup.
-const ACCEL_CONSTANT_ACTIVE_FRACTION = 0.5; // ≥ this active ⇒ constant motion
-const ACCEL_STILL_ACTIVE_FRACTION = 0.08; // < this active ⇒ still
 const ACTIVITY_CONSTANT_MOVING_FRACTION = 0.5; // ≥ this in walking/running ⇒ constant
 const ACTIVITY_STILL_STATIONARY_FRACTION = 0.9; // must be at least this stationary to be "still"
 const ACTIVITY_STILL_STEPS_PER_MIN = 0.5; // and below this step rate (≈ <1 step / 2 min)
@@ -96,18 +73,7 @@ const HANDLING_GRACE_SEC = 25;
 const HANDLING_GRACE_STEPS = 30;
 
 /**
- * Fraction (0–1) of the session spent genuinely in motion, after forgiving the
- * fixed start/stop-pickup handling. Falls back to the raw fraction when we don't
- * have a duration to prorate against.
- */
-function effectiveActiveFraction(r: RecordedAccelSummary): number {
-  if (r.durationSec <= 0) return r.activeFraction;
-  const activeSec = r.activeFraction * r.durationSec;
-  return Math.max(0, (activeSec - HANDLING_GRACE_SEC) / r.durationSec);
-}
-
-/**
- * Moving / stationary fractions after forgiving the same fixed start/stop
+ * Moving / stationary fractions after forgiving the fixed start/stop
  * handling on the CMMotionActivity path — e.g. standing up and taking a few
  * steps to leave when ending a session. Up to HANDLING_GRACE_SEC of locomotion
  * is reattributed to stationary time so short stationary sessions aren't
@@ -149,14 +115,6 @@ export function shouldAutoRate(opts: {
   return opts.durationMinutes >= MIN_RATEABLE_MINUTES;
 }
 
-function classifyFromRecorder(r: RecordedAccelSummary): MotionProfile {
-  if (r.sampleCount <= 0) return 'unknown';
-  const active = effectiveActiveFraction(r);
-  if (active >= ACCEL_CONSTANT_ACTIVE_FRACTION) return 'constant';
-  if (active >= ACCEL_STILL_ACTIVE_FRACTION) return 'occasional';
-  return 'still';
-}
-
 function classifyFromActivity(a: MotionActivitySummary, steps?: number | null): MotionProfile {
   if (a.totalSec <= 0) return 'unknown';
   const { movingFrac, stationaryFrac } = effectiveActivityFractions(a);
@@ -180,28 +138,17 @@ function classifyFromActivity(a: MotionActivitySummary, steps?: number | null): 
 }
 
 /**
- * Pick the best available signal and produce a MotionSnapshot. Prefers the
- * recorder; falls back to CMMotionActivity; otherwise reports `none`.
+ * Produce a MotionSnapshot from the CMMotionActivity summary; reports `none`
+ * when there's no usable activity data.
  */
 export function classifyMotion(input: {
-  recorder?: RecordedAccelSummary | null;
   activity?: MotionActivitySummary | null;
   steps?: number | null;
 }): MotionSnapshot {
-  if (input.recorder && input.recorder.sampleCount > 0) {
-    return {
-      signal: 'recorder',
-      profile: classifyFromRecorder(input.recorder),
-      recorder: input.recorder,
-      activity: input.activity ?? null,
-      steps: input.steps ?? null,
-    };
-  }
   if (input.activity && input.activity.totalSec > 0) {
     return {
       signal: 'activity',
       profile: classifyFromActivity(input.activity, input.steps),
-      recorder: null,
       activity: input.activity,
       steps: input.steps ?? null,
     };
@@ -209,7 +156,6 @@ export function classifyMotion(input: {
   return {
     signal: 'none',
     profile: 'unknown',
-    recorder: null,
     activity: input.activity ?? null,
     steps: input.steps ?? null,
   };
@@ -233,14 +179,6 @@ function stepsPerMinOf(a: MotionActivitySummary, steps?: number | null): number 
  * larger non-stationary slice.
  */
 function stationaryStars(snapshot: MotionSnapshot): number {
-  if (snapshot.signal === 'recorder' && snapshot.recorder) {
-    // Graded purely on the fraction of time in motion (minus the forgiven
-    // start/stop-pickup handling) — no burst-count capping.
-    const active = effectiveActiveFraction(snapshot.recorder);
-    const stars =
-      active <= 0.05 ? 5 : active <= 0.15 ? 4 : active <= 0.3 ? 3 : active <= 0.5 ? 2 : 1;
-    return clampStars(stars);
-  }
   if (snapshot.signal === 'activity' && snapshot.activity) {
     // Fractions forgive the fixed start/stop handling (getting up + a few exit
     // steps) so short stationary sessions aren't penalised for it.
@@ -270,10 +208,6 @@ function stationaryStars(snapshot: MotionSnapshot): number {
  * activity classifier under-counted.
  */
 function activeStars(snapshot: MotionSnapshot): number {
-  if (snapshot.signal === 'recorder' && snapshot.recorder) {
-    const f = snapshot.recorder.activeFraction;
-    return clampStars(f >= 0.5 ? 5 : f >= 0.3 ? 4 : f >= 0.15 ? 3 : f >= 0.05 ? 2 : 1);
-  }
   if (snapshot.signal === 'activity' && snapshot.activity) {
     const a = snapshot.activity;
     const moving = movingFractionOf(a);
@@ -289,10 +223,9 @@ function activeStars(snapshot: MotionSnapshot): number {
 /** On-phone tag: lenient — full reward unless in near-constant locomotion. */
 function onPhoneStars(snapshot: MotionSnapshot): number {
   const heavyMotion =
-    (snapshot.signal === 'recorder' && (snapshot.recorder?.activeFraction ?? 0) >= 0.5) ||
-    (snapshot.signal === 'activity' &&
-      snapshot.activity &&
-      movingFractionOf(snapshot.activity) >= 0.5);
+    snapshot.signal === 'activity' &&
+    snapshot.activity &&
+    movingFractionOf(snapshot.activity) >= 0.5;
   return heavyMotion ? 4 : 5;
 }
 
@@ -319,37 +252,22 @@ export function suggestRating(
 }
 
 /**
- * i18n key for the one-line motion summary in the insights sheet. Wording is
- * signal-aware: the `activity` fallback only knows locomotion (walking/running),
- * NOT phone handling, so its strings must not claim "fully focused" — it can't
- * see you pick the phone up at a desk. Only the `recorder` signal can speak to
- * handling.
+ * i18n key for the one-line motion summary in the insights sheet. CMMotionActivity
+ * only knows locomotion (walking/running), NOT desk phone-handling, so its strings
+ * must not claim "fully focused" — it can't see you pick the phone up at a desk.
  */
 export function describeMotionKey(snapshot: MotionSnapshot): string {
   if (snapshot.signal === 'none' || snapshot.profile === 'unknown') {
     return 'ratingInsights.motionNoData';
   }
 
-  if (snapshot.signal === 'activity') {
-    switch (snapshot.profile) {
-      case 'still':
-        return 'ratingInsights.motionActivityStill';
-      case 'occasional':
-        return 'ratingInsights.motionActivityOccasional';
-      case 'constant':
-      default:
-        return 'ratingInsights.motionActivityConstant';
-    }
-  }
-
-  // recorder signal — fine-grained, can speak to phone handling
   switch (snapshot.profile) {
     case 'still':
-      return 'ratingInsights.motionRecorderStill';
+      return 'ratingInsights.motionActivityStill';
     case 'occasional':
-      return 'ratingInsights.motionRecorderOccasional';
+      return 'ratingInsights.motionActivityOccasional';
     case 'constant':
     default:
-      return 'ratingInsights.motionRecorderConstant';
+      return 'ratingInsights.motionActivityConstant';
   }
 }

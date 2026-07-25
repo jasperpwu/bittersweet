@@ -7,18 +7,6 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
  * `src/services/motionInsights.ts` which adds fallbacks and typing.
  */
 export interface MotionInsightsNativeModule {
-  /** Begin recording raw accelerometer forward for `durationSec` (capped 12h). Returns false if unavailable. */
-  startAccelerometerRecording(durationSec: number): Promise<boolean>;
-  /** Summarise the CMSensorRecorder buffer over a window. Returns null when the buffer is empty/unavailable. */
-  getRecordedAccelerometerSummary(
-    startMs: number,
-    endMs: number
-  ): Promise<{
-    sampleCount: number;
-    durationSec: number;
-    activeFraction: number;
-    handlingEvents: number;
-  } | null>;
   /** Summarise CMMotionActivity over a window. Returns null when unavailable. */
   getMotionActivitySummary(
     startMs: number,

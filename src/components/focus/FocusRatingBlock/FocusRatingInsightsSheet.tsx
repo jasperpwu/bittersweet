@@ -36,7 +36,6 @@ const MAPPING_KEY: Record<ActivityType, string> = {
 
 /** i18n key naming which signal produced the estimate (used in the disclaimer). */
 const SIGNAL_KEY: Record<MotionSnapshot['signal'], string> = {
-  recorder: 'ratingInsights.signalRecorder',
   activity: 'ratingInsights.signalActivity',
   none: 'ratingInsights.signalNone',
 };
@@ -97,10 +96,6 @@ export function FocusRatingInsightsSheet({
   const breakdownLines = (): string[] => {
     if (!snapshot || snapshot.signal === 'none') {
       return [t('ratingInsights.noMotionData')];
-    }
-    if (snapshot.signal === 'recorder' && snapshot.recorder) {
-      const r = snapshot.recorder;
-      return [t('ratingInsights.inMotionPct', { pct: Math.round(r.activeFraction * 100) })];
     }
     if (snapshot.signal === 'activity' && snapshot.activity) {
       const a = snapshot.activity;

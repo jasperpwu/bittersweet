@@ -10,7 +10,6 @@ import MotionInsights from '../../modules/motion-insights';
 import {
   classifyMotion,
   type MotionSnapshot,
-  type RecordedAccelSummary,
   type MotionActivitySummary,
 } from '../utils/focusRating';
 
@@ -42,8 +41,8 @@ export async function getMotionPermissionStatus(): Promise<MotionPermissionStatu
 
 /**
  * Ensure the Motion & Fitness permission is requested (shows the system prompt
- * on first call). CMMotionActivity / CMPedometer / CMSensorRecorder all share
- * this authorization. Safe to call repeatedly. Returns true if granted.
+ * on first call). CMMotionActivity and CMPedometer share this authorization.
+ * Safe to call repeatedly. Returns true if granted.
  *
  * NOTE: this triggers the one-shot iOS prompt. Always show the in-app priming
  * pop-up first (or have the user explicitly enable a setting) so the OS prompt is
@@ -73,8 +72,8 @@ async function getStepCount(startMs: number, endMs: number): Promise<number | nu
 }
 
 /**
- * Read all available motion signals for a finished session window and classify
- * them into a MotionSnapshot (recorder preferred, CMMotionActivity fallback).
+ * Read the CMMotionActivity signal for a finished session window and classify
+ * it into a MotionSnapshot.
  */
 export async function getSessionMotionSnapshot(
   startMs: number,
@@ -82,16 +81,12 @@ export async function getSessionMotionSnapshot(
 ): Promise<MotionSnapshot> {
   // Permission is the caller's responsibility (priming pop-up / settings toggle).
   // If it isn't granted the reads below return null and we report signal 'none'.
-  const [recorder, activity, steps] = await Promise.all([
-    safe<RecordedAccelSummary>(() =>
-      MotionInsights?.getRecordedAccelerometerSummary(startMs, endMs)
-    ),
+  // Rating is driven entirely by the retroactive CMMotionActivity query; the old
+  // CMSensorRecorder forward-recording path was removed (its mere allocation
+  // popped the Motion & Fitness prompt at launch — see MotionInsightsModule).
+  const [activity, steps] = await Promise.all([
     safe<MotionActivitySummary>(() => MotionInsights?.getMotionActivitySummary(startMs, endMs)),
     getStepCount(startMs, endMs),
   ]);
-  // Diagnostic: shows in Metro which signal won. recorder is expected to be null
-  // now that we no longer forward-record (no motion access at session start), so
-  // the rating is driven by the retroactive CMMotionActivity query below.
-  console.log('[motionInsights] nativeModule=', !!MotionInsights, 'recorder=', recorder, 'activity=', activity, 'steps=', steps);
-  return classifyMotion({ recorder, activity, steps });
+  return classifyMotion({ activity, steps });
 }
