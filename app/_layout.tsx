@@ -53,6 +53,57 @@ import { installNavigationGuard } from '../src/utils/navigationGuard';
 // Dedupe duplicate navigations from fast double-taps (router.push/navigate/replace).
 installNavigationGuard();
 
+// Guards against overlapping blocklist auth prompts — the cold-start and
+// foreground reconciles can fire near-simultaneously, and we never want two
+// stacked Screen Time requests.
+let blocklistAuthInFlight = false;
+
+/**
+ * Re-assert native app blocking. If a blocklist was restored from the cloud
+ * (currentSelectionId set) but iOS no longer holds Family Controls authorization
+ * (reinstall, or the user revoked Screen Time), request it natively right away —
+ * no pre-explanation dialog — and keep requesting on every launch/foreground until
+ * it's granted. No-ops when there's no blocklist to enforce.
+ *
+ * iOS caveat: the native Screen Time sheet only appears while authorization is
+ * `notDetermined`. After a hard "Don't Allow" (status → denied), re-requesting is
+ * a silent no-op — iOS won't re-present it; the user must re-enable it in
+ * Settings > Screen Time. We still re-attempt each launch (cheap, no UI), so it
+ * self-heals the moment they do.
+ */
+async function reconcileBlocklistAuth() {
+  const blocklist = useAppStore.getState().blocklist;
+  if (!blocklist.currentSelectionId) return; // no blocklist to enforce
+
+  if (await blocklist.checkAuthorizationStatus()) {
+    blocklist.reconcileBlocking(); // authorized → re-assert blocking from the intent
+    return;
+  }
+
+  if (blocklistAuthInFlight) return; // a request is already up — don't stack
+  blocklistAuthInFlight = true;
+  try {
+    await blocklist.requestAuthorization();
+  } finally {
+    blocklistAuthInFlight = false;
+  }
+}
+
+/**
+ * Reconcile Apple Health workouts, guarded by Screen Time already being granted.
+ * The two are independent, but their system prompts must never stack — so while a
+ * restored blocklist still needs Screen Time authorization we defer the Health
+ * reconcile. It resumes on the next launch/foreground once blocking is authorized,
+ * and runs immediately when there's no blocklist to enforce (nothing to wait on).
+ */
+async function reconcileHealthIfScreenTimeReady() {
+  const blocklist = useAppStore.getState().blocklist;
+  if (blocklist.currentSelectionId && !(await blocklist.checkAuthorizationStatus())) {
+    return; // Screen Time still pending — defer so the two prompts can't stack
+  }
+  syncHealthKitWorkouts();
+}
+
 // Where each re-engagement nudge (data.feature from reengagement-cron) lands
 // when tapped. 'suggest' and 'grove' are handled separately (see below), and
 // anything unknown falls back to the focus tab.
@@ -866,14 +917,11 @@ export default function RootLayout() {
     // the main store (erased if hydration applies afterwards) and validates the
     // linked tag against focus.tags (empty before hydration → import skipped).
     if (isHydrated && mainStoreHydrated) {
-      // Re-assert native app blocking from the captured blocklist intent before
-      // the Health reconcile, repairing any native restriction iOS dropped while
-      // the app was killed (reinstall, Screen Time reset). Always free — charging
-      // lives at the Save button. No-ops if nothing is selected or an unlock
-      // window is still open.
-      useAppStore.getState().blocklist.reconcileBlocking();
-
-      syncHealthKitWorkouts();
+      // Re-assert blocklist blocking (requesting Screen Time directly if a restored
+      // blocklist lost its native authorization), and reconcile Apple Health guarded
+      // by Screen Time being granted — so the two system prompts never stack.
+      reconcileBlocklistAuth();
+      reconcileHealthIfScreenTimeReady();
     }
   }, [fontsLoaded, isHydrated, mainStoreHydrated]);
 
@@ -915,15 +963,12 @@ export default function RootLayout() {
         // user is still around and resets any inactivity streak.
         ActivityPingService.ping();
 
-        // Re-assert native app blocking from the captured blocklist intent (before
-        // the Health reconcile), repairing any native restriction iOS dropped while
-        // backgrounded. Runs after checkExpiredUnlockSessions above so a just-expired
-        // unlock re-blocks. Always free — charging lives at the Save button; no-ops
-        // while an unlock window is still open.
-        useAppStore.getState().blocklist.reconcileBlocking();
-
-        // Pull any new Apple Health workouts as sessions (no-ops if disconnected)
-        syncHealthKitWorkouts();
+        // Re-assert blocklist blocking (requesting Screen Time directly if a restored
+        // blocklist lost its native authorization), and reconcile Apple Health guarded
+        // by Screen Time being granted — so the two prompts never stack. Runs after
+        // checkExpiredUnlockSessions above so a just-expired unlock re-blocks.
+        reconcileBlocklistAuth();
+        reconcileHealthIfScreenTimeReady();
 
         // Record heartbeat activity if grove is active, heartbeat enabled, and not paused
         const groveState = useAppStore.getState().grove;

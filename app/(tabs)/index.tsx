@@ -677,6 +677,12 @@ export default function FocusScreen() {
     await requestAuthAndOpenPicker();
   };
 
+  // NOTE: The reinstall/revoke re-auth reconcile (a blocklist restored from cloud
+  // while Screen Time authorization is gone) now lives in `app/_layout.tsx`, where
+  // it requests the native permission directly and is sequenced BEFORE the Apple
+  // Health reconnect so the two system prompts never stack. See
+  // reconcileBlockingThenHealth() there.
+
   const handleBlockList = async () => {
     triggerHaptic('light');
 
