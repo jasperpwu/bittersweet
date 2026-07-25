@@ -858,53 +858,37 @@ export default function RootLayout() {
   // Check if app was opened from shield (both on mount and app foreground)
   const checkShieldOpening = async (trigger: string) => {
     try {
-      console.log(`🛡️ [SHIELD_LAYOUT] === Starting shield check (${trigger}) ===`);
-      console.log('🛡️ [SHIELD_LAYOUT] fontsLoaded:', fontsLoaded, 'isHydrated:', isHydrated);
 
       if (!fontsLoaded || !isHydrated) {
-        console.log('🛡️ [SHIELD_LAYOUT] App not ready, skipping shield check');
         return;
       }
 
       const { FamilyControlsModule } = await import('../src/modules/BitterSweetFamilyControls');
-      console.log('🛡️ [SHIELD_LAYOUT] FamilyControlsModule imported successfully');
 
       const wasOpenedFromShield = await FamilyControlsModule.checkIfOpenedFromShield();
-      console.log('🛡️ [SHIELD_LAYOUT] checkIfOpenedFromShield result:', wasOpenedFromShield);
 
       if (wasOpenedFromShield) {
         // Don't show unlock sheet during a focus session
         const activeSession = await AsyncStorage.getItem('active-focus-session');
         if (activeSession) {
-          console.log(
-            '🛡️ [SHIELD_LAYOUT] Focus session active (AsyncStorage), skipping unlock sheet'
-          );
           return;
         }
 
         // Also check for widget-started sessions not yet adopted into AsyncStorage
         const widgetSession = WidgetService.readWidgetStartedSession();
         if (widgetSession) {
-          console.log(
-            '🛡️ [SHIELD_LAYOUT] Widget-started focus session pending adoption, skipping unlock sheet'
-          );
           return;
         }
 
-        console.log('✅ [SHIELD_LAYOUT] App was opened from shield, showing bottom sheet...');
 
         // Navigate to calendar tab and show bottom sheet
         router.replace('/(tabs)');
 
         // Small delay then show the bottom sheet overlay
         setTimeout(() => {
-          console.log('🛡️ [SHIELD_LAYOUT] Showing unlock bottom sheet...');
           setShowUnlockSheet(true);
         }, 100);
 
-        console.log('✅ [SHIELD_LAYOUT] Bottom sheet sequence initiated');
-      } else {
-        console.log('ℹ️ [SHIELD_LAYOUT] App was not opened from shield');
       }
     } catch (error: any) {
       console.error('❌ [SHIELD_LAYOUT] Error checking shield opening:', error);
@@ -934,10 +918,8 @@ export default function RootLayout() {
   // Check when app comes to foreground
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      console.log('🛡️ [SHIELD_LAYOUT] App state change:', appState.current, '->', nextAppState);
 
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        console.log('🛡️ [SHIELD_LAYOUT] App came to foreground - checking for shield opening...');
         checkShieldOpening('foreground');
 
         // End any lingering live activities. JS timers are suspended in the
@@ -1246,7 +1228,6 @@ export default function RootLayout() {
               <UnlockSnackbar
                 visible={showUnlockSheet}
                 onDismiss={() => {
-                  console.log('🛡️ [SHIELD_LAYOUT] Bottom sheet dismissed');
                   setShowUnlockSheet(false);
                 }}
                 appName="App" // You can make this dynamic later

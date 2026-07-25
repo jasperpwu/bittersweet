@@ -329,10 +329,10 @@ export default function FruitStoreScreen() {
   // Gift whose photo modal is open (null when closed).
   const photoGift = photoGiftId ? (giftsById[photoGiftId] ?? null) : null;
 
-  // Only surface tasks that are set up but not yet claimed — claimed tasks disappear.
-  const pendingTasks = SETUP_TASK_META.filter(
-    (meta) => rewards.tasks[meta.id].everSetup && !rewards.tasks[meta.id].claimed
-  );
+  // Surface every task the user hasn't claimed yet — including ones not set up, so
+  // they can see what's available to earn. Not-set-up tasks show a disabled claim
+  // button. Claimed tasks disappear.
+  const pendingTasks = SETUP_TASK_META.filter((meta) => !rewards.tasks[meta.id].claimed);
 
   // Re-detect setup on entry so a widget/goal added since launch becomes claimable
   // right away without restarting the app.
@@ -769,7 +769,7 @@ export default function FruitStoreScreen() {
           </>
         )}
 
-        {/* Tasks Section — one-time setup rewards, only shown while claimable */}
+        {/* Tasks Section — one-time setup rewards, shown until claimed */}
         {activeTab === 'all' && pendingTasks.length > 0 && (
           <>
             <View className="mb-3 mt-4">
@@ -779,7 +779,12 @@ export default function FruitStoreScreen() {
             </View>
 
             {pendingTasks.map((meta) => (
-              <SetupTaskCard key={meta.id} meta={meta} onClaim={handleClaimTask} />
+              <SetupTaskCard
+                key={meta.id}
+                meta={meta}
+                everSetup={rewards.tasks[meta.id].everSetup}
+                onClaim={handleClaimTask}
+              />
             ))}
           </>
         )}
@@ -1879,13 +1884,15 @@ function AlphabetIndex({
   );
 }
 
-// Only rendered for tasks that are set up but not yet claimed (parent filters via
-// pendingTasks), so this is always the claimable state.
+// Rendered for any unclaimed task (parent filters via pendingTasks). A task that's
+// been set up is claimable; one that hasn't shows what to do with a disabled button.
 function SetupTaskCard({
   meta,
+  everSetup,
   onClaim,
 }: {
   meta: { id: SetupTaskId; icon: string; titleKey: string; descKey: string };
+  everSetup: boolean;
   onClaim: (taskId: SetupTaskId, title: string) => void;
 }) {
   const { t } = useTranslation();
@@ -1904,13 +1911,18 @@ function SetupTaskCard({
             <Typography variant="subtitle-14-semibold">{title}</Typography>
             <View className="mt-1">
               <Typography variant="body-12" color="secondary">
-                {t('store.readyToClaim', { count: SETUP_TASK_REWARD })}
+                {everSetup
+                  ? t('store.readyToClaim', { count: SETUP_TASK_REWARD })
+                  : t(meta.descKey)}
               </Typography>
             </View>
           </View>
         </View>
 
-        <Button size="small" onPress={() => onClaim(meta.id, title)}>
+        <Button
+          size="small"
+          disabled={!everSetup}
+          onPress={() => onClaim(meta.id, title)}>
           {t('store.claim', { count: SETUP_TASK_REWARD })}
         </Button>
       </View>
