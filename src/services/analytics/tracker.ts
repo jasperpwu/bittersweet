@@ -8,6 +8,8 @@
 
 import PostHog from 'posthog-react-native';
 
+import { DEBUG_FLAGS } from '../../config/constants';
+
 const POSTHOG_KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY;
 const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
 
@@ -34,10 +36,8 @@ if (posthog) {
   // persons, making "anonymous vs signed-in" a clean cohort filter in PostHog.
   posthog.capture('$set', { $set_once: { is_signed_in: false } });
 
-  if (__DEV__) {
-    // Verbose console logging of every capture + network request — shows whether
-    // events are captured and whether the POST to PostHog succeeds (a 401 here
-    // means a bad key or wrong region/host).
+  if (__DEV__ && DEBUG_FLAGS.analytics) {
+    // Verbose `[PostHog] …` console logging of every capture + network request.
     posthog.debug(true);
     console.log(`[Analytics] PostHog initialized → host=${POSTHOG_HOST}`);
   }

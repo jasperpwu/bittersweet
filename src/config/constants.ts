@@ -43,6 +43,15 @@ export const SUBSCRIPTION_PRODUCTS = {
   yearly: 'com.path2us.bittersweet.premium.yearly',
 } as const;
 
+// Developer Debug Flags — dev builds only (every flag is AND-ed with `__DEV__`,
+// so flipping one on can never leak logging into a release build).
+export const DEBUG_FLAGS = {
+  // Verbose PostHog SDK logging: every capture + network request, prefixed
+  // `[PostHog]`. Turn on to check whether events are captured and whether the
+  // POST succeeds (a 401 means a bad key or wrong region/host).
+  analytics: false,
+} as const;
+
 // Storage Keys
 export const STORAGE_KEYS = {
   userData: 'user_data',
@@ -119,6 +128,7 @@ export const ERROR_MESSAGES = {
 export const constants = {
   APP_CONFIG,
   API_CONFIG,
+  DEBUG_FLAGS,
   FOCUS_CONSTANTS,
   REWARD_CONSTANTS,
   STORAGE_KEYS,

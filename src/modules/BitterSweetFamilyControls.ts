@@ -429,22 +429,14 @@ class BitterSweetFamilyControlsModule {
    */
   async checkIfOpenedFromShield(): Promise<boolean> {
     try {
-      console.log('🛡️ [SHIELD_DEBUG] === Starting shield detection ===');
-      console.log('🛡️ [SHIELD_DEBUG] App Group ID configured:', APP_GROUP_ID);
-
       // Method 1: Check for unlock request via UserDefaults
-      console.log('🛡️ [SHIELD_DEBUG] Checking UserDefaults for unlock request...');
       const hasUnlockRequest = await this.checkUnlockRequest();
       if (hasUnlockRequest) {
-        console.log('✅ [SHIELD_DEBUG] Shield detection: Found unlock request from shield');
         return true;
       }
 
       // UserDefaults is now the only method for shield communication
 
-      console.log(
-        'ℹ️ [SHIELD_DEBUG] Shield detection: No indicators found - likely normal app launch'
-      );
       return false;
     } catch (error) {
       console.error('❌ [SHIELD_DEBUG] Failed to check shield opening:', error);
