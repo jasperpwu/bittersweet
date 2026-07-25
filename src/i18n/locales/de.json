@@ -1098,6 +1098,8 @@
     "icWantsYou": "Möchte dich in seinem inneren Kreis",
     "icQuietThreshold": "Stille-Schwelle",
     "icQuietDesc": "Benachrichtige deinen inneren Kreis, wenn du so viele Tage inaktiv warst.",
+    "icThresholdRaiseTitle": "Stille-Schwelle erhöhen?",
+    "icThresholdRaiseMsg": "Du kannst dann länger inaktiv bleiben, bevor dein innerer Kreis benachrichtigt wird. Er wird über diese Änderung informiert.",
     "icPause": "Pause",
     "icPaused": "Herzschlag pausiert",
     "icPauseHeartbeat": "Herzschlag pausieren",

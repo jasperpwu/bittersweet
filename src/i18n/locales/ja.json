@@ -1095,6 +1095,8 @@
     "icWantsYou": "あなたをインナーサークルに招待しています",
     "icQuietThreshold": "無音しきい値",
     "icQuietDesc": "この日数だけ活動がなかった場合に、インナーサークルへ通知します。",
+    "icThresholdRaiseTitle": "無音しきい値を上げますか？",
+    "icThresholdRaiseMsg": "インナーサークルに通知が届くまで、より長く活動しなくても大丈夫になります。この変更はメンバーに通知されます。",
     "icPause": "一時停止",
     "icPaused": "ハートビート一時停止中",
     "icPauseHeartbeat": "ハートビートを一時停止",

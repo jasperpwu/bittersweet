@@ -1098,6 +1098,8 @@
     "icWantsYou": "Quiere tenerte en su círculo cercano",
     "icQuietThreshold": "Umbral de silencio",
     "icQuietDesc": "Avisa a tu círculo cercano si llevas estos días sin actividad.",
+    "icThresholdRaiseTitle": "¿Subir el umbral de silencio?",
+    "icThresholdRaiseMsg": "Podrás estar inactivo más tiempo antes de que se avise a tu círculo cercano. Le llegará un aviso de este cambio.",
     "icPause": "Pausa",
     "icPaused": "Latido en pausa",
     "icPauseHeartbeat": "Pausar latido",

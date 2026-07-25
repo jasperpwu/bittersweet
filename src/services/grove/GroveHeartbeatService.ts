@@ -31,9 +31,11 @@ export interface HeartbeatAlert {
   triggerType:
     | 'quiet_threshold'
     | 'blocklist_edit'
+    | 'blocklist_cleared'
     | 'heartbeat_paused'
     | 'account_deleted'
-    | 'circle_removed';
+    | 'circle_removed'
+    | 'threshold_changed';
   notificationText: string;
   sentAt: string;
   readAt: string | null;
@@ -79,11 +81,19 @@ export const GroveHeartbeatService = {
 
   /**
    * Update heartbeat settings (e.g. threshold, enabled).
+   *
+   * When `options.notifyInnerCircle` is set, the inner circle is notified of the
+   * change via the Edge Function (fire-and-forget push). Callers pass this only
+   * when RAISING the quiet threshold — weakening accountability warrants an
+   * alert; lowering it (more accountability) stays silent.
    */
-  async updateSettings(updates: {
-    isEnabled?: boolean;
-    quietThresholdDays?: 3 | 5 | 7 | 14;
-  }): Promise<HeartbeatSettings> {
+  async updateSettings(
+    updates: {
+      isEnabled?: boolean;
+      quietThresholdDays?: 3 | 5 | 7 | 14;
+    },
+    options?: { notifyInnerCircle?: boolean }
+  ): Promise<HeartbeatSettings> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -98,6 +108,18 @@ export const GroveHeartbeatService = {
       .single();
 
     if (error) throw error;
+
+    // Notify inner circle that the quiet threshold was raised (via Edge Function
+    // for push delivery). Fire-and-forget — the settings write already succeeded.
+    if (options?.notifyInnerCircle) {
+      supabase.functions
+        .invoke('heartbeat-blocklist-notify', {
+          body: { userId: user.id, triggerType: 'threshold_changed' },
+        })
+        .catch((err: any) =>
+          console.error('Failed to notify inner circle about threshold change:', err)
+        );
+    }
 
     return {
       isEnabled: data.is_enabled,
@@ -441,14 +463,18 @@ export const GroveHeartbeatService = {
   },
 
   /**
-   * Notify inner circle about a blocklist edit via Edge Function.
+   * Notify inner circle about a blocklist change via Edge Function.
+   * `blocklist_cleared` (the user emptied their entire blocklist) uses a firmer
+   * alert than a normal `blocklist_edit`.
    */
-  async notifyBlocklistEdit(): Promise<void> {
+  async notifyBlocklistEdit(
+    triggerType: 'blocklist_edit' | 'blocklist_cleared' = 'blocklist_edit'
+  ): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
     const { error } = await supabase.functions.invoke('heartbeat-blocklist-notify', {
-      body: { userId: user.id, triggerType: 'blocklist_edit' },
+      body: { userId: user.id, triggerType },
     });
 
     if (error) throw error;

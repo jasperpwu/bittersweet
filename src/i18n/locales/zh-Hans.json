@@ -1095,6 +1095,8 @@
     "icWantsYou": "希望邀请你加入他们的核心圈",
     "icQuietThreshold": "静默阈值",
     "icQuietDesc": "若你连续这么多天没有活动，就通知你的核心圈。",
+    "icThresholdRaiseTitle": "调高静默阈值？",
+    "icThresholdRaiseMsg": "你可以更久不活动，核心圈才会收到提醒。此次更改会通知圈内成员。",
     "icPause": "暂停",
     "icPaused": "心跳已暂停",
     "icPauseHeartbeat": "暂停心跳",

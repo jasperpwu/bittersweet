@@ -83,7 +83,13 @@ async function reconcileBlocklistAuth() {
   if (blocklistAuthInFlight) return; // a request is already up — don't stack
   blocklistAuthInFlight = true;
   try {
-    await blocklist.requestAuthorization();
+    // Re-assert blocking in the SAME pass the moment authorization is granted,
+    // rather than waiting for the next launch/foreground cycle — so a reinstalled
+    // (or re-permitted) user's apps are blocked immediately after they tap Allow.
+    const granted = await blocklist.requestAuthorization();
+    if (granted) {
+      blocklist.reconcileBlocking(); // re-apply from the restored intent
+    }
   } finally {
     blocklistAuthInFlight = false;
   }

@@ -1098,6 +1098,8 @@
     "icWantsYou": "Wants you in their inner circle",
     "icQuietThreshold": "Quiet Threshold",
     "icQuietDesc": "Notify your inner circle if you have been inactive for this many days.",
+    "icThresholdRaiseTitle": "Raise quiet threshold?",
+    "icThresholdRaiseMsg": "You'll be able to go quiet longer before your inner circle is alerted. They'll be notified of this change.",
     "icPause": "Pause",
     "icPaused": "Heartbeat Paused",
     "icPauseHeartbeat": "Pause Heartbeat",

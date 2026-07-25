@@ -1098,6 +1098,8 @@
     "icWantsYou": "Veut vous ajouter à son cercle proche",
     "icQuietThreshold": "Seuil de silence",
     "icQuietDesc": "Prévenez votre cercle proche si vous êtes inactif pendant ce nombre de jours.",
+    "icThresholdRaiseTitle": "Augmenter le seuil de silence ?",
+    "icThresholdRaiseMsg": "Vous pourrez rester silencieux plus longtemps avant que votre cercle proche soit alerté. Il sera informé de ce changement.",
     "icPause": "Pause",
     "icPaused": "Battement en pause",
     "icPauseHeartbeat": "Mettre le battement en pause",

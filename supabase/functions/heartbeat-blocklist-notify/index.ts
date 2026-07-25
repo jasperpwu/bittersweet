@@ -3,7 +3,7 @@
 //
 // Deployment: supabase functions deploy heartbeat-blocklist-notify
 //
-// Body: { userId: string, triggerType: 'blocklist_edit' | 'heartbeat_paused' }
+// Body: { userId: string, triggerType: 'blocklist_edit' | 'blocklist_cleared' | 'heartbeat_paused' | 'threshold_changed' }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -13,17 +13,28 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 };
 
-const VALID_TRIGGERS = ['blocklist_edit', 'heartbeat_paused'] as const;
+const VALID_TRIGGERS = [
+  'blocklist_edit',
+  'blocklist_cleared',
+  'heartbeat_paused',
+  'threshold_changed',
+] as const;
 type TriggerType = (typeof VALID_TRIGGERS)[number];
 
 const NOTIFICATION_TEXT: Record<TriggerType, (name: string) => string> = {
   blocklist_edit: (name) => `${name} made changes to their blocked apps.`,
+  blocklist_cleared: (name) =>
+    `Heads up — ${name} cleared their entire blocklist and is no longer blocking any apps.`,
   heartbeat_paused: (name) => `${name} is taking a break from their heartbeat.`,
+  threshold_changed: (name) =>
+    `${name} raised their quiet threshold, so they can go quiet longer before you're alerted.`,
 };
 
 const PUSH_TITLE: Record<TriggerType, string> = {
   blocklist_edit: 'Inner Circle Alert',
+  blocklist_cleared: 'Inner Circle Alert',
   heartbeat_paused: 'Inner Circle Alert',
+  threshold_changed: 'Inner Circle Alert',
 };
 
 Deno.serve(async (req: Request) => {

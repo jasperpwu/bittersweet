@@ -1098,6 +1098,8 @@
     "icWantsYou": "Quer você no círculo íntimo",
     "icQuietThreshold": "Limite de silêncio",
     "icQuietDesc": "Avise seu círculo íntimo se você ficar este número de dias sem atividade.",
+    "icThresholdRaiseTitle": "Aumentar o limite de silêncio?",
+    "icThresholdRaiseMsg": "Você poderá ficar mais tempo sem atividade antes que seu círculo íntimo seja avisado. Ele será notificado dessa mudança.",
     "icPause": "Pausar",
     "icPaused": "Pulso pausado",
     "icPauseHeartbeat": "Pausar pulso",

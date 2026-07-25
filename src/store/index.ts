@@ -402,16 +402,21 @@ interface AppStore {
     updateBlockedApps: (
       selection: FamilyActivitySelection,
       metadata?: { applicationCount?: number; categoryCount?: number; webDomainCount?: number },
-      chargeFruit?: boolean
+      chargeFruit?: boolean,
+      notifyChange?: boolean
     ) => Promise<void>;
     updateSettings: (settings: Partial<BlocklistSettings>) => void;
     requestUnlock: (appTokens: any[], duration: number) => Promise<UnlockSession | null>;
     endUnlock: (sessionId: string, reason?: 'expired' | 'manual', endedAtMs?: number) => void;
     checkActiveUnlocks: () => void;
     reconcileBlocking: () => void;
-    getBlocklistEditCost: () => number;
+    getBlocklistEditCost: (isClearing?: boolean) => number;
   };
 }
+
+// Clearing the ENTIRE blocklist is the single largest drop in accountability,
+// so it costs 3x a normal edit (still on top of the weekly escalation).
+const BLOCKLIST_CLEAR_COST_MULTIPLIER = 3;
 
 const getWeekStart = () => {
   const today = new Date();
@@ -2623,7 +2628,8 @@ export const useAppStore = create<AppStore>()(
               categoryCount?: number;
               webDomainCount?: number;
             },
-            chargeFruit?: boolean
+            chargeFruit?: boolean,
+            notifyChange?: boolean
           ) => {
             try {
               console.log('📱 Store: updateBlockedApps called');
@@ -2631,9 +2637,15 @@ export const useAppStore = create<AppStore>()(
               console.log('📱 Store: metadata:', metadata);
               console.log('📱 Store: chargeFruit:', chargeFruit);
 
+              // Clearing = emptying an existing blocklist (had a prior selection).
+              // It costs more and gets a firmer inner-circle alert.
+              const isClearing =
+                (selection === null || selection === '') &&
+                !!get().blocklist.currentSelectionId;
+
               if (chargeFruit) {
-                // Charge fruit cost for editing blocklist (weekly escalation)
-                const editCost = get().blocklist.getBlocklistEditCost();
+                // Charge fruit cost for editing blocklist (weekly escalation; 3x for a full clear)
+                const editCost = get().blocklist.getBlocklistEditCost(isClearing);
                 const currentBalance = get().rewards.balance;
                 console.log('📱 Store: Blocklist edit cost:', editCost, 'balance:', currentBalance);
 
@@ -2724,6 +2736,17 @@ export const useAppStore = create<AppStore>()(
                 await FamilyControlsModule.clearShieldConfiguration();
 
                 console.log('✅ Store: Blocklist cleared successfully');
+
+                // Notify inner circle that the user cleared their ENTIRE blocklist —
+                // the biggest single drop in accountability, so it uses a firmer
+                // alert (blocklist_cleared). Gated on notifyChange (a real change)
+                // and isClearing (there was a prior selection to clear).
+                if (notifyChange && isClearing) {
+                  const groveState = get().grove;
+                  if (groveState.isActive && groveState.heartbeatSettings?.isEnabled) {
+                    groveState.notifyBlocklistEdit('blocklist_cleared');
+                  }
+                }
                 return;
               }
 
@@ -2811,10 +2834,15 @@ export const useAppStore = create<AppStore>()(
 
                 console.log('✅ Store: Blocked apps updated successfully');
 
-                // Notify inner circle about blocklist edit (fire-and-forget)
-                const groveState = get().grove;
-                if (groveState.isActive && groveState.heartbeatSettings?.isEnabled) {
-                  groveState.notifyBlocklistEdit();
+                // Notify inner circle about blocklist edit (fire-and-forget).
+                // Only when the selection actually changed — the caller compares
+                // the pre-edit and post-edit selection blobs so a no-op re-save
+                // (or a net-zero toggle off/on) doesn't ping the circle.
+                if (notifyChange) {
+                  const groveState = get().grove;
+                  if (groveState.isActive && groveState.heartbeatSettings?.isEnabled) {
+                    groveState.notifyBlocklistEdit('blocklist_edit');
+                  }
                 }
 
                 // Analytics: blocking adoption + the blocklist-vs-no-blocklist cohort.
@@ -3108,16 +3136,17 @@ export const useAppStore = create<AppStore>()(
             BlocklistSyncService.reapplyBlocking(currentSelectionId, hasActiveUnlock);
           },
 
-          getBlocklistEditCost: () => {
+          getBlocklistEditCost: (isClearing = false) => {
             const { editHistory } = get().blocklist;
             const currentWeekStart = getWeekStart().toISOString();
 
-            // Reset count if we're in a new week
-            if (editHistory.weekStart !== currentWeekStart) {
-              return 1; // 2^0 = 1 (first edit of new week)
-            }
+            // Base escalating cost: doubles each edit within the week, resets weekly.
+            const base =
+              editHistory.weekStart !== currentWeekStart
+                ? 1 // new week — first edit
+                : Math.pow(2, editHistory.editsThisWeek); // 1, 2, 4, 8, 16...
 
-            return Math.pow(2, editHistory.editsThisWeek); // 1, 2, 4, 8, 16...
+            return isClearing ? base * BLOCKLIST_CLEAR_COST_MULTIPLIER : base;
           },
         },
       }),

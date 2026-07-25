@@ -113,12 +113,34 @@ export default function InnerCircleModal() {
     }
   };
 
-  const handleThresholdChange = async (days: 3 | 5 | 7 | 14) => {
-    try {
-      await updateHeartbeatSettings({ quietThresholdDays: days });
-    } catch {
-      Alert.alert(t('common.error'), t('gm.errUpdateSettings'));
+  const handleThresholdChange = (days: 3 | 5 | 7 | 14) => {
+    const current = heartbeatSettings?.quietThresholdDays ?? 3;
+    if (days === current) return;
+
+    const applyChange = async (notifyInnerCircle: boolean) => {
+      try {
+        await updateHeartbeatSettings({ quietThresholdDays: days }, { notifyInnerCircle });
+      } catch {
+        Alert.alert(t('common.error'), t('gm.errUpdateSettings'));
+      }
+    };
+
+    // Raising the threshold lets the user go quiet longer before their circle is
+    // alerted — a weakening of accountability. Confirm, and notify the circle.
+    if (days > current) {
+      Alert.alert(
+        t('gm.icThresholdRaiseTitle'),
+        t('gm.icThresholdRaiseMsg'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.continue'), onPress: () => applyChange(true) },
+        ]
+      );
+      return;
     }
+
+    // Lowering the threshold (more accountability) applies silently.
+    applyChange(false);
   };
 
   const renderMemberRow = useCallback((member: InnerCircleMember) => {

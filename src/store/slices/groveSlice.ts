@@ -138,7 +138,7 @@ export interface GroveSlice {
 
   // Phase 4 actions
   fetchHeartbeatSettings: () => Promise<void>;
-  updateHeartbeatSettings: (updates: { isEnabled?: boolean; quietThresholdDays?: 3 | 5 | 7 | 14 }) => Promise<void>;
+  updateHeartbeatSettings: (updates: { isEnabled?: boolean; quietThresholdDays?: 3 | 5 | 7 | 14 }, options?: { notifyInnerCircle?: boolean }) => Promise<void>;
   pauseHeartbeat: (duration: '1_week' | '2_weeks' | '1_month') => Promise<void>;
   resumeHeartbeat: () => Promise<void>;
   fetchInnerCircle: () => Promise<void>;
@@ -150,7 +150,9 @@ export interface GroveSlice {
   fetchHeartbeatAlerts: () => Promise<void>;
   markHeartbeatAlertRead: (alertId: string) => Promise<void>;
   recordHeartbeatActivity: () => Promise<void>;
-  notifyBlocklistEdit: () => Promise<void>;
+  notifyBlocklistEdit: (
+    triggerType?: 'blocklist_edit' | 'blocklist_cleared'
+  ) => Promise<void>;
   markNotificationsSeen: () => void;
 
   // Focusing status
@@ -1141,9 +1143,9 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }
   },
 
-  updateHeartbeatSettings: async (updates: { isEnabled?: boolean; quietThresholdDays?: 3 | 5 | 7 | 14 }) => {
+  updateHeartbeatSettings: async (updates: { isEnabled?: boolean; quietThresholdDays?: 3 | 5 | 7 | 14 }, options?: { notifyInnerCircle?: boolean }) => {
     try {
-      const settings = await GroveHeartbeatService.updateSettings(updates);
+      const settings = await GroveHeartbeatService.updateSettings(updates, options);
       set((state: any) => ({
         grove: { ...state.grove, heartbeatSettings: settings },
       }));
@@ -1327,6 +1329,14 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     const settings = get().grove.heartbeatSettings;
     if (settings?.isPaused || settings?.isEnabled === false) return;
 
+    // Heartbeat is an accountability signal tied to actually blocking apps: it
+    // only means something when the user has a blocklist to enforce AND Screen
+    // Time authorization to enforce it. Without both there's nothing being
+    // blocked, so recording a "still active" heartbeat would be misleading.
+    const blocklist = get().blocklist;
+    if (!blocklist.currentSelectionId) return; // no blocklist configured
+    if (!(await blocklist.checkAuthorizationStatus())) return; // Screen Time not granted
+
     try {
       await GroveHeartbeatService.recordActivity();
     } catch (error: any) {
@@ -1335,9 +1345,11 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }
   },
 
-  notifyBlocklistEdit: async () => {
+  notifyBlocklistEdit: async (
+    triggerType: 'blocklist_edit' | 'blocklist_cleared' = 'blocklist_edit'
+  ) => {
     try {
-      await GroveHeartbeatService.notifyBlocklistEdit();
+      await GroveHeartbeatService.notifyBlocklistEdit(triggerType);
     } catch (error: any) {
       // Fire-and-forget: silent fail
       console.error('Failed to notify blocklist edit:', error);

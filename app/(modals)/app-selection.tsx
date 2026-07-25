@@ -105,7 +105,7 @@ export default function AppSelectionScreen() {
     router.back();
   };
 
-  const executeSave = async (chargeFruit: boolean = false) => {
+  const executeSave = async (chargeFruit: boolean = false, notifyChange: boolean = false) => {
     console.log('🔍 Save button pressed');
     console.log('🔍 Current state:');
     console.log('  - selectedApps:', selectedApps);
@@ -150,7 +150,7 @@ export default function AppSelectionScreen() {
       console.log('  - metadata:', metadata);
 
       // Pass the selectionId (or empty string to clear) and metadata to updateBlockedApps
-      await updateBlockedApps(selectionId || '', metadata, chargeFruit);
+      await updateBlockedApps(selectionId || '', metadata, chargeFruit, notifyChange);
       console.log('✅ updateBlockedApps completed successfully');
       // Mark as saved so the unmount effect does NOT restore the pre-edit blob.
       savedRef.current = true;
@@ -172,23 +172,38 @@ export default function AppSelectionScreen() {
   };
 
   const handleSave = () => {
-    // Charge fruit only if: not initial setup AND user actually changed the selection.
-    // When no edits were made, still re-apply blocking (free) — handles the case
+    // Detect a *real* change by comparing the pre-edit selection blob (snapshotted
+    // on mount) against the picker's current live blob. This is more precise than
+    // tracking taps (hasUserEdited): a net-zero edit — toggling an app off then
+    // back on — produces an identical blob and must neither charge nor notify.
+    const currentBlob = getFamilyActivitySelectionId('bittersweet-blocklist') ?? '';
+    const selectionChanged = (originalBlobRef.current ?? '') !== currentBlob;
+
+    // Clearing = had a selection, now empty. Costs more (3x) and gets a firmer
+    // inner-circle alert — the largest single drop in accountability.
+    const totalCount =
+      selectionCounts.applicationCount +
+      selectionCounts.categoryCount +
+      selectionCounts.webDomainCount;
+    const isClearing = (originalBlobRef.current ?? '') !== '' && totalCount === 0;
+
+    // Charge fruit only if: not initial setup AND the selection actually changed.
+    // When nothing changed, still re-apply blocking (free) — handles the case
     // where apps were synced but native blocking wasn't active yet.
-    const willCharge = !isInitialSetup && hasUserEdited;
+    const willCharge = !isInitialSetup && selectionChanged;
 
     if (willCharge) {
       // Disclose the escalating price before charging: it doubles with each edit
-      // and resets weekly (getBlocklistEditCost / editHistory).
-      const cost = getBlocklistEditCost();
+      // and resets weekly (getBlocklistEditCost / editHistory); 3x for a full clear.
+      const cost = getBlocklistEditCost(isClearing);
       Alert.alert(t('gm.asEditCostTitle'), t('gm.asEditCostMessage', { cost }), [
         { text: t('common.cancel'), style: 'cancel' },
-        { text: t('gm.asEditCostConfirm', { cost }), onPress: () => executeSave(true) },
+        { text: t('gm.asEditCostConfirm', { cost }), onPress: () => executeSave(true, selectionChanged) },
       ]);
       return;
     }
 
-    executeSave(false);
+    executeSave(false, selectionChanged);
   };
 
   const handleSelectionChange = (event: any) => {
