@@ -89,6 +89,7 @@
     "delete": "Delete",
     "you": "You",
     "remove": "Remove",
+    "more": "more",
     "offlineSyncPending": "No connection — your changes will sync once you're back online",
     "offlineTitle": "You're Offline",
     "offlineTryFocus": "You seem to be offline. Check your connection — or try a focus session on the Focus tab in the meantime."

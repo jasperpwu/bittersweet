@@ -125,9 +125,9 @@ export class SyncService {
       await SyncService.batchUpsert('custom_rewards', customRewardRows);
     }
 
-    // Upload settings (from unified store preferences + main store lastDurationByTagId)
+    // Upload settings (from unified store preferences + main store focus fields)
     if (localState.settings) {
-      const settingsRow = settingsToRow(localState.settings, userId, localState.focus?.lastDurationByTagId);
+      const settingsRow = settingsToRow(localState.settings, userId, localState.focus);
       const { error: settingsError } = await supabase
         .from('user_settings')
         .upsert(settingsRow, { onConflict: 'user_id' });
@@ -161,12 +161,52 @@ export class SyncService {
   }
 
   /**
+   * Cheap "does this account have any cloud data?" probe — the emptiness test that
+   * decides brand-new-signup vs. existing-account on SIGNED_IN, and merge vs. upload on
+   * INITIAL_SESSION. It answers a single boolean, so it must NOT be a full pullAll: that
+   * downloaded every session/badge/purchase just to read `.length > 0`, then threw it all
+   * away and pulled the identical payload again via pullAndApply/triggerSync.
+   *
+   * The filters mirror pullAll exactly so the verdict is identical: sessions exclude
+   * soft-deletes, tags include them (pullAll deliberately keeps tag tombstones).
+   *
+   * Returns null on error — callers must treat that as "unknown" and take the branch that
+   * preserves local data, never the branch that wipes it.
+   */
+  static async probeHasData(userId: string): Promise<boolean | null> {
+    try {
+      const [sessionsRes, tagsRes] = await Promise.all([
+        supabase
+          .from('focus_sessions')
+          .select('id')
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .limit(1),
+        supabase.from('session_tags').select('id').eq('user_id', userId).limit(1),
+      ]);
+      if (sessionsRes.error) throw sessionsRes.error;
+      if (tagsRes.error) throw tagsRes.error;
+      const hasData =
+        (sessionsRes.data?.length ?? 0) > 0 || (tagsRes.data?.length ?? 0) > 0;
+      console.log(`☁️ Cloud probe: ${hasData ? 'has data' : 'empty'}`);
+      return hasData;
+    } catch (error) {
+      console.error('☁️ Cloud probe failed:', error);
+      return null;
+    }
+  }
+
+  /**
    * Pull all user data from Supabase and return as store-shaped snapshot.
    */
   static async pullAll(userId: string): Promise<any> {
     console.log('☁️ Pulling all data from cloud...');
 
-    const [sessionsRes, tagsRes, goalsRes, todosRes, rewardsRes, badgesRes, coachRes, purchasesRes, customRewardsRes, settingsRes, referralRes] =
+    // The blocklist blob rides in the SAME Promise.all as the table queries. It used to
+    // be awaited afterwards, which cost a full extra round trip on every pull for no
+    // reason — it has no dependency on the rows above. `.catch()` keeps a blocklist
+    // failure from rejecting the whole batch (it was previously in its own try/catch).
+    const [sessionsRes, tagsRes, goalsRes, todosRes, rewardsRes, badgesRes, coachRes, purchasesRes, customRewardsRes, settingsRes, referralRes, blocklistBlob] =
       await Promise.all([
         supabase
           .from('focus_sessions')
@@ -215,6 +255,10 @@ export class SyncService {
           .is('deleted_at', null),
         supabase.from('user_settings').select('*').eq('user_id', userId).single(),
         supabase.from('referral_tracking').select('*').eq('user_id', userId).maybeSingle(),
+        BlocklistSyncService.pull(userId).catch((error) => {
+          console.error('Failed to pull blocklist:', error);
+          return null;
+        }),
       ]);
 
     const sessions = rowsToNormalized(
@@ -242,14 +286,6 @@ export class SyncService {
     const referral = referralRes.data
       ? rowToReferral(referralRes.data)
       : { referralCode: null, referralCount: 0, claimedTier: 0 };
-
-    // Pull blocklist blob
-    let blocklistBlob: string | null = null;
-    try {
-      blocklistBlob = await BlocklistSyncService.pull(userId);
-    } catch (error) {
-      console.error('Failed to pull blocklist:', error);
-    }
 
     console.log(
       `☁️ Pulled: ${sessions.allIds.length} sessions, ${tags.allIds.length} tags, ${goals.allIds.length} goals, ${badges.allIds.length} badges, settings: ${settings ? 'yes' : 'no'}, blocklist: ${blocklistBlob ? 'yes' : 'no'}`
@@ -282,6 +318,12 @@ export class SyncService {
             ...(remote.settings?.lastDurationByTagId ?? {}),
             ...(local.settings?.lastDurationByTagId ?? {}),
           },
+          // Last-used tag: prefer this device's choice (it reflects the most recent
+          // real usage), fall back to the cloud when local has none — the reinstall
+          // case, where the whole point is to restore the tag instead of showing
+          // "Select a tag". Same local-biased rule as lastDurationByTagId above.
+          lastSelectedTagId:
+            local.settings?.lastSelectedTagId ?? remote.settings?.lastSelectedTagId ?? null,
         };
       }
     }

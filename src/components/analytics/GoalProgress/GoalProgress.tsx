@@ -432,14 +432,21 @@ export const GoalProgress: FC<GoalProgressProps> = ({
 
   // Get tags and sessions from store for real data
   const { tags, sessions, lastDurationByTagId } = useFocus();
-  const restDays = preferences.restDays ?? [0, 6];
+  // Both of these feed useMemo dependency lists below (goal progress, and the
+  // streak walk inside GoalConsistencyCalendar). Built inline they were fresh
+  // references on every render, so every downstream memo missed and recomputed —
+  // including the streak, which is now unbounded and the most expensive of them.
+  const restDays = useMemo(() => preferences.restDays ?? [0, 6], [preferences.restDays]);
   const weekStartDay = 1; // Always Monday
 
   // Extract sessions array from normalized state
-  const safeSessions =
-    sessions && sessions.allIds && sessions.byId
-      ? sessions.allIds.map((id) => sessions.byId[id]).filter(Boolean)
-      : [];
+  const safeSessions = useMemo(
+    () =>
+      sessions && sessions.allIds && sessions.byId
+        ? sessions.allIds.map((id) => sessions.byId[id]).filter(Boolean)
+        : [],
+    [sessions]
+  );
 
   // Create tag map for name/ID conversion
   const tagMap = useMemo(
@@ -1086,7 +1093,13 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({
   );
 
   // Current streak for this goal (off-marked slots already skipped inside).
-  const streak = calculateGoalStreak(goal, sessions, restDays, weekStartDay);
+  // Memoized: the walk is now unbounded, so it scales with streak length rather
+  // than a fixed 365-period cap — it must not re-run on unrelated re-renders
+  // (this component re-renders on every modal/share toggle).
+  const streak = useMemo(
+    () => calculateGoalStreak(goal, sessions, restDays, weekStartDay),
+    [goal, sessions, restDays, weekStartDay]
+  );
   const goalEmoji = '🎯';
   const streakUnit = goalPeriod === 'weekly' ? 'week' : goalPeriod === 'monthly' ? 'month' : 'day';
   const streakLabel = t(`streakShare.label_${streakUnit}`);

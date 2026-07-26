@@ -233,6 +233,11 @@ export const getHistoricalPeriodRanges = (
  * checkmark cells. Walking backward from the current period, it stops at the
  * first period that did not hit. Rest-day periods with a 0 target count as hits
  * (they never break the streak), matching the calendar.
+ *
+ * The streak is UNBOUNDED — a 400-day run counts 400. The only limit is the
+ * user's own history, since a streak cannot begin before their first session.
+ * (This previously stopped at a fixed 365/104/36 periods, which silently clipped
+ * the longest streaks — the ones that matter most.)
  */
 export const calculateGoalStreak = (
   goal: FocusGoal,
@@ -246,16 +251,43 @@ export const calculateGoalStreak = (
   if (period === 'none') return 0;
   const normalized = (period === 'yearly' ? 'monthly' : period) as 'daily' | 'weekly' | 'monthly';
 
-  // How far back a streak can stretch before we stop counting.
-  const maxLookback = normalized === 'daily' ? 365 : normalized === 'weekly' ? 104 : 36;
-  const ranges = getHistoricalPeriodRanges(normalized, maxLookback, referenceDate, weekStartDay);
-
   const goalTagId = (goal as any).tagId;
   const relevant = goalTagId
     ? sessions.filter(
         (s) => (s as any).tagId === goalTagId || (s as any).secondaryTagId === goalTagId
       )
     : sessions;
+  if (relevant.length === 0) return 0;
+
+  // Index every session under the period(s) it touches, in one pass, so the walk
+  // below reads O(1) per period. Without this the walk rescans all sessions for
+  // every period — O(periods × sessions) — which made an unbounded walk get
+  // slower the longer a user's streak grew, exactly the wrong way round.
+  const byPeriod = new Map<string, FocusSession[]>();
+  let earliest = Infinity;
+  for (const s of relevant) {
+    const startTime = new Date(s.startTime).getTime();
+    if (!Number.isFinite(startTime)) continue;
+    if (startTime < earliest) earliest = startTime;
+
+    // A session can straddle a boundary (a run past midnight), so index it under
+    // each period it overlaps; getSessionMinutesInPeriod splits the minutes.
+    // Bad/corrupt endTimes collapse to a single period rather than looping.
+    const rawEnd = s.endTime ? new Date(s.endTime).getTime() : startTime;
+    const endTime = Number.isFinite(rawEnd) && rawEnd > startTime ? rawEnd : startTime;
+
+    let cursor = new Date(startTime);
+    for (;;) {
+      const { periodStart, periodEnd } = getGoalPeriodRange(normalized, cursor, weekStartDay);
+      const key = getPeriodKey(periodStart);
+      const bucket = byPeriod.get(key);
+      if (bucket) bucket.push(s);
+      else byPeriod.set(key, [s]);
+      if (periodEnd.getTime() >= endTime) break;
+      cursor = new Date(periodEnd.getTime() + 1);
+    }
+  }
+  if (!Number.isFinite(earliest)) return 0;
 
   // Off-marked slots are skipped entirely — they neither extend nor break the
   // streak, as if the period never existed.
@@ -264,25 +296,35 @@ export const calculateGoalStreak = (
   const now = referenceDate.getTime();
 
   let streak = 0;
-  // Ranges are oldest-first; walk from the most recent period backward.
-  for (let i = ranges.length - 1; i >= 0; i--) {
-    const { periodStart, periodEnd } = ranges[i];
-    if (offKeys.has(getPeriodKey(periodStart))) continue; // skip off slots
-    const totalMinutes = relevant.reduce(
-      (sum, s) => sum + getSessionMinutesInPeriod(s, periodStart, periodEnd),
-      0
-    );
-    const target = getTargetForDate(goal, periodStart, restDays, normalized);
-    const hit = target > 0 ? totalMinutes >= target : true;
-    if (hit) {
-      streak++;
-    } else if (periodEnd.getTime() >= now) {
-      // The current period is still in progress — not hitting it *yet* isn't a
-      // miss, so don't break the streak; just don't count it until it's hit.
-      continue;
-    } else {
-      break;
+  let cursor = new Date(referenceDate);
+  // Walk backward from the current period until we pass the first session.
+  for (;;) {
+    const { periodStart, periodEnd } = getGoalPeriodRange(normalized, cursor, weekStartDay);
+    if (periodEnd.getTime() < earliest) break;
+
+    const key = getPeriodKey(periodStart);
+    if (!offKeys.has(key)) {
+      const inPeriod = byPeriod.get(key) ?? [];
+      const totalMinutes = inPeriod.reduce(
+        (sum, s) => sum + getSessionMinutesInPeriod(s, periodStart, periodEnd),
+        0
+      );
+      const target = getTargetForDate(goal, periodStart, restDays, normalized);
+      const hit = target > 0 ? totalMinutes >= target : true;
+      if (hit) {
+        streak++;
+      } else if (periodEnd.getTime() < now) {
+        // A past period that missed ends the streak. The CURRENT period is
+        // exempt: not having hit it *yet* isn't a miss, so it neither counts
+        // nor breaks.
+        break;
+      }
     }
+
+    // One millisecond before this period's start always lands in the previous
+    // period — proof against DST shifts and uneven month lengths, unlike
+    // subtracting a fixed number of days.
+    cursor = new Date(periodStart.getTime() - 1);
   }
 
   return streak;

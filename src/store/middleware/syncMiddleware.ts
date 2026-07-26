@@ -70,7 +70,7 @@ export function initSyncMiddleware(store: any): () => void {
         const mainState = store.getState();
         const userId = mainState.auth.user.id;
         const currentPrefs = useUnifiedStore.getState().preferences;
-        const row = settingsToRow(currentPrefs, userId, mainState.focus?.lastDurationByTagId);
+        const row = settingsToRow(currentPrefs, userId, mainState.focus);
         await SyncService.enqueue('user_settings', 'upsert', row);
         lastSyncedSettings = currentPrefs;
 
@@ -111,8 +111,10 @@ export function initSyncMiddleware(store: any): () => void {
       state.blocklist.currentSelectionId !== prevState.blocklist?.currentSelectionId;
     const durationByTagChanged =
       state.focus.lastDurationByTagId !== prevState.focus?.lastDurationByTagId;
+    const selectedTagChanged =
+      state.focus.lastSelectedTagId !== prevState.focus?.lastSelectedTagId;
 
-    if (!sessionsChanged && !tagsChanged && !goalsChanged && !todosChanged && !badgesChanged && !coachReportsChanged && !rewardsChanged && !purchasesChanged && !customRewardsChanged && !blocklistChanged && !durationByTagChanged) {
+    if (!sessionsChanged && !tagsChanged && !goalsChanged && !todosChanged && !badgesChanged && !coachReportsChanged && !rewardsChanged && !purchasesChanged && !customRewardsChanged && !blocklistChanged && !durationByTagChanged && !selectedTagChanged) {
       return;
     }
 
@@ -127,7 +129,7 @@ export function initSyncMiddleware(store: any): () => void {
     if (purchasesChanged) pendingChanges.purchases = true;
     if (customRewardsChanged) pendingChanges.customRewards = true;
     if (blocklistChanged) pendingChanges.blocklist = true;
-    if (durationByTagChanged) pendingChanges.settings = true;
+    if (durationByTagChanged || selectedTagChanged) pendingChanges.settings = true;
 
 
     // Debounce sync operations
@@ -243,10 +245,10 @@ export function initSyncMiddleware(store: any): () => void {
           await SyncService.enqueue('rewards', 'upsert', rewardsRow);
         }
 
-        // Settings — upsert when lastDurationByTagId changes in main store
+        // Settings — upsert when lastDurationByTagId / lastSelectedTagId change in main store
         if (changes.settings) {
           const currentPrefs = useUnifiedStore.getState().preferences;
-          const row = settingsToRow(currentPrefs, userId, state.focus?.lastDurationByTagId);
+          const row = settingsToRow(currentPrefs, userId, state.focus);
           await SyncService.enqueue('user_settings', 'upsert', row);
         }
 

@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
+import { SessionNotes } from '../../src/components/ui/SessionNotes';
 import { colors } from '../../src/config/theme';
 import { useFocus } from '../../src/store';
 import i18n from '../../src/i18n';
@@ -108,9 +109,7 @@ export default function MySessionFeedModal() {
                   {/* Notes */}
                   {session.notes ? (
                     <View className="mt-2">
-                      <Typography variant="body-12" color="secondary" numberOfLines={3}>
-                        {session.notes}
-                      </Typography>
+                      <SessionNotes notes={session.notes} />
                     </View>
                   ) : null}
 

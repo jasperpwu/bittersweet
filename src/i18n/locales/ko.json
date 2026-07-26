@@ -89,6 +89,7 @@
     "delete": "삭제",
     "you": "나",
     "remove": "제거",
+    "more": "더 보기",
     "offlineSyncPending": "인터넷 연결이 없어요. 다시 연결되면 자동으로 동기화돼요",
     "offlineTitle": "오프라인 상태예요",
     "offlineTryFocus": "오프라인 상태인 것 같아요. 연결을 확인하거나, 그동안 집중 탭에서 집중 세션을 시작해 보세요."

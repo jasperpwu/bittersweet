@@ -461,7 +461,13 @@ export default function FocusScreen() {
   // Restore last selected tag or fall back to first available tag
   useEffect(() => {
     if (availableTags.length > 0 && !selectedTag) {
-      const lastTagExists = lastSelectedTagId && tags.byId[lastSelectedTagId];
+      // Soft-deleted tags stay in byId (with deletedAt) but aren't selectable, so
+      // check the same condition availableTags uses — a restored/synced id can
+      // point at a tag that was deleted on another device.
+      const lastTagExists =
+        lastSelectedTagId &&
+        tags.byId[lastSelectedTagId] &&
+        !tags.byId[lastSelectedTagId].deletedAt;
       const restoredTagId = lastTagExists ? lastSelectedTagId : availableTags[0].id;
       setSelectedTag(restoredTagId);
       // Restore last used duration for this tag (default 15 min)

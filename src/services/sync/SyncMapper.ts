@@ -3,6 +3,8 @@
  * and Supabase rows (snake_case, ISO strings).
  */
 
+import { clampSessionNotes } from '../../utils/textUtils';
+
 // --- Generic helpers ---
 
 function toSnakeCase(str: string): string {
@@ -73,7 +75,7 @@ export function sessionToRow(session: any, userId: string): Record<string, any> 
     adjusted_duration: session.adjustedDuration ?? null,
     tag_id: session.tagId,
     secondary_tag_id: session.secondaryTagId ?? null,
-    notes: session.notes ?? null,
+    notes: clampSessionNotes(session.notes) ?? null,
     photo_url: session.photoUrl ?? null,
     is_manual_entry: session.isManualEntry ?? false,
     accelerate_multiplier: session.accelerateMultiplier ?? 1,
@@ -494,12 +496,14 @@ export function rowToCoachReport(row: Record<string, any>): any {
 
 /**
  * Flatten AppPreferences (nested notifications/focus objects) into a flat DB row.
- * lastDurationByTagId comes from the main store (focus.lastDurationByTagId), not unified store.
+ * `focusState` carries the two settings-shaped fields that live in the main store
+ * rather than the unified store (lastDurationByTagId, lastSelectedTagId) — pass
+ * `state.focus` directly.
  */
 export function settingsToRow(
   preferences: any,
   userId: string,
-  lastDurationByTagId?: Record<string, number>
+  focusState?: { lastDurationByTagId?: Record<string, number>; lastSelectedTagId?: string | null }
 ): Record<string, any> {
   return {
     user_id: userId,
@@ -518,7 +522,8 @@ export function settingsToRow(
     // Apple Health settings (the `anchor` is intentionally device-local — not synced).
     healthkit_enabled: preferences.healthKit?.enabled ?? false,
     healthkit_linked_tag_id: preferences.healthKit?.linkedTagId ?? null,
-    last_duration_by_tag: lastDurationByTagId ?? {},
+    last_duration_by_tag: focusState?.lastDurationByTagId ?? {},
+    last_selected_tag_id: focusState?.lastSelectedTagId ?? null,
     slider_theme_id: preferences.sliderThemeId ?? null,
     has_seen_onboarding: preferences.hasSeenOnboarding ?? false,
     has_seen_fruit_coach_mark: preferences.hasSeenFruitCoachMark ?? false,
@@ -560,6 +565,7 @@ export function rowToSettings(row: Record<string, any>): any {
       linkedTagId: row.healthkit_linked_tag_id ?? null,
     },
     lastDurationByTagId: row.last_duration_by_tag ?? {},
+    lastSelectedTagId: row.last_selected_tag_id ?? null,
     sliderThemeId: row.slider_theme_id ?? null,
     updatedAt: row.updated_at ?? null,
   };

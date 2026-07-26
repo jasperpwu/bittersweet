@@ -28,6 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Modal, Slider, Typography, TimePicker, DatePicker, Button } from '../../src/components/ui';
 import { colors } from '../../src/config/theme';
+import { SESSION_NOTES } from '../../src/config/constants';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { CreateTagModal } from '../../src/components/focus';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
@@ -1036,6 +1037,7 @@ export default function JournalScreen() {
                 }
                 multiline
                 numberOfLines={2}
+                maxLength={SESSION_NOTES.maxLength}
                 textAlignVertical="top"
                 style={{
                   backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,
@@ -1263,6 +1265,7 @@ export default function JournalScreen() {
                 }
                 multiline
                 numberOfLines={2}
+                maxLength={SESSION_NOTES.maxLength}
                 textAlignVertical="top"
                 style={{
                   backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,

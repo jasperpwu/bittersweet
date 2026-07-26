@@ -23,6 +23,17 @@ export const FOCUS_CONSTANTS = {
   seedsPerMinute: 0.2, // 1 seed per 5 minutes
 } as const;
 
+// Session Notes — Instagram-style two-number model: a hard cap on what can be
+// written, plus a shorter preview the feeds clamp to before offering "… more".
+// `maxLength` is also enforced defensively in clampSessionNotes() (see
+// src/utils/textUtils.ts) so a legacy or imported over-length note can never
+// reach the cloud — an over-length row would fail its upsert and strand the
+// whole session in the sync queue.
+export const SESSION_NOTES = {
+  maxLength: 500,
+  previewLength: 125,
+} as const;
+
 // Reward System Constants
 export const REWARD_CONSTANTS = {
   initialSeeds: 0,
@@ -130,6 +141,7 @@ export const constants = {
   API_CONFIG,
   DEBUG_FLAGS,
   FOCUS_CONSTANTS,
+  SESSION_NOTES,
   REWARD_CONSTANTS,
   STORAGE_KEYS,
   THEME_CONSTANTS,

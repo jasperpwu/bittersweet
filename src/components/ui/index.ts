@@ -11,6 +11,7 @@ export * from './HeaderButton';
 export * from './Input';
 export * from './Modal';
 export * from './ScreenContent';
+export * from './SessionNotes';
 export * from './Slider';
 export * from './StatusBar';
 export * from './TabBar';

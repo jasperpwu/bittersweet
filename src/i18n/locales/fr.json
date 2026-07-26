@@ -89,6 +89,7 @@
     "delete": "Supprimer",
     "you": "Vous",
     "remove": "Supprimer",
+    "more": "plus",
     "offlineSyncPending": "Pas de connexion : vos modifications seront synchronisées dès le retour en ligne",
     "offlineTitle": "Vous êtes hors ligne",
     "offlineTryFocus": "Vous semblez être hors ligne. Vérifiez votre connexion ou, en attendant, lancez une session de focus dans l'onglet Focus."

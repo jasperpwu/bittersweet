@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Typography, Button } from '../../src/components/ui';
 import { colors } from '../../src/config/theme';
+import { SESSION_NOTES } from '../../src/config/constants';
 import { HorizontalTagSelector } from '../../src/components/focus/TagSelector';
 import { GoalProgressBanner } from '../../src/components/focus/GoalProgressBanner';
 import {
@@ -456,6 +457,7 @@ export default function SessionCompleteModal() {
               }
               multiline
               numberOfLines={3}
+              maxLength={SESSION_NOTES.maxLength}
               textAlignVertical="top"
               style={{
                 backgroundColor: colorScheme === 'dark' ? colors.dark.input : colors.light.input,

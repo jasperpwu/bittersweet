@@ -513,7 +513,13 @@ export default function RootLayout() {
                 // rewards). If the cloud is empty we PRESERVE local data and upload
                 // it (so a pre-account user keeps everything they built); if the
                 // cloud has data we CLEAR local and pull the cloud clean.
-                // pullFromCloud() returns null on network error — that falls into
+                //
+                // This is a cheap `limit(1)` probe, NOT a full pull: the verdict is one
+                // boolean, and the existing-account branch below re-downloads everything
+                // via pullAndApply anyway. Probing with a full pull meant every sign-in
+                // fetched, parsed and normalized the entire account twice.
+                //
+                // probeCloudHasData() returns null on network error — that falls into
                 // the PRESERVE branch, which is safe: initialUpload is upsert-only,
                 // so a misclassified existing user neither loses local data nor
                 // wipes cloud data, and the next cold-start reconciles.
@@ -523,11 +529,8 @@ export default function RootLayout() {
                 // branch it is simply discarded (initialUpload preserves all local
                 // data anyway); only the existing-account branch acts on it.
                 const heldSessionId = takeHeldSessionId();
-                const remoteData = await useAppStore.getState().sync.pullFromCloud();
                 const cloudHasData =
-                  !!remoteData &&
-                  (remoteData.focus.sessions.allIds.length > 0 ||
-                    remoteData.focus.tags.allIds.length > 0);
+                  (await useAppStore.getState().sync.probeCloudHasData()) === true;
 
                 if (cloudHasData) {
                   console.log(
@@ -543,7 +546,7 @@ export default function RootLayout() {
                   if (heldSessionId) {
                     heldFruits = await useAppStore
                       .getState()
-                      .sync.pushHeldSessionToCloud(heldSessionId, remoteData);
+                      .sync.pushHeldSessionToCloud(heldSessionId);
                   }
 
                   // Drop the sync baseline + queue BEFORE wiping, like the sign-out and
@@ -628,15 +631,17 @@ export default function RootLayout() {
                 // INITIAL_SESSION (cold start): merge local + cloud
                 console.log('🔄 INITIAL_SESSION — merging local with cloud');
 
-                const remoteData = await useAppStore.getState().sync.pullFromCloud();
+                // Same cheap probe as the SIGNED_IN branch — triggerSync() below does
+                // its own full pull, so probing with one would download the whole
+                // account twice on EVERY cold start. A null probe (network error)
+                // behaves exactly as a null pull did: not-remote, so a device with
+                // local data falls through to the upsert-only initialUpload.
+                const hasRemoteData =
+                  (await useAppStore.getState().sync.probeCloudHasData()) === true;
                 const localState = useAppStore.getState();
                 const hasLocalData =
                   localState.focus.sessions.allIds.length > 0 ||
                   localState.focus.tags.allIds.length > 0;
-                const hasRemoteData =
-                  remoteData &&
-                  (remoteData.focus.sessions.allIds.length > 0 ||
-                    remoteData.focus.tags.allIds.length > 0);
 
                 if (hasRemoteData) {
                   // Cloud has data — merge (pulls remote into local)

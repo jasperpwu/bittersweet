@@ -56,7 +56,16 @@ async function reconcileEditHistory(userId: string, get: any, set: any) {
     if (merged.weekStart !== local.weekStart || merged.editsThisWeek !== local.editsThisWeek) {
       set((s: any) => ({ blocklist: { ...s.blocklist, editHistory: merged } }));
     }
-    await BlocklistSyncService.pushEditHistory(userId, merged);
+    // Only write back when the cloud would actually change. In the steady state the
+    // cloud already equals the merge, so the old unconditional push spent a round trip
+    // on the sign-in/cold-start critical path to rewrite identical values.
+    if (
+      !cloud ||
+      cloud.weekStart !== merged.weekStart ||
+      cloud.editsThisWeek !== merged.editsThisWeek
+    ) {
+      await BlocklistSyncService.pushEditHistory(userId, merged);
+    }
   } catch (e) {
     console.error('[Sync] editHistory reconcile error:', e);
   }
@@ -74,7 +83,13 @@ export interface SyncSlice {
   triggerSync: () => Promise<void>;
   pullAndApply: () => Promise<void>;
   initialUpload: () => Promise<void>;
-  pullFromCloud: () => Promise<any>;
+  /**
+   * Cheap boolean: does this account have any data in the cloud? Drives the
+   * brand-new-signup vs. existing-account decision on sign-in and the merge vs.
+   * upload decision on cold start. Returns null on error — callers must treat that
+   * as "unknown" and take the local-data-preserving branch.
+   */
+  probeCloudHasData: () => Promise<boolean | null>;
   /**
    * Push one locally-held session (and its tag(s)) directly to the cloud BEFORE
    * the existing-account sign-in wipe. Used by the post-first-session sign-in
@@ -84,7 +99,7 @@ export interface SyncSlice {
    * unmatched tags are uploaded. Returns the session's fruit award so the caller
    * can re-credit it after the cloud pull (0 when nothing was pushed).
    */
-  pushHeldSessionToCloud: (sessionId: string, remoteData: any) => Promise<number>;
+  pushHeldSessionToCloud: (sessionId: string) => Promise<number>;
   /**
    * Cloud-truth check for whether the signed-in account has completed onboarding.
    * Returns true/false from the cloud, or null on error. Used by the onboarding
@@ -169,6 +184,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
         settings: localPrefs ? {
           ...localPrefs,
           lastDurationByTagId: local.focus.lastDurationByTagId ?? {},
+          lastSelectedTagId: local.focus.lastSelectedTagId ?? null,
           updatedAt: localPrefs.updatedAt ?? null,
         } : null,
       };
@@ -211,6 +227,9 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
           },
           // Apply lastDurationByTagId from merged settings if remote won
           ...(merged.settings?.lastDurationByTagId ? { lastDurationByTagId: merged.settings.lastDurationByTagId } : {}),
+          // Same for the last-used tag (merge keeps a local choice, restores the
+          // cloud one on a reinstall where local has none).
+          ...(merged.settings ? { lastSelectedTagId: merged.settings.lastSelectedTagId ?? null } : {}),
         },
         rewards: {
           ...s.rewards,
@@ -253,9 +272,9 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
       // Apply merged settings to unified store if remote won
       if (merged.settings && merged.settings !== localPrefs) {
         // Keep updatedAt in prefsToApply so the merged row's LWW timestamp round-trips
-        // into local prefs; only lastDurationByTagId is applied separately (to the focus
-        // store), so it alone is stripped here.
-        const { lastDurationByTagId: _, ...prefsToApply } = merged.settings;
+        // into local prefs; lastDurationByTagId / lastSelectedTagId are applied
+        // separately (to the focus store), so they alone are stripped here.
+        const { lastDurationByTagId: _, lastSelectedTagId: __, ...prefsToApply } = merged.settings;
         useUnifiedStore.getState().updatePreferences(prefsToApply);
         console.log('☁️ Applied remote settings to unified store');
       }
@@ -381,8 +400,9 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
             byId: remoteData.focus.coachReports?.byId ?? {},
             allIds: remoteData.focus.coachReports?.allIds ?? [],
           },
-          // Restore per-tag durations from cloud settings
+          // Restore per-tag durations and the last-used tag from cloud settings
           lastDurationByTagId: remoteData.settings?.lastDurationByTagId ?? {},
+          lastSelectedTagId: remoteData.settings?.lastSelectedTagId ?? null,
         },
         rewards: {
           ...s.rewards,
@@ -424,8 +444,9 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
       // Apply settings to unified store
       if (remoteData.settings) {
         const { useUnifiedStore } = require('../unified-store');
-        // Keep updatedAt (LWW timestamp) — only lastDurationByTagId is applied elsewhere.
-        const { lastDurationByTagId: _, ...prefsToApply } = remoteData.settings;
+        // Keep updatedAt (LWW timestamp) — lastDurationByTagId / lastSelectedTagId
+        // are applied elsewhere (focus store).
+        const { lastDurationByTagId: _, lastSelectedTagId: __, ...prefsToApply } = remoteData.settings;
         useUnifiedStore.getState().updatePreferences(prefsToApply);
         console.log('☁️ Applied cloud settings to unified store');
       }
@@ -521,20 +542,13 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
     }
   },
 
-  pullFromCloud: async () => {
-    const state = get();
-    const userId = state.auth.user?.id;
+  probeCloudHasData: async () => {
+    const userId = get().auth.user?.id;
     if (!userId) return null;
-
-    try {
-      return await SyncService.pullAll(userId);
-    } catch (error: any) {
-      console.error('Pull from cloud error:', error);
-      return null;
-    }
+    return SyncService.probeHasData(userId);
   },
 
-  pushHeldSessionToCloud: async (sessionId: string, remoteData: any) => {
+  pushHeldSessionToCloud: async (sessionId: string) => {
     const state = get();
     const userId = state.auth.user?.id;
     if (!userId) return 0;
@@ -542,17 +556,27 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
     if (!session) return 0;
 
     try {
+      // Fetch just the account's tags. This used to reuse the caller's full cloud
+      // pull, which forced sign-in to download the entire account up front on every
+      // sign-in — for a path that only runs when a held session exists (rare) and
+      // only needs tag names. One small query here beats a full pull for everyone.
+      const { data: remoteTagRows, error: remoteTagsError } = await supabase
+        .from('session_tags')
+        .select('id, name, deleted_at')
+        .eq('user_id', userId);
+      if (remoteTagsError) throw remoteTagsError;
+      const remoteTags = remoteTagRows ?? [];
+
       // Map a local tag onto the cloud account: reuse a same-named cloud tag if
       // one exists, otherwise upload the local tag (the session row's FK needs it).
-      const remoteTags = remoteData?.focus?.tags ?? { byId: {}, allIds: [] };
       const resolveTag = async (tagId?: string): Promise<string | undefined> => {
         if (!tagId) return undefined;
         const localTag = state.focus.tags.byId[tagId];
         if (!localTag) return undefined;
         const name = localTag.name.trim().toLowerCase();
-        const match = remoteTags.allIds
-          .map((id: string) => remoteTags.byId[id])
-          .find((t: any) => t && !t.deletedAt && t.name?.trim().toLowerCase() === name);
+        const match = remoteTags.find(
+          (t: any) => t && !t.deleted_at && t.name?.trim().toLowerCase() === name
+        );
         if (match) return match.id;
         const { error } = await supabase.from('session_tags').upsert(tagToRow(localTag, userId));
         if (error) throw error;
@@ -615,7 +639,7 @@ export const createSyncSlice = (set: any, get: any): SyncSlice => ({
     try {
       const { useUnifiedStore } = require('../unified-store');
       const prefs = useUnifiedStore.getState().preferences;
-      const row = settingsToRow(prefs, userId, state.focus?.lastDurationByTagId);
+      const row = settingsToRow(prefs, userId, state.focus);
       await SyncService.enqueue('user_settings', 'upsert', row);
       await SyncService.flush();
     } catch (error: any) {
@@ -806,8 +830,12 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
     );
     const mergedDurations = merged.settings?.lastDurationByTagId ?? {};
     const remoteDurations = remoteData.settings?.lastDurationByTagId ?? {};
+    const mergedSelectedTag = merged.settings?.lastSelectedTagId ?? null;
+    const remoteSelectedTag = remoteData.settings?.lastSelectedTagId ?? null;
     const settingsPushed =
-      JSON.stringify(mergedDurations) !== JSON.stringify(remoteDurations) && merged.settings
+      merged.settings &&
+      (JSON.stringify(mergedDurations) !== JSON.stringify(remoteDurations) ||
+        mergedSelectedTag !== remoteSelectedTag)
         ? 1
         : 0;
 
@@ -815,7 +843,10 @@ async function pushLocalWinsToCloud(merged: any, remoteData: any, userId: string
       await SyncService.enqueue(
         'user_settings',
         'upsert',
-        settingsToRow(merged.settings, userId, mergedDurations)
+        settingsToRow(merged.settings, userId, {
+          lastDurationByTagId: mergedDurations,
+          lastSelectedTagId: mergedSelectedTag,
+        })
       );
     }
 

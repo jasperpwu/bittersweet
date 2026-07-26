@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../src/components/ui/Typography';
+import { SessionNotes } from '../../src/components/ui/SessionNotes';
 import { colors } from '../../src/config/theme';
 import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import i18n from '../../src/i18n';
@@ -486,9 +487,7 @@ export default function FriendFeedModal() {
                   {/* Notes */}
                   {item.session.notes ? (
                     <View className="mt-2">
-                      <Typography variant="body-12" color="secondary" numberOfLines={3}>
-                        {item.session.notes}
-                      </Typography>
+                      <SessionNotes notes={item.session.notes} />
                     </View>
                   ) : null}
 
