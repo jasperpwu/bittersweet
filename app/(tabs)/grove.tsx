@@ -327,7 +327,7 @@ export default function GroveScreen() {
                   {t('grove.challenges')}
                 </Typography>
                 <Pressable onPress={handleChallenges} className="active:opacity-60" hitSlop={8}>
-                  <Typography variant="body-12" style={{ color: '#E9A065' }}>
+                  <Typography variant="body-12" style={{ color: colors.challenge }}>
                     {t('grove.seeAll')}
                   </Typography>
                 </Pressable>
@@ -352,8 +352,10 @@ export default function GroveScreen() {
                     onPress={handleCreateChallenge}
                     className="w-[260px] bg-light-border/30 dark:bg-dark-card rounded-2xl items-center justify-center"
                   >
-                    <View className="w-12 h-12 rounded-full bg-[#E9A065]/10 items-center justify-center mb-2">
-                      <Ionicons name="add" size={24} color="#E9A065" />
+                    <View
+                      className="w-12 h-12 rounded-full items-center justify-center mb-2"
+                      style={{ backgroundColor: `${colors.challenge}1A` }}>
+                      <Ionicons name="add" size={24} color={colors.challenge} />
                     </View>
                     <Typography variant="body-12" color="secondary">
                       {t('grove.newChallenge')}

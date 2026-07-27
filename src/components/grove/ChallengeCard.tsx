@@ -170,8 +170,8 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
 
       {/* Footer */}
       <View className="flex-row items-center justify-between">
-        <View className="bg-primary/10 rounded-lg px-2 py-1">
-          <Typography variant="body-12" style={{ color: colors.primary }}>
+        <View className="rounded-lg px-2 py-1" style={{ backgroundColor: `${colors.challenge}1A` }}>
+          <Typography variant="body-12" style={{ color: colors.challenge }}>
             {targetLabel}
           </Typography>
         </View>

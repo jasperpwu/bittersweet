@@ -12,8 +12,6 @@ import { useTagUpgradeFlow } from '../../hooks/useTagUpgradeFlow';
 import { tagMatchesChallenge } from '../../utils/challengeTag';
 import { formatTarget } from './ChallengeCard';
 import type { ChallengeItem } from '../../services/grove/GroveChallengeService';
-
-const ACCENT = '#E9A065';
 const DEFAULT_TAG_COLOR = '#6592E9';
 
 type Mode = 'existing' | 'create';
@@ -125,7 +123,7 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
           disabled={!hasMatch}
           className={`flex-1 rounded-xl py-2.5 ${mode === 'existing' ? '' : 'bg-light-border dark:bg-dark-border'}`}
           style={{
-            backgroundColor: mode === 'existing' ? ACCENT : undefined,
+            backgroundColor: mode === 'existing' ? colors.challenge : undefined,
             opacity: hasMatch ? 1 : 0.4,
           }}>
           <Typography
@@ -137,7 +135,7 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
         <Pressable
           onPress={() => setMode('create')}
           className={`flex-1 rounded-xl py-2.5 ${mode === 'create' ? '' : 'bg-light-border dark:bg-dark-border'}`}
-          style={{ backgroundColor: mode === 'create' ? ACCENT : undefined }}>
+          style={{ backgroundColor: mode === 'create' ? colors.challenge : undefined }}>
           <Typography
             variant="body-14"
             className={`text-center ${mode === 'create' ? 'text-white' : 'text-light-text-primary dark:text-white'}`}>
@@ -150,11 +148,11 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
       {!hasMatch && (
         <View
           className="mb-4 flex-row items-start rounded-xl px-3 py-2.5"
-          style={{ backgroundColor: `${ACCENT}1A` }}>
+          style={{ backgroundColor: `${colors.challenge}1A` }}>
           <Ionicons
             name="information-circle-outline"
             size={16}
-            color={ACCENT}
+            color={colors.challenge}
             style={{ marginTop: 1 }}
           />
           <Typography variant="body-12" color="secondary" className="ml-2 flex-1">
@@ -183,8 +181,8 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
                 <View
                   className="h-6 w-6 items-center justify-center rounded-full border-2"
                   style={{
-                    backgroundColor: selected ? ACCENT : 'transparent',
-                    borderColor: selected ? ACCENT : colors.light.textSecondary,
+                    backgroundColor: selected ? colors.challenge : 'transparent',
+                    borderColor: selected ? colors.challenge : colors.light.textSecondary,
                   }}>
                   {selected && <Ionicons name="checkmark" size={14} color={colors.white} />}
                 </View>
@@ -218,7 +216,7 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
         fullWidth
         disabled={isSubmitting || !canAccept}
         className="mt-4"
-        style={{ backgroundColor: ACCENT }}
+        style={{ backgroundColor: colors.challenge }}
         onPress={handleAccept}>
         {isSubmitting ? (
           <ActivityIndicator size="small" color={colors.white} />

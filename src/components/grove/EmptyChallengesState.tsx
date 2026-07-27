@@ -6,8 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { useTranslation } from 'react-i18next';
 
-const ACCENT = '#E9A065';
-
 interface EmptyChallengesStateProps {
   onCreateChallenge: () => void;
 }
@@ -18,9 +16,9 @@ export const EmptyChallengesState: React.FC<EmptyChallengesStateProps> = ({ onCr
     <View className="mx-5 bg-light-border/30 dark:bg-dark-card rounded-2xl p-5 items-center">
       <View
         className="w-12 h-12 rounded-full items-center justify-center mb-3"
-        style={{ backgroundColor: `${ACCENT}1A` }}
+        style={{ backgroundColor: `${colors.challenge}1A` }}
       >
-        <Ionicons name="flame-outline" size={24} color={ACCENT} />
+        <Ionicons name="flame-outline" size={24} color={colors.challenge} />
       </View>
       <Typography variant="subtitle-14-medium" color="primary" className="text-center mb-1">
         {t('groveUI.noChallengesTitle')}
@@ -28,7 +26,7 @@ export const EmptyChallengesState: React.FC<EmptyChallengesStateProps> = ({ onCr
       <Typography variant="body-12" color="secondary" className="text-center mb-4">
         {t('groveUI.noChallengesDesc')}
       </Typography>
-      <Button variant="ghost" style={{ backgroundColor: ACCENT }} onPress={onCreateChallenge}>
+      <Button variant="ghost" style={{ backgroundColor: colors.challenge }} onPress={onCreateChallenge}>
         <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>
           {t('groveUI.startChallenge')}
         </Typography>

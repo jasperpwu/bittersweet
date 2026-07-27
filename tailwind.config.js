@@ -25,6 +25,11 @@ module.exports = {
         'error-light': '#C62828',
         'primary-light': '#3B6BBF',
 
+        // Challenge accent — the same coral as `error` / the inner circle, in
+        // both schemes so the two social features read as one accent. Keep in
+        // sync with `challenge` in src/config/theme.ts.
+        challenge: '#EF786C',
+
         // Light mode — warm/earthy (aligned with widget)
         'light-text-primary': '#5D4E37',
         'light-text-secondary': '#6B5A42',

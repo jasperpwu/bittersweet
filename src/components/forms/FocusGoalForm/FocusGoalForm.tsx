@@ -1,5 +1,5 @@
 import { FC, useState, useEffect, useRef } from 'react';
-import { View, Pressable, TextInput } from 'react-native';
+import { View, Pressable, TextInput, useColorScheme } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui/Typography';
 import { Slider } from '../../ui/Slider';
@@ -7,6 +7,7 @@ import { Toggle } from '../../ui/Toggle';
 import { TotalTargetPicker } from './TotalTargetPicker';
 import { useAppSettings } from '../../../store/unified-store';
 import { FocusGoal } from '../../../store/types';
+import { colors } from '../../../config/theme';
 
 type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'none';
 
@@ -97,6 +98,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   onDirtyChange,
 }) => {
   const { t } = useTranslation();
+  const isDark = useColorScheme() === 'dark';
   const [dailyTargetHours, setDailyTargetHours] = useState(1);
   const [dailyRestDayTargetHours, setDailyRestDayTargetHours] = useState(0.5);
   const [weeklyTargetHours, setWeeklyTargetHours] = useState(7);
@@ -280,8 +282,10 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
           value={customGoalName}
           onChangeText={setCustomGoalName}
           placeholder={autoName}
-          placeholderTextColor="#6B7280"
-          className="bg-light-border dark:bg-dark-border rounded-xl p-4 text-light-text-primary dark:text-white text-base"
+          placeholderTextColor={
+            isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary
+          }
+          className="bg-light-border dark:bg-dark-border rounded-xl p-4 text-light-text-primary dark:text-dark-text-primary text-base"
           style={{ fontFamily: 'Poppins-Regular' }}
         />
       </View>

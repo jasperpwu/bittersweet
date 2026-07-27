@@ -1,17 +1,30 @@
 // Design System Theme Configuration
+
+// The soft coral shared by `error` and the inner-circle / challenge accents.
+// Named once so the three can never drift apart — inner circle and challenges
+// are meant to read as the same warm accent.
+const CORAL = '#EF786C';
+
 export const colors = {
   // Primary Brand Colors
   primary: '#6592E9',
   primaryDisabled: '#6592E9',
   link: '#438EEC',
-  
+
   // Status Colors
   success: '#51BC6F',
-  error: '#EF786C',
+  error: CORAL,
   // Destructive actions (delete/remove) — brighter than the soft `error` coral.
   // Single source for what used to be #DC2626 / #EF4444 / #E57373 / #FF3B30.
   danger: '#EF4444',
   warning: '#FCD34D',
+
+  // Challenge accent — deliberately the same coral the inner circle uses, in
+  // both color schemes, so the two social features read as one accent. Strong
+  // on the navy dark bg (6.03:1); low-contrast on the cream light bg (2.26:1 as
+  // text, 2.77:1 under white text on a solid fill) — a known, accepted tradeoff
+  // for matching inner circle, not an oversight.
+  challenge: CORAL,
 
   // Neutral Colors
   white: '#FFFFFF',

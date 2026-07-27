@@ -144,8 +144,8 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
 
         {/* Target + fruits */}
         <View className="flex-row items-center gap-2 mb-4">
-          <View className="bg-primary/10 rounded-lg px-2 py-1">
-            <Typography variant="body-12" style={{ color: colors.primary }}>
+          <View className="rounded-lg px-2 py-1" style={{ backgroundColor: `${colors.challenge}1A` }}>
+            <Typography variant="body-12" style={{ color: colors.challenge }}>
               {targetLabel}
             </Typography>
           </View>

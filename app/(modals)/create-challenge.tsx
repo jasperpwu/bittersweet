@@ -17,8 +17,6 @@ import { AnalyticsTracker } from '../../src/services/analytics';
 type Period = 'daily' | 'weekly';
 type CreationMode = 'streak' | 'until';
 
-const ACCENT = '#E9A065';
-
 const SLIDER_CONFIG: Record<Period, { min: number; max: number; step: number }> = {
   daily: { min: 0.5, max: 12, step: 0.5 },
   weekly: { min: 1, max: 84, step: 1 },
@@ -255,7 +253,7 @@ export default function CreateChallengeModal() {
                         className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
                           isSelected ? '' : 'border-light-border dark:border-dark-border'
                         }`}
-                        style={isSelected ? { backgroundColor: ACCENT, borderColor: ACCENT } : undefined}
+                        style={isSelected ? { backgroundColor: colors.challenge, borderColor: colors.challenge } : undefined}
                       >
                         {isSelected && (
                           <Ionicons name="checkmark" size={14} color={colors.white} />
@@ -333,7 +331,7 @@ export default function CreateChallengeModal() {
                   className={`flex-1 py-2.5 rounded-xl ${
                     period === p ? '' : 'bg-light-border dark:bg-dark-border'
                   }`}
-                  style={period === p ? { backgroundColor: ACCENT } : undefined}
+                  style={period === p ? { backgroundColor: colors.challenge } : undefined}
                 >
                   <Typography
                     variant="body-14"
@@ -390,7 +388,7 @@ export default function CreateChallengeModal() {
                   className={`flex-1 py-2.5 rounded-xl ${
                     creationMode === mode ? '' : 'bg-light-border dark:bg-dark-border'
                   }`}
-                  style={creationMode === mode ? { backgroundColor: ACCENT } : undefined}
+                  style={creationMode === mode ? { backgroundColor: colors.challenge } : undefined}
                 >
                   <Typography
                     variant="body-14"
@@ -434,7 +432,7 @@ export default function CreateChallengeModal() {
             )}
 
             {/* Computed End Date Info */}
-            <View className="rounded-xl px-4 py-3 mb-6" style={{ backgroundColor: `${ACCENT}1A` }}>
+            <View className="rounded-xl px-4 py-3 mb-6" style={{ backgroundColor: `${colors.challenge}1A` }}>
               <Typography variant="body-12" color="secondary">
                 {t('createChallenge.summary', {
                   tag: selectedTag?.name,
@@ -457,7 +455,7 @@ export default function CreateChallengeModal() {
               size="large"
               fullWidth
               disabled={selectedFriendIds.length === 0}
-              style={{ backgroundColor: ACCENT }}
+              style={{ backgroundColor: colors.challenge }}
               onPress={handleFriendsNext}
             >
               <Typography variant="subtitle-16" style={{ color: colors.white }}>
@@ -470,7 +468,7 @@ export default function CreateChallengeModal() {
               size="large"
               fullWidth
               disabled={isSubmitting}
-              style={{ backgroundColor: ACCENT }}
+              style={{ backgroundColor: colors.challenge }}
               onPress={handleSubmit}
             >
               {isSubmitting ? (

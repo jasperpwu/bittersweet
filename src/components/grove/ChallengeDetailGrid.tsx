@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Typography } from '../ui/Typography';
+import { colors } from '../../config/theme';
 import type { ParticipantPeriodData } from '../../services/grove/GroveChallengeService';
 
 const HIT_COLOR = '#C6EFCE';
@@ -52,8 +53,8 @@ const PeriodSquare: React.FC<PeriodSquareProps> = ({ minutes, target, size = 20 
     >
       {fill > 0 && (
         <View
-          className="absolute bottom-0 left-0 right-0 bg-primary"
-          style={{ height: `${fill}%` }}
+          className="absolute bottom-0 left-0 right-0"
+          style={{ height: `${fill}%`, backgroundColor: colors.challenge }}
         />
       )}
     </View>

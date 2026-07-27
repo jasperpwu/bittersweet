@@ -321,8 +321,8 @@ function DraggableTagRow({
                   {isChallenge && (
                     <View
                       className="ml-2 rounded-full px-2 py-0.5"
-                      style={{ backgroundColor: 'rgba(233, 160, 101, 0.2)' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#E9A065' }}>
+                      style={{ backgroundColor: `${colors.challenge}33` }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: colors.challenge }}>
                         {t('home.badgeChallenge')}
                       </Text>
                     </View>

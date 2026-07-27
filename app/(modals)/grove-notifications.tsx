@@ -253,9 +253,9 @@ export default function GroveNotificationsModal() {
           >
             <View
               className="mr-3 items-center justify-center rounded-full"
-              style={{ width: 44, height: 44, backgroundColor: '#E9A06520' }}
+              style={{ width: 44, height: 44, backgroundColor: `${colors.challenge}20` }}
             >
-              <Ionicons name="flame" size={20} color="#E9A065" />
+              <Ionicons name="flame" size={20} color={colors.challenge} />
             </View>
             <View className="flex-1 mr-2">
               <Typography variant="subtitle-14-medium" color="primary">
@@ -289,12 +289,12 @@ export default function GroveNotificationsModal() {
           >
             <View
               className="mr-3 items-center justify-center rounded-full"
-              style={{ width: 44, height: 44, backgroundColor: won ? colors.success + '33' : '#E9A06520' }}
+              style={{ width: 44, height: 44, backgroundColor: won ? colors.success + '33' : `${colors.challenge}20` }}
             >
               <Ionicons
                 name={won ? 'trophy' : 'flag'}
                 size={20}
-                color={won ? colors.success : '#E9A065'}
+                color={won ? colors.success : colors.challenge}
               />
             </View>
             <View className="flex-1 mr-2">
