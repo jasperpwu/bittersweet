@@ -78,7 +78,12 @@ export function useUpgradeFlow(limitType: LimitType = 'tags') {
         }}
       />
 
-      <UpgradeSheet isVisible={showSheet} onClose={() => setShowSheet(false)} />
+      <UpgradeSheet
+        isVisible={showSheet}
+        onClose={() => setShowSheet(false)}
+        // The gate that triggered this flow is exactly the paywall's `source`.
+        source={limitType}
+      />
     </>
   );
 

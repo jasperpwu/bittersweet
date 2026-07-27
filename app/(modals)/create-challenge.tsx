@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, SafeAreaView, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -12,6 +12,7 @@ import { DatePicker } from '../../src/components/ui/DatePicker/DatePicker';
 import { useAppStore } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
 import { useTranslation } from 'react-i18next';
+import { AnalyticsTracker } from '../../src/services/analytics';
 
 type Period = 'daily' | 'weekly';
 type CreationMode = 'streak' | 'until';
@@ -72,6 +73,15 @@ export default function CreateChallengeModal() {
     return d;
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Analytics: reaching this screen is the intent. Paired with
+  // challenge_create_completed it measures drop-off across the 3-step wizard,
+  // including the dead-end where the user has no friends to invite yet.
+  useEffect(() => {
+    AnalyticsTracker.track('challenge_create_attempted', { friend_count: friends.length });
+    // Mount only — re-firing on friend-list refresh would inflate the funnel top.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectedFriends = friends.filter((f) => selectedFriendIds.includes(f.profile.user_id));
 

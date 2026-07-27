@@ -62,6 +62,7 @@ import { EmptyState } from '../../src/components/ui/EmptyState/EmptyState';
 import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
 import { isDevUser } from '../../src/config/devUsers';
 import { useTranslation } from 'react-i18next';
+import { AnalyticsTracker } from '../../src/services/analytics';
 
 export default function JournalScreen() {
   const { t, i18n } = useTranslation();
@@ -178,6 +179,10 @@ export default function JournalScreen() {
   }, [manualEntryShakeX]);
 
   const openManualEntryModal = () => {
+    // Analytics: opening the sheet is the intent; manual_session_created is the
+    // outcome. The gap between them is the abandonment rate for manual logging.
+    AnalyticsTracker.track('manual_session_attempted');
+
     const now = new Date();
     const twentyFiveMinAgo = new Date(now.getTime() - 25 * 60 * 1000);
 

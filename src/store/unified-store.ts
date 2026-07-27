@@ -10,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
+import { AnalyticsTracker } from '../services/analytics';
+
 // Types
 interface DeviceInfo {
   deviceId: string;
@@ -254,7 +256,29 @@ export const useUnifiedStore = create<UnifiedStore>()(
               updatedAt: updates.updatedAt ?? new Date().toISOString(),
             };
 
+            const previous = get().preferences;
             set({ preferences: updatedPreferences });
+
+            // Analytics: settings are cohorts, not events — "how many users have
+            // multi-task on" is a person-property breakdown, so mirror the whole
+            // preference surface onto the person on every edit. Cheap and
+            // idempotent. `_layout` calls the same helper once per launch so users
+            // who never touch Settings still get their defaults recorded.
+            AnalyticsTracker.syncPreferenceProperties(updatedPreferences);
+
+            // A sync-apply passes the cloud row's `updatedAt`; only a real user edit
+            // leaves it undefined. Without this guard every cold-start merge would
+            // emit a phantom "the user changed their timer style" event.
+            const isUserEdit = updates.updatedAt == null;
+            if (
+              isUserEdit &&
+              updates.focus?.timerPickerStyle &&
+              updates.focus.timerPickerStyle !== previous.focus.timerPickerStyle
+            ) {
+              AnalyticsTracker.track('timer_style_changed', {
+                style: updates.focus.timerPickerStyle,
+              });
+            }
 
             if (__DEV__) {
               console.log('✅ Preferences updated');

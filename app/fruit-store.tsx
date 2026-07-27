@@ -53,6 +53,7 @@ import {
   type SliderTheme,
 } from '../src/config/sliderThemes';
 import { useUnifiedStore } from '../src/store/unified-store';
+import { AnalyticsTracker } from '../src/services/analytics';
 
 // A history row's tipId is only renderable if it's still in the catalog —
 // retired/unknown ids (see tips.ts contract) fall back to a generic label
@@ -496,6 +497,10 @@ export default function FruitStoreScreen() {
     // Refresh the recipient picker — the store can be reached without ever
     // visiting the Grove tab, so the friends list may be stale or unfetched.
     useAppStore.getState().grove.fetchFriends();
+    // Analytics: intent half of the gift funnel; grove.createGift fires the
+    // completion. Placed after the eligibility guards above so it only counts
+    // users who actually reached the modal.
+    AnalyticsTracker.track('gift_reward_attempted');
     setShowGiftModal(true);
   };
 
@@ -987,7 +992,12 @@ export default function FruitStoreScreen() {
 
             {/* Create card — dashed outline, opens the create modal */}
             <Pressable
-              onPress={() => setShowCreateReward(true)}
+              onPress={() => {
+                // Intent half of the custom-reward funnel (rewards.addCustomReward
+                // fires the completion).
+                AnalyticsTracker.track('custom_reward_attempted');
+                setShowCreateReward(true);
+              }}
               className="
                 mb-4 items-center rounded-2xl border border-dashed
                 border-light-border bg-light-border/30 p-5

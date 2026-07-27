@@ -9,10 +9,13 @@ import { useAppStore } from '../../store';
 import { SUBSCRIPTION_PRODUCTS } from '../../config/constants';
 import { colors } from '../../config/theme';
 import { PREMIUM_PERKS } from './premiumPerks';
+import { AnalyticsTracker } from '../../services/analytics';
 
 interface UpgradeSheetProps {
   isVisible: boolean;
   onClose: () => void;
+  /** Which gate opened the paywall — becomes the `source` on `paywall_viewed`. */
+  source?: string;
 }
 
 type PlanKey = 'yearly' | 'monthly';
@@ -34,7 +37,7 @@ const formatFromTemplate = (template: string, amount: number): string => {
   return `${prefix}${formatted}${suffix}`;
 };
 
-export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }) => {
+export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, source }) => {
   const { t } = useTranslation();
   const { products, isLoading, error } = useAppStore((state) => state.subscription);
   const loadProducts = useAppStore((state) => state.subscription.loadProducts);
@@ -47,6 +50,12 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose }
   useEffect(() => {
     if (isVisible && products.length === 0) {
       loadProducts();
+    }
+    // Analytics: this sheet is the one place plans are ever shown, so it is the
+    // canonical paywall impression. `source` is the gate that opened it, which is
+    // what turns this into "which feature actually drives upgrades".
+    if (isVisible) {
+      AnalyticsTracker.track('paywall_viewed', { source: source ?? 'unknown' });
     }
   }, [isVisible]);
 

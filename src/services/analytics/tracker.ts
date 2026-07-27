@@ -84,6 +84,31 @@ export const AnalyticsTracker = {
     });
   },
 
+  /**
+   * Mirror the user's preference surface onto the person.
+   *
+   * Must be called BOTH on every preference edit and once per launch. Edit-only
+   * stamping was the original bug: a user who never opens Settings would have no
+   * `language` / `theme` / `timer_picker_style` at all, so the settings-distribution
+   * charts would silently cover only the minority who changed something and drop
+   * everyone on defaults into a "not set" bucket.
+   *
+   * Loosely typed on purpose — this module must not import the store (circular).
+   */
+  syncPreferenceProperties(preferences: any): void {
+    if (!preferences) return;
+    AnalyticsTracker.setPersonProperties({
+      language: preferences.language,
+      theme: preferences.theme,
+      multitask_enabled: preferences.adhdModeEnabled ?? false,
+      timer_picker_style: preferences.focus?.timerPickerStyle,
+      goal_reminder_enabled: preferences.notifications?.goalReminderEnabled,
+      notifications_enabled: preferences.notifications?.enabled,
+      healthkit_enabled: preferences.healthKit?.enabled ?? false,
+      slider_theme_id: preferences.sliderThemeId ?? null,
+    });
+  },
+
   /** Clear the current identity (call on sign-out — privacy requirement). */
   reset(): void {
     if (!posthog) return;

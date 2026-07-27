@@ -1,5 +1,6 @@
 import { supabase } from '../../config/supabase';
 import { GroveFriendService } from '../../services/grove/GroveFriendService';
+import { AnalyticsTracker } from '../../services/analytics';
 
 export const REFERRAL_TIERS = [
   { referrals: 1, reward: 10, type: 'apples' as const },
@@ -55,6 +56,13 @@ export const createReferralSlice = (set: any, get: any): ReferralSlice => ({
       set((state: any) => ({
         referral: { ...state.referral, referralCode: code },
       }));
+
+      // Analytics: top of the referral funnel. Guarded by the early-return above,
+      // so this fires once per user when the code is first minted — repeat opens
+      // of the referral screen reuse the cached code and don't re-fire.
+      AnalyticsTracker.track('referral_code_created', undefined, {
+        setOnce: { ever_generated_referral_code: true },
+      });
 
       return code;
     } catch (error: any) {
@@ -152,6 +160,12 @@ export const createReferralSlice = (set: any, get: any): ReferralSlice => ({
           },
         }));
       }
+
+      // Analytics: did the referral rewards ladder actually pull anyone up it?
+      AnalyticsTracker.track('referral_reward_claimed', {
+        tier_index: tierIndex,
+        reward_type: result.reward_type,
+      });
     } catch (error: any) {
       console.error('Failed to claim referral reward:', error);
       set((state: any) => ({
@@ -177,6 +191,13 @@ export const createReferralSlice = (set: any, get: any): ReferralSlice => ({
       }
 
       console.log('Referral code applied successfully');
+
+      // Analytics: bottom of the referral funnel — a new user actually arrived
+      // through someone's link. Compare unique users against referral_code_created
+      // for the true viral coefficient.
+      AnalyticsTracker.track('referral_redeemed', undefined, {
+        setOnce: { acquired_via_referral: true },
+      });
     } catch (error: any) {
       console.error('Failed to apply referral code:', error);
     }

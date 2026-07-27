@@ -14,6 +14,7 @@ import {
 } from 'expo-iap';
 import { SUBSCRIPTION_PRODUCTS } from '../../config/constants';
 import { supabase } from '../../config/supabase';
+import { AnalyticsTracker } from '../../services/analytics';
 
 export type SubscriptionTier = 'free' | 'premium';
 
@@ -40,6 +41,13 @@ export interface SubscriptionSlice {
 
 let purchaseUpdateSub: { remove: () => void } | null = null;
 let purchaseErrorSub: { remove: () => void } | null = null;
+
+// Analytics only: true between the user confirming a plan and StoreKit delivering
+// the result. `purchaseUpdatedListener` also fires for renewals and (depending on
+// how AppStore.sync surfaces transactions) potentially restores, none of which are
+// conversions. Gating subscription_started on this flag keeps the monetization
+// funnel to purchases the user actually initiated from our paywall.
+let purchaseInitiatedByUser = false;
 
 export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice => ({
   tier: 'free',
@@ -111,6 +119,27 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
               error: null,
             },
           }));
+
+          // Analytics: bottom of the monetization funnel. Fired here rather than in
+          // `purchase()` because that only *requests* the purchase — StoreKit
+          // delivers the actual result through this listener, so this is the only
+          // place a subscription is genuinely confirmed. is_premium is a person
+          // property so every other chart can be split free-vs-paid.
+          if (purchaseInitiatedByUser) {
+            purchaseInitiatedByUser = false;
+            AnalyticsTracker.track(
+              'subscription_started',
+              { product_id: purchase.productId },
+              {
+                set: { is_premium: true },
+                setOnce: { first_subscribed_at: new Date().toISOString() },
+              }
+            );
+          } else {
+            // Renewal or restore — premium state is still true, so keep the cohort
+            // property current without counting a conversion.
+            AnalyticsTracker.setPersonProperties({ is_premium: true });
+          }
         } catch (error: any) {
           console.error('Purchase verification error:', error);
           set((state: any) => ({
@@ -124,6 +153,9 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
       });
 
       purchaseErrorSub = purchaseErrorListener((error) => {
+        // Clear the analytics in-flight flag on any failure, or a later renewal
+        // would inherit it and be miscounted as a conversion.
+        purchaseInitiatedByUser = false;
         // user-cancelled is not a real error
         if (error.code === 'user-cancelled') {
           set((state: any) => ({
@@ -190,6 +222,7 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
       subscription: { ...state.subscription, isLoading: true, error: null },
     }));
 
+    purchaseInitiatedByUser = true;
     try {
       await requestPurchase({
         request: {
@@ -199,6 +232,7 @@ export const createSubscriptionSlice = (set: any, get: any): SubscriptionSlice =
       });
       // Result comes via purchaseUpdatedListener
     } catch (error: any) {
+      purchaseInitiatedByUser = false;
       // User cancellation is not a real error
       const msg = error.message || '';
       if (msg.includes('cancelled') || msg.includes('canceled')) {

@@ -1027,6 +1027,15 @@ export default function RootLayout() {
     });
     // Backfill the goal setup-task for existing users with an active goal.
     useAppStore.getState().rewards.reconcileSetupTasks();
+
+    // Analytics: stamp the preference-derived cohort properties once per launch.
+    // updatePreferences only fires on an EDIT, so without this a user who never
+    // opens Settings has no language / theme / timer_picker_style at all and the
+    // settings-distribution charts would cover only the minority who changed
+    // something. Idempotent, and it backfills users who predate this tracking.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { useUnifiedStore } = require('../src/store/unified-store');
+    AnalyticsTracker.syncPreferenceProperties(useUnifiedStore.getState().preferences);
   }, [fontsLoaded, isHydrated]);
 
   // The app must not become interactive before the MAIN store's hydration settles.

@@ -872,6 +872,23 @@ export default function FocusScreen() {
     // Signal focusing status to friends
     useAppStore.getState().grove.setFocusing(true);
 
+    // Analytics: the single in-app "session started" choke point. It lives here
+    // rather than in focus.startSession because that store method is dead — the
+    // live timer never creates a session up front, it only writes one on
+    // completion (createCompletedSession). Pairs with focus_session_completed to
+    // give the started→completed rate.
+    //
+    // Caveat: sessions started from the widget / Live Activity never pass through
+    // here (they're adopted on foreground as already-complete), so `source` marks
+    // this as the in-app path and the rate must be read on source='app' only.
+    AnalyticsTracker.track('focus_session_started', {
+      source: 'app',
+      duration_minutes: selectedTime === -1 ? 1 : selectedTime === -2 ? 30 : selectedTime,
+      is_infinite: selectedTime === 0,
+      tag_id: selectedTag ?? undefined,
+      has_blocklist: useAppStore.getState().blocklist.currentSelectionId != null,
+    });
+
     // End any active unlock sessions — re-block apps and refund remaining time
     const store = useAppStore.getState();
     const { activeSessions } = store.blocklist;

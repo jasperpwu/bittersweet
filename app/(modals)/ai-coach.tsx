@@ -1,4 +1,4 @@
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { View, ScrollView, Pressable, SafeAreaView, Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -12,6 +12,7 @@ import { showToast } from '../../src/components/ui/Toast';
 import { colors } from '../../src/config/theme';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../src/i18n';
+import { AnalyticsTracker } from '../../src/services/analytics';
 import type {
   CoachAction,
   CoachInsightCard,
@@ -115,6 +116,19 @@ export default function AiCoachScreen() {
 
   // Oldest → newest for the trend/history selector.
   const trendReports = useMemo(() => reports.slice(0, 8).slice().reverse(), [reports]);
+
+  // Analytics: coach adoption. `report_count` separates a user who has reports and
+  // reads them from one who opens the screen and finds it empty — a very different
+  // problem to fix.
+  useEffect(() => {
+    AnalyticsTracker.track(
+      'ai_coach_viewed',
+      { report_count: reports.length },
+      { setOnce: { ever_viewed_coach: true } }
+    );
+    // Mount only — the report list refreshes on sync and would re-fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const goalIdForTag = (tagId?: string): string | undefined => {
     if (!tagId) return undefined;

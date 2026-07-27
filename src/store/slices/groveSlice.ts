@@ -21,6 +21,7 @@ import type { ChallengeItem, CreateChallengeInput, ChallengePeriodDetailsResult 
 import { computeTotalPeriods } from '../../services/grove/GroveChallengeService';
 import type { HeartbeatSettings, InnerCircleMember, HeartbeatAlert } from '../../services/grove/GroveHeartbeatService';
 import { WidgetService } from '../../services/WidgetService';
+import { AnalyticsTracker } from '../../services/analytics';
 
 export interface PendingInvite {
   code: string;
@@ -242,6 +243,18 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
             showLiveStatus: privacy.show_live_status,
           });
         }
+
+        // Analytics: same gap as preferences — createProfile/updatePrivacySettings
+        // only fire when the user CHANGES something, so an existing Grove user who
+        // never edits their profile would never get these cohort properties. Stamp
+        // them from the authoritative fetched profile on every load.
+        AnalyticsTracker.setPersonProperties(
+          {
+            profile_type: (profile as any).profile_type,
+            live_status_enabled: privacy?.show_live_status ?? false,
+          },
+          { has_grove_profile: true }
+        );
       } else {
         set((state: any) => ({
           grove: {
@@ -282,6 +295,21 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
           profileLoaded: true,
         },
       }));
+
+      // Analytics: social onboarding completed. profile_type / live_status_enabled
+      // are person properties (not event props) so "how many users are public" is a
+      // one-click breakdown rather than a count of historical events.
+      AnalyticsTracker.track(
+        'grove_setup_completed',
+        { profile_type: (profile as any)?.profile_type },
+        {
+          set: {
+            profile_type: (profile as any)?.profile_type,
+            live_status_enabled: (privacySettings as any)?.show_live_status ?? false,
+          },
+          setOnce: { has_grove_profile: true },
+        }
+      );
     } catch (error: any) {
       const message =
         error.message === 'HANDLE_TAKEN'
@@ -310,6 +338,12 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
           isLoading: false,
         },
       }));
+
+      // Analytics: public↔private is switched here after setup, so re-stamp the
+      // cohort property (createProfile only captures the initial choice).
+      if ((profile as any)?.profile_type) {
+        AnalyticsTracker.setPersonProperties({ profile_type: (profile as any).profile_type });
+      }
     } catch (error: any) {
       const message =
         error.message === 'HANDLE_TAKEN'
@@ -337,6 +371,11 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       // Sync updated privacy to UserDefaults for native intent REST calls
       WidgetService.syncGrovePrivacy({
         showLiveStatus: privacySettings.show_live_status,
+      });
+
+      // Analytics: keep the live-status cohort current when it's toggled after setup.
+      AnalyticsTracker.setPersonProperties({
+        live_status_enabled: privacySettings.show_live_status ?? false,
       });
     } catch (error: any) {
       set((state: any) => ({
@@ -469,6 +508,16 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       set((state: any) => ({
         grove: { ...state.grove, friends, friendsLoading: false },
       }));
+
+      // Analytics: friend_added only fires for the side that ACCEPTS, so the
+      // initiator gains a friend without ever updating their own friend_count —
+      // leaving roughly half of all friendships invisible to the social cohort.
+      // Re-stamping from the authoritative fetched list fixes both sides, and also
+      // catches removals (which have no event at all).
+      AnalyticsTracker.setPersonProperties(
+        { friend_count: friends.length },
+        friends.length > 0 ? { has_friends: true } : undefined
+      );
     } catch (error: any) {
       console.error('Failed to fetch friends:', error);
       set((state: any) => ({
@@ -528,6 +577,18 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       });
       // Refresh friends list to include the newly accepted friend
       await get().grove.fetchFriends();
+
+      // Analytics: a friendship only becomes real on accept, so this (and the
+      // invite-link path below) are the two places the graph actually grows.
+      // friend_count is a person property — it drives the social-vs-solo cohort.
+      AnalyticsTracker.track(
+        'friend_added',
+        { source: 'request' },
+        {
+          set: { friend_count: get().grove.friends?.length ?? 0 },
+          setOnce: { has_friends: true },
+        }
+      );
     } catch (error: any) {
       console.error('Failed to accept friend request:', error);
       throw error;
@@ -721,6 +782,15 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
         grove: { ...state.grove, pendingInvite: null },
       }));
       await get().grove.fetchFriends();
+
+      AnalyticsTracker.track(
+        'friend_added',
+        { source: 'invite_link' },
+        {
+          set: { friend_count: get().grove.friends?.length ?? 0 },
+          setOnce: { has_friends: true },
+        }
+      );
     } catch (error: any) {
       console.error('Failed to accept pending invite:', error);
       throw error;
@@ -808,6 +878,19 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
       await GroveChallengeService.createChallenge(input);
       // Refresh challenges list
       await get().grove.fetchChallenges();
+
+      // Analytics: closes the challenge_create_attempted → _completed funnel. The
+      // create flow is a 3-step wizard (friends → tag → config), so the drop-off
+      // between the two is the number worth watching.
+      AnalyticsTracker.track(
+        'challenge_create_completed',
+        {
+          invitee_count: input.inviteeIds?.length ?? 0,
+          period: input.period,
+          target_minutes: input.targetMinutes,
+        },
+        { setOnce: { ever_created_challenge: true } }
+      );
     } catch (error: any) {
       console.error('Failed to create challenge:', error);
       throw error;
@@ -818,6 +901,10 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     try {
       await GroveChallengeService.acceptChallenge(challengeId, tagId);
       await get().grove.fetchChallenges();
+
+      AnalyticsTracker.track('challenge_joined', undefined, {
+        setOnce: { ever_joined_challenge: true },
+      });
     } catch (error: any) {
       console.error('Failed to accept challenge:', error);
       throw error;
@@ -1042,6 +1129,15 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     const giftId = await GiftRewardService.createGift(input);
     GiftRewardService.notify(giftId, 'created');
     await get().grove.fetchGifts();
+
+    // Analytics: closes the gift_reward_attempted → _completed funnel. This is the
+    // *sender* side (a gift offered to a friend); purchaseGift is the receiver
+    // redeeming it, tracked separately as reward_purchased-adjacent behaviour.
+    AnalyticsTracker.track(
+      'gift_reward_completed',
+      { cost: input.cost, has_emoji: !!input.emoji },
+      { setOnce: { ever_sent_gift: true } }
+    );
   },
 
   cancelGift: async (giftId: string) => {
@@ -1206,6 +1302,17 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
           innerCircle: [...state.grove.innerCircle, member],
         },
       }));
+
+      // Analytics: accountability adoption — the inner circle is what makes the
+      // heartbeat alerts meaningful, so its size is the cohort that matters.
+      AnalyticsTracker.track(
+        'grove_inner_circle_added',
+        undefined,
+        {
+          set: { inner_circle_count: get().grove.innerCircle?.length ?? 0 },
+          setOnce: { has_inner_circle: true },
+        }
+      );
     } catch (error: any) {
       console.error('Failed to invite to inner circle:', error);
       throw error;

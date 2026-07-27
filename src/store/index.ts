@@ -884,6 +884,24 @@ export const useAppStore = create<AppStore>()(
                 console.error('Failed to update shield balance after focus rating:', error);
               });
             }
+
+            // Analytics: the rating is ALWAYS machine-suggested — FocusRatingBlock is
+            // explicitly read-only ("the user can't override stars"), so there is no
+            // such thing as a hand-set rating and an event gated on source === 'user'
+            // would never fire. What is worth measuring is the *outcome*: the
+            // distribution of suggested ratings tells us whether motion rating is
+            // discriminating at all or silently handing everyone 5★ (which is exactly
+            // what the permission-denied fallback does). `signal` separates a real
+            // motion read from that fallback.
+            //
+            // This is ~1 event per completed session by design. It is not an adoption
+            // signal and must not sit in an adoption chart — it would read as 100%.
+            AnalyticsTracker.track('session_auto_rated', {
+              rating,
+              source,
+              signal: get().focus.sessions.byId[sessionId]?.motionSummary?.signal ?? null,
+              fruit_delta: fruitDelta,
+            });
           },
 
           // Rate a completed session from historical Core Motion data, with no UI.
@@ -922,6 +940,13 @@ export const useAppStore = create<AppStore>()(
 
             try {
               const status = await getMotionPermissionStatus();
+              // Analytics: motion rating is only *really* on when the permission is
+              // granted — without it every session silently gets a flat 5★. Recorded
+              // as a person property so "% of users with real rating" is a cohort,
+              // not an event count.
+              AnalyticsTracker.setPersonProperties({
+                session_rating_enabled: status === 'granted',
+              });
               if (status !== 'granted') {
                 applyFullRating();
                 return;
@@ -1096,6 +1121,12 @@ export const useAppStore = create<AppStore>()(
               // (CMMotionActivity is queryable over any past window). Do not
               // re-introduce forward recording here — it would inject motion access
               // at start before the user has opted in.
+
+              // NOTE: do NOT track focus_session_started here. This method is dead
+              // code — the live timer never creates a store session up front, it
+              // starts the countdown in `startTimer()` (app/(tabs)/index.tsx) and
+              // only writes a session on completion via createCompletedSession.
+              // The event fires from startTimer instead.
             }
           },
 
@@ -1216,6 +1247,12 @@ export const useAppStore = create<AppStore>()(
               get().rewards.earnFruits(fruitsEarned, 'focus_session', {
                 sessionId: sessionId,
                 duration: params.duration,
+                // Analytics discriminator. A caller-supplied `params.id` only ever
+                // comes from a native widget / Live Activity stop (see the id
+                // comment above), which never passes through the in-app
+                // focus_session_started path. Without this, the started→completed
+                // rate silently mixes two populations and reads over 100%.
+                startSource: params.id ? 'widget' : 'app',
               });
               console.log('🍎 Fruits earned:', fruitsEarned, 'for completed session:', sessionId);
             }
@@ -1247,6 +1284,19 @@ export const useAppStore = create<AppStore>()(
             // by a force-quit, stranding the session local-only forever. See
             // enqueueSessionNow.
             enqueueSessionNow(get(), completedSession);
+
+            // Analytics: manual entry only. The other callers of this method
+            // (widget / Live Activity / Watch stop adoption) are already counted by
+            // focus_session_completed via earnFruits, so firing for them would
+            // double-count; a manual entry earns no fruit and would otherwise be
+            // invisible. Closes the manual_session_attempted → _created funnel.
+            if (params.isManualEntry) {
+              AnalyticsTracker.track(
+                'manual_session_created',
+                { duration_minutes: params.duration, tag_id: params.tagId },
+                { setOnce: { ever_logged_manual_session: true } }
+              );
+            }
 
             console.log('✅ Completed focus session created:', completedSession);
             return completedSession;
@@ -1354,6 +1404,18 @@ export const useAppStore = create<AppStore>()(
             console.log(
               `[HealthKit] import: imported=${toAdd.length} skipped=${skipped} tagId=${tagId}`
             );
+
+            // Analytics: HealthKit adoption. Only a run that actually wrote sessions
+            // counts — the import re-runs on every sync and would otherwise emit a
+            // stream of imported=0 events that swamp the real signal.
+            if (toAdd.length > 0) {
+              AnalyticsTracker.track(
+                'healthkit_import_completed',
+                { imported: toAdd.length, skipped },
+                { setOnce: { ever_imported_healthkit: true } }
+              );
+            }
+
             return { imported: toAdd.length, skipped };
           },
 
@@ -1582,6 +1644,18 @@ export const useAppStore = create<AppStore>()(
               };
             });
 
+            // Analytics: badges only exist as the artifact of concluding a goal, so
+            // this is the one place a badge is ever minted.
+            AnalyticsTracker.track(
+              'badge_earned',
+              {
+                active_period: goal.activePeriod,
+                total_sessions: (badgeData as any)?.totalSessions,
+                total_minutes: (badgeData as any)?.totalMinutes,
+              },
+              { setOnce: { ever_earned_badge: true } }
+            );
+
             if (__DEV__) {
               console.log('✅ Goal concluded, badge created or updated for goal:', goalId);
             }
@@ -1644,6 +1718,23 @@ export const useAppStore = create<AppStore>()(
               },
             }));
             syncTodosWidget();
+
+            // Analytics: todo adoption. `scheduled` separates the plain checklist
+            // user from the one who drags todos onto the timeline — the two are very
+            // different products and were previously indistinguishable.
+            AnalyticsTracker.track(
+              'todo_created',
+              {
+                scheduled: input.startAt != null,
+                has_deadline: input.deadlineAt != null,
+                is_recurring: input.recurrence != null,
+                has_tag: input.tagId != null,
+              },
+              {
+                set: { total_todos: get().focus.todos.allIds.length },
+                setOnce: { ever_created_todo: true },
+              }
+            );
             return todo;
           },
 
@@ -1719,6 +1810,7 @@ export const useAppStore = create<AppStore>()(
           },
 
           toggleTodo: (todoId) => {
+            const wasCompleted = get().focus.todos.byId[todoId]?.completed;
             set((state) => {
               const existing = state.focus.todos.byId[todoId];
               if (!existing) return state;
@@ -1743,9 +1835,16 @@ export const useAppStore = create<AppStore>()(
               };
             });
             syncTodosWidget();
+
+            // Analytics: completion is the signal that todos are actually *used*,
+            // not just created. Un-checking is not tracked — it's a correction.
+            if (wasCompleted === false) {
+              AnalyticsTracker.track('todo_completed', { source: 'app' });
+            }
           },
 
           setTodoCompleted: (todoId, completed) => {
+            const wasCompleted = get().focus.todos.byId[todoId]?.completed;
             set((state) => {
               const existing = state.focus.todos.byId[todoId];
               if (!existing || existing.completed === completed) return state;
@@ -1769,6 +1868,14 @@ export const useAppStore = create<AppStore>()(
               };
             });
             syncTodosWidget();
+
+            // `setTodoCompleted` has exactly one caller: adoptWidgetTodoToggles in
+            // _layout, mirroring a tick the user made on the Home Screen widget.
+            // So this branch is precisely "completed from the widget" — a free
+            // widget-engagement signal, hence the explicit source.
+            if (completed && wasCompleted === false) {
+              AnalyticsTracker.track('todo_completed', { source: 'widget' });
+            }
           },
 
           deleteTodo: (todoId) => {
@@ -1992,6 +2099,26 @@ export const useAppStore = create<AppStore>()(
                 },
               },
             }));
+
+            // Analytics: tag_count doubles as the free-tier paywall pressure gauge
+            // (free is capped at 3) — pair it with paywall_viewed source='tags'.
+            //
+            // `during_onboarding` is essential, not decoration: onboarding creates
+            // the user's 1-3 picked tags through this same method, so without the
+            // flag every activated user fires tag_created and the series is ~100%
+            // by construction — useless as adoption. hasSeenOnboarding is still
+            // false throughout that loop and is set true immediately after it, so
+            // it discriminates the two exactly. Charts asking "do people make
+            // their OWN tags" must filter during_onboarding = false.
+            AnalyticsTracker.track(
+              'tag_created',
+              {
+                activity_type: (tagData as any)?.activityType,
+                during_onboarding:
+                  useUnifiedStore.getState().preferences.hasSeenOnboarding !== true,
+              },
+              { set: { tag_count: get().focus.tags.allIds.length } }
+            );
             return tag;
           },
 
@@ -2243,6 +2370,10 @@ export const useAppStore = create<AppStore>()(
                   tag_id: session?.tagId,
                   has_blocklist: get().blocklist.currentSelectionId != null,
                   fruits_earned: amount,
+                  // 'app' = started in-app (has a matching focus_session_started);
+                  // 'widget' = native widget/LA stop, which has no start event.
+                  // Filter to 'app' on any started→completed rate chart.
+                  start_source: (metadata as any)?.startSource ?? 'app',
                 },
                 { set: { total_focus_sessions: get().focus.sessions.allIds.length } }
               );
@@ -2376,6 +2507,18 @@ export const useAppStore = create<AppStore>()(
                 },
               };
             });
+
+            // Analytics: the single choke point for every fruit-store purchase —
+            // tips, slider themes and custom rewards all route through here, so one
+            // event with product_id covers the whole spend side of the economy.
+            AnalyticsTracker.track(
+              'reward_purchased',
+              { product_id: productId, cost },
+              {
+                set: { total_purchases: get().rewards.purchases?.allIds.length ?? 0 },
+                setOnce: { ever_purchased_reward: true },
+              }
+            );
           },
           addCustomReward: (name, cost, emoji) => {
             const now = new Date().toISOString();
@@ -2399,6 +2542,17 @@ export const useAppStore = create<AppStore>()(
                 },
               };
             });
+
+            // Analytics: closes the custom_reward_attempted → _created funnel (the
+            // "attempted" half fires when the create sheet opens in fruit-store).
+            AnalyticsTracker.track(
+              'custom_reward_created',
+              { cost: reward.cost, has_emoji: !!emoji },
+              {
+                set: { custom_reward_count: get().rewards.customRewards?.allIds.length ?? 0 },
+                setOnce: { ever_created_custom_reward: true },
+              }
+            );
             return reward.id;
           },
           deleteCustomReward: (rewardId) => {
@@ -2589,6 +2743,9 @@ export const useAppStore = create<AppStore>()(
           },
 
           requestAuthorization: async () => {
+            // Analytics: the Screen Time prompt is the expected activation cliff —
+            // requested/granted around the same await gives the exact grant rate.
+            AnalyticsTracker.track('screentime_permission_requested');
             try {
               console.log('🔐 Requesting Family Controls authorization...');
               const authorized = await FamilyControlsModule.requestAuthorization();
@@ -2606,6 +2763,13 @@ export const useAppStore = create<AppStore>()(
               }));
 
               console.log('🔐 Authorization result:', authorized, 'status:', status);
+              if (authorized) {
+                AnalyticsTracker.track(
+                  'screentime_permission_granted',
+                  { status },
+                  { setOnce: { screentime_authorized: true } }
+                );
+              }
               return authorized;
             } catch (error) {
               console.error('❌ Failed to request authorization:', error);

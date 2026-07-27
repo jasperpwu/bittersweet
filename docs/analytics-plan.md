@@ -97,35 +97,87 @@ the Screen Time permission step — Milestone 2 adds the events to see exactly w
 
 ---
 
-## Milestone 2 — Funnel depth & permission cliff
+## Milestone 2 — SHIPPED (funnel depth, feature adoption, settings cohorts)
 
-Add only when M1 raises "where exactly do they drop?" questions.
+M1 answered "do people use the core loop?" but left every other surface dark —
+todos, monetization, social, the Screen Time prompt. M2 fills those in.
 
-| Event | Why |
+**Design rule carried over from M1:** an `_attempted` event fires when the user
+*opens* a creation surface, `_completed` when the write succeeds. The pair is the
+abandonment rate; neither one alone tells you anything.
+
+### Funnel & permission events
+
+| Event | Fires from | Properties |
+|---|---|---|
+| `focus_session_started` | `focus.startSession` | `duration_minutes`, `tag_id`, `has_blocklist` |
+| `screentime_permission_requested` | `blocklist.requestAuthorization` (before the await) | — |
+| `screentime_permission_granted` | same method, on `authorized === true` | `status` |
+| `paywall_viewed` | `UpgradeSheet` on open | `source` (`tags`/`goals`/`adhd`/`health`) |
+| `subscription_started` | `purchaseUpdatedListener` (StoreKit confirms, not `purchase()`) | `product_id` |
+
+### Creation funnels (`_attempted` → `_completed`)
+
+| Pair | Attempted from | Completed from |
+|---|---|---|
+| `manual_session_attempted` / `manual_session_created` | `openManualEntryModal` (journal) | `createCompletedSession` when `isManualEntry` |
+| `custom_reward_attempted` / `custom_reward_created` | create-reward card (fruit-store) | `rewards.addCustomReward` |
+| `gift_reward_attempted` / `gift_reward_completed` | gift modal open (fruit-store) | `grove.createGift` |
+| `challenge_create_attempted` / `challenge_create_completed` | create-challenge screen mount | `grove.createChallenge` |
+
+> `manual_session_created` deliberately fires **only** for `isManualEntry`.
+> `createCompletedSession` is also the widget / Live Activity / Watch adoption path,
+> and those are already counted by `focus_session_completed` via `earnFruits` — firing
+> for them would double-count the same session.
+
+### Feature-adoption events
+
+| Event | Fires from | Notes |
+|---|---|---|
+| `todo_created` | `focus.createTodo` | `scheduled` separates checklist users from timeline users |
+| `todo_completed` | `toggleTodo` / `setTodoCompleted` | only on false→true; un-checking is a correction |
+| `tag_created` | `focus.createTag` | sets `tag_count` — the free-tier (3 tag) paywall pressure gauge |
+| `session_rated` | `applyFocusRating` **when `source === 'user'`** | `'suggested'` fires on ~every session and would just shadow `focus_session_completed` |
+| `badge_earned` | `focus.concludeGoal` | the only place a badge is minted |
+| `reward_purchased` | `rewards.addPurchase` | single choke point for tips, themes **and** custom rewards |
+| `healthkit_import_completed` | `importHealthKitWorkouts` **when `imported > 0`** | the import re-runs on every sync; `imported=0` would swamp the signal |
+| `ai_coach_viewed` | ai-coach screen mount | `report_count` separates "reads reports" from "found it empty" |
+| `grove_setup_completed` | `grove.createProfile` | |
+| `friend_added` | `acceptFriendRequest` + `acceptPendingInvite` | `source`: `request` / `invite_link` |
+| `challenge_joined` | `grove.acceptChallenge` | |
+| `grove_inner_circle_added` | `grove.inviteToInnerCircle` | |
+| `referral_code_created` / `referral_redeemed` / `referral_reward_claimed` | `referralSlice` | redeemed ÷ created = viral coefficient |
+| `timer_style_changed` | `updatePreferences`, **user edits only** | guarded on `updates.updatedAt == null`; a sync-apply passes the cloud timestamp and must not emit |
+
+### Person properties added in M2
+
+Settings are **cohorts, not events** — "how many users have multi-task on" is a
+person-property breakdown, not a count of historical toggles. `updatePreferences`
+re-stamps the whole preference surface on every edit: cheap, idempotent, and it
+self-heals for users who set a preference before this instrumentation existed.
+
+| Property | Source |
 |---|---|
-| `screentime_permission_requested` / `_granted` | find the activation cliff (usually here) |
-| `focus_session_started` | started→completed completion rate |
-| `shield_hit` | user hits a blocked app (top of the unlock funnel) — fire from native shield/intent path |
-| `app_unlock_insufficient_fruits` | economy too tight/loose signal (code already logs this) |
-| `paywall_viewed` (+ `source`) / `subscription_started` | monetization funnel |
-
-New cohort: `is_premium` for monetization-vs-retention.
+| `language`, `theme`, `timer_picker_style`, `goal_reminder_enabled`, `notifications_enabled`, `healthkit_enabled`, `slider_theme_id`, `multitask_enabled` | `updatePreferences` |
+| `session_rating_enabled` | `autoRateSessionFromMotion` — Motion permission granted; where false, every session silently gets a flat 5★ |
+| `profile_type`, `live_status_enabled` | `createProfile` / `updateProfile` / `updatePrivacySettings` |
+| `is_premium`, `first_subscribed_at` | `subscription_started` |
+| `friend_count`, `inner_circle_count`, `tag_count`, `total_todos`, `total_purchases`, `custom_reward_count` | their respective create/accept methods |
+| Sticky `ever_*` flags (`ever_created_todo`, `ever_sent_gift`, `ever_earned_badge`, `acquired_via_referral`, `screentime_authorized`, …) | `setOnce` on first occurrence |
 
 ---
 
-## Milestone 3 — Breadth & social
+## Milestone 3 — not yet instrumented
 
-Add when core loop is understood and the focus shifts to growth.
+Deliberately still dark. Add only when a specific question demands it.
 
-| Area | Events |
+| Event | Why it's deferred |
 |---|---|
-| Grove / social | `grove_setup_completed`, `friend_added`, `challenge_joined`, `friend_feed_viewed` |
-| Referral | `referral_link_shared`, `referral_redeemed` |
-| Re-engagement | `app_opened` with `source` (notification / widget / live-activity / deep-link) |
-| Economy detail | `fruits_earned` / `fruits_spent` with `source` / `purpose` for balance analysis |
-| Other features | `tag_created`, `insights_viewed`, `healthkit_import_completed`, `session_shared_to_feed` |
-
-New cohort: `grove_friend_count > 0` for social-vs-retention.
+| `shield_hit` | needs a native shield/intent → JS bridge; the unlock funnel top is inferable from `app_unlocked` for now |
+| `app_unlock_insufficient_fruits` | economy tuning signal; wait until the economy is actually being tuned |
+| `app_opened` with `source` (notification / widget / deep-link) | attribution for re-engagement pushes |
+| `fruits_earned` / `fruits_spent` with `source` / `purpose` | full economy balance analysis |
+| `friend_feed_viewed`, `insights_viewed` | screen-view events; only useful once adoption is proven |
 
 ---
 
@@ -197,3 +249,157 @@ push in onboarding; if curves match, the core timer is the sticky part.
 - **Insight:** Funnel · **Steps:** `Application Opened` → `onboarding_completed` →
   `focus_session_completed` · **Window:** 7 days. Shows where new users drop before
   their first completed session. (M2 adds the Screen-Time permission step.)
+
+---
+
+## Milestone 2 — PostHog dashboard tiles (built)
+
+Dashboard **"Milestone 1 — Core Analytics"** (project 476985, dashboard 1734418),
+tiles 8–29. Created via the PostHog API; the generator script is disposable, the
+dashboard is the source of truth. Re-running against an existing tile name PATCHes
+it rather than duplicating.
+
+| # | Tile | Type |
+|---|---|---|
+| 8 | Adoption — planning (todos, manual log, tags) | Trends, DAU, bar |
+| 9 | Adoption — social (Grove) | Trends, DAU, bar |
+| 10 | Adoption — fruit economy | Trends, DAU, bar |
+| 11 | Adoption — secondary features | Trends, DAU, bar |
+| 12 | Activation funnel v2 (adds Screen Time + session start) | Funnel, 7d |
+| 13 | Session completion rate (started → completed) | Trends |
+| 14 | Screen Time permission grant rate | Trends |
+| 15 | Monetization funnel (paywall → subscription) | Funnel, 3d |
+| 16 | Paywall impressions by `source` | Trends, event breakdown |
+| 17–20 | Manual session / custom reward / gift / challenge creation funnels | Funnel, 1h window |
+| 21 | Referral funnel | Funnel, 30d |
+| 22–28 | Settings distributions (language, timer style, multi-task, session rating, goal reminders, profile type, live status) | Trends, person breakdown |
+| 29 | Free vs premium actives | Trends, person breakdown |
+
+**Reading tiles 17–20:** the 1-hour window is deliberate — these are single-sitting
+flows, so a longer window would silently count "opened it Monday, finished Friday"
+as a success and hide the real abandonment.
+
+**Tile 20 caveat:** challenge-creation drop-off is often "no friends to invite"
+rather than UI friction. The `friend_count` property on
+`challenge_create_attempted` separates the two — always read it next to tile 9.
+
+---
+
+## Dedup semantics — read before adding a tile
+
+Three separate "is this per-user?" questions, with three different answers.
+
+### 1. Identity — yes, deduped by Supabase user id
+`AnalyticsTracker.identify(user.id)` runs on **both** `SIGNED_IN` and
+`INITIAL_SESSION` (`app/_layout.tsx`), so a signed-in user is one PostHog person
+across devices and reinstalls, and PostHog merges their pre-sign-in anonymous
+events into that person. `reset()` on sign-out starts a fresh anonymous id.
+
+**Limit:** a user who has *never* signed in is a separate person per install —
+reinstalling creates a new anonymous person with no way to link them. Split any
+adoption number by the `is_signed_in` property (tile 7) before trusting it.
+
+### 2. Query math — `dau` is per-user, but the DISPLAY decides if the total is
+**This is the trap.** `math: "dau"` dedupes *within each bucket*, not across the
+window. With a time-series display (`ActionsBar`, `ActionsLineGraph`) the headline
+total is the **sum of 30 daily unique counts** — a user active on 12 days counts 12
+times.
+
+Measured on `focus_session_completed` / 30d:
+
+| Display | Reported | What it is |
+|---|---|---|
+| `ActionsBar` | **68** | sum of daily uniques |
+| `ActionsBarValue` | **7** | actual unique persons |
+
+A ~10× overstatement. Every adoption tile (1, 8–11, 29) therefore uses
+`ActionsBarValue` / `ActionsPie`, which return a single `aggregated_value` =
+unique persons over the whole window. **Use a time-series display only when you
+genuinely want the shape over time, and never read its total as a user count.**
+
+### 3. Rates need `total`, not `dau`
+Tile 13 (session completion rate) counts **events**, not users: with `dau` math a
+user who starts 5 sessions and finishes 3 reads as 1 vs 1 = 100%. Per-user math is
+correct for once-per-user things like tile 14 (permission grant rate), wrong for
+anything measuring repeat behaviour.
+
+### 4. Person-property breakdowns are CURRENT value, applied retroactively
+PostHog breaks down by the person's **latest** property value, not the value at
+event time — if a user turns multi-task off today, all their past events re-bucket
+to `false` and the chart rewrites its own history.
+
+For tiles 22–29 this is the desired behaviour: they answer "how many users have
+this setting on **right now**", each person counted once. They are **snapshots, not
+trends** — do not read them as "adoption of multi-task over time". If that question
+ever matters, it needs a dedicated event (which is why `timer_style_changed` exists
+alongside the `timer_picker_style` property).
+
+---
+
+## Semantics audit (full pass over every event + tile)
+
+Findings from auditing all 41 events against all 37 tiles. The recurring lesson:
+**a store method existing is not evidence that it runs.** Two events were wired to
+code paths that are never executed.
+
+### Dead events (fixed)
+
+- **`focus_session_started` was on `focus.startSession` — dead code.** The live
+  timer never creates a store session up front; it starts the countdown in
+  `startTimer()` (`app/(tabs)/index.tsx`) and only writes a session on completion.
+  `startSession` is destructured in `index.tsx` but never called. Moved the event
+  to `startTimer()`.
+- **`session_rated` gated on `ratingSource === 'user'` — impossible by design.**
+  `FocusRatingBlock` is explicitly read-only ("the user can't override stars"), so
+  only `'suggested'` ever occurs. Replaced with `session_auto_rated`, which records
+  the *distribution* of machine ratings (tile 30) — that answers the real question:
+  is motion rating discriminating, or is everyone silently getting the 5★
+  permission-denied fallback?
+
+### Double-counting and population mismatches (fixed)
+
+- **`tag_created` fired for onboarding's tag picker.** Onboarding creates the
+  user's 1–3 chosen tags through the same `createTag`, so every activated user
+  fired it and the series read ~100% by construction. Added `during_onboarding`
+  (derived from `hasSeenOnboarding`, still false during that loop) and filtered
+  tile 8 to `false`.
+- **Completion rate mixed two populations.** Widget / Live-Activity sessions are
+  adopted as already-complete and never fire a start event, so
+  completed ÷ started could exceed 100%. Added `start_source` to
+  `focus_session_completed` (`params.id` present ⟹ native-originated) and pinned
+  both series on tile 13 to the in-app path.
+- **`subscription_started` could count renewals/restores.** `purchaseUpdatedListener`
+  fires for those too. `expo-iap`'s `restorePurchases` passes
+  `alsoPublishToEventListenerIOS: false`, but `AppStore.sync()` may still surface
+  transactions natively — so rather than depend on that, the event is now gated on a
+  `purchaseInitiatedByUser` flag set only by `purchase()`. Renewals still refresh
+  the `is_premium` property, they just don't count as conversions.
+- **`friend_count` only updated for the accepting side.** `friend_added` fires on
+  accept, so the initiator gained a friend with a stale cohort property — roughly
+  half of all friendships invisible. Now re-stamped from the authoritative list in
+  `fetchFriends`, which also catches removals (no event exists for those).
+
+### Confirmed correct (no change)
+
+- **No event fires from a sync/hydration path.** `pullAndApply` writes state via
+  `set()` and never calls `createTag` / `createTodo` / `addPurchase`, so cloud pulls
+  produce no phantom events. `timer_style_changed` is separately guarded on
+  `updates.updatedAt == null`.
+- **`todo_completed`'s two call sites are distinct surfaces**, now labelled:
+  `setTodoCompleted` has exactly one caller (widget-toggle adoption) → `source:
+  'widget'`; `toggleTodo` is the in-app path → `source: 'app'`.
+- **Retention cohorts are sound** — `is_set`/`is_not_set` against sticky `setOnce`
+  flags (which are only ever written `true`), and the identity pair correctly uses
+  `exact true` vs `is_not true` on `is_signed_in` (which *is* written `false`, so
+  `is_not_set` would have been wrong there).
+- **Tiles 6, 7, 14 keep a time-series display on `dau`** — for those the daily line
+  is the intended reading. Their *totals* still sum daily uniques; do not read them
+  as user counts.
+
+### Open — needs a decision
+
+`$internal_or_test_user` is never set, so **your own dev/test devices are counted in
+every number on the dashboard.** With ~18 persons total that is likely a large share
+of the data. There is already an `isDevUser` helper (`src/config/devUsers.ts`) that
+could set the property; wiring it would let PostHog filter internal traffic out
+project-wide. Not done here because it changes what every existing chart reports.
