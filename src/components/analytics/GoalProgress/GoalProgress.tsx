@@ -690,6 +690,11 @@ const TRACK_COLORS: Record<UrgencyLevel | 'healthy', string> = {
   high: '#D9364B', // strong urgent red
 };
 
+// Row height for the daily 7-column grid: the 20px cell plus a little breathing
+// room. Deliberately not a square (`aspectRatio: 1`), which at 1/7th of the card
+// width made rows ~45px tall and left a big empty band under the grid.
+const DAY_CELL_ROW_HEIGHT = 32;
+
 // Duolingo-style streak cell: a filled green circle with a white checkmark when
 // the period's target was hit; otherwise a circular track with a bottom-up
 // partial fill showing how close the period came.
@@ -1240,13 +1245,15 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({
                 </View>
               ))}
             </View>
-            {/* Grid */}
+            {/* Grid — rows are sized to the 20px cell, not to a full square
+                (aspectRatio: 1 made each row ~45px tall, so the last, always
+                partial row left a large blank band under the grid). */}
             <View className="flex-row flex-wrap">
               {paddedResults.map((r, i) => (
                 <View
                   key={i}
                   className="items-center justify-center"
-                  style={{ width: '14.28%', aspectRatio: 1 }}>
+                  style={{ width: '14.28%', height: DAY_CELL_ROW_HEIGHT }}>
                   {r ? (
                     <StreakCell hit={r.hit} off={r.off} fillPercent={r.fillPercent} size={20} />
                   ) : (

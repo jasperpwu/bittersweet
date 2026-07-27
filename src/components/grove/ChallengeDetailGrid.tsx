@@ -21,6 +21,11 @@ function fillPercent(minutes: number, target: number): number {
 
 const DAY_HEADERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+// Row height for the daily 7-column grid: the 20px square plus breathing room.
+// Deliberately not a square cell (`aspectRatio: 1`), which at 1/7th of the card
+// width made rows ~45px tall and left a big empty band under the grid.
+const DAY_CELL_ROW_HEIGHT = 32;
+
 interface PeriodSquareProps {
   minutes: number;
   target: number;
@@ -88,10 +93,12 @@ export const UserGrid: React.FC<UserGridProps> = ({ label, minutesPerPeriod, tar
             </View>
           ))}
         </View>
-        {/* Grid */}
+        {/* Grid — rows are sized to the 20px square, not to a full square cell
+            (aspectRatio: 1 made each row ~45px tall, so the last, usually
+            partial row left a large blank band under the grid). */}
         <View className="flex-row flex-wrap">
           {paddedMinutes.map((m, i) => (
-            <View key={i} className="items-center justify-center" style={{ width: '14.28%', aspectRatio: 1 }}>
+            <View key={i} className="items-center justify-center" style={{ width: '14.28%', height: DAY_CELL_ROW_HEIGHT }}>
               {m !== null ? (
                 <PeriodSquare minutes={m} target={target} />
               ) : (

@@ -158,9 +158,11 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
           </View>
         )}
 
-        {/* Current user's period grid */}
+        {/* Current user's period grid. pb-1 rather than p-4: UserGrid already
+            ends with its own mb-3, so a full bottom padding would double up
+            into a visible gap under the grid. */}
         {details && myPeriodData && challenge.startDate && (
-          <View className="bg-light-border/30 dark:bg-dark-card rounded-xl p-4 mb-3">
+          <View className="bg-light-border/30 dark:bg-dark-card rounded-xl px-4 pt-4 pb-1 mb-3">
             <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
               {t('challenge.yourProgress')}
             </Typography>
