@@ -34,7 +34,7 @@ import { getInstalledWidgetFamilies } from '../modules/widget-info';
 import { useTranslation } from 'react-i18next';
 import { EmojiPickerOverlay } from '../src/components/ui/EmojiPicker/EmojiPicker';
 import type { CustomReward, Purchase } from '../src/types/models';
-import { TIP_IDS, hasUnpurchasedTips } from '../src/config/tips';
+import { TIP_IDS, TIP_ROUTES, hasUnpurchasedTips, type TipId } from '../src/config/tips';
 import {
   customRewardIdFromProductId,
   DEFAULT_CUSTOM_REWARD_EMOJI,
@@ -381,6 +381,16 @@ export default function FruitStoreScreen() {
         },
       },
     ]);
+  };
+
+  // "Try it" on a tip: close the modal and land on the screen where the tip can
+  // be practised. navigate() (not push) so a tab destination returns to the
+  // already-mounted tab instead of stacking another copy of it.
+  const activeTipRoute = activeTipId ? TIP_ROUTES[activeTipId as TipId] : undefined;
+  const handleTipCta = () => {
+    if (!activeTipRoute) return;
+    setActiveTipId(null);
+    router.navigate(activeTipRoute as never);
   };
 
   const handlePurchaseTip = () => {
@@ -1257,9 +1267,20 @@ export default function FruitStoreScreen() {
           <Typography variant="body-14" color="secondary" className="mb-6 text-center">
             {activeTipId ? t(`store.tips.${activeTipId}`) : ''}
           </Typography>
-          <Button onPress={() => setActiveTipId(null)} size="medium">
-            {t('store.gotIt')}
-          </Button>
+          {activeTipRoute ? (
+            <View className="flex-row gap-3">
+              <Button variant="secondary" onPress={() => setActiveTipId(null)} size="medium">
+                {t('store.gotIt')}
+              </Button>
+              <Button onPress={handleTipCta} size="medium">
+                {t('store.tipTryIt')}
+              </Button>
+            </View>
+          ) : (
+            <Button onPress={() => setActiveTipId(null)} size="medium">
+              {t('store.gotIt')}
+            </Button>
+          )}
         </View>
       </Modal>
 

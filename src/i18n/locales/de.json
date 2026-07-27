@@ -339,9 +339,17 @@
       "goal_badge": "Schließe ein Fokus-Ziel ab, um ein Abzeichen zu prägen, das deine Leistung festhält – Gesamtzeit, Sessions und Serien.",
       "widget_setup": "Füge ein Bittersweet-Widget zu deinem Home-Bildschirm hinzu, um deinen Fortschritt im Blick zu behalten und schneller loszulegen.",
       "recurring_todos": "Mach eine Aufgabe wiederkehrend und sie kommt automatisch zurück – perfekt für Gewohnheiten, auf die du dich täglich konzentrierst.",
-      "unlock_cost": "Das Entsperren blockierter Apps kostet Äpfel pro Minute – halte Entsperrungen kurz, um deine Ernte zu schützen."
+      "unlock_cost": "Das Entsperren blockierter Apps kostet Äpfel pro Minute – halte Entsperrungen kurz, um deine Ernte zu schützen.",
+      "swipe_to_start": "Wisch eine Aufgabe, einen Tag oder ein Ziel nach links und lass los – die Session startet sofort, mit passendem Tag und Dauer schon eingestellt.",
+      "multi_task_mode": "Schalte den Multitasking-Modus in den Präferenzen ein, um einer Session einen zweiten Tag zu geben: Zeit für zwei Dinge gleichzeitig zählt dann für beide. (Premium)",
+      "apple_health": "Verbinde Apple Health in den Einstellungen und fertige Workouts landen von selbst als Fokus-Sessions in der App – auch die, die Apps wie SmartGym oder Peloton aufzeichnen. (Premium)",
+      "inner_circle": "Wähle unter Einstellungen → Grove bis zu 3 Grove-Freunde für deinen inneren Kreis – wirst du zu lange still, bekommen sie einen sanften Hinweis, nach dir zu schauen.",
+      "goal_reminders": "Aktiviere Ziel-Erinnerungen in den Präferenzen und leg die Uhrzeit fest – du wirst nur an den Tagen erinnert, an denen du wirklich hinterherhinkst.",
+      "rating_activity_type": "Gib jedem Tag einen Aktivitätstyp, damit die Bewegungserkennung weiß, wie Fokus dafür aussieht – tippe dann in einer Session auf „Warum diese Bewertung?“, um die Rechnung zu sehen.",
+      "contact_support": "Etwas kaputt oder eine Idee für uns? Unter Einstellungen → Hilfe & Info kannst du uns über Hilfe & Feedback schreiben und bei Funktionswünschen Ideen vorschlagen und abstimmen."
     },
     "gotIt": "Verstanden!",
+    "tipTryIt": "Ausprobieren",
     "claimedTitle": "+{{count}} 🍎 eingelöst!",
     "claimedBody": "Du hast {{count}} Äpfel für „{{title}}“ erhalten. Viel Freude!",
     "awesome": "Klasse!",

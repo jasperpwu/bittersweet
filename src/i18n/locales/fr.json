@@ -339,9 +339,17 @@
       "goal_badge": "Termine un objectif de concentration pour créer un badge qui résume tes performances : temps total, sessions et séries.",
       "widget_setup": "Ajoute un widget Bittersweet à ton écran d’accueil pour garder ta progression sous les yeux et te lancer plus vite.",
       "recurring_todos": "Rends une tâche récurrente et elle reviendra comme prévu : parfait pour les habitudes quotidiennes.",
-      "unlock_cost": "Déverrouiller des apps bloquées coûte des pommes à chaque minute : garde les déverrouillages courts pour protéger ta récolte."
+      "unlock_cost": "Déverrouiller des apps bloquées coûte des pommes à chaque minute : garde les déverrouillages courts pour protéger ta récolte.",
+      "swipe_to_start": "Balaie une tâche, un tag ou un objectif vers la gauche et relâche : la session démarre aussitôt, avec le bon tag et la bonne durée déjà remplis.",
+      "multi_task_mode": "Active le Mode multitâche dans les Préférences pour ajouter un second tag à une session : le temps passé sur deux choses à la fois compte pour les deux. (Premium)",
+      "apple_health": "Connecte Apple Santé dans les réglages et tes séances terminées deviennent automatiquement des sessions de concentration, même celles enregistrées par des apps comme SmartGym ou Peloton. (Premium)",
+      "inner_circle": "Choisis jusqu’à 3 amis Grove pour ton cercle proche dans Réglages → Grove : si tu restes silencieux trop longtemps, ils reçoivent un petit signal pour prendre de tes nouvelles.",
+      "goal_reminders": "Active les Rappels d’objectifs dans les Préférences et choisis l’heure : tu n’es alerté que les jours où tu es vraiment en retard sur le rythme.",
+      "rating_activity_type": "Donne un type d’activité à chaque tag pour que le mouvement sache à quoi ressemble la concentration dessus, puis touche « Pourquoi cette note ? » sur une session pour voir le calcul.",
+      "contact_support": "Un souci ou une idée ? Dans Réglages → Aide et à propos, Aide et retours permet de nous écrire, et Suggestions de fonctionnalités de proposer des idées et de voter."
     },
     "gotIt": "Compris !",
+    "tipTryIt": "Essayer",
     "claimedTitle": "+{{count}} 🍎 récupérées !",
     "claimedBody": "Tu as gagné {{count}} pommes pour « {{title}} ». Profite !",
     "awesome": "Super !",

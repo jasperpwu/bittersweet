@@ -21,6 +21,13 @@ export const TIP_IDS = [
   'widget_setup',
   'recurring_todos',
   'unlock_cost',
+  'swipe_to_start',
+  'multi_task_mode',
+  'apple_health',
+  'inner_circle',
+  'goal_reminders',
+  'rating_activity_type',
+  'contact_support',
 ] as const;
 
 export type TipId = (typeof TIP_IDS)[number];
@@ -41,3 +48,32 @@ export function pickTipId(purchasedTipIds: string[]): TipId | null {
   if (unseen.length === 0) return null;
   return unseen[Math.floor(Math.random() * unseen.length)];
 }
+
+/**
+ * Where a tip's "Try it" button sends the user — the screen where the tip can
+ * actually be practised. Routes match the deep-link targets in `app/_layout.tsx`
+ * (REENGAGE_ROUTES) and are opened with `router.navigate`, so a tab route pops
+ * back to the already-mounted tab instead of stacking a second one.
+ *
+ * Only tips with somewhere to go get an entry. Deliberately omitted:
+ * `sweet_spot`/`focus_rating`/`unlock_cost` (knowledge, nothing to open),
+ * `accelerate_timing` (the store the user is already standing in), and
+ * `widget_setup` (the Home Screen widget gallery isn't reachable from an app).
+ */
+export const TIP_ROUTES: Partial<Record<TipId, string>> = {
+  infinite_session: '/(tabs)',
+  goal_badge: '/(tabs)/insights',
+  recurring_todos: '/(tabs)/journal',
+  swipe_to_start: '/(tabs)/journal',
+  multi_task_mode: '/settings/preferences',
+  goal_reminders: '/settings/preferences',
+  apple_health: '/settings/health',
+  // Grove settings, not the Inner Circle modal itself: it holds the Inner Circle
+  // row *and* handles the no-Grove-profile case with a setup CTA, where the
+  // modal would dead-end for a user who hasn't set up Grove yet.
+  inner_circle: '/settings/grove-settings',
+  // Tag activity types are edited from the focus tab's tag list (CreateTagModal
+  // / EditTagSheet).
+  rating_activity_type: '/(tabs)',
+  contact_support: '/settings/support',
+};

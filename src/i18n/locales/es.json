@@ -339,9 +339,17 @@
       "goal_badge": "Concluye una meta de concentración para crear una insignia con tu rendimiento: tiempo total, sesiones y rachas.",
       "widget_setup": "Añade un widget de Bittersweet a tu pantalla de inicio para tener tu progreso a la vista y empezar a concentrarte más rápido.",
       "recurring_todos": "Haz que una tarea sea recurrente y volverá según lo programado: perfecto para hábitos diarios.",
-      "unlock_cost": "Desbloquear apps bloqueadas cuesta manzanas por cada minuto: mantén los desbloqueos cortos para proteger tu cosecha."
+      "unlock_cost": "Desbloquear apps bloqueadas cuesta manzanas por cada minuto: mantén los desbloqueos cortos para proteger tu cosecha.",
+      "swipe_to_start": "Desliza una tarea, una etiqueta o una meta hacia la izquierda y suelta: la sesión arranca al instante, ya con la etiqueta y la duración puestas.",
+      "multi_task_mode": "Activa el Modo multitarea en Preferencias para añadir una segunda etiqueta a la sesión: el tiempo que dedicas a dos cosas a la vez cuenta para ambas. (Premium)",
+      "apple_health": "Conecta Apple Health en Ajustes y tus entrenamientos terminados se importan solos como sesiones de concentración, incluidos los que registran apps como SmartGym y Peloton. (Premium)",
+      "inner_circle": "Elige hasta 3 amigos de Grove como tu círculo cercano en Ajustes → Grove: si te quedas en silencio demasiado tiempo, reciben un aviso discreto para ver cómo estás.",
+      "goal_reminders": "Activa los Recordatorios de metas en Preferencias y elige la hora: solo te avisan los días en que de verdad vas por detrás del ritmo.",
+      "rating_activity_type": "Dale a cada etiqueta un tipo de actividad para que el movimiento sepa cómo es concentrarse en ella; luego toca «¿Por qué esta valoración?» en una sesión para ver cómo se calculó.",
+      "contact_support": "¿Algo no funciona o tienes una idea? En Ajustes → Soporte y acerca de tienes Ayuda y comentarios para escribirnos, y Sugerencias de funciones para proponer ideas y votarlas."
     },
     "gotIt": "¡Entendido!",
+    "tipTryIt": "Probar",
     "claimedTitle": "¡+{{count}} 🍎 conseguidas!",
     "claimedBody": "Ganaste {{count}} manzanas por «{{title}}». ¡Disfrútalas!",
     "awesome": "¡Genial!",

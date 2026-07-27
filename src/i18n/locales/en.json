@@ -339,9 +339,17 @@
       "goal_badge": "Conclude a focus goal to mint a badge that captures your performance — total time, sessions, and streaks.",
       "widget_setup": "Add a Bittersweet widget to your home screen to keep your progress in sight and start focusing faster.",
       "recurring_todos": "Make a TODO recurring and it will come back on schedule — perfect for habits you focus on daily.",
-      "unlock_cost": "Unlocking blocked apps costs apples for every minute — keep unlocks short to protect your harvest."
+      "unlock_cost": "Unlocking blocked apps costs apples for every minute — keep unlocks short to protect your harvest.",
+      "swipe_to_start": "Swipe a TODO, a tag, or a goal to the left and let go — a session starts right away, already set to the right tag and duration.",
+      "multi_task_mode": "Turn on Multi-Task Mode in Preferences to add a second tag to a session, so time spent on two things at once counts for both. (Premium)",
+      "apple_health": "Connect Apple Health in Settings and finished workouts import themselves as focus sessions — including ones logged by apps like SmartGym and Peloton. (Premium)",
+      "inner_circle": "Pick up to 3 Grove friends as your Inner Circle in Settings → Grove — if you go quiet for too long, they get a gentle nudge to check in on you.",
+      "goal_reminders": "Switch on Goal Reminders in Preferences and choose the time — you only get nudged on days you're actually behind pace.",
+      "rating_activity_type": "Give each tag an activity type so motion knows what focus looks like for it — then tap “Why this rating?” on a session to see how yours was worked out.",
+      "contact_support": "Something broken, or an idea for us? Settings → Support & About has Help & Feedback to chat with us, and Feature Requests to suggest and vote on ideas."
     },
     "gotIt": "Got it!",
+    "tipTryIt": "Try it",
     "claimedTitle": "+{{count}} 🍎 Claimed!",
     "claimedBody": "You earned {{count}} apples for “{{title}}”. Enjoy!",
     "awesome": "Awesome!",

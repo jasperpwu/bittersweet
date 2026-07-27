@@ -339,9 +339,17 @@
       "goal_badge": "Conclua uma meta de foco para gerar uma medalha com seu desempenho: tempo total, sessões e sequências.",
       "widget_setup": "Adicione um widget do Bittersweet à tela de início para acompanhar seu progresso e começar a focar mais rápido.",
       "recurring_todos": "Torne uma tarefa recorrente e ela volta conforme o programado — perfeito para hábitos diários.",
-      "unlock_cost": "Desbloquear apps bloqueados custa maçãs por minuto — mantenha os desbloqueios curtos para proteger sua colheita."
+      "unlock_cost": "Desbloquear apps bloqueados custa maçãs por minuto — mantenha os desbloqueios curtos para proteger sua colheita.",
+      "swipe_to_start": "Arraste uma tarefa, uma tag ou uma meta para a esquerda e solte: a sessão começa na hora, já com a tag e a duração certas.",
+      "multi_task_mode": "Ative o Modo multitarefa nas Preferências para colocar uma segunda tag na sessão — o tempo gasto em duas coisas ao mesmo tempo conta para as duas. (Premium)",
+      "apple_health": "Conecte o Apple Saúde nos ajustes e seus treinos finalizados viram sessões de foco sozinhos, inclusive os registrados por apps como SmartGym e Peloton. (Premium)",
+      "inner_circle": "Escolha até 3 amigos do Grove para o seu círculo íntimo em Ajustes → Grove: se você ficar quieto tempo demais, eles recebem um aviso gentil para ver como você está.",
+      "goal_reminders": "Ligue os Lembretes de metas nas Preferências e escolha o horário — o aviso só chega nos dias em que você está mesmo atrasado no ritmo.",
+      "rating_activity_type": "Defina um tipo de atividade para cada tag para o movimento saber como é o foco nela; depois toque em “Por que essa avaliação?” em uma sessão para ver como a conta foi feita.",
+      "contact_support": "Deu algum problema ou surgiu uma ideia? Em Ajustes → Suporte e sobre, use Ajuda e feedback para falar com a gente e Sugestões de recursos para propor ideias e votar."
     },
     "gotIt": "Entendi!",
+    "tipTryIt": "Experimentar",
     "claimedTitle": "+{{count}} 🍎 resgatadas!",
     "claimedBody": "Você ganhou {{count}} maçãs por “{{title}}”. Aproveite!",
     "awesome": "Demais!",
