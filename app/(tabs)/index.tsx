@@ -481,13 +481,21 @@ export default function FocusScreen() {
   const [showEditTagModal, setShowEditTagModal] = useState(false);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
 
-  // Drag-to-reorder state
-  const [dragOrderIds, setDragOrderIds] = useState<string[]>([]);
+  // Drag-to-reorder state. The reorder works off `availableTags` — the exact list
+  // that gets rendered — so a row's index always matches the array being spliced
+  // (same as the goal rows in GoalProgress). Never reintroduce a parallel order
+  // array built from `tags.allIds`: soft-deleted tags stay in allIds but are
+  // filtered out of the render, so the two drift apart by one slot per deleted
+  // tag and the drop lands on the wrong element.
   const [isDragging, setIsDragging] = useState(false);
   const [dragOriginalIdx, setDragOriginalIdx] = useState(-1);
   const [dragTargetIdx, setDragTargetIdx] = useState(-1);
   const dragOriginalIdxRef = useRef(-1);
   const dragTargetIdxRef = useRef(-1);
+  const visibleTagIdsRef = useRef<string[]>([]);
+  visibleTagIdsRef.current = availableTags.map((t) => t.id);
+  const deletedTagIdsRef = useRef<string[]>([]);
+  deletedTagIdsRef.current = tags.allIds.filter((id) => tags.byId[id]?.deletedAt);
 
   // Tag swipe coach mark
   const firstTagRef = useRef<View>(null);
@@ -513,10 +521,8 @@ export default function FocusScreen() {
     }
   }, [showTagModal]);
 
-  // Sync dragOrderIds with store when modal opens
   useEffect(() => {
     if (showTagModal) {
-      setDragOrderIds(tags.allIds);
       // Show tag swipe coach mark after a short delay
       if (availableTags.length >= 2 && !preferences.hasSeenTagSwipeHint) {
         setTimeout(() => setShowTagSwipeCoachMark(true), 500);
@@ -524,10 +530,7 @@ export default function FocusScreen() {
     } else {
       setShowTagSwipeCoachMark(false);
     }
-  }, [showTagModal, tags.allIds]);
-
-  const dragOrderRef = useRef<string[]>([]);
-  dragOrderRef.current = dragOrderIds;
+  }, [showTagModal]);
 
   const handleDragStart = useCallback((index: number) => {
     setIsDragging(true);
@@ -539,7 +542,9 @@ export default function FocusScreen() {
 
   const handleDragMove = useCallback((translationY: number) => {
     const origIdx = dragOriginalIdxRef.current;
-    const total = dragOrderRef.current.length;
+    // Challenge rows are appended after the real tags and can't be reordered, so
+    // the drop target is clamped to the real-tag range.
+    const total = visibleTagIdsRef.current.length;
     const offset = Math.round(translationY / ROW_HEIGHT);
     const newTarget = Math.max(0, Math.min(total - 1, origIdx + offset));
 
@@ -554,11 +559,14 @@ export default function FocusScreen() {
     const target = dragTargetIdxRef.current;
 
     if (orig !== target && orig >= 0 && target >= 0) {
-      const newOrder = [...dragOrderRef.current];
+      const newOrder = [...visibleTagIdsRef.current];
       const [moved] = newOrder.splice(orig, 1);
-      newOrder.splice(target, 0, moved);
-      setDragOrderIds(newOrder);
-      reorderTags(newOrder);
+      if (moved) {
+        newOrder.splice(target, 0, moved);
+        // Soft-deleted tags aren't rendered, but they must stay in allIds or their
+        // deletion never syncs — park them after the visible order.
+        reorderTags([...newOrder, ...deletedTagIdsRef.current]);
+      }
     }
 
     setIsDragging(false);
@@ -568,10 +576,7 @@ export default function FocusScreen() {
     dragTargetIdxRef.current = -1;
   }, [reorderTags]);
 
-  const orderedTags = [
-    ...dragOrderIds.map((id) => tags.byId[id]).filter((t) => t && !t.deletedAt),
-    ...challengeTags,
-  ];
+  const orderedTags = [...availableTags, ...challengeTags];
 
   // Blocklist tip modal
   const [showBlocklistTip, setShowBlocklistTip] = useState(false);
@@ -2190,6 +2195,10 @@ export default function FocusScreen() {
           isVisible={showTagModal}
           onClose={() => setShowTagModal(false)}
           scrollable
+          // Freeze the sheet's own scroll + pull-to-dismiss while a row is being
+          // long-press dragged, or those gestures fight the reorder drag (they
+          // claim the same downward pull) and the row never moves.
+          scrollEnabled={!isDragging}
           height={Math.max(
             360,
             Math.min(screenHeight * 0.85, 240 + orderedTags.length * ROW_HEIGHT)

@@ -34,6 +34,10 @@ interface BottomSheetProps {
   // past the top of that list drags the whole sheet down to dismiss (mirrors the
   // Journal TODO sheet). Leave false for short, non-scrolling content.
   scrollable?: boolean;
+  // Scrollable mode only. Set false while the content is running its own drag
+  // gesture (e.g. drag-to-reorder rows) — it freezes the inner ScrollView AND
+  // the sheet's pull-to-dismiss pan so neither competes with that drag.
+  scrollEnabled?: boolean;
   // Guard run on every user-initiated dismiss (swipe, backdrop, hardware back).
   // Return false to veto the close — the sheet snaps back open and the caller is
   // expected to drive the actual close itself (e.g. after a confirm dialog).
@@ -60,6 +64,7 @@ export const BottomSheet: FC<BottomSheetProps> = ({
   children,
   height: heightProp,
   scrollable = false,
+  scrollEnabled = true,
   beforeClose,
   onClosed,
   overlay,
@@ -171,6 +176,11 @@ export const BottomSheet: FC<BottomSheetProps> = ({
   const scrollNativeGesture = Gesture.Native();
 
   const listPanGesture = Gesture.Pan()
+    // Off while the content drives its own drag (see `scrollEnabled`): this pan
+    // spans the whole sheet, so a downward row-drag would otherwise read as a
+    // dismiss pull. Flipping `enabled` mid-gesture cancels it, which is exactly
+    // what we want the moment a row drag takes over.
+    .enabled(scrollEnabled)
     // Only claim deliberate downward drags — taps, the slider, the horizontal
     // tag selector, and upward scrolls all pass through to their own handlers.
     .activeOffsetY(12)
@@ -258,6 +268,7 @@ export const BottomSheet: FC<BottomSheetProps> = ({
                     keyboardShouldPersistTaps="handled"
                     automaticallyAdjustKeyboardInsets
                     bounces={false}
+                    scrollEnabled={scrollEnabled}
                     onScroll={handleScroll}
                     scrollEventThrottle={16}
                     contentContainerStyle={{ paddingBottom: 24 }}>
