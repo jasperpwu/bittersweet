@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
@@ -84,8 +84,11 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
   const myPeriodData = details?.participants.find((p) => p.user_id === currentUserId);
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose} height={screenHeight * 0.75}>
-      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+    // `scrollable` (rather than a nested ScrollView) so a downward pull while the
+    // content is at its top drags the sheet down to dismiss, matching the TODO /
+    // tag-picker sheets. A nested ScrollView would swallow that gesture.
+    <BottomSheet isVisible={isVisible} onClose={onClose} height={screenHeight * 0.75} scrollable>
+      <>
         {/* Header */}
         <View className="flex-row items-center mb-2">
           <Typography variant="body-14" className="mr-1.5">
@@ -239,7 +242,7 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
             </Typography>
           </Pressable>
         )}
-      </ScrollView>
+      </>
     </BottomSheet>
   );
 };
