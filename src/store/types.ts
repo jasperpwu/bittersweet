@@ -256,7 +256,15 @@ export interface CoachWeeklyStats {
   ratedCount: number;
   peakHour: number | null; // 0–23, null if no sessions
   peakDay: string | null; // 'Monday'… null if no sessions
-  trailingAvgMinutes: number; // user's own trailing 4-week average (raw)
+  trailingAvgMinutes: number; // user's own trailing 4-week mean (raw)
+  // The user's TYPICAL week — median of the trailing 4 weeks — and what volume is
+  // scored against. Median rather than mean so one exceptional week doesn't raise the
+  // bar on the weeks after it. Optional: reports predating it fall back to the mean.
+  typicalWeekMinutes?: number;
+  // Days the user planned to show up (7 − rest days) — the denominator for both the
+  // no-goals consistency fallback and the no-history volume fallback. Optional: older
+  // reports fall back to 7.
+  expectedDays?: number;
   // Fraction of the week [0,1] deliberately taken off via paid Off-Marker slots.
   // Scales the trailing baseline so planned rest isn't read as a slowdown.
   restFraction: number;
@@ -264,12 +272,25 @@ export interface CoachWeeklyStats {
   byTag: CoachTagStat[];
   goalsTracked: number; // active goals during the week
   goalsMet: number; // goals whose weekly-equivalent target was met
+  // Mean partial credit [0,1] across tracked goals — daily goals score by days-hit,
+  // weekly/monthly by minutes ratio. Drives the consistency sub-score so a partial
+  // week isn't graded the same as an empty one. Optional: reports generated before
+  // partial credit existed don't carry it (the score falls back to goalsMet/tracked).
+  goalAttainment?: number;
+  // Mean hours-hit rate [0,1] across goals that have a weekly target — drives volume,
+  // so "did you put in the hours you meant to" is measured against the user's own
+  // targets rather than an invented reference. `null`/absent when there's no such goal
+  // (no goals at all, or only cumulative ones); volume then falls back to the typical
+  // week.
+  goalHoursAttainment?: number | null;
 }
 
 export interface CoachSubScores {
   consistency: number; // 0–100
   quality: number; // 0–100
-  volume: number; // 0–100
+  // 0–100, or null when the week has neither goal targets nor history to measure
+  // against — the bar reads "—" and volume is left out of the blend entirely.
+  volume: number | null;
 }
 
 export type CoachNarrator = 'apple_fm' | 'template';

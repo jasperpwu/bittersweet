@@ -172,7 +172,9 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   }
 
   // --- Volume trend (observation) ---
-  if (stats.trailingAvgMinutes > 0) {
+  // Gated on the same typical-week baseline the volume score uses, so the narration
+  // and the number can't tell different stories.
+  if ((stats.typicalWeekMinutes ?? stats.trailingAvgMinutes) > 0) {
     const delta = stats.deltaMinutesVsTrailingAvg;
     if (delta >= VOLUME_DELTA_MINUTES) {
       cards.push(

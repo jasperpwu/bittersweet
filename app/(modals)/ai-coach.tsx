@@ -294,7 +294,11 @@ export default function AiCoachScreen() {
                 value={selected.subScores.quality}
                 show={selected.stats.ratedCount > 0}
               />
-              <SubScoreBar label={t('aiCoach.volume')} value={selected.subScores.volume} show />
+              <SubScoreBar
+                label={t('aiCoach.volume')}
+                value={selected.subScores.volume ?? 0}
+                show={selected.subScores.volume != null}
+              />
             </Card>
 
             {/* Insight cards */}
