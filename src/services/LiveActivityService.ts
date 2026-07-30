@@ -426,12 +426,23 @@ export class LiveActivityService {
         ...laLabels(),
       };
 
-      // Transition to idle via update (not end) so the activity stays alive
-      // and can be updated when the user changes tag/duration or starts the
-      // next session.
-      console.log('🛑 Transitioning focus Live Activity to idle, reason:', reason);
-      await LiveActivity.updateAllActivities(idleState);
-      console.log('✅ Focus Live Activity transitioned to idle');
+      // EXPERIMENT (Dynamic Island suppression) — see endAllFocusActivitiesWithState.
+      // Previously this transitioned to idle via update, keeping the activity
+      // alive; an alive activity is unavoidably shown in the Dynamic Island,
+      // which users report as annoying once the session is over. Ending the
+      // activity with the idle card as its FINAL content removes it from the
+      // Dynamic Island immediately while the Lock Screen banner survives (up to
+      // 4h, ActivityKit's cap).
+      //
+      // Two known consequences, both being validated on-device:
+      //   1. The banner is frozen — update() on an ended activity is a no-op, so
+      //      later tag/duration changes won't be reflected.
+      //   2. UNVERIFIED: whether Button(intent:) still fires on an ended banner.
+      //      If the Start button is dead, this approach is not viable.
+      // Revert to `updateAllActivities(idleState)` to restore the old behavior.
+      console.log('🛑 Ending focus Live Activity with idle final state, reason:', reason);
+      await LiveActivity.endAllFocusActivitiesWithState(idleState);
+      console.log('✅ Focus Live Activity ended with idle card (Lock Screen only)');
     } catch (error: any) {
       console.error('❌ Error stopping Focus Timer Live Activity:', error);
     }
@@ -521,6 +532,76 @@ export class LiveActivityService {
   }
 
   /**
+   * End an unlock countdown by turning it INTO the idle focus card, using the
+   * activity that is already on screen as its own replacement.
+   *
+   * Why not stopUnlockCountdown() + ensureIdleFocusActivity(): that pair
+   * dismisses the unlock activity and CREATES a new one, and Activity.request()
+   * only ever yields an *active* activity — which always occupies the Dynamic
+   * Island. Ending an already-alive activity is the only operation that drops
+   * it from the island immediately while leaving the Lock Screen banner up (4h
+   * cap). Same mechanism as stopFocusTimer, and what the native StopUnlockIntent
+   * path already does via WidgetActivityKit.stopHandler.
+   *
+   * Rendering is safe even though the activity's immutable attributes still say
+   * sessionType "unlock": LiveActivityView checks contentState.isIdle first
+   * (LiveActivityView.swift:44), and staleDate nil keeps isStale false so the
+   * unlock-specific stale branch in LiveActivityContentRouter never runs.
+   */
+  static async endUnlockToIdleCard(
+    activityId: string,
+    tagName: string,
+    tagId?: string,
+    durationMinutes?: number
+  ): Promise<void> {
+    if (!this.isAvailable()) return;
+
+    // No resolvable tag → don't leave a blank "Focus" card behind; just dismiss.
+    if (!this.hasResolvableTag(tagName)) {
+      await this.stopUnlockCountdown(activityId, 'expired');
+      return;
+    }
+
+    const durationLabel =
+      durationMinutes != null ? (durationMinutes > 0 ? `${durationMinutes} min` : '∞') : undefined;
+
+    const idleState: LiveActivity.LiveActivityState = {
+      title: tagName,
+      subtitle: durationLabel,
+      imageName: 'app_icon',
+      dynamicIslandImageName: 'app_icon',
+      dynamicIslandText: tagName,
+      isIdle: true,
+      tagId,
+      durationMinutes,
+      ...laLabels(),
+    };
+
+    try {
+      // dismissImmediately=false selects ActivityKit's .default policy.
+      await LiveActivity.stopActivity(activityId, idleState, false);
+      if (this.lastUnlockActivityId === activityId) {
+        this.lastUnlockActivityId = undefined;
+        this.unlockEndTimestamp = undefined;
+      }
+      this.lastTagName = tagName;
+      this.lastTagId = tagId;
+      this.lastDurationMinutes = durationMinutes;
+      console.log('✅ Unlock LA ended as idle card (Lock Screen only), tag:', tagName);
+    } catch (error: any) {
+      if (error?.code === 'ERR_ACTIVITY_NOT_FOUND') {
+        // Already gone (expired naturally, or ended by the native intent). Fall
+        // back to creating the card — the island will briefly show in this case,
+        // which beats leaving the user with no way to start from the lock screen.
+        console.log('ℹ️ Unlock LA already ended — creating idle card instead');
+        await this.ensureIdleFocusActivity(tagName, tagId, durationMinutes);
+      } else {
+        console.error('❌ Error ending unlock LA as idle card:', error);
+      }
+    }
+  }
+
+  /**
    * Show an idle focus Live Activity, CREATING one if none is on screen.
    *
    * Used after an unlock countdown ends. Unlike showIdleFocusActivity (which
@@ -577,7 +658,16 @@ export class LiveActivityService {
     };
 
     try {
+      // NOTE (Dynamic Island suppression): this path deliberately does NOT end
+      // the activity the way stopFocusTimer does. There is nothing on screen to
+      // end here — stopUnlockCountdown already dismissed the unlock LA — so the
+      // idle card must be CREATED, and Activity.request() always yields an
+      // active activity, which always occupies the Dynamic Island. Creating and
+      // then immediately ending it was tried and reverted: the pod's own
+      // detached "request → updateImages → update" Task races the end, leaving
+      // the activity in an inconsistent state.
       await LiveActivity.startOrUpdateActivity(idleState, config);
+
       this.lastTagName = tagName;
       this.lastTagId = tagId;
       this.lastDurationMinutes = durationMinutes;

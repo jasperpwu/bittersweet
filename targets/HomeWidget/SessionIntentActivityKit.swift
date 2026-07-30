@@ -244,14 +244,22 @@ class WidgetActivityKitLoader: NSObject {
             unlockedLabel: activity.content.state.unlockedLabel,
             unblockExpiredLabel: activity.content.state.unblockExpiredLabel
           )
-          // Update (not end) so the activity stays alive and updatable — the
-          // system silently ignores updates to ended activities, so an ended
-          // "idle" card could never be reloaded when the next session starts.
-          // This matches the JS-side idle transition (stopFocusTimer).
-          await activity.update(
-            ActivityContent(state: idleState, staleDate: nil)
+          // EXPERIMENT (Dynamic Island suppression) — mirrors the JS-side
+          // stopFocusTimer. End the activity with the idle card as its FINAL
+          // content instead of updating it: ActivityKit drops an ended activity
+          // from the Dynamic Island immediately while the Lock Screen banner
+          // survives (up to 4h). An alive activity always occupies the island,
+          // which is what users complain about once the session is over.
+          //
+          // Safe with respect to the next session: startHandler above ends every
+          // leftover activity with .immediate before creating a new one, so the
+          // lingering ended banner is cleared rather than duplicated.
+          // Revert to activity.update(...) to restore the old behavior.
+          await activity.end(
+            ActivityContent(state: idleState, staleDate: nil),
+            dismissalPolicy: .default
           )
-          print("✅ [Widget] Updated Live Activity to idle: \(id)")
+          print("🏁 [Widget] Ended Live Activity with idle final state: \(id)")
         }
       }
     }

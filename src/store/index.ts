@@ -3163,10 +3163,28 @@ export const useAppStore = create<AppStore>()(
                 remainingMinutes * get().blocklist.settings.unlockCostPerMinute
               );
 
-              // Stop Live Activity if it exists
+              // Resolve the tag for the idle card up front — the set() below only
+              // touches rewards/blocklist, so reading focus here is equivalent to
+              // reading it after, and both branches need these values.
+              const idleFocus = get().focus;
+              const idleTagId = idleFocus.lastSelectedTagId;
+              const idleTag = idleTagId ? idleFocus.tags.byId[idleTagId] : undefined;
+              const idleTagLabel = idleTag ? `${idleTag.icon || '🎯'} ${idleTag.name}` : 'Focus';
+              const idleDuration = idleTagId
+                ? idleFocus.lastDurationByTagId[idleTagId]
+                : undefined;
+
+              // End the unlock Live Activity *as* the idle focus card rather than
+              // dismissing it and creating a replacement: a created activity is
+              // always active and would put the pill back in the Dynamic Island.
               if (session.liveActivityId) {
-                console.log('🛑 Stopping Live Activity for session:', sessionId);
-                LiveActivityService.stopUnlockCountdown(session.liveActivityId, reason);
+                console.log('🛑 Ending unlock Live Activity as idle card:', sessionId);
+                LiveActivityService.endUnlockToIdleCard(
+                  session.liveActivityId,
+                  idleTagLabel,
+                  idleTagId || undefined,
+                  idleDuration
+                );
               }
 
               if (session.notificationId) {
@@ -3233,20 +3251,16 @@ export const useAppStore = create<AppStore>()(
 
               // Note: Re-blocking is now handled automatically by DeviceActivity schedule
 
-              // Show idle focus Live Activity so user can start a new session from
-              // the lock screen. The unlock LA was just dismissed above, so this
-              // must CREATE a fresh idle activity (ensureIdleFocusActivity), not
-              // merely update — updateAllActivities would find nothing to update.
-              const focus = get().focus;
-              const tagId = focus.lastSelectedTagId;
-              const tag = tagId ? focus.tags.byId[tagId] : undefined;
-              const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
-              const lastDuration = tagId ? focus.lastDurationByTagId[tagId] : undefined;
-              LiveActivityService.ensureIdleFocusActivity(
-                tagLabel,
-                tagId || undefined,
-                lastDuration
-              );
+              // No unlock LA existed to convert above → CREATE the idle card so the
+              // user can still start a session from the lock screen. Only this
+              // branch pays the Dynamic Island cost of Activity.request().
+              if (!session.liveActivityId) {
+                LiveActivityService.ensureIdleFocusActivity(
+                  idleTagLabel,
+                  idleTagId || undefined,
+                  idleDuration
+                );
+              }
 
               console.log('🔒 Unlock session ended:', sessionId);
             }

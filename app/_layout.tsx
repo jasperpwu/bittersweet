@@ -295,15 +295,16 @@ export default function RootLayout() {
             // endUnlock stops the unlock LA and shows idle focus LA
             useAppStore.getState().blocklist.endUnlock(data.unlockSessionId as string);
           } else if (data.liveActivityId) {
-            LiveActivityService.stopUnlockCountdown(data.liveActivityId as string, 'expired');
-            // Show idle focus LA after unlock ends. The unlock LA was just
-            // dismissed, so CREATE a fresh idle activity (ensureIdleFocusActivity)
-            // rather than update-only — otherwise nothing shows.
+            // End the unlock LA *as* the idle focus card rather than dismissing
+            // it and creating a replacement: a created activity is always active
+            // and would put the pill back in the Dynamic Island. Ending the
+            // existing one drops the island but keeps the Lock Screen banner.
             const focus = useAppStore.getState().focus;
             const tagId = focus.lastSelectedTagId;
             const tag = tagId ? focus.tags.byId[tagId] : undefined;
             const tagLabel = tag ? `${tag.icon || '🎯'} ${tag.name}` : 'Focus';
-            LiveActivityService.ensureIdleFocusActivity(
+            LiveActivityService.endUnlockToIdleCard(
+              data.liveActivityId as string,
               tagLabel,
               tagId || undefined,
               tagId ? focus.lastDurationByTagId[tagId] : undefined
