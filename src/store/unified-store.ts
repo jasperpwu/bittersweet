@@ -39,6 +39,12 @@ interface AppPreferences {
   hasSeenFruitCoachMark: boolean;
   hasSeenTagSwipeHint: boolean;
   hasSeenGoalSwipeHint: boolean;
+  // Whether the one-time Journal (calendar) intro overlay has been shown. Cloud-synced
+  // via user_settings.has_seen_journal_intro so a reinstall doesn't replay it.
+  hasSeenJournalIntro: boolean;
+  // Same, for the Goals & Badges intro on the insights tab
+  // (user_settings.has_seen_goals_intro).
+  hasSeenGoalsIntro: boolean;
   theme: 'light' | 'dark' | 'system';
   language: string;
   notifications: NotificationSettings;
@@ -156,6 +162,8 @@ const createDefaultPreferences = (): AppPreferences => ({
   hasSeenFruitCoachMark: false,
   hasSeenTagSwipeHint: false,
   hasSeenGoalSwipeHint: false,
+  hasSeenJournalIntro: false,
+  hasSeenGoalsIntro: false,
   theme: 'system',
   language: 'en',
   notifications: {

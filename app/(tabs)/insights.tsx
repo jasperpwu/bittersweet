@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { View, SafeAreaView, Alert, ScrollView } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { Typography } from '../../src/components/ui/Typography';
 import { colors } from '../../src/config/theme';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';
@@ -15,6 +16,7 @@ import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { TimePeriod, FocusGoal, Badge, ChartSegment } from '../../src/store/types';
 import { calculateGoalProgress } from '../../src/utils/goalProgress';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
+import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
 import { useTranslation } from 'react-i18next';
 
 type ViewMode = 'statistics' | 'history';
@@ -28,8 +30,36 @@ export default function InsightsScreen() {
   const [activatingTagId, setActivatingTagId] = useState<string | undefined>(undefined);
   const { triggerUpgrade, upgradeModals } = useUpgradeFlow('goals');
   const { canActivateGoal } = useSubscriptionGate();
-  const { preferences } = useAppSettings();
+  const { preferences, updatePreferences } = useAppSettings();
   const weekStartDay = 1; // Always Monday
+
+  // --- One-time Goals & Badges intro ---
+  // Spotlights the tab header and explains what goals and badges are for.
+  // The "seen" flag lives in user_settings (cloud), so hold the overlay until the
+  // cold-start sync has landed: a reinstall wipes local prefs while the Keychain
+  // session survives, and showing it before the pull would replay the walkthrough
+  // for an existing user. Unauthenticated users have no cloud row to wait on.
+  const introSyncSettled = useAppStore(
+    (s) => !s.auth.isAuthenticated || (!!s.sync.lastSyncTime && !s.sync.isSyncing)
+  );
+  const headerRef = useRef<View>(null);
+  const [showIntro, setShowIntro] = useState(false);
+  // The tab can be mounted while another tab is on screen; measureInWindow returns
+  // zeros then and CoachMark would silently skip rendering. Wait for focus.
+  const isInsightsFocused = useIsFocused();
+
+  useEffect(() => {
+    if (preferences.hasSeenGoalsIntro || !introSyncSettled || !isInsightsFocused || showIntro)
+      return;
+    // Let the header finish laying out — CoachMark measures the target on show.
+    const timer = setTimeout(() => setShowIntro(true), 500);
+    return () => clearTimeout(timer);
+  }, [preferences.hasSeenGoalsIntro, introSyncSettled, isInsightsFocused, showIntro]);
+
+  const dismissIntro = useCallback(() => {
+    setShowIntro(false);
+    updatePreferences({ hasSeenGoalsIntro: true });
+  }, [updatePreferences]);
 
   // Get data from focus store
   // Narrow subscription: only re-render when one of these fields changes, not on
@@ -320,76 +350,94 @@ export default function InsightsScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
-      <SwipeableTabWrapper currentTab="insights">
-        {/* Header */}
-        <View className="flex-row items-center justify-between px-4 py-4">
-          <View className="flex-row items-center">
-            {currentView === 'history' && (
-              <View className="mr-3 p-1">
-                <Typography variant="headline-18" color="primary">
-                  ←
-                </Typography>
-              </View>
-            )}
-            <Typography variant="headline-24" color="primary">
-              {currentView === 'statistics' ? t('insights.goalsTitle') : t('insights.historyTitle')}
-            </Typography>
+    // The CoachMark overlay is a sibling of the SafeAreaView, not a child: it
+    // positions itself with absoluteFill against measureInWindow coordinates, so
+    // its container must start at the window origin. Nested inside the SafeAreaView
+    // (or SwipeableTabWrapper) the spotlight would sit a top-inset too low.
+    <View className="flex-1 bg-light-bg dark:bg-dark-bg">
+      <SafeAreaView className="flex-1">
+        <SwipeableTabWrapper currentTab="insights">
+          {/* Header */}
+          <View className="flex-row items-center justify-between px-4 py-4">
+            <View ref={headerRef} className="flex-row items-center">
+              {currentView === 'history' && (
+                <View className="mr-3 p-1">
+                  <Typography variant="headline-18" color="primary">
+                    ←
+                  </Typography>
+                </View>
+              )}
+              <Typography variant="headline-24" color="primary">
+                {currentView === 'statistics'
+                  ? t('insights.goalsTitle')
+                  : t('insights.historyTitle')}
+              </Typography>
+            </View>
           </View>
-        </View>
 
-        {/* Content */}
-        {currentView === 'statistics' ? (
-          <ScrollView className="flex-1">
-            {/* Goal Progress Section */}
-            <GoalProgress
-              goals={storeGoals}
-              inactiveGoals={inactiveGoals}
-              currentPeriodProgress={goalProgress}
-              onEditGoal={handleEditGoal}
-              onDeleteGoal={handleDeleteGoal}
-              onConcludeGoal={handleConcludeGoal}
-              onActivateGoal={handleActivateGoal}
-              onReorderGoals={reorderGoals}
-            />
+          {/* Content */}
+          {currentView === 'statistics' ? (
+            <ScrollView className="flex-1">
+              {/* Goal Progress Section */}
+              <GoalProgress
+                goals={storeGoals}
+                inactiveGoals={inactiveGoals}
+                currentPeriodProgress={goalProgress}
+                onEditGoal={handleEditGoal}
+                onDeleteGoal={handleDeleteGoal}
+                onConcludeGoal={handleConcludeGoal}
+                onActivateGoal={handleActivateGoal}
+                onReorderGoals={reorderGoals}
+              />
 
-            {/* Badge Collection */}
-            <BadgeCollection badges={badges} onDeleteBadge={deleteBadge} />
+              {/* Badge Collection */}
+              <BadgeCollection badges={badges} onDeleteBadge={deleteBadge} />
 
-            {/* AI Focus Coach — collapsible weekly reports */}
-            <CoachSection />
+              {/* AI Focus Coach — collapsible weekly reports */}
+              <CoachSection />
 
-            {/* Statistics View */}
-            <StatisticsView
-              chartData={chartData}
-              recentSessions={todaysSessions}
-              period={selectedPeriod}
-              onPeriodChange={handlePeriodChange}
-              onViewAllPress={handleViewAllPress}
-            />
-          </ScrollView>
-        ) : (
-          <View className="flex-1">Empty View</View>
-        )}
+              {/* Statistics View */}
+              <StatisticsView
+                chartData={chartData}
+                recentSessions={todaysSessions}
+                period={selectedPeriod}
+                onPeriodChange={handlePeriodChange}
+                onViewAllPress={handleViewAllPress}
+              />
+            </ScrollView>
+          ) : (
+            <View className="flex-1">Empty View</View>
+          )}
 
-        {/* Goal Configuration Modal */}
-        <GoalConfigModal
-          isVisible={showGoalModal}
-          onClose={() => {
-            setShowGoalModal(false);
-            setEditingGoalId(null);
-            setActivatingTagId(undefined);
-          }}
-          editingGoalId={editingGoalId}
-          tagId={activatingTagId}
-          onUpgrade={triggerUpgrade}
-        />
+          {/* Goal Configuration Modal */}
+          <GoalConfigModal
+            isVisible={showGoalModal}
+            onClose={() => {
+              setShowGoalModal(false);
+              setEditingGoalId(null);
+              setActivatingTagId(undefined);
+            }}
+            editingGoalId={editingGoalId}
+            tagId={activatingTagId}
+            onUpgrade={triggerUpgrade}
+          />
 
-        {/* Goals paywall — GoalConfigModal fires onUpgrade only after it has
+          {/* Goals paywall — GoalConfigModal fires onUpgrade only after it has
             fully closed, and prompt→sheet is sequenced inside the hook, so no
             modal ever presents over another that's still on screen. */}
-        {upgradeModals}
-      </SwipeableTabWrapper>
-    </SafeAreaView>
+          {upgradeModals}
+        </SwipeableTabWrapper>
+      </SafeAreaView>
+
+      {/* First-visit walkthrough — spotlights the Goals tab header */}
+      <CoachMark
+        visible={showIntro && !preferences.hasSeenGoalsIntro}
+        targetRef={headerRef}
+        title={t('insights.introTitle')}
+        steps={[t('insights.introStep1'), t('insights.introStep2'), t('insights.introStep3')]}
+        dismissLabel={t('insights.introDismiss')}
+        onDismiss={dismissIntro}
+      />
+    </View>
   );
 }

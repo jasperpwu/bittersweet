@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Pressable,
@@ -24,6 +24,7 @@ import Animated, {
   FadeOut,
 } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Modal, Slider, Typography, TimePicker, DatePicker, Button } from '../../src/components/ui';
@@ -59,6 +60,8 @@ import {
   deleteSessionPhoto,
 } from '../../src/services/sessionPhotoService';
 import { EmptyState } from '../../src/components/ui/EmptyState/EmptyState';
+import { CoachMark } from '../../src/components/ui/CoachMark/CoachMark';
+import { useAppSettings } from '../../src/store/unified-store';
 import { useSecondaryTagEnabled } from '../../src/hooks/useSecondaryTagEnabled';
 import { isDevUser } from '../../src/config/devUsers';
 import { useTranslation } from 'react-i18next';
@@ -80,6 +83,35 @@ export default function JournalScreen() {
     updateSession,
   } = useFocusActions();
   const secondaryTagEnabled = useSecondaryTagEnabled();
+
+  // --- One-time Journal intro ---
+  // Spotlights the manual-entry "+" button and explains what this tab is for.
+  // The "seen" flag lives in user_settings (cloud), so hold the overlay until the
+  // cold-start sync has landed: a reinstall wipes local prefs while the Keychain
+  // session survives, and showing it before the pull would replay the walkthrough
+  // for an existing user. Unauthenticated users have no cloud row to wait on.
+  const { preferences, updatePreferences } = useAppSettings();
+  const introSyncSettled = useAppStore(
+    (s) => !s.auth.isAuthenticated || (!!s.sync.lastSyncTime && !s.sync.isSyncing)
+  );
+  const addButtonRef = useRef<View>(null);
+  const [showIntro, setShowIntro] = useState(false);
+  // The tab can be mounted while another tab is on screen; measureInWindow returns
+  // zeros then and CoachMark would silently skip rendering. Wait for focus.
+  const isJournalFocused = useIsFocused();
+
+  useEffect(() => {
+    if (preferences.hasSeenJournalIntro || !introSyncSettled || !isJournalFocused || showIntro)
+      return;
+    // Let the header finish laying out — CoachMark measures the target on show.
+    const timer = setTimeout(() => setShowIntro(true), 500);
+    return () => clearTimeout(timer);
+  }, [preferences.hasSeenJournalIntro, introSyncSettled, isJournalFocused, showIntro]);
+
+  const dismissIntro = useCallback(() => {
+    setShowIntro(false);
+    updatePreferences({ hasSeenJournalIntro: true });
+  }, [updatePreferences]);
 
   // Which calendar is showing: the single-day Sessions timeline or the 3-day
   // TODOs planner. Dragging a todo out of the sheet force-switches to TODOs.
@@ -731,6 +763,7 @@ export default function JournalScreen() {
             </Typography>
             <View className="flex-row items-center" style={{ gap: 8 }}>
               <Pressable
+                ref={addButtonRef}
                 onPress={openManualEntryModal}
                 className="h-11 w-11 items-center justify-center rounded-xl bg-primary-soft active:opacity-80"
                 accessibilityLabel={t('journal.addManualA11y')}
@@ -1426,6 +1459,16 @@ export default function JournalScreen() {
         }}
       />
       {upgradeModals}
+
+      {/* First-visit walkthrough — spotlights the manual-entry "+" button */}
+      <CoachMark
+        visible={showIntro && !preferences.hasSeenJournalIntro}
+        targetRef={addButtonRef}
+        title={t('journal.introTitle')}
+        steps={[t('journal.introStep1'), t('journal.introStep2'), t('journal.introStep3')]}
+        dismissLabel={t('journal.introDismiss')}
+        onDismiss={dismissIntro}
+      />
     </View>
   );
 }

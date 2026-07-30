@@ -10,9 +10,14 @@ import Animated, {
 import { Typography } from '../Typography';
 
 interface CoachMarkProps {
-  targetRef: RefObject<View>;
+  targetRef: RefObject<View | null>;
   title: string;
-  message: string;
+  /** Single-paragraph body. Omit when using `steps`. */
+  message?: string;
+  /** Numbered walkthrough points, rendered under `message` (or on their own). */
+  steps?: string[];
+  /** Overrides the default "Got it" dismiss label. */
+  dismissLabel?: string;
   onDismiss: () => void;
   visible: boolean;
 }
@@ -33,6 +38,8 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
   targetRef,
   title,
   message,
+  steps,
+  dismissLabel,
   onDismiss,
   visible,
 }) => {
@@ -163,15 +170,35 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
         <Typography variant="subtitle-14-semibold" color="primary" className="mb-1">
           {title}
         </Typography>
-        <Typography variant="body-14" color="secondary" className="mb-4">
-          {message}
-        </Typography>
+        {!!message && (
+          <Typography variant="body-14" color="secondary" className="mb-4">
+            {message}
+          </Typography>
+        )}
+        {!!steps?.length && (
+          <View className="mb-4" style={{ gap: 10 }}>
+            {steps.map((step, index) => (
+              <View key={index} className="flex-row" style={{ gap: 10 }}>
+                <View
+                  className="h-5 w-5 items-center justify-center rounded-full bg-primary-soft"
+                  style={{ marginTop: 1 }}>
+                  <Typography variant="body-12" className="text-primary">
+                    {index + 1}
+                  </Typography>
+                </View>
+                <Typography variant="body-14" color="secondary" className="flex-1">
+                  {step}
+                </Typography>
+              </View>
+            ))}
+          </View>
+        )}
         <Pressable
           onPress={onDismiss}
           className="bg-primary rounded-xl py-2.5 items-center active:opacity-80"
         >
           <Typography variant="subtitle-14-medium" className="text-white">
-            Got it
+            {dismissLabel ?? 'Got it'}
           </Typography>
         </Pressable>
       </View>

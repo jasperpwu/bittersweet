@@ -529,6 +529,8 @@ export function settingsToRow(
     has_seen_fruit_coach_mark: preferences.hasSeenFruitCoachMark ?? false,
     has_seen_tag_swipe_hint: preferences.hasSeenTagSwipeHint ?? false,
     has_seen_goal_swipe_hint: preferences.hasSeenGoalSwipeHint ?? false,
+    has_seen_journal_intro: preferences.hasSeenJournalIntro ?? false,
+    has_seen_goals_intro: preferences.hasSeenGoalsIntro ?? false,
     updated_at: new Date().toISOString(),
   };
 }
@@ -542,6 +544,8 @@ export function rowToSettings(row: Record<string, any>): any {
     hasSeenFruitCoachMark: row.has_seen_fruit_coach_mark ?? false,
     hasSeenTagSwipeHint: row.has_seen_tag_swipe_hint ?? false,
     hasSeenGoalSwipeHint: row.has_seen_goal_swipe_hint ?? false,
+    hasSeenJournalIntro: row.has_seen_journal_intro ?? false,
+    hasSeenGoalsIntro: row.has_seen_goals_intro ?? false,
     theme: row.theme ?? 'system',
     language: row.language ?? 'en',
     notifications: {
