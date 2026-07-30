@@ -1754,6 +1754,7 @@ export default function FocusScreen() {
     startDuration?: string;
     autostart?: string;
     ts?: string;
+    openBlocklist?: string;
   }>();
   const pendingStartRef = useRef<{ tagId: string; duration: number } | null>(null);
   // Bumped each time a start is requested so the commit effect below runs even when
@@ -1803,6 +1804,19 @@ export default function FocusScreen() {
     handleStartFocusGuarded();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autostartNonce]);
+
+  // Arrivals that want the blocklist (the "Silence the distractions" re-engagement
+  // nudge, the coach's block_apps action) land here rather than pushing
+  // /(modals)/app-selection directly: the picker is Apple's FamilyActivityPicker,
+  // which renders empty without Family Controls authorization, and that whole gate
+  // — Screen Time guide, permission prompt, first-time tip — lives in
+  // handleBlockList. The param carries a timestamp so each arrival is distinct.
+  useEffect(() => {
+    if (!focusParams.openBlocklist) return;
+    router.setParams({ openBlocklist: undefined });
+    handleBlockList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusParams.openBlocklist]);
 
   // Full right→left swipe on a tag row in the picker: prime the tag + its
   // last-used duration, close the picker, and fire the same autostart path the

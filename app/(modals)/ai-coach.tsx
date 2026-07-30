@@ -173,7 +173,12 @@ export default function AiCoachScreen() {
         break;
       }
       case 'block_apps': {
-        router.push('/(modals)/app-selection');
+        // Via home rather than straight to /(modals)/app-selection: that screen
+        // renders Apple's FamilyActivityPicker unconditionally, which comes up
+        // empty without Family Controls authorization. Home owns the Screen Time
+        // guide + permission prompt + intro tip.
+        router.back();
+        router.navigate({ pathname: '/(tabs)', params: { openBlocklist: String(Date.now()) } });
         break;
       }
       case 'link_health': {

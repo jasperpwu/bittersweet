@@ -111,13 +111,11 @@ async function reconcileHealthIfScreenTimeReady() {
 }
 
 // Where each re-engagement nudge (data.feature from reengagement-cron) lands
-// when tapped. 'suggest' and 'grove' are handled separately (see below), and
-// anything unknown falls back to the focus tab.
+// when tapped. 'suggest', 'grove', 'todos' and 'blocklist' are handled
+// separately (see below), and anything unknown falls back to the focus tab.
 const REENGAGE_ROUTES: Record<string, string> = {
   goals: '/(tabs)/insights',
-  todos: '/(tabs)/journal',
   store: '/fruit-store',
-  blocklist: '/(modals)/app-selection',
   health: '/settings/health',
   focus: '/(tabs)',
 };
@@ -138,15 +136,33 @@ function handleReengageTap(feature: unknown) {
     router.push(hasProfile ? '/(tabs)/grove' : '/(modals)/grove-setup');
     return;
   }
+  if (feature === 'todos') {
+    // "Plan your next session" is about adding to-dos — the Journal tab alone
+    // opens on the calendar with the TODO sheet peeking. Expand it via the same
+    // signal the TODO widget uses; the timestamp keeps each arrival distinct so
+    // the sheet re-expands even when the journal is already mounted.
+    router.navigate({ pathname: '/(tabs)/journal', params: { expandTodos: String(Date.now()) } });
+    return;
+  }
+  if (feature === 'blocklist') {
+    // Never push /(modals)/app-selection straight from here. That screen renders
+    // Apple's FamilyActivityPicker unconditionally, and without Family Controls
+    // authorization the picker comes up empty — which is exactly the state this
+    // nudge's audience is in (it only targets users with no blocklist). Go via
+    // home, which owns the Screen Time guide + permission prompt + intro tip.
+    router.navigate({ pathname: '/(tabs)', params: { openBlocklist: String(Date.now()) } });
+    return;
+  }
   const route =
     (typeof feature === 'string' && REENGAGE_ROUTES[feature]) || REENGAGE_ROUTES.focus;
   router.push(route as never);
 }
 
-// Route a tapped notification to its destination. Shared between the live
-// response listener and the cold-start check: a tap that launches the app from
-// a killed state is delivered via getLastNotificationResponseAsync(), never
-// through addNotificationResponseReceivedListener (registered too late).
+// Route a tapped notification to its destination. Never call this directly —
+// go through queueNotificationTap() below, which waits until the navigator is
+// mounted. expo-router's linkTo() throws ("Attempted to navigate before
+// mounting the Root Layout component") when <Stack> hasn't rendered yet, and a
+// cold-start tap always arrives before that.
 function routeNotificationTap(data: Record<string, unknown> | undefined) {
   if (data?.type === 'weekly-coach') {
     router.push('/(modals)/ai-coach');
@@ -271,6 +287,24 @@ export default function RootLayout() {
     }
   };
 
+  // Notification taps are buffered here instead of navigating immediately: on a
+  // cold start (the normal case for a re-engagement nudge — the app has been
+  // closed for days) the tap arrives while <Stack> is still gated behind
+  // `isReady`, and expo-router throws rather than queueing the navigation. The
+  // effect further down flushes the tap once the navigator exists. Keyed by the
+  // notification's identifier so the live listener and the cold-start lookup —
+  // which can both surface the same launching tap — only navigate once.
+  const pendingTapRef = useRef<{ id: string; data?: Record<string, unknown> } | null>(null);
+  const routedTapIdsRef = useRef<Set<string>>(new Set());
+  const [pendingTapSeq, setPendingTapSeq] = useState(0);
+
+  const queueNotificationTap = (response: Notifications.NotificationResponse) => {
+    const id = response.notification.request.identifier;
+    if (routedTapIdsRef.current.has(id)) return;
+    pendingTapRef.current = { id, data: response.notification.request.content.data };
+    setPendingTapSeq((seq) => seq + 1);
+  };
+
   // Initialize stores and global error handling
   useEffect(() => {
     initializeUnifiedStore();
@@ -319,7 +353,7 @@ export default function RootLayout() {
     // Route notification taps (weekly coach, gifts, re-engagement nudges).
     const coachResponseSubscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        routeNotificationTap(response.notification.request.content.data);
+        queueNotificationTap(response);
       }
     );
 
@@ -328,7 +362,7 @@ export default function RootLayout() {
     // doesn't re-navigate.
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (!response) return;
-      routeNotificationTap(response.notification.request.content.data);
+      queueNotificationTap(response);
       Notifications.clearLastNotificationResponseAsync();
     });
 
@@ -1071,6 +1105,20 @@ export default function RootLayout() {
       }
     }
   }, [isReady, sessionRestored, pathname]);
+
+  // Flush a buffered notification tap once the navigator is mounted. `isReady`
+  // is what renders <Stack>, and child effects run before this one in the same
+  // commit, so the navigator is live by the time we push. Gated on
+  // sessionRestored as well: a re-engagement tap must not race the onboarding
+  // redirect above, and routes like Grove branch on restored auth state.
+  useEffect(() => {
+    if (!pendingTapSeq || !isReady || !sessionRestored) return;
+    const pending = pendingTapRef.current;
+    pendingTapRef.current = null;
+    if (!pending || routedTapIdsRef.current.has(pending.id)) return;
+    routedTapIdsRef.current.add(pending.id);
+    routeNotificationTap(pending.data);
+  }, [pendingTapSeq, isReady, sessionRestored]);
 
   return (
     <ErrorBoundary>
