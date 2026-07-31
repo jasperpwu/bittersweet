@@ -2,19 +2,57 @@
  * Motion-based focus rating.
  *
  * Turns Core Motion signals captured during a focus session into a suggested
- * 1–5★ rating, and maps that rating onto a fruit-reward multiplier. The rating
- * is applied automatically and shown read-only in the summary modal; the tag's
- * activity type is the user's lever for accuracy. Because the underlying motion
- * signal is an on-device estimate, not ground truth (stationary motion can't
- * distinguish a phone resting on a desk from one fidgeted in-hand), ambiguous /
- * no-signal cases err toward 5★.
+ * 1–5★ rating, and maps that rating onto a fruit-reward multiplier. Because the
+ * underlying motion signal is an on-device estimate, not ground truth
+ * (stationary motion can't distinguish a phone resting on a desk from one
+ * fidgeted in-hand), ambiguous / no-signal cases err toward 5★.
+ *
+ * The tag's activity type decides whether motion grades the session at all:
+ *  - `stationary` / `active` — motion-graded 1–5★, read-only in the summary.
+ *  - `self_rated` — motion says nothing useful (phone-based or mixed work), so
+ *    the session starts at 5★ and the user sets the stars in the summary modal.
+ *    This is also the default for tags with no activity type: an unset type
+ *    means we don't know what the phone *should* have been doing, and grading
+ *    that as `stationary` silently penalised users who never set one.
  *
  * Signal source: `MotionActivitySummary` — CMMotionActivity stationary/walking/
  * running fractions, queried retroactively over the session window.
  */
 
-export type ActivityType = 'stationary' | 'on_phone' | 'active';
+export type ActivityType = 'stationary' | 'self_rated' | 'active';
 export type RatingSource = 'suggested' | 'user';
+
+/** Applied when a tag has no activity type set. */
+export const DEFAULT_ACTIVITY_TYPE: ActivityType = 'self_rated';
+
+/**
+ * Values retired from `ActivityType` that may still be persisted locally or in
+ * the `session_tags.activity_type` column (plain TEXT, no CHECK constraint), so
+ * they're mapped on read rather than migrated.
+ */
+const LEGACY_ACTIVITY_TYPES: Record<string, ActivityType> = {
+  // 'on_phone' graded phone-based work leniently (5★ unless you walked half the
+  // session). That 4★ dock measured nothing a user could act on, so the category
+  // became purely self-rated.
+  on_phone: 'self_rated',
+};
+
+/** Canonical activity type for a stored value, or undefined when unset/unknown. */
+export function normalizeActivityType(
+  raw?: ActivityType | string | null
+): ActivityType | undefined {
+  if (!raw) return undefined;
+  if (raw === 'stationary' || raw === 'active' || raw === 'self_rated') return raw;
+  return LEGACY_ACTIVITY_TYPES[raw];
+}
+
+/**
+ * Whether this activity type leaves the stars up to the user — true for
+ * `self_rated` and for an unset type, which defaults to it.
+ */
+export function isSelfRated(activityType?: ActivityType | string | null): boolean {
+  return (normalizeActivityType(activityType) ?? DEFAULT_ACTIVITY_TYPE) === 'self_rated';
+}
 
 /** How a session's physical motion is characterised. */
 export type MotionProfile = 'still' | 'occasional' | 'constant' | 'unknown';
@@ -53,7 +91,11 @@ export const RATING_FRUIT_MULTIPLIER: Record<number, number> = {
   5: 1,
 };
 
-/** Sessions shorter than this are too noisy to rate — default to full reward. */
+/**
+ * Sessions shorter than this earn no fruits at all (the reward curve starts
+ * here), so there's nothing for a rating to scale — they're left unrated rather
+ * than given a rating no measurement stands behind.
+ */
 export const MIN_RATEABLE_MINUTES = 5;
 
 // --- Classification thresholds (tunable starting heuristics) ---
@@ -220,35 +262,54 @@ function activeStars(snapshot: MotionSnapshot): number {
   return 5;
 }
 
-/** On-phone tag: lenient — full reward unless in near-constant locomotion. */
-function onPhoneStars(snapshot: MotionSnapshot): number {
-  const heavyMotion =
-    snapshot.signal === 'activity' &&
-    snapshot.activity &&
-    movingFractionOf(snapshot.activity) >= 0.5;
-  return heavyMotion ? 4 : 5;
-}
-
 /**
  * Suggest a 1–5★ rating from the motion snapshot given the tag's activity type.
- * Tags with no activity type are treated as `stationary` (locked decision).
- * No usable signal always yields 5★ (benefit of the doubt — no penalty).
+ * Tags with no activity type fall back to `self_rated` — an unset type means we
+ * don't know what the phone should have been doing, so we don't grade it.
+ * `self_rated` and "no usable signal" both yield 5★ (benefit of the doubt — no
+ * penalty); for `self_rated` the user can then adjust the stars themselves.
  */
 export function suggestRating(
   activityType: ActivityType | undefined,
   snapshot: MotionSnapshot
 ): number {
+  const type = normalizeActivityType(activityType) ?? DEFAULT_ACTIVITY_TYPE;
+  // Checked before the signal guard: self-rated sessions are never motion-graded,
+  // so the snapshot is irrelevant to their starting rating.
+  if (type === 'self_rated') return 5;
   if (snapshot.signal === 'none' || snapshot.profile === 'unknown') return 5;
-  const type: ActivityType = activityType ?? 'stationary';
   switch (type) {
     case 'active':
       return activeStars(snapshot);
-    case 'on_phone':
-      return onPhoneStars(snapshot);
     case 'stationary':
     default:
       return stationaryStars(snapshot);
   }
+}
+
+/**
+ * Whether the stars belong to the user rather than to the motion estimate.
+ *
+ * True in two situations, which are the same thing from the user's side — the
+ * session was handed a flat 5★ that no measurement stands behind:
+ *  - the tag isn't motion-graded (`self_rated`, or no activity type), or
+ *  - motion came back with nothing to grade: Motion & Fitness access not
+ *    granted, or CMMotionActivity simply held no records for the window. Both
+ *    write a `signal: 'none'` snapshot.
+ *
+ * Sessions under MIN_RATEABLE_MINUTES don't reach here at all — they stay
+ * unrated, so `focusRating` is null and the summary shows no stars to set.
+ *
+ * Drives whether the summary modal lets the user set the stars. Deliberately
+ * derived from the stored snapshot rather than re-reading the permission, so a
+ * session revisited later shows the same affordance it did on completion.
+ */
+export function isUserRatable(
+  activityType: ActivityType | undefined,
+  snapshot?: MotionSnapshot | null
+): boolean {
+  if (isSelfRated(activityType)) return true;
+  return !snapshot || snapshot.signal === 'none' || snapshot.profile === 'unknown';
 }
 
 /**

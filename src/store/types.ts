@@ -420,6 +420,8 @@ export interface FocusSlice {
   updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
   deleteGoal: (id: string) => void;
   concludeGoal: (id: string) => void;
+  /** Mints a standalone badge for a tag's whole history — used by "Badge and delete". */
+  badgeTag: (tagId: string) => void;
   deleteBadge: (id: string) => void;
   updateGoalProgress: (goalId: string, minutesToAdd: number) => void;
 

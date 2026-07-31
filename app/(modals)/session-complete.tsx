@@ -42,7 +42,7 @@ import {
   useFocusActions,
   useAppStore,
 } from '../../src/store';
-import { shouldAutoRate } from '../../src/utils/focusRating';
+import { shouldAutoRate, isSelfRated, isUserRatable } from '../../src/utils/focusRating';
 import {
   getMotionPermissionStatus,
   ensureMotionPermission,
@@ -64,7 +64,7 @@ export default function SessionCompleteModal() {
   const colorScheme = useColorScheme();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { sessions, tags } = useFocus();
-  const { updateSession, autoRateSessionFromMotion } = useFocusActions();
+  const { updateSession, autoRateSessionFromMotion, applyFocusRating } = useFocusActions();
 
   const session = sessionId ? sessions.byId[sessionId] : null;
 
@@ -125,14 +125,18 @@ export default function SessionCompleteModal() {
   // session already has a rating (revisited, or user-set), leave it alone.
   // The only UI-specific branch is the permission primer: on a rateable
   // session with the permission still undetermined, explain why we need
-  // motion before the one-shot OS prompt (shown once, ever).
+  // motion before the one-shot OS prompt (shown once, ever). Self-rated tags
+  // are never motion-graded, so we don't spend the one-shot prompt on them —
+  // the stars come from the user, not Core Motion.
   useEffect(() => {
     if (!session || ratingComputedRef.current) return;
     ratingComputedRef.current = true;
     if (session.focusRating != null) return;
+    const sessionTag = session.tagId ? tags.byId[session.tagId] : null;
 
     (async () => {
       if (
+        !isSelfRated(sessionTag?.activityType) &&
         shouldAutoRate({ durationMinutes: session.duration, isManualEntry: session.isManualEntry })
       ) {
         const status = await getMotionPermissionStatus();
@@ -218,6 +222,13 @@ export default function SessionCompleteModal() {
   }
 
   const tag = session.tagId ? tags.byId[session.tagId] : null;
+  // The user owns the stars whenever motion didn't earn them: a self-rated tag,
+  // or motion that produced nothing (permission off, too short, read failure).
+  // Gated on a rating existing so the block never renders tappable-but-empty
+  // while the suggestion is still being computed. The summary is the only place
+  // the stars can be set.
+  const ratingIsSelfSet =
+    session.focusRating != null && isUserRatable(tag?.activityType, session.motionSummary);
   const fruitsEarned = calculateFruitsEarnedForDuration(
     session.duration,
     session.initialSetDuration ?? session.duration,
@@ -415,13 +426,17 @@ export default function SessionCompleteModal() {
             </Typography>
           </Animated.View>
 
-          {/* Suggested focus rating — scales the fruit reward. Read-only: the
-              user can't override stars, only improve future ratings via the
-              tag's activity type. */}
+          {/* Focus rating — scales the fruit reward. Motion-graded tags are
+              read-only (improve future ratings via the tag's activity type);
+              self-rated tags start at 5★ and the user taps to adjust.
+              applyFocusRating re-diffs the fruit delta, so re-tapping corrects
+              the balance rather than granting twice. */}
           {baseFruits > 0 && (
             <FocusRatingBlock
               rating={session.focusRating ?? null}
               analyzing={analyzingRating}
+              editable={ratingIsSelfSet && !analyzingRating}
+              onChange={(stars) => applyFocusRating(session.id, stars, 'user')}
               onWhyPress={() => setShowRatingInsights(true)}
             />
           )}

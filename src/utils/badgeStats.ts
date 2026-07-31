@@ -20,15 +20,48 @@ export function computeBadgeStats(
     return legacyIds.includes(s.tagId) || legacyIds.includes(s.secondaryTagId);
   });
 
-  const totalMinutes = tagSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
-  const totalSessions = tagSessions.length;
-
   const goalName = goal.customName || `${tag.icon} ${tag.name} Goal`;
 
   // Compute per-period stats
   const dailyStats = computePeriodStats(goal, tagSessions, 'daily', weekStartDay, restDays);
   const weeklyStats = computePeriodStats(goal, tagSessions, 'weekly', weekStartDay, restDays);
   const monthlyStats = computePeriodStats(goal, tagSessions, 'monthly', weekStartDay, restDays);
+
+  return {
+    ...computeCoreStats(tagSessions, tag, goalName),
+    dailyStats: dailyStats.totalPeriods > 0 ? dailyStats : undefined,
+    weeklyStats: weeklyStats.totalPeriods > 0 ? weeklyStats : undefined,
+    monthlyStats: monthlyStats.totalPeriods > 0 ? monthlyStats : undefined,
+  };
+}
+
+/**
+ * Computes badge stats for a tag that has no goal behind it — used by "Badge and delete",
+ * which keeps a standalone record of the time spent on a tag the user is removing.
+ * With no goal there are no targets, so the per-period consistency stats are omitted.
+ */
+export function computeTagBadgeStats(
+  sessions: any[],
+  tag: { id: string; icon: string; name: string; color?: string },
+  badgeName: string,
+): Omit<Badge, 'id' | 'createdAt' | 'updatedAt'> {
+  const tagSessions = sessions.filter(
+    (s: any) => s.tagId === tag.id || s.secondaryTagId === tag.id
+  );
+  return computeCoreStats(tagSessions, tag, badgeName);
+}
+
+/**
+ * The goal-independent half of a badge: totals, duration distribution, notes and date
+ * range over an already-filtered set of sessions.
+ */
+function computeCoreStats(
+  tagSessions: any[],
+  tag: { icon: string; name: string; color?: string },
+  goalName: string,
+): Omit<Badge, 'id' | 'createdAt' | 'updatedAt'> {
+  const totalMinutes = tagSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+  const totalSessions = tagSessions.length;
 
   // Duration distribution
   const durations = tagSessions.map((s: any) => s.duration || 0);
@@ -78,9 +111,6 @@ export function computeBadgeStats(
     goalName,
     totalMinutes,
     totalSessions,
-    dailyStats: dailyStats.totalPeriods > 0 ? dailyStats : undefined,
-    weeklyStats: weeklyStats.totalPeriods > 0 ? weeklyStats : undefined,
-    monthlyStats: monthlyStats.totalPeriods > 0 ? monthlyStats : undefined,
     durationDistribution: {
       avgMinutesPerSession,
       shortestSession,

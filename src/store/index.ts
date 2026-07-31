@@ -25,17 +25,15 @@ import { WidgetService } from '../services/WidgetService';
 import { FocusGoal, WeeklyCoachReport, Todo, TodoRecurrence } from './types';
 import { nextOccurrence, startOfDay } from '../utils/todoRecurrence';
 import { persistenceConfig, persistStateNow } from './middleware/persistence';
-import { computeBadgeStats } from '../utils/badgeStats';
+import { computeBadgeStats, computeTagBadgeStats } from '../utils/badgeStats';
 import {
   fruitsForRating,
+  isSelfRated,
   shouldAutoRate,
   suggestRating,
   type RatingSource,
 } from '../utils/focusRating';
-import {
-  getMotionPermissionStatus,
-  getSessionMotionSnapshot,
-} from '../services/motionInsights';
+import { getMotionPermissionStatus, getSessionMotionSnapshot } from '../services/motionInsights';
 import { useUnifiedStore } from './unified-store';
 import { CLASSIC_TAG_COLORS, DEFAULT_TAG_COLOR } from '../config/tagColors';
 import * as Notifications from 'expo-notifications';
@@ -173,10 +171,11 @@ interface AppStore {
     // goal's keys to its offMarks bucket. Throws on insufficient balance.
     applyOffMarks: (
       marks: { goalId: string; period: 'daily' | 'weekly' | 'monthly'; periodKeys: string[] }[],
-      totalCost: number,
+      totalCost: number
     ) => void;
     deleteGoal: (id: string) => void;
     concludeGoal: (id: string) => void;
+    badgeTag: (tagId: string) => void;
     deleteBadge: (id: string) => void;
     reorderGoals: (orderedIds: string[]) => void;
     getActiveGoals: () => FocusGoal[];
@@ -928,12 +927,26 @@ export const useAppStore = create<AppStore>()(
               get().focus.applyFocusRating(sessionId, 5, 'suggested');
             };
 
+            // Too short / manual entry: these earn no fruits (the reward curve
+            // starts at 5 min), so there is nothing for a rating to scale. Leave
+            // them genuinely unrated rather than stamping a 5★ nothing measured —
+            // that phantom rating was visible in the journal and counted toward
+            // the coach's average focus rating.
             if (
               !shouldAutoRate({
                 durationMinutes: session.duration,
                 isManualEntry: session.isManualEntry,
               })
             ) {
+              return;
+            }
+
+            const ratingTag = session.tagId ? get().focus.tags.byId[session.tagId] : null;
+            // Self-rated tags (incl. tags with no activity type) are never graded
+            // from motion — start at 5★ and let the user set the stars in the
+            // summary. Skipping the Core Motion read here also means we never
+            // touch the Motion & Fitness permission for these sessions.
+            if (isSelfRated(ratingTag?.activityType)) {
               applyFullRating();
               return;
             }
@@ -956,10 +969,9 @@ export const useAppStore = create<AppStore>()(
                 new Date(session.endTime).getTime()
               );
               get().focus.updateSession(sessionId, { motionSummary: snapshot });
-              const tag = session.tagId ? get().focus.tags.byId[session.tagId] : null;
               get().focus.applyFocusRating(
                 sessionId,
-                suggestRating(tag?.activityType, snapshot),
+                suggestRating(ratingTag?.activityType, snapshot),
                 'suggested'
               );
             } catch {
@@ -1527,9 +1539,7 @@ export const useAppStore = create<AppStore>()(
           applyOffMarks: (marks, totalCost) => {
             const balance = get().rewards.balance;
             if (balance < totalCost) {
-              throw new Error(
-                `Insufficient fruits. Required: ${totalCost}, Available: ${balance}`,
-              );
+              throw new Error(`Insufficient fruits. Required: ${totalCost}, Available: ${balance}`);
             }
             const now = new Date();
             set((state) => {
@@ -1644,11 +1654,12 @@ export const useAppStore = create<AppStore>()(
               };
             });
 
-            // Analytics: badges only exist as the artifact of concluding a goal, so
-            // this is the one place a badge is ever minted.
+            // Analytics: badges are minted here (concluding a goal) and in `badgeTag`
+            // (badge-and-delete); `source` tells the two apart.
             AnalyticsTracker.track(
               'badge_earned',
               {
+                source: 'goal_conclude',
                 active_period: goal.activePeriod,
                 total_sessions: (badgeData as any)?.totalSessions,
                 total_minutes: (badgeData as any)?.totalMinutes,
@@ -1659,6 +1670,60 @@ export const useAppStore = create<AppStore>()(
             if (__DEV__) {
               console.log('✅ Goal concluded, badge created or updated for goal:', goalId);
             }
+          },
+
+          badgeTag: (tagId) => {
+            const state = get();
+            const tag = state.focus.tags.byId[tagId];
+            if (!tag) return;
+
+            const sessions = state.focus.sessions.allIds
+              .map((sid: string) => state.focus.sessions.byId[sid])
+              .filter(Boolean);
+
+            const badgeData = computeTagBadgeStats(
+              sessions,
+              { id: tagId, icon: tag.icon || '', name: tag.name || '', color: tag.color },
+              `${tag.icon} ${tag.name}`.trim()
+            );
+
+            const badge = {
+              ...badgeData,
+              id: `badge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
+            set((state) => {
+              const badges = state.focus.badges || {
+                byId: {},
+                allIds: [],
+                loading: false,
+                error: null,
+                lastUpdated: null,
+              };
+              return {
+                focus: {
+                  ...state.focus,
+                  badges: {
+                    ...badges,
+                    byId: { ...badges.byId, [badge.id]: badge },
+                    allIds: [...badges.allIds, badge.id],
+                    lastUpdated: new Date(),
+                  },
+                },
+              };
+            });
+
+            AnalyticsTracker.track(
+              'badge_earned',
+              {
+                source: 'tag_delete',
+                total_sessions: (badgeData as any)?.totalSessions,
+                total_minutes: (badgeData as any)?.totalMinutes,
+              },
+              { setOnce: { ever_earned_badge: true } }
+            );
           },
 
           deleteBadge: (badgeId) => {
@@ -2804,8 +2869,7 @@ export const useAppStore = create<AppStore>()(
               // Clearing = emptying an existing blocklist (had a prior selection).
               // It costs more and gets a firmer inner-circle alert.
               const isClearing =
-                (selection === null || selection === '') &&
-                !!get().blocklist.currentSelectionId;
+                (selection === null || selection === '') && !!get().blocklist.currentSelectionId;
 
               if (chargeFruit) {
                 // Charge fruit cost for editing blocklist (weekly escalation; 3x for a full clear)
@@ -3170,9 +3234,7 @@ export const useAppStore = create<AppStore>()(
               const idleTagId = idleFocus.lastSelectedTagId;
               const idleTag = idleTagId ? idleFocus.tags.byId[idleTagId] : undefined;
               const idleTagLabel = idleTag ? `${idleTag.icon || '🎯'} ${idleTag.name}` : 'Focus';
-              const idleDuration = idleTagId
-                ? idleFocus.lastDurationByTagId[idleTagId]
-                : undefined;
+              const idleDuration = idleTagId ? idleFocus.lastDurationByTagId[idleTagId] : undefined;
 
               // End the unlock Live Activity *as* the idle focus card rather than
               // dismissing it and creating a replacement: a created activity is
@@ -3418,6 +3480,7 @@ export const useFocusActions = () =>
       updateGoal: state.focus.updateGoal,
       deleteGoal: state.focus.deleteGoal,
       concludeGoal: state.focus.concludeGoal,
+      badgeTag: state.focus.badgeTag,
       deleteBadge: state.focus.deleteBadge,
       upsertCoachReport: state.focus.upsertCoachReport,
       deleteCoachReport: state.focus.deleteCoachReport,

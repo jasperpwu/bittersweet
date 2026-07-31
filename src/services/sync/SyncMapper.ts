@@ -4,6 +4,7 @@
  */
 
 import { clampSessionNotes } from '../../utils/textUtils';
+import { normalizeActivityType } from '../../utils/focusRating';
 
 // --- Generic helpers ---
 
@@ -147,7 +148,11 @@ export function rowToTag(row: Record<string, any>): any {
     icon: row.icon,
     color: row.color,
     sortOrder: row.sort_order ?? 0,
-    ...(row.activity_type ? { activityType: row.activity_type } : {}),
+    // Canonicalised on read so retired values (e.g. 'on_phone') map to their
+    // current equivalent instead of falling through the rating engine's switch.
+    ...(normalizeActivityType(row.activity_type)
+      ? { activityType: normalizeActivityType(row.activity_type) }
+      : {}),
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
     ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),

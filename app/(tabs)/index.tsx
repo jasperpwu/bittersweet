@@ -391,6 +391,7 @@ export default function FocusScreen() {
   );
   const {
     deleteTag,
+    badgeTag,
     reorderTags,
     startSession,
     completeSession,
@@ -803,16 +804,34 @@ export default function FocusScreen() {
       Alert.alert(t('home.cannotDeleteTag'), blockReason, [{ text: t('common.ok') }]);
       return;
     }
+    // A tag with no sessions has nothing to summarize, so the badge option only
+    // appears once there is history worth keeping a record of.
+    const hasHistory = sessions.allIds.some((sid) => {
+      const s = sessions.byId[sid];
+      return s && (s.tagId === tag.id || s.secondaryTagId === tag.id);
+    });
+    const name = tag?.name ? `"${tag.name}"` : t('home.deleteThisTag');
     Alert.alert(
       t('home.deleteTag'),
-      t('home.deleteConfirm', {
-        name: tag?.name ? `"${tag.name}"` : t('home.deleteThisTag'),
-      }),
+      hasHistory
+        ? t('home.deleteConfirmWithBadge', { name })
+        : t('home.deleteConfirm', { name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
+        ...(hasHistory
+          ? [
+              {
+                text: t('home.badgeAndDelete'),
+                onPress: () => {
+                  badgeTag(tag.id);
+                  performDeleteTag(tag);
+                },
+              },
+            ]
+          : []),
         {
           text: t('common.delete'),
-          style: 'destructive',
+          style: 'destructive' as const,
           onPress: () => performDeleteTag(tag),
         },
       ]

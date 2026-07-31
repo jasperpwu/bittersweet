@@ -31,7 +31,7 @@
 import type { ActivityType } from './focusRating';
 import i18n from '../i18n';
 
-const ORDER: ActivityType[] = ['active', 'on_phone', 'stationary'];
+const ORDER: ActivityType[] = ['active', 'self_rated', 'stationary'];
 /** Matchable categories: the three real types plus the no-guess bucket. */
 const CATEGORIES = [...ORDER, 'ambiguous'] as const;
 type KeywordType = ActivityType | 'ambiguous';
@@ -97,7 +97,7 @@ export function inferActivityType(tagName: string): ActivityType | null {
   if (words.length === 0) return null;
 
   const entries = buildEntries();
-  const scores: Record<ActivityType, number> = { active: 0, on_phone: 0, stationary: 0 };
+  const scores: Record<ActivityType, number> = { active: 0, self_rated: 0, stationary: 0 };
   for (const word of words) {
     const type = matchWord(word, entries);
     // 'ambiguous' consumes the word (blocking shorter cross-category stems)
