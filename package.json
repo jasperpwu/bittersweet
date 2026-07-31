@@ -10,7 +10,12 @@
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
     "web": "expo start --web",
-    "postinstall": "npx patch-package"
+    "postinstall": "npx patch-package",
+    "channel:preview": "echo preview > .update-channel",
+    "channel:prod": "echo production > .update-channel",
+    "update:preview": "npm run channel:preview && scripts/ota-preflight.sh preview && eas update --branch preview --message \"$(git log -1 --pretty=%s)\"",
+    "update:prod": "npm run channel:prod && scripts/ota-preflight.sh production && eas update --branch production --message \"$(git log -1 --pretty=%s)\"",
+    "ota:check": "scripts/ota-preflight.sh \"$(cat .update-channel 2>/dev/null || echo production)\""
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
@@ -47,6 +52,7 @@
     "expo-sensors": "~14.1.4",
     "expo-splash-screen": "^0.30.10",
     "expo-status-bar": "~2.2.3",
+    "expo-updates": "~0.28.18",
     "expo-web-browser": "~14.2.0",
     "i18next": "^26.3.1",
     "immer": "^10.1.1",

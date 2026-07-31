@@ -96,21 +96,28 @@
   },
   "onboarding": {
     "slide1": {
-      "title": "Concéntrate y cultiva",
-      "description": "Mantén la concentración para que tu árbol crezca y disfruta después del fruto de tu esfuerzo."
+      "title": "El tiempo de pantalla que te has ganado",
+      "description": "Bittersweet no bloquea tus apps para siempre. Concéntrate primero y el rato que pases en ellas será tuyo, sin culpa."
     },
     "slide2": {
-      "title": "Elige tus primeras etiquetas",
-      "description": "Las etiquetas organizan tu tiempo de concentración. Edita estas tres o arrastra otra sugerencia sobre una tarjeta para reemplazarla."
+      "title": "La concentración da fruto",
+      "description": "Cada sesión que completas hace crecer tu árbol. Cosecha la fruta y cámbiala por tiempo en las apps que apartaste."
     },
     "slide3": {
-      "title": "Gana fruta y desbloquea apps",
-      "description": "Usa la fruta que ganas al concentrarte para desbloquear las apps de tu lista de bloqueo."
+      "title": "Elige lo que te absorbe",
+      "description": "Escoge las apps que se comen tu día. Seguirán cerradas hasta que te ganes la vuelta.",
+      "note": "iOS te pedirá permiso al configurarlo. Bittersweet solo ve qué apps elegiste, nunca lo que haces en ellas."
     },
     "slide4": {
-      "title": "Te damos la bienvenida a Bittersweet",
-      "description": "Seguimos mejorando la app cada día, y tu opinión nos ayuda a decidir hacia dónde va."
+      "title": "¿En qué te vas a concentrar?",
+      "description": "Elige tres para empezar. Puedes renombrarlas, cambiarlas y añadir más cuando quieras."
     },
+    "slide5": {
+      "title": "Empieza con una",
+      "description": "Dale una meta diaria a una etiqueta. Con una hora al día basta para empezar."
+    },
+    "dailyTargetLabel": "Cada día",
+    "restDaysNote": "Sin meta los días de descanso ({{days}}): tu racha sigue intacta.",
     "tagNamePlaceholder": "Estudio, Trabajo, Ejercicio…",
     "moreSuggestions": "Más sugerencias",
     "suggestedTags": {

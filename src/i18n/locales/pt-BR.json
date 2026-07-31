@@ -96,21 +96,28 @@
   },
   "onboarding": {
     "slide1": {
-      "title": "Concentre-se e cultive",
-      "description": "Mantenha o foco para sua árvore crescer e depois colha os frutos do seu esforço."
+      "title": "O tempo de tela que você conquistou",
+      "description": "O Bittersweet não tranca seus apps para sempre. Foque primeiro e o tempo que passar neles é seu, sem culpa."
     },
     "slide2": {
-      "title": "Escolha suas primeiras tags",
-      "description": "As tags organizam seu tempo de foco. Edite estas três ou arraste outra sugestão para um cartão para substituí-la."
+      "title": "O foco dá frutos",
+      "description": "Cada sessão concluída faz sua árvore crescer. Colha os frutos e troque por tempo nos apps que você deixou de lado."
     },
     "slide3": {
-      "title": "Colha frutos e libere apps",
-      "description": "Use os frutos das suas sessões de foco para liberar os apps da sua lista de bloqueio."
+      "title": "Escolha o que te puxa",
+      "description": "Selecione os apps que devoram o seu dia. Eles ficam fechados até você merecer a volta.",
+      "note": "O iOS vai pedir permissão na hora de configurar. O Bittersweet só vê quais apps você escolheu — nunca o que você faz neles."
     },
     "slide4": {
-      "title": "Boas-vindas ao Bittersweet",
-      "description": "Estamos sempre melhorando o app, e a sua opinião ajuda a definir o que vem por aí."
+      "title": "No que você quer focar?",
+      "description": "Escolha três para começar. Dá para renomear, trocar e adicionar mais quando quiser."
     },
+    "slide5": {
+      "title": "Comece com uma",
+      "description": "Defina uma meta diária para uma tag. Uma hora por dia já basta para começar."
+    },
+    "dailyTargetLabel": "Todo dia",
+    "restDaysNote": "Sem meta nos dias de descanso ({{days}}) — sua sequência continua.",
     "tagNamePlaceholder": "Estudo, Trabalho, Exercício…",
     "moreSuggestions": "Mais sugestões",
     "suggestedTags": {

@@ -96,21 +96,28 @@
   },
   "onboarding": {
     "slide1": {
-      "title": "Focus and Plant",
-      "description": "Stay focused to grow your tree and later enjoy the fruits of your hard work."
+      "title": "Screen time you've earned",
+      "description": "Bittersweet doesn't lock your apps away forever. Focus first, and the time you spend on them is yours — guilt-free."
     },
     "slide2": {
-      "title": "Pick Your First Tags",
-      "description": "Tags organize your focus time. Edit these three, or drag another suggestion onto a card to swap it."
+      "title": "Focus grows fruit",
+      "description": "Every session you finish grows your tree. Harvest the fruit and trade it for time in the apps you set aside."
     },
     "slide3": {
-      "title": "Earn Fruits & Unlock Apps",
-      "description": "Use the fruits earned from focus sessions to unlock apps in your blocklist."
+      "title": "Pick what pulls you in",
+      "description": "Choose the apps that eat your day. They stay closed until you've earned your way back.",
+      "note": "iOS will ask permission when you set this up. Bittersweet only sees which apps you picked — never what you do in them."
     },
     "slide4": {
-      "title": "Welcome to Bittersweet",
-      "description": "We are actively developing this app and would love your feedback to shape its future."
+      "title": "What are you focusing on?",
+      "description": "Pick three to start. Rename or swap any of them — add more whenever."
     },
+    "slide5": {
+      "title": "Start with one",
+      "description": "Give one tag a daily target. An hour a day is plenty to begin."
+    },
+    "dailyTargetLabel": "Every day",
+    "restDaysNote": "No target on rest days ({{days}}) — they won't break your streak.",
     "tagNamePlaceholder": "e.g. Study, Work, Exercise",
     "moreSuggestions": "More suggestions",
     "suggestedTags": {

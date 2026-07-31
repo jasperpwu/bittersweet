@@ -9,6 +9,39 @@ const APP_GROUP = IS_DEV
 
 const BUNDLE_ID = IS_DEV ? `${PROD_BUNDLE_ID}.dev` : PROD_BUNDLE_ID;
 
+// EAS Update channel. EAS Build injects this from eas.json's `channel` field,
+// but we archive from Xcode, so nothing writes it for us — without it the built
+// app has no `expo-channel-name` request header and never matches an update.
+//
+// Read from a FILE, deliberately not an env var. The channel is part of the
+// fingerprint, and the fingerprint is computed three separate times: at
+// `expo prebuild`, again by expo-updates' build phase during the Xcode build,
+// and again at `eas update`. Xcode does not inherit your shell, so an env var
+// set for prebuild is invisible to the build phase — you'd get an app stamped
+// with one channel and a fingerprint computed for another, and updates would
+// silently never arrive. A file on disk is the one source all three can see.
+//
+// Switch with `npm run channel:preview` / `npm run channel:prod`.
+const fs = require('fs');
+const path = require('path');
+
+// All three evaluators (prebuild, expo-updates' build phase, eas update) run
+// from the project root — the build phase `cd`s there explicitly.
+const CHANNEL_FILE = path.join(process.cwd(), '.update-channel');
+
+function resolveUpdateChannel() {
+  if (IS_DEV) return 'development';
+  try {
+    const value = fs.readFileSync(CHANNEL_FILE, 'utf8').trim();
+    if (value) return value;
+  } catch {
+    // No file yet — fall through to the safe default.
+  }
+  return 'production';
+}
+
+const UPDATE_CHANNEL = resolveUpdateChannel();
+
 // Google OAuth client IDs for native Google Sign-In (public identifiers, safe
 // to commit). From Google Cloud Console → Credentials: one Web client (Supabase
 // validates the ID token audience against it) + one iOS client per bundle ID.
@@ -49,6 +82,15 @@ export default ({ config }) => {
       'com.apple.security.application-groups': [APP_GROUP],
     };
   }
+
+  // Written into Expo.plist as EXUpdatesRequestHeaders at prebuild time.
+  newConfig.updates = {
+    ...newConfig.updates,
+    requestHeaders: {
+      ...newConfig.updates?.requestHeaders,
+      'expo-channel-name': UPDATE_CHANNEL,
+    },
+  };
 
   if (newConfig.android) {
     newConfig.android.package = IS_DEV

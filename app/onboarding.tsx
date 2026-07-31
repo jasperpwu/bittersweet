@@ -13,6 +13,11 @@ import {
   resolveDraftName,
   type OnboardingTagDraft,
 } from '../src/components/onboarding/OnboardingTagPicker';
+import {
+  OnboardingGoalPicker,
+  defaultGoalChoice,
+  type OnboardingGoalChoice,
+} from '../src/components/onboarding/OnboardingGoalPicker';
 import { useUnifiedStore } from '../src/store/unified-store';
 import { useAppStore } from '../src/store';
 import { inferActivityType } from '../src/utils/inferActivityType';
@@ -23,24 +28,70 @@ import { showToast } from '../src/components/ui/Toast';
 
 // Slide content is keyed by translation namespace; the title/description strings
 // are resolved with t() at render time (see renderItem below).
+//
+// The arc is deliberate: state the premise, show the loop it drives, prime the
+// one permission the loop depends on, and only then ask for setup work. Setup
+// (tags, goal) sits last so the user has been told what they're getting before
+// they're asked to invest in it.
 const ONBOARDING_SLIDES = [
-  { id: '1', key: 'slide1', iconName: 'leaf-outline', iconColor: '#51BC6F', interactive: false },
-  { id: '2', key: 'slide2', iconName: 'timer-outline', iconColor: '#6592E9', interactive: true },
+  // 1 — the premise: screen time is earned, not banned.
+  {
+    id: '1',
+    key: 'slide1',
+    iconName: 'lock-open-outline',
+    iconColor: colors.primary,
+    kind: 'info',
+    hasNote: false,
+  },
+  // 2 — the loop: focus grows fruit, fruit buys minutes.
+  {
+    id: '2',
+    key: 'slide2',
+    iconName: 'leaf-outline',
+    iconColor: colors.success,
+    kind: 'info',
+    hasNote: false,
+  },
+  // 3 — what gets blocked, plus a plain-language prime for the Screen Time
+  // prompt. The prompt itself still fires at its existing moment of intent (the
+  // home screen's blocklist entry) — iOS never re-presents a denied Family
+  // Controls request, so it isn't worth spending here, before the user has any
+  // reason to say yes.
   {
     id: '3',
     key: 'slide3',
-    iconName: 'shield-checkmark-outline',
-    iconColor: '#EF786C',
-    interactive: false,
+    iconName: 'phone-portrait-outline',
+    iconColor: colors.error,
+    kind: 'info',
+    hasNote: true,
   },
+  // 4 — pick starter tags.
   {
     id: '4',
     key: 'slide4',
-    iconName: 'megaphone-outline',
-    iconColor: '#F5A623',
-    interactive: false,
+    iconName: 'pricetags-outline',
+    iconColor: colors.primary,
+    kind: 'tags',
+    hasNote: false,
+  },
+  // 5 — set one daily goal, and finish.
+  {
+    id: '5',
+    key: 'slide5',
+    iconName: 'flag-outline',
+    iconColor: colors.success,
+    kind: 'goal',
+    hasNote: false,
   },
 ] as const;
+
+/**
+ * Sign-in is offered only on the screens before the user starts investing.
+ * Its purpose is to let a returning user skip onboarding entirely — once they've
+ * picked tags and a goal, signing in would bounce them to the tabs (see
+ * finishSignIn) and silently discard that work.
+ */
+const LAST_SIGN_IN_SLIDE_INDEX = 2;
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
@@ -52,8 +103,11 @@ export default function OnboardingScreen() {
   // The three chosen tag drafts live inside OnboardingTagPicker; a ref mirror
   // (no re-render needed here) lets completeOnboarding read the final values.
   const tagDraftsRef = useRef<OnboardingTagDraft[]>(defaultTagDrafts());
-  // Pager scrolling pauses while a suggestion chip is being dragged, so the
-  // drag doesn't fight the horizontal FlatList.
+  // Which tag slot gets a goal, and its daily target. Mirrored from the goal
+  // slide the same way; resolved to a real tag in completeOnboarding.
+  const goalChoiceRef = useRef<OnboardingGoalChoice>(defaultGoalChoice());
+  // Pager scrolling pauses while a suggestion chip is being dragged or the goal
+  // slider is in hand, so neither fights the horizontal FlatList for the gesture.
   const [pagerScrollEnabled, setPagerScrollEnabled] = useState(true);
 
   const {
@@ -64,6 +118,7 @@ export default function OnboardingScreen() {
   const signInWithEmail = useAppStore((state) => state.auth.signInWithEmail);
   const clearAuthError = useAppStore((state) => state.auth.clearAuthError);
   const createTag = useAppStore((state) => state.focus.createTag);
+  const updateGoal = useAppStore((state) => state.focus.updateGoal);
   const [signInSheetOpen, setSignInSheetOpen] = useState(false);
 
   // Shared post-sign-in navigation: mark onboarding seen and enter the app.
@@ -100,6 +155,52 @@ export default function OnboardingScreen() {
     }
   }, [signInError, clearAuthError]);
 
+  /**
+   * Turn the goal slide's pick into an active goal. Runs after the tag loop, so
+   * the chosen slot now maps to a real tag — createTag writes the tag and its
+   * auto-created (inactive, zero-target) goal in a single `set`, so that goal is
+   * already in the store here and we only ever *activate*, never add.
+   */
+  const activateChosenGoal = (createdTagIdBySlot: (string | null)[]) => {
+    const { slot, dailyTargetMinutes } = goalChoiceRef.current;
+    const draft = tagDraftsRef.current[slot];
+    if (!draft) return;
+
+    const focusState = useAppStore.getState().focus;
+
+    // Free tier allows exactly one active goal (useSubscriptionGate). A brand-new
+    // account has none, but someone who signed in mid-onboarding may have pulled
+    // one from the cloud — don't push them past their own cap.
+    if (focusState.goals.allIds.some((id) => focusState.goals.byId[id]?.isActive)) return;
+
+    // Normally the tag we just created. If the draft was skipped as a duplicate,
+    // fall back to the existing tag of that name — it has its own auto-created
+    // goal. A blank name means no tag at all: activate nothing rather than
+    // attaching the goal to a tag the user didn't choose.
+    let tagId = createdTagIdBySlot[slot];
+    if (!tagId) {
+      const name = resolveDraftName(draft, t).trim().toLowerCase();
+      if (!name) return;
+      tagId =
+        focusState.tags.allIds.find((id) => {
+          const tag = focusState.tags.byId[id];
+          return tag && !tag.deletedAt && tag.name.trim().toLowerCase() === name;
+        }) ?? null;
+    }
+    if (!tagId) return;
+
+    const goalId = focusState.goals.allIds.find((id) => focusState.goals.byId[id]?.tagId === tagId);
+    if (!goalId) return;
+
+    updateGoal(goalId, {
+      isActive: true,
+      activePeriod: 'daily',
+      dailyTargetMinutes,
+      dailyRestDayTargetMinutes: 0,
+      isRepeating: true,
+    });
+  };
+
   const completeOnboarding = async () => {
     // Turn the three onboarding tag drafts into real, persisted tags. Until
     // this point they were in-memory suggestions only. Skip blank names and
@@ -112,19 +213,25 @@ export default function OnboardingScreen() {
         .filter((tag) => tag && !tag.deletedAt)
         .map((tag) => tag!.name.trim().toLowerCase())
     );
-    for (const draft of tagDraftsRef.current) {
+    // Slot → the tag it produced. Stays null for a draft that was skipped, which
+    // the goal resolver below treats as "look for the pre-existing tag instead".
+    const createdTagIdBySlot: (string | null)[] = tagDraftsRef.current.map(() => null);
+    tagDraftsRef.current.forEach((draft, slot) => {
       const name = resolveDraftName(draft, t);
-      if (!name || existingNames.has(name.toLowerCase())) continue;
+      if (!name || existingNames.has(name.toLowerCase())) return;
       existingNames.add(name.toLowerCase());
       // Same name→type inference as the tag create/edit sheets; null (no match
       // or ambiguous, e.g. "Workout") leaves the type unset — user can set it later.
-      createTag({
+      const tag = createTag({
         name,
         icon: draft.emoji,
         color: draft.color,
         activityType: inferActivityType(name) ?? undefined,
       });
-    }
+      createdTagIdBySlot[slot] = tag.id;
+    });
+
+    activateChosenGoal(createdTagIdBySlot);
 
     // Set hasSeenOnboarding to true in the store
     const updatePreferences = useUnifiedStore.getState().updatePreferences;
@@ -159,6 +266,10 @@ export default function OnboardingScreen() {
     tagDraftsRef.current = drafts;
   }, []);
 
+  const handleGoalChoiceChange = useCallback((choice: OnboardingGoalChoice) => {
+    goalChoiceRef.current = choice;
+  }, []);
+
   const handleDragActiveChange = useCallback((active: boolean) => {
     setPagerScrollEnabled(!active);
   }, []);
@@ -174,13 +285,13 @@ export default function OnboardingScreen() {
   const renderItem = ({ item }: { item: (typeof ONBOARDING_SLIDES)[number] }) => {
     const title = t(`onboarding.${item.key}.title`);
     const description = t(`onboarding.${item.key}.description`);
-    // Interactive tag picker slide — three editable suggestions plus a
-    // drag-to-swap pool. Drafts stay in memory until completeOnboarding.
-    if (item.interactive) {
+
+    // Interactive slides share a compact header above their picker.
+    if (item.kind === 'tags' || item.kind === 'goal') {
       return (
         <View style={{ width }} className="flex-1 px-8 pt-12">
           {/* Header section */}
-          <View className="mb-8 items-center">
+          <View className="mb-6 items-center">
             <View className="mb-4">
               <Ionicons name={item.iconName as any} size={48} color={item.iconColor} />
             </View>
@@ -192,10 +303,21 @@ export default function OnboardingScreen() {
             </Typography>
           </View>
 
-          <OnboardingTagPicker
-            onDraftsChange={handleDraftsChange}
-            onDragActiveChange={handleDragActiveChange}
-          />
+          {item.kind === 'tags' ? (
+            <OnboardingTagPicker
+              onDraftsChange={handleDraftsChange}
+              onDragActiveChange={handleDragActiveChange}
+            />
+          ) : (
+            // Reads tagDraftsRef fresh on every render; the pager's extraData is
+            // keyed on currentIndex so swiping here re-renders with the latest
+            // names and emojis from the tag slide.
+            <OnboardingGoalPicker
+              drafts={tagDraftsRef.current}
+              onChange={handleGoalChoiceChange}
+              onDragActiveChange={handleDragActiveChange}
+            />
+          )}
         </View>
       );
     }
@@ -212,6 +334,11 @@ export default function OnboardingScreen() {
         <Typography variant="body-16" color="primary" className="text-center opacity-80">
           {description}
         </Typography>
+        {item.hasNote && (
+          <Typography variant="body-12" color="secondary" className="mt-4 text-center">
+            {t(`onboarding.${item.key}.note`)}
+          </Typography>
+        )}
       </View>
     );
   };
@@ -224,21 +351,23 @@ export default function OnboardingScreen() {
         className="flex-row items-center justify-between px-5">
         <LanguageTrigger />
 
-        {/* Once signed in, the header offers no sign-in entry points */}
-        {isAuthenticated ? (
+        {/* Sign-in disappears once the user is authenticated, and once they've
+            reached the setup slides — see LAST_SIGN_IN_SLIDE_INDEX. */}
+        {isAuthenticated || currentIndex > LAST_SIGN_IN_SLIDE_INDEX ? (
           <View />
         ) : (
           <View className="flex-row items-center">
+            {/* `soft` (tinted pill), not `ghost`: as bare text this read as
+                decoration and returning users missed it. */}
             <Button
-              variant="ghost"
+              variant="soft"
               size="small"
               disabled={isSigningIn}
-              className="flex-row px-3 py-2"
               onPress={() => setSignInSheetOpen(true)}>
               {isSigningIn ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <Typography variant="body-14" className="text-primary">
+                <Typography variant="subtitle-14-semibold" className="text-primary">
                   {t('common.signIn')}
                 </Typography>
               )}
@@ -279,6 +408,10 @@ export default function OnboardingScreen() {
         bounces={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        // The goal slide renders from tagDraftsRef (a ref, so edits on the tag
+        // slide don't re-render the pager on every keystroke). Re-rendering cells
+        // when the page changes is what refreshes it on arrival.
+        extraData={currentIndex}
       />
 
       <View className="px-8 pb-12 pt-4">

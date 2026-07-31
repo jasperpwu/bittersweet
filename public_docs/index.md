@@ -13,5 +13,6 @@ Set a timer, put your phone down, and turn focused time into fruit. Track your g
 
 ---
 
+- [Support](support)
 - [Terms of Service](terms)
 - [Privacy Policy](privacy)

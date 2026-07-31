@@ -136,6 +136,12 @@
       },
       "package": "com.path2us.bittersweet"
     },
+    "updates": {
+      "url": "https://u.expo.dev/4445cb0e-e9b4-4970-a6c8-9ad2534ea765"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "extra": {
       "router": {},
       "eas": {

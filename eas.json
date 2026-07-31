@@ -5,23 +5,26 @@
   },
   "build": {
     "development": {
-        "developmentClient": true,
-        "distribution": "internal",
-        "env": {
-          "APP_VARIANT": "development"
-        }
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "APP_VARIANT": "development"
       },
+      "channel": "development"
+    },
     "production": {
       "autoIncrement": true,
       "ios": {
         "image": "latest"
-      }
+      },
+      "channel": "production"
     },
     "preview": {
       "autoIncrement": true,
       "ios": {
         "image": "latest"
-      }
+      },
+      "channel": "preview"
     }
   },
   "submit": {

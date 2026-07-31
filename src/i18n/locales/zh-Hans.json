@@ -96,21 +96,28 @@
   },
   "onboarding": {
     "slide1": {
-      "title": "专注，静待成长",
-      "description": "保持专注，小树就会长大，日后尽享你努力的果实。"
+      "title": "屏幕时间，靠专注换来",
+      "description": "Bittersweet 不会把应用永远锁住。先专注，之后玩手机的时间就是你应得的，不必有负担。"
     },
     "slide2": {
-      "title": "挑选你的首批标签",
-      "description": "标签帮你整理专注时间。可以编辑这三个，也可以把其他建议拖到卡片上进行替换。"
+      "title": "专注结出果实",
+      "description": "每完成一次专注，小树就长大一点。收下果实，用它换回那些被你搁置的应用的时间。"
     },
     "slide3": {
-      "title": "收获果实，解锁应用",
-      "description": "用专注换来的果实，解锁屏蔽列表里的应用。"
+      "title": "选出最容易让你沉迷的应用",
+      "description": "挑出吞掉你一天的那些应用。在你用专注赚回来之前，它们都打不开。",
+      "note": "设置时 iOS 会请求权限。Bittersweet 只知道你选了哪些应用，永远看不到你在里面做什么。"
     },
     "slide4": {
-      "title": "欢迎来到 Bittersweet",
-      "description": "我们仍在不断打磨这款应用，你的反馈将塑造它的未来。"
+      "title": "你想专注在什么上？",
+      "description": "先选三个。名字可以改，也可以替换，之后随时都能再添加。"
     },
+    "slide5": {
+      "title": "先从一个开始",
+      "description": "给一个标签定个每日目标。刚开始，一天一小时就够了。"
+    },
+    "dailyTargetLabel": "每天",
+    "restDaysNote": "休息日（{{days}}）不设目标，连续记录也不会中断。",
     "tagNamePlaceholder": "例如：学习、工作、运动",
     "moreSuggestions": "更多建议",
     "suggestedTags": {

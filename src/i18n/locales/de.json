@@ -96,21 +96,28 @@
   },
   "onboarding": {
     "slide1": {
-      "title": "Konzentrier dich, lass es wachsen",
-      "description": "Bleib konzentriert, damit dein Baum wächst – und ernte später die Früchte deiner Arbeit."
+      "title": "Bildschirmzeit, die du dir verdienst",
+      "description": "Bittersweet sperrt deine Apps nicht für immer weg. Konzentrier dich zuerst – die Zeit danach gehört dir, ganz ohne schlechtes Gewissen."
     },
     "slide2": {
-      "title": "Wähle deine ersten Labels",
-      "description": "Mit Labels ordnest du deine Fokuszeit. Bearbeite diese drei oder zieh einen anderen Vorschlag auf eine Karte, um sie zu ersetzen."
+      "title": "Fokus lässt Früchte wachsen",
+      "description": "Jede Sitzung, die du abschließt, lässt deinen Baum wachsen. Ernte die Früchte und tausche sie gegen Zeit in den Apps, die du beiseitegelegt hast."
     },
     "slide3": {
-      "title": "Früchte ernten, Apps freischalten",
-      "description": "Mit den Früchten aus deinen Fokus-Sitzungen schaltest du Apps aus deiner Sperrliste frei."
+      "title": "Wähle, was dich reinzieht",
+      "description": "Such dir die Apps aus, die deinen Tag auffressen. Sie bleiben zu, bis du dir den Zugang verdient hast.",
+      "note": "iOS fragt dich beim Einrichten nach der Erlaubnis. Bittersweet sieht nur, welche Apps du ausgewählt hast – nie, was du darin machst."
     },
     "slide4": {
-      "title": "Willkommen bei Bittersweet",
-      "description": "Wir verbessern die App ständig – dein Feedback zeigt uns, wohin die Reise geht."
+      "title": "Worauf willst du dich konzentrieren?",
+      "description": "Wähle drei für den Anfang. Du kannst sie umbenennen, austauschen und jederzeit weitere hinzufügen."
     },
+    "slide5": {
+      "title": "Fang mit einem an",
+      "description": "Gib einem Label ein Tagesziel. Eine Stunde am Tag reicht für den Anfang völlig."
+    },
+    "dailyTargetLabel": "Jeden Tag",
+    "restDaysNote": "An Ruhetagen ({{days}}) kein Ziel – deine Serie bricht dadurch nicht.",
     "tagNamePlaceholder": "Lernen, Arbeit, Sport …",
     "moreSuggestions": "Weitere Vorschläge",
     "suggestedTags": {

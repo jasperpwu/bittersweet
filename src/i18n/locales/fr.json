@@ -96,21 +96,28 @@
   },
   "onboarding": {
     "slide1": {
-      "title": "Concentrez-vous, ça pousse",
-      "description": "Restez concentré pour faire grandir votre arbre, et savourez ensuite les fruits de votre travail."
+      "title": "Du temps d'écran que vous avez mérité",
+      "description": "Bittersweet ne bannit pas vos apps pour toujours. Concentrez-vous d'abord : le temps que vous y passez ensuite est le vôtre, sans culpabilité."
     },
     "slide2": {
-      "title": "Choisissez vos premières étiquettes",
-      "description": "Les étiquettes organisent votre temps de concentration. Modifiez ces trois-là, ou faites glisser une autre suggestion sur une carte pour la remplacer."
+      "title": "La concentration porte ses fruits",
+      "description": "Chaque session terminée fait grandir votre arbre. Récoltez les fruits et échangez-les contre du temps dans les apps que vous avez mises de côté."
     },
     "slide3": {
-      "title": "Récoltez des fruits, débloquez des apps",
-      "description": "Les fruits récoltés pendant vos sessions vous servent à débloquer les apps de votre liste de blocage."
+      "title": "Choisissez ce qui vous happe",
+      "description": "Sélectionnez les apps qui dévorent vos journées. Elles restent fermées jusqu'à ce que vous ayez mérité d'y revenir.",
+      "note": "iOS vous demandera l'autorisation au moment de la configuration. Bittersweet voit seulement quelles apps vous avez choisies, jamais ce que vous y faites."
     },
     "slide4": {
-      "title": "Bienvenue sur Bittersweet",
-      "description": "Nous améliorons l'app en continu, et votre avis nous aide à dessiner la suite."
+      "title": "Sur quoi voulez-vous vous concentrer ?",
+      "description": "Choisissez-en trois pour commencer. Renommez-les, échangez-les, et ajoutez-en d'autres quand vous voulez."
     },
+    "slide5": {
+      "title": "Commencez par une seule",
+      "description": "Donnez un objectif quotidien à une étiquette. Une heure par jour suffit largement pour démarrer."
+    },
+    "dailyTargetLabel": "Chaque jour",
+    "restDaysNote": "Aucun objectif les jours de repos ({{days}}) : votre série reste intacte.",
     "tagNamePlaceholder": "Études, Travail, Sport…",
     "moreSuggestions": "Autres suggestions",
     "suggestedTags": {

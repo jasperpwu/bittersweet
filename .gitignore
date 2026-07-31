@@ -64,3 +64,6 @@ app-env.d.ts
 nativewind-env.d.ts
 # PostHog setup script credentials (scoped personal API key)
 .posthog.env
+
+# Which EAS Update channel the next prebuild/archive targets (see app.config.js)
+.update-channel
