@@ -9,6 +9,14 @@ export interface ChallengeProfile {
   avatar_color: string;
 }
 
+/**
+ * How a finished challenge's payout multiplier is derived.
+ * - `isolated` — from the claimant's own hits.
+ * - `pooled` — participants are bound: the full double is paid only if every
+ *   accepted participant hit every period. See `src/utils/challengeReward.ts`.
+ */
+export type ChallengeRewardMode = 'isolated' | 'pooled';
+
 export interface ChallengeParticipant {
   id: string;
   userId: string;
@@ -20,6 +28,8 @@ export interface ChallengeParticipant {
   tagId: string | null;
   /** ISO timestamp of when this participant claimed their fruit reward, or null if unclaimed. */
   rewardClaimedAt: string | null;
+  /** Fruits actually banked at claim time, or null if unclaimed. */
+  rewardAmount: number | null;
   profile: ChallengeProfile;
 }
 
@@ -38,7 +48,13 @@ export interface ChallengeItem {
   status: 'pending' | 'active' | 'completed' | 'failed' | 'declined' | 'cancelled';
   startDate: string | null;
   endDate: string | null;
+  /**
+   * Legacy flat bounty. Rewards are now proportional to the fruits earned with
+   * the challenge tag during the window — see `src/utils/challengeReward.ts`.
+   * Kept only as the fallback payout for pre-20260730 rows.
+   */
   fruitReward: number;
+  rewardMode: ChallengeRewardMode;
   /** True if the current user is an invitee with a pending status */
   isIncoming: boolean;
   /** True once start_date has been reached (challenge is running, not upcoming). */
@@ -55,6 +71,7 @@ export interface CreateChallengeInput {
   targetMinutes: number;
   startDate: string;
   endDate: string;
+  rewardMode: ChallengeRewardMode;
 }
 
 export interface ParticipantPeriodData {
@@ -110,6 +127,7 @@ export const GroveChallengeService = {
         target_minutes: input.targetMinutes,
         start_date: input.startDate,
         end_date: input.endDate,
+        reward_mode: input.rewardMode,
         status: 'pending',
       })
       .select('id')
@@ -283,6 +301,7 @@ export const GroveChallengeService = {
         outcome: p.outcome,
         tagId: p.tag_id ?? null,
         rewardClaimedAt: p.reward_claimed_at ?? null,
+        rewardAmount: p.reward_amount ?? null,
         profile: profileMap.get(p.user_id) || defaultProfile,
       }));
 
@@ -340,6 +359,7 @@ export const GroveChallengeService = {
         startDate: c.start_date,
         endDate: c.end_date,
         fruitReward: c.fruit_reward,
+        rewardMode: c.reward_mode === 'pooled' ? 'pooled' : 'isolated',
         isIncoming,
         hasStarted,
         createdAt: c.created_at,
@@ -365,18 +385,27 @@ export const GroveChallengeService = {
   },
 
   /**
-   * Claim the current user's fruit reward for a finished challenge they completed.
+   * Claim the current user's fruit reward for a finished challenge.
    * The server row (reward_claimed_at) is the idempotency guard: it only reports a
    * fresh claim once, so the client credits fruits exactly once even across
-   * devices/reinstalls. Eligibility (challenge over + I hit all periods) is decided
-   * locally — the server trusts the client and just records the claim.
+   * devices/reinstalls.
    *
+   * The amount is computed locally (see `src/utils/challengeReward.ts`) because
+   * per-session fruits never reach the cloud; the server records what it is given,
+   * mirroring the trust-the-client model already used for hits.
+   *
+   * @param amount Fruits to bank. Omit to fall back to the legacy flat bounty.
    * @returns `{ claimed, fruitReward }` — `claimed` is true only on the FIRST claim
-   *   (credit fruits); false if it was already claimed previously.
+   *   (credit fruits); false if it was already claimed previously, in which case
+   *   `fruitReward` is the amount that was banked then.
    */
-  async claimChallengeReward(challengeId: string): Promise<{ claimed: boolean; fruitReward: number }> {
+  async claimChallengeReward(
+    challengeId: string,
+    amount?: number
+  ): Promise<{ claimed: boolean; fruitReward: number }> {
     const { data, error } = await supabase.rpc('claim_challenge_reward', {
       p_challenge_id: challengeId,
+      ...(amount != null ? { p_amount: Math.max(0, Math.round(amount)) } : {}),
     });
 
     if (error) throw error;

@@ -11,6 +11,7 @@ import { useSubscriptionGate } from '../../hooks/useSubscriptionGate';
 import { useTagUpgradeFlow } from '../../hooks/useTagUpgradeFlow';
 import { tagMatchesChallenge } from '../../utils/challengeTag';
 import { formatTarget } from './ChallengeCard';
+import { useTranslation } from 'react-i18next';
 import type { ChallengeItem } from '../../services/grove/GroveChallengeService';
 const DEFAULT_TAG_COLOR = '#6592E9';
 
@@ -27,6 +28,7 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
   isVisible,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const tags = useAppStore((s) => s.focus.tags);
   const createTag = useAppStore((s) => s.focus.createTag);
   const acceptChallenge = useAppStore((s) => s.grove.acceptChallenge);
@@ -101,7 +103,15 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
   const canAccept = mode === 'create' || (mode === 'existing' && !!selectedTagId);
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose} height={560} overlay={upgradeModals}>
+    // `scrollable` (not a nested ScrollView, which would swallow the pull-to-dismiss
+    // gesture): the reward explainer pushes content past the fixed height when a
+    // user has several matching tags.
+    <BottomSheet
+      isVisible={isVisible}
+      onClose={onClose}
+      height={620}
+      scrollable
+      overlay={upgradeModals}>
       {/* Header */}
       <View className="mb-1 flex-row items-center">
         <Typography variant="body-14" className="mr-1.5">
@@ -111,10 +121,31 @@ export const ChallengeAcceptSheet: React.FC<ChallengeAcceptSheetProps> = ({
           {challenge.tagName}
         </Typography>
       </View>
-      <Typography variant="body-12" color="secondary" className="mb-4">
+      <Typography variant="body-12" color="secondary" className="mb-3">
         {formatTarget(challenge.targetMinutes, challenge.period)} · pick the tag that tracks your
         progress
       </Typography>
+
+      {/* What you're actually signing up for. A pooled challenge means another
+          participant's shortfall cuts your payout, so it must be visible BEFORE
+          accepting — not only on the detail sheet afterwards. */}
+      <View
+        className="mb-4 rounded-xl px-3 py-2.5"
+        style={{ backgroundColor: `${colors.challenge}1A` }}>
+        <View className="mb-1 flex-row items-center">
+          <Ionicons name="gift-outline" size={14} color={colors.challenge} />
+          <Typography variant="body-12" className="ml-1.5" style={{ color: colors.challenge }}>
+            {challenge.rewardMode === 'pooled'
+              ? t('challenge.rewardModePooled')
+              : t('challenge.rewardModeIsolated')}
+          </Typography>
+        </View>
+        <Typography variant="body-12" color="secondary">
+          {challenge.rewardMode === 'pooled'
+            ? t('challenge.rewardModePooledDesc')
+            : t('challenge.rewardModeIsolatedDesc')}
+        </Typography>
+      </View>
 
       {/* Mode toggle */}
       <View className="mb-4 flex-row gap-x-2">

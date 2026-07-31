@@ -3,6 +3,7 @@ import { View, Pressable } from 'react-native';
 import { colors } from '../../config/theme';
 import { Typography } from '../ui/Typography';
 import type { ChallengeItem, ChallengeParticipant } from '../../services/grove/GroveChallengeService';
+import { useChallengeReward } from '../../hooks/useChallengeReward';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 
@@ -55,6 +56,14 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
   const isCompleted = challenge.status === 'completed';
   const isFailed = challenge.status === 'failed';
   const isCancelled = challenge.status === 'cancelled';
+  const isOver = isCompleted || isFailed;
+
+  // Reward is proportional to the fruits earned with this tag during the window,
+  // so it is a live projection while the challenge runs and the settled payout
+  // once it is over. A banked claim shows what was actually credited.
+  const reward = useChallengeReward(challenge);
+  const claimedAmount = challenge.myParticipant?.rewardAmount ?? null;
+  const rewardFruits = claimedAmount ?? reward?.reward ?? 0;
 
   const targetLabel = formatTarget(challenge.targetMinutes, challenge.period);
   const periodUnit = challenge.period === 'daily' ? t('challenge.daysUnit') : t('challenge.weeksUnit');
@@ -170,14 +179,29 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, current
 
       {/* Footer */}
       <View className="flex-row items-center justify-between">
-        <View className="rounded-lg px-2 py-1" style={{ backgroundColor: `${colors.challenge}1A` }}>
-          <Typography variant="body-12" style={{ color: colors.challenge }}>
-            {targetLabel}
-          </Typography>
+        <View className="flex-row items-center gap-1">
+          <View className="rounded-lg px-2 py-1" style={{ backgroundColor: `${colors.challenge}1A` }}>
+            <Typography variant="body-12" style={{ color: colors.challenge }}>
+              {targetLabel}
+            </Typography>
+          </View>
+          {challenge.rewardMode === 'pooled' && (
+            <View className="rounded-lg px-2 py-1" style={{ backgroundColor: `${colors.challenge}1A` }}>
+              <Typography variant="body-12" style={{ color: colors.challenge }}>
+                {t('challenge.rewardModePooled')}
+              </Typography>
+            </View>
+          )}
         </View>
-        <Typography variant="body-12" color="secondary">
-          {t('challenge.fruitsReward', { count: challenge.fruitReward })}
-        </Typography>
+        {/* Nothing to show before the challenge starts (no fruits banked yet) or
+            once it's cancelled — the reward is what you earned while it ran. */}
+        {!isCancelled && challenge.hasStarted && (
+          <Typography variant="body-12" color="secondary">
+            {isOver
+              ? t('challenge.fruitsReward', { count: rewardFruits })
+              : t('challenge.fruitsSoFar', { count: rewardFruits })}
+          </Typography>
+        )}
       </View>
     </View>
     </Wrapper>

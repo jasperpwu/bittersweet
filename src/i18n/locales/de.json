@@ -600,7 +600,29 @@
     "targetWeekly": "{{value}}/Woche",
     "progress": "{{hits}}/{{total}} {{unit}}",
     "yourProgress": "Dein Fortschritt",
-    "ranking": "Rangliste"
+    "ranking": "Rangliste",
+    "fruitsSoFar": "+{{count}} Früchte bisher",
+    "fruitsCount": "{{count}} 🍎",
+    "rewardExplainer": "Am Ende der Challenge bekommst du einen Bonus aus den Früchten, die du währenddessen mit diesem Label gesammelt hast. Schaffst du jeden Zeitraum, verdoppelst du sie voll (×1). Fehlt etwas, wird der Bonus gegen 80 % anteilig gerechnet – 80 % geschaffte Zeiträume ergeben ×0,64.",
+    "rewardModeIsolated": "Solo",
+    "rewardModePooled": "Gemeinsam",
+    "rewardModeIsolatedDesc": "Solo – dein Bonus hängt nur an deiner eigenen Bilanz. Schaffst du jeden Zeitraum, bekommst du die volle Verdopplung, auch wenn alle anderen aufgeben.",
+    "rewardModePooledDesc": "Gemeinsam – ihr steigt und fallt zusammen. Die volle Verdopplung gibt es nur, wenn alle jeden Zeitraum schaffen; fehlt bei jemandem etwas, wird für alle nach dem Gruppenschnitt anteilig gerechnet. Schaffst du selbst jeden Zeitraum, kommen +10 % deiner eigenen Früchte obendrauf – ganz gleich, wie die Gruppe abschneidet.",
+    "rewardTitleProjected": "Bonus bisher",
+    "rewardTitleFinal": "Bonus",
+    "rewardBase": "Früchte mit {{tag}} gesammelt",
+    "rewardMyCompletion": "Deine Quote",
+    "rewardGroupCompletion": "Quote der Gruppe",
+    "rewardMultiplier": "Faktor",
+    "rewardFullDouble": "volle Verdopplung",
+    "rewardClaimable": "Für dich bereit",
+    "rewardIfEndedNow": "Wenn es jetzt endet",
+    "rewardClaimedLabel": "Eingelöst",
+    "rewardClaimCta": "Bonus einlösen",
+    "rewardClaimedToast": "+{{count}} 🍎 eingelöst!",
+    "rewardPerfectBonus": "Bonus für makellosen Lauf (+10 %)",
+    "rewardPerfectBonusToGo": "noch {{count}} {{unit}}",
+    "rewardPerfectBonusMissed": "verpasst"
   },
   "preferences": {
     "general": "Allgemein",
@@ -856,7 +878,8 @@
     "summary": "Alle konzentrieren sich mit dem Label „{{tag}}“ {{duration}} pro {{period}}. Endet am {{date}}.",
     "sendChallenge": "Challenge senden",
     "andOthers_one": "{{names}} und {{count}} weitere Person",
-    "andOthers_other": "{{names}} und {{count}} weitere"
+    "andOthers_other": "{{names}} und {{count}} weitere",
+    "rewardTitle": "Bonus"
   },
   "challengesList": {
     "failedDecline": "Challenge konnte nicht abgelehnt werden. Bitte erneut versuchen.",
@@ -1188,6 +1211,7 @@
     "asDiscard": "Verwerfen",
     "asEditCostTitle": "Blockliste ändern?",
     "asEditCostMessage": "Diese Änderung kostet {{cost}} 🍎. Der Preis verdoppelt sich mit jeder Änderung und wird zu Wochenbeginn zurückgesetzt.",
-    "asEditCostConfirm": "{{cost}} 🍎 zahlen"
+    "asEditCostConfirm": "{{cost}} 🍎 zahlen",
+    "notifClaimPartial": "{{percent}} % geschafft – {{count}} 🍎 einlösen"
   }
 }

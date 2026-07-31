@@ -13,6 +13,7 @@ import {
   type GroveNotification,
 } from '../../src/utils/groveNotifications';
 import type { GroveProfile } from '../../src/services/grove/GroveService';
+import { computeChallengeReward } from '../../src/utils/challengeReward';
 
 // Avatar shared by the rows that reference a grove profile.
 function NotificationAvatar({ profile }: { profile: GroveProfile }) {
@@ -54,6 +55,15 @@ export default function GroveNotificationsModal() {
   const markHeartbeatAlertRead = useAppStore((s) => s.grove.markHeartbeatAlertRead);
   const claimChallengeReward = useAppStore((s) => s.grove.claimChallengeReward);
   const currentUserId = useAppStore((s) => s.auth.user?.id ?? '');
+  const sessionState = useAppStore((s) => s.focus.sessions);
+
+  // Flat session list for the challenge reward math. Built once per render pass
+  // rather than per row — a finished-challenge row can't call the hook inside
+  // renderItem.
+  const sessionList = useMemo(
+    () => sessionState.allIds.map((id: string) => sessionState.byId[id]).filter(Boolean),
+    [sessionState]
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   // Challenge ids with an in-flight claim, to disable the CTA and avoid double-tap.
@@ -280,6 +290,11 @@ export default function GroveNotificationsModal() {
           challenge.myParticipant ?? challenge.participants.find((p) => p.userId === currentUserId) ?? null;
         const claimed = !!myParticipant?.rewardClaimedAt;
         const claiming = claimingIds.includes(challenge.id);
+        // A partial run now pays a prorated share of the doubled fruits, so the
+        // claim CTA is gated on a non-zero payout, not on winning.
+        const reward = computeChallengeReward(challenge, sessionList, currentUserId);
+        const rewardFruits = myParticipant?.rewardAmount ?? reward.reward;
+        const canClaim = !claimed && reward.reward > 0;
 
         return (
           <Pressable
@@ -304,14 +319,19 @@ export default function GroveNotificationsModal() {
                   : t('gm.notifChallengeEnded', { icon: challenge.tagIcon, name: challenge.tagName })}
               </Typography>
               <Typography variant="body-12" color="secondary">
-                {won
-                  ? claimed
-                    ? t('gm.notifEarned', { count: challenge.fruitReward })
-                    : t('gm.notifClaimYour', { count: challenge.fruitReward })
-                  : t('gm.notifTargetMissed')}
+                {claimed
+                  ? t('gm.notifEarned', { count: rewardFruits })
+                  : reward.reward > 0
+                    ? won
+                      ? t('gm.notifClaimYour', { count: rewardFruits })
+                      : t('gm.notifClaimPartial', {
+                          count: rewardFruits,
+                          percent: Math.round(reward.ratio * 100),
+                        })
+                    : t('gm.notifTargetMissed')}
               </Typography>
             </View>
-            {won && !claimed ? (
+            {canClaim ? (
               <Pressable
                 onPress={() => handleClaimReward(challenge.id)}
                 disabled={claiming}
@@ -322,7 +342,7 @@ export default function GroveNotificationsModal() {
                   {claiming ? t('gm.notifClaiming') : t('gm.notifClaim')}
                 </Typography>
               </Pressable>
-            ) : won && claimed ? (
+            ) : claimed ? (
               <View className="flex-row items-center">
                 <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                 <Typography variant="body-12" className="ml-1" style={{ color: colors.success }}>

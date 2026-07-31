@@ -19,6 +19,7 @@ import type { FeedItem } from '../../services/grove/GroveFeedService';
 import type { RankingItem } from '../../services/grove/GroveRankingService';
 import type { ChallengeItem, CreateChallengeInput, ChallengePeriodDetailsResult } from '../../services/grove/GroveChallengeService';
 import { computeTotalPeriods } from '../../services/grove/GroveChallengeService';
+import { computeChallengeReward } from '../../utils/challengeReward';
 import type { HeartbeatSettings, InnerCircleMember, HeartbeatAlert } from '../../services/grove/GroveHeartbeatService';
 import { WidgetService } from '../../services/WidgetService';
 import { AnalyticsTracker } from '../../services/analytics';
@@ -1091,9 +1092,21 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
   },
 
   claimChallengeReward: async (challengeId: string) => {
-    // The server's reward_claimed_at column is the idempotency guard: it reports a
-    // fresh claim exactly once, so fruits are credited once even across reinstalls.
-    const result = await GroveChallengeService.claimChallengeReward(challengeId);
+    // The payout is proportional to the fruits this user earned with the challenge
+    // tag during the window, so it has to be totalled here — per-session fruits are
+    // local-only and never reach the cloud. The server's reward_claimed_at column is
+    // still the idempotency guard: it reports a fresh claim exactly once, so fruits
+    // are credited once even across reinstalls.
+    const challenge = get().grove.challenges.find((c: ChallengeItem) => c.id === challengeId);
+    const currentUserId = get().auth.user?.id ?? '';
+    let amount: number | undefined;
+    if (challenge) {
+      const sessionState = get().focus.sessions;
+      const sessions = sessionState.allIds.map((id: string) => sessionState.byId[id]).filter(Boolean);
+      amount = computeChallengeReward(challenge, sessions, currentUserId).reward;
+    }
+
+    const result = await GroveChallengeService.claimChallengeReward(challengeId, amount);
 
     if (result.claimed && result.fruitReward > 0) {
       get().rewards.earnFruits(result.fruitReward, 'challenge', { challengeId });

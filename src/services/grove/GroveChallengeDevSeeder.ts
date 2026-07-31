@@ -85,6 +85,7 @@ export async function seedTestChallenge(state: SeedChallengeState): Promise<stri
     hits: myHits,
     tag_id: TEST_TAG_ID,
     reward_claimed_at: claimed ? new Date().toISOString() : null,
+    reward_amount: claimed ? FRUIT_REWARD : null,
   });
   if (participantErr) throw participantErr;
 

@@ -600,7 +600,29 @@
     "targetWeekly": "{{value}}/semana",
     "progress": "{{hits}}/{{total}} {{unit}}",
     "yourProgress": "Seu progresso",
-    "ranking": "Ranking"
+    "ranking": "Ranking",
+    "fruitsSoFar": "+{{count}} frutos até agora",
+    "fruitsCount": "{{count}} 🍎",
+    "rewardExplainer": "Quando o desafio acaba, você resgata um bônus formado pelos frutos que ganhou com essa tag durante o período. Cumprindo todos os períodos, você os dobra por completo (×1). Se ficar aquém, o bônus é proporcional sobre 80% — cumprir 80% paga ×0,64.",
+    "rewardModeIsolated": "Individual",
+    "rewardModePooled": "Conjunto",
+    "rewardModeIsolatedDesc": "Individual — seu bônus depende só do seu histórico. Cumprindo todos os períodos, você fica com o dobro completo mesmo se os outros desistirem.",
+    "rewardModePooledDesc": "Conjunto — todos sobem e descem juntos. O dobro completo só sai se cada participante cumprir todos os períodos; se alguém ficar aquém, todos entram no proporcional da média do grupo. Se você cumprir todos os períodos, ganha +10% dos seus próprios frutos por cima, independentemente do que o grupo fizer.",
+    "rewardTitleProjected": "Bônus até agora",
+    "rewardTitleFinal": "Bônus",
+    "rewardBase": "Frutos ganhos com {{tag}}",
+    "rewardMyCompletion": "Seu aproveitamento",
+    "rewardGroupCompletion": "Aproveitamento do grupo",
+    "rewardMultiplier": "Multiplicador",
+    "rewardFullDouble": "dobro completo",
+    "rewardClaimable": "Pronto para resgatar",
+    "rewardIfEndedNow": "Se acabasse agora",
+    "rewardClaimedLabel": "Resgatado",
+    "rewardClaimCta": "Resgatar bônus",
+    "rewardClaimedToast": "+{{count}} 🍎 resgatados!",
+    "rewardPerfectBonus": "Bônus de percurso perfeito (+10%)",
+    "rewardPerfectBonusToGo": "faltam {{count}} {{unit}}",
+    "rewardPerfectBonusMissed": "não alcançado"
   },
   "preferences": {
     "general": "Geral",
@@ -856,7 +878,8 @@
     "summary": "Todos focam com a tag “{{tag}}” por {{duration}} a cada {{period}}. Termina em {{date}}.",
     "sendChallenge": "Enviar desafio",
     "andOthers_one": "{{names}} e mais {{count}}",
-    "andOthers_other": "{{names}} e mais {{count}}"
+    "andOthers_other": "{{names}} e mais {{count}}",
+    "rewardTitle": "Recompensa"
   },
   "challengesList": {
     "failedDecline": "Não foi possível recusar o desafio. Tente de novo.",
@@ -1188,6 +1211,7 @@
     "asDiscard": "Descartar",
     "asEditCostTitle": "Atualizar lista de bloqueio?",
     "asEditCostMessage": "Esta alteração custa {{cost}} 🍎. O preço dobra a cada edição e é reiniciado no começo de cada semana.",
-    "asEditCostConfirm": "Pagar {{cost}} 🍎"
+    "asEditCostConfirm": "Pagar {{cost}} 🍎",
+    "notifClaimPartial": "{{percent}}% cumprido — resgate {{count}} 🍎"
   }
 }

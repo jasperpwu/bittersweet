@@ -600,7 +600,29 @@
     "targetWeekly": "{{value}}/week",
     "progress": "{{hits}}/{{total}} {{unit}}",
     "yourProgress": "Your Progress",
-    "ranking": "Ranking"
+    "ranking": "Ranking",
+    "fruitsSoFar": "+{{count}} fruits so far",
+    "fruitsCount": "{{count}} 🍎",
+    "rewardExplainer": "When the challenge ends you claim a bonus built from the fruits you earned with this tag while it ran. Hit every period and you double them in full (×1). Fall short and the bonus is prorated against 80% — hitting 80% of periods pays ×0.64.",
+    "rewardModeIsolated": "Solo",
+    "rewardModePooled": "Bound",
+    "rewardModeIsolatedDesc": "Solo — your bonus rides on your own record only. Hit every period and you keep the full double, even if everyone else drops out.",
+    "rewardModePooledDesc": "Bound — you rise and fall together. The full double is paid only if every participant hits every period; if anyone falls short, everyone is prorated on the group average. Hit every period yourself and you add +10% of your own fruits on top, whatever the group does.",
+    "rewardTitleProjected": "Reward so far",
+    "rewardTitleFinal": "Reward",
+    "rewardBase": "Fruits earned with {{tag}}",
+    "rewardMyCompletion": "Your completion",
+    "rewardGroupCompletion": "Group completion",
+    "rewardMultiplier": "Multiplier",
+    "rewardFullDouble": "full double",
+    "rewardClaimable": "Yours to claim",
+    "rewardIfEndedNow": "If it ended now",
+    "rewardClaimedLabel": "Claimed",
+    "rewardClaimCta": "Claim reward",
+    "rewardClaimedToast": "+{{count}} 🍎 claimed!",
+    "rewardPerfectBonus": "Perfect run bonus (+10%)",
+    "rewardPerfectBonusToGo": "{{count}} {{unit}} to go",
+    "rewardPerfectBonusMissed": "missed"
   },
   "preferences": {
     "general": "General",
@@ -856,7 +878,8 @@
     "summary": "Everyone focuses with the “{{tag}}” tag for {{duration}} per {{period}}. Ends {{date}}.",
     "sendChallenge": "Send Challenge",
     "andOthers_one": "{{names}} and {{count}} other",
-    "andOthers_other": "{{names}} and {{count}} others"
+    "andOthers_other": "{{names}} and {{count}} others",
+    "rewardTitle": "Reward"
   },
   "challengesList": {
     "failedDecline": "Couldn’t decline the challenge. Please try again.",
@@ -1188,6 +1211,7 @@
     "asDiscard": "Discard",
     "asEditCostTitle": "Update blocklist?",
     "asEditCostMessage": "This change costs {{cost}} 🍎. The price doubles with each edit and resets at the start of every week.",
-    "asEditCostConfirm": "Pay {{cost}} 🍎"
+    "asEditCostConfirm": "Pay {{cost}} 🍎",
+    "notifClaimPartial": "{{percent}}% done — claim {{count}} 🍎"
   }
 }

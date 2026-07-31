@@ -600,7 +600,29 @@
     "targetWeekly": "{{value}}/semana",
     "progress": "{{hits}}/{{total}} {{unit}}",
     "yourProgress": "Tu progreso",
-    "ranking": "Clasificación"
+    "ranking": "Clasificación",
+    "fruitsSoFar": "+{{count}} frutas hasta ahora",
+    "fruitsCount": "{{count}} 🍎",
+    "rewardExplainer": "Al terminar el reto reclamas un bonus formado por las frutas que ganaste con esta etiqueta mientras duraba. Si cumples todos los periodos, las duplicas por completo (×1). Si te quedas corto, el bonus se prorratea sobre el 80 %: cumplir el 80 % paga ×0,64.",
+    "rewardModeIsolated": "En solitario",
+    "rewardModePooled": "En equipo",
+    "rewardModeIsolatedDesc": "En solitario: tu bonus depende solo de tu propio registro. Si cumples todos los periodos te llevas el doble completo, aunque los demás abandonen.",
+    "rewardModePooledDesc": "En equipo: suben y bajan juntos. El doble completo solo se paga si cada participante cumple todos los periodos; si alguien se queda corto, se prorratea para todos según la media del grupo. Si tú cumples todos los periodos, sumas un +10 % de tus propias frutas encima, haga lo que haga el grupo.",
+    "rewardTitleProjected": "Bonus hasta ahora",
+    "rewardTitleFinal": "Bonus",
+    "rewardBase": "Frutas ganadas con {{tag}}",
+    "rewardMyCompletion": "Tu cumplimiento",
+    "rewardGroupCompletion": "Cumplimiento del grupo",
+    "rewardMultiplier": "Multiplicador",
+    "rewardFullDouble": "doble completo",
+    "rewardClaimable": "Listo para reclamar",
+    "rewardIfEndedNow": "Si terminara ahora",
+    "rewardClaimedLabel": "Reclamado",
+    "rewardClaimCta": "Reclamar bonus",
+    "rewardClaimedToast": "¡+{{count}} 🍎 reclamadas!",
+    "rewardPerfectBonus": "Bonus por racha perfecta (+10 %)",
+    "rewardPerfectBonusToGo": "faltan {{count}} {{unit}}",
+    "rewardPerfectBonusMissed": "no logrado"
   },
   "preferences": {
     "general": "General",
@@ -856,7 +878,8 @@
     "summary": "Todos se concentran con la etiqueta «{{tag}}» durante {{duration}} por {{period}}. Termina el {{date}}.",
     "sendChallenge": "Enviar reto",
     "andOthers_one": "{{names}} y {{count}} más",
-    "andOthers_other": "{{names}} y {{count}} más"
+    "andOthers_other": "{{names}} y {{count}} más",
+    "rewardTitle": "Recompensa"
   },
   "challengesList": {
     "failedDecline": "No se pudo rechazar el reto. Inténtalo de nuevo.",
@@ -1188,6 +1211,7 @@
     "asDiscard": "Descartar",
     "asEditCostTitle": "¿Actualizar lista de bloqueo?",
     "asEditCostMessage": "Este cambio cuesta {{cost}} 🍎. El precio se duplica con cada edición y se reinicia al comenzar cada semana.",
-    "asEditCostConfirm": "Pagar {{cost}} 🍎"
+    "asEditCostConfirm": "Pagar {{cost}} 🍎",
+    "notifClaimPartial": "{{percent}} % cumplido: reclama {{count}} 🍎"
   }
 }

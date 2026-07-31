@@ -599,7 +599,29 @@
     "targetWeekly": "{{value}}/주",
     "progress": "{{hits}}/{{total}} {{unit}}",
     "yourProgress": "내 진행 상황",
-    "ranking": "랭킹"
+    "ranking": "랭킹",
+    "fruitsSoFar": "지금까지 +{{count}} 열매",
+    "fruitsCount": "{{count}} 🍎",
+    "rewardExplainer": "챌린지가 끝나면 진행 기간에 이 태그로 모은 열매만큼 보너스를 받아요. 모든 기간을 달성하면 그대로 2배(×1)예요. 부족하면 80%를 기준으로 비례 계산해서, 80% 달성이면 ×0.64가 돼요.",
+    "rewardModeIsolated": "개인",
+    "rewardModePooled": "공동",
+    "rewardModeIsolatedDesc": "개인 — 보너스는 내 기록으로만 정해져요. 모든 기간을 달성하면 다른 사람이 중간에 빠져도 2배를 온전히 받아요.",
+    "rewardModePooledDesc": "공동 — 다 같이 오르고 다 같이 내려가요. 참가자 전원이 모든 기간을 달성해야 2배를 온전히 받고, 한 명이라도 부족하면 모두 그룹 평균으로 비례 계산돼요. 대신 내가 모든 기간을 달성하면 그룹 결과와 상관없이 내 열매의 +10%가 얹혀요.",
+    "rewardTitleProjected": "지금까지의 보너스",
+    "rewardTitleFinal": "보너스",
+    "rewardBase": "‘{{tag}}’로 모은 열매",
+    "rewardMyCompletion": "내 달성률",
+    "rewardGroupCompletion": "그룹 달성률",
+    "rewardMultiplier": "배율",
+    "rewardFullDouble": "온전한 2배",
+    "rewardClaimable": "받을 수 있어요",
+    "rewardIfEndedNow": "지금 끝난다면",
+    "rewardClaimedLabel": "받았어요",
+    "rewardClaimCta": "보너스 받기",
+    "rewardClaimedToast": "+{{count}} 🍎 받았어요!",
+    "rewardPerfectBonus": "완주 보너스 (+10%)",
+    "rewardPerfectBonusToGo": "{{count}} {{unit}} 남음",
+    "rewardPerfectBonusMissed": "놓쳤어요"
   },
   "preferences": {
     "general": "일반",
@@ -853,7 +875,8 @@
     "summary": "모두 “{{tag}}” 태그로 {{period}}에 {{duration}}씩 집중해요. {{date}}에 끝나요.",
     "sendChallenge": "챌린지 보내기",
     "andOthers_one": "{{names}} 외 {{count}}명",
-    "andOthers_other": "{{names}} 외 {{count}}명"
+    "andOthers_other": "{{names}} 외 {{count}}명",
+    "rewardTitle": "보너스"
   },
   "challengesList": {
     "failedDecline": "챌린지를 거절하지 못했어요. 다시 시도해 주세요.",
@@ -1185,6 +1208,7 @@
     "asDiscard": "취소",
     "asEditCostTitle": "차단 목록을 변경할까요?",
     "asEditCostMessage": "이 변경에는 {{cost}} 🍎가 필요해요. 요금은 편집할 때마다 두 배가 되고 매주 초에 초기화돼요.",
-    "asEditCostConfirm": "{{cost}} 🍎 결제"
+    "asEditCostConfirm": "{{cost}} 🍎 결제",
+    "notifClaimPartial": "{{percent}}% 달성 — {{count}} 🍎 받기"
   }
 }

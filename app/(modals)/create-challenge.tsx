@@ -16,6 +16,7 @@ import { AnalyticsTracker } from '../../src/services/analytics';
 
 type Period = 'daily' | 'weekly';
 type CreationMode = 'streak' | 'until';
+type RewardMode = 'isolated' | 'pooled';
 
 const SLIDER_CONFIG: Record<Period, { min: number; max: number; step: number }> = {
   daily: { min: 0.5, max: 12, step: 0.5 },
@@ -64,6 +65,7 @@ export default function CreateChallengeModal() {
   const [targetHours, setTargetHours] = useState(1);
   const [startDate, setStartDate] = useState(() => new Date());
   const [creationMode, setCreationMode] = useState<CreationMode>('streak');
+  const [rewardMode, setRewardMode] = useState<RewardMode>('isolated');
   const [streakCount, setStreakCount] = useState(7);
   const [untilDate, setUntilDate] = useState(() => {
     const d = new Date();
@@ -162,6 +164,7 @@ export default function CreateChallengeModal() {
         targetMinutes: Math.round(targetHours * 60),
         startDate: toDateStr(effectiveStartDate),
         endDate: toDateStr(endDate),
+        rewardMode,
       });
       showToast(t('createChallenge.sent'), 'success');
       router.back();
@@ -170,7 +173,7 @@ export default function CreateChallengeModal() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedFriendIds, selectedTag, period, targetHours, effectiveStartDate, endDate, createChallenge]);
+  }, [selectedFriendIds, selectedTag, period, targetHours, effectiveStartDate, endDate, rewardMode, createChallenge]);
 
   const stepTitle = step === 'friend' ? t('createChallenge.titleFriends') : step === 'tag' ? t('createChallenge.titleTag') : t('createChallenge.titleConfig');
 
@@ -440,6 +443,44 @@ export default function CreateChallengeModal() {
                   period: period === 'daily' ? t('createChallenge.perDay') : t('createChallenge.perWeek'),
                   date: endDate.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', year: 'numeric' }),
                 })}
+              </Typography>
+            </View>
+
+            {/* Reward mode: whose completion record sets everyone's payout */}
+            <Typography variant="subtitle-14-medium" color="primary" className="mb-2">
+              {t('createChallenge.rewardTitle')}
+            </Typography>
+            <View className="bg-light-border/30 dark:bg-dark-card rounded-xl px-4 py-3 mb-3">
+              <Typography variant="body-12" color="secondary">
+                {t('challenge.rewardExplainer')}
+              </Typography>
+            </View>
+
+            <View className="flex-row gap-x-2 mb-3">
+              {(['isolated', 'pooled'] as const).map((mode) => (
+                <Pressable
+                  key={mode}
+                  onPress={() => setRewardMode(mode)}
+                  className={`flex-1 py-2.5 rounded-xl ${
+                    rewardMode === mode ? '' : 'bg-light-border dark:bg-dark-border'
+                  }`}
+                  style={rewardMode === mode ? { backgroundColor: colors.challenge } : undefined}
+                >
+                  <Typography
+                    variant="body-14"
+                    className={`text-center ${rewardMode === mode ? 'text-white' : 'text-light-text-primary dark:text-white'}`}
+                  >
+                    {mode === 'isolated' ? t('challenge.rewardModeIsolated') : t('challenge.rewardModePooled')}
+                  </Typography>
+                </Pressable>
+              ))}
+            </View>
+
+            <View className="rounded-xl px-4 py-3 mb-6" style={{ backgroundColor: `${colors.challenge}1A` }}>
+              <Typography variant="body-12" color="secondary">
+                {rewardMode === 'isolated'
+                  ? t('challenge.rewardModeIsolatedDesc')
+                  : t('challenge.rewardModePooledDesc')}
               </Typography>
             </View>
           </View>

@@ -4,9 +4,11 @@ import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { BottomSheet } from '../ui/BottomSheet';
+import { showToast } from '../ui/Toast';
 import { UserGrid } from './ChallengeDetailGrid';
 import { formatTarget, formatStartDate } from './ChallengeCard';
 import { useAppStore } from '../../store';
+import { useChallengeReward } from '../../hooks/useChallengeReward';
 import type { ChallengeItem, ChallengePeriodDetailsResult } from '../../services/grove/GroveChallengeService';
 import { useTranslation } from 'react-i18next';
 
@@ -32,9 +34,13 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
   const { height: screenHeight } = useWindowDimensions();
   const currentUserId = useAppStore((s) => s.auth.user?.id ?? '');
   const fetchChallengePeriodDetails = useAppStore((s) => s.grove.fetchChallengePeriodDetails);
+  const claimChallengeReward = useAppStore((s) => s.grove.claimChallengeReward);
 
   const [details, setDetails] = useState<ChallengePeriodDetailsResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+
+  const reward = useChallengeReward(challenge);
 
   useEffect(() => {
     if (!challenge || !isVisible) {
@@ -62,6 +68,19 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
     };
   }, [challenge?.id, isVisible]);
 
+  const handleClaim = async () => {
+    if (!challenge || claiming) return;
+    setClaiming(true);
+    try {
+      const { claimed, fruitReward } = await claimChallengeReward(challenge.id);
+      if (claimed) showToast(t('challenge.rewardClaimedToast', { count: fruitReward }), 'success');
+    } catch {
+      showToast(t('gm.errClaimReward'), 'error');
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   if (!challenge) return null;
 
   const isCreator = challenge.creatorId === currentUserId;
@@ -79,6 +98,16 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const isOver = !!challenge.endDate && challenge.endDate < todayStr;
+
+  const myParticipant =
+    challenge.myParticipant ?? challenge.participants.find((p) => p.userId === currentUserId) ?? null;
+  const claimed = !!myParticipant?.rewardClaimedAt;
+  const claimedAmount = myParticipant?.rewardAmount ?? null;
+
+  // Periods the user still has to hit for the pooled perfect-run bonus. Personal,
+  // not group-wide — hence myHits/myTotalPeriods rather than hits/totalPeriods.
+  const perfectPeriodsToGo = reward ? Math.max(0, reward.myTotalPeriods - reward.myHits) : 0;
+  const periodUnit = challenge.period === 'daily' ? t('challenge.daysUnit') : t('challenge.weeksUnit');
 
   // Find current user's period data
   const myPeriodData = details?.participants.find((p) => p.user_id === currentUserId);
@@ -142,17 +171,142 @@ export const ChallengeDetailSheet: React.FC<ChallengeDetailSheetProps> = ({
           )}
         </View>
 
-        {/* Target + fruits */}
+        {/* Target + reward mode */}
         <View className="flex-row items-center gap-2 mb-4">
           <View className="rounded-lg px-2 py-1" style={{ backgroundColor: `${colors.challenge}1A` }}>
             <Typography variant="body-12" style={{ color: colors.challenge }}>
               {targetLabel}
             </Typography>
           </View>
-          <Typography variant="body-12" color="secondary">
-            {t('challenge.fruitsReward', { count: challenge.fruitReward })}
-          </Typography>
+          <View className="rounded-lg px-2 py-1" style={{ backgroundColor: `${colors.challenge}1A` }}>
+            <Typography variant="body-12" style={{ color: colors.challenge }}>
+              {challenge.rewardMode === 'pooled'
+                ? t('challenge.rewardModePooled')
+                : t('challenge.rewardModeIsolated')}
+            </Typography>
+          </View>
         </View>
+
+        {/* Reward breakdown. Not shown for a cancelled challenge — nobody ever
+            focused against it, so there is nothing to double. */}
+        {!isCancelled && reward && (
+          <View className="bg-light-border/30 dark:bg-dark-card rounded-xl p-4 mb-3">
+            <Typography variant="subtitle-14-medium" color="primary" className="mb-1">
+              {isOver ? t('challenge.rewardTitleFinal') : t('challenge.rewardTitleProjected')}
+            </Typography>
+            <Typography variant="body-12" color="secondary" className="mb-3">
+              {challenge.rewardMode === 'pooled'
+                ? t('challenge.rewardModePooledDesc')
+                : t('challenge.rewardModeIsolatedDesc')}
+            </Typography>
+
+            <View className="flex-row items-center justify-between py-1">
+              <Typography variant="body-12" color="secondary" className="flex-1 mr-2">
+                {t('challenge.rewardBase', { tag: challenge.tagName })}
+              </Typography>
+              <Typography variant="body-12" color="primary">
+                {t('challenge.fruitsCount', { count: reward.baseFruits })}
+              </Typography>
+            </View>
+
+            <View className="flex-row items-center justify-between py-1">
+              <Typography variant="body-12" color="secondary" className="flex-1 mr-2">
+                {challenge.rewardMode === 'pooled'
+                  ? t('challenge.rewardGroupCompletion')
+                  : t('challenge.rewardMyCompletion')}
+              </Typography>
+              <Typography variant="body-12" color="primary">
+                {reward.hits}/{reward.totalPeriods} ({Math.round(reward.ratio * 100)}%)
+              </Typography>
+            </View>
+
+            <View className="flex-row items-center justify-between py-1">
+              <Typography variant="body-12" color="secondary" className="flex-1 mr-2">
+                {t('challenge.rewardMultiplier')}
+              </Typography>
+              <Typography variant="body-12" color="primary">
+                ×{reward.multiplier.toFixed(2)}
+                {reward.isFull ? ` · ${t('challenge.rewardFullDouble')}` : ''}
+              </Typography>
+            </View>
+
+            {/* Pooled only. Shown for the WHOLE challenge, not just once earned —
+                a bonus that only appears after you've secured it can't motivate
+                the run it's meant to drive. Dimmed while still in reach (with the
+                periods left to go), highlighted once banked, struck to a dash if
+                the challenge ended without it. Kept as its own line rather than
+                folded into the multiplier, so the shared multiplier above stays
+                one number every participant can compare. */}
+            {challenge.rewardMode === 'pooled' && (
+              <View className="flex-row items-center justify-between py-1">
+                <Typography
+                  variant="body-12"
+                  color={reward.earnedPerfectBonus ? undefined : 'secondary'}
+                  className="flex-1 mr-2"
+                  style={reward.earnedPerfectBonus ? { color: colors.challenge } : undefined}
+                >
+                  {t('challenge.rewardPerfectBonus')}
+                  {!reward.earnedPerfectBonus && !isOver && perfectPeriodsToGo > 0
+                    ? ` · ${t('challenge.rewardPerfectBonusToGo', {
+                        count: perfectPeriodsToGo,
+                        unit: periodUnit,
+                      })}`
+                    : ''}
+                </Typography>
+                <Typography
+                  variant="body-12"
+                  color={reward.earnedPerfectBonus ? undefined : 'secondary'}
+                  style={reward.earnedPerfectBonus ? { color: colors.challenge } : undefined}
+                >
+                  {reward.earnedPerfectBonus
+                    ? t('challenge.fruitsReward', { count: reward.perfectBonus })
+                    : isOver
+                      ? t('challenge.rewardPerfectBonusMissed')
+                      : t('challenge.fruitsReward', { count: reward.potentialPerfectBonus })}
+                </Typography>
+              </View>
+            )}
+
+            <View className="h-px bg-light-border dark:bg-dark-border my-2" />
+
+            <View className="flex-row items-center justify-between">
+              <Typography variant="subtitle-14-medium" color="primary" className="flex-1 mr-2">
+                {claimed
+                  ? t('challenge.rewardClaimedLabel')
+                  : isOver
+                    ? t('challenge.rewardClaimable')
+                    : t('challenge.rewardIfEndedNow')}
+              </Typography>
+              <Typography variant="subtitle-14-medium" style={{ color: colors.challenge }}>
+                {t('challenge.fruitsReward', { count: claimedAmount ?? reward.reward })}
+              </Typography>
+            </View>
+
+            {/* Partial runs are claimable too, so the CTA is gated on a non-zero
+                payout rather than on winning. */}
+            {isOver && !claimed && reward.reward > 0 && (
+              <Pressable
+                onPress={handleClaim}
+                disabled={claiming}
+                className={`mt-3 py-3 rounded-xl items-center justify-center active:opacity-80 ${claiming ? 'opacity-50' : ''}`}
+                style={{ backgroundColor: colors.challenge }}
+              >
+                <Typography variant="subtitle-14-medium" style={{ color: colors.white }}>
+                  {claiming ? t('gm.notifClaiming') : t('challenge.rewardClaimCta')}
+                </Typography>
+              </Pressable>
+            )}
+
+            {isOver && claimed && (
+              <View className="mt-3 flex-row items-center justify-center">
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Typography variant="body-12" className="ml-1" style={{ color: colors.success }}>
+                  {t('gm.notifClaimed')}
+                </Typography>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Loading spinner */}
         {loading && (

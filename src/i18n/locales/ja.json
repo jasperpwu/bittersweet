@@ -599,7 +599,29 @@
     "targetWeekly": "{{value}}/週",
     "progress": "{{hits}}/{{total}} {{unit}}",
     "yourProgress": "あなたの進捗",
-    "ranking": "ランキング"
+    "ranking": "ランキング",
+    "fruitsSoFar": "現在 +{{count}} 実",
+    "fruitsCount": "{{count}} 🍎",
+    "rewardExplainer": "チャレンジが終わると、期間中にこのタグで貯めた実の分だけボーナスを受け取れます。すべての期間を達成すればまるごと2倍（×1）。届かなかった場合は80%を基準に按分され、達成率80%なら ×0.64 になります。",
+    "rewardModeIsolated": "個人",
+    "rewardModePooled": "連帯",
+    "rewardModeIsolatedDesc": "個人 — ボーナスは自分の成績だけで決まります。すべての期間を達成すれば、ほかの人が離脱しても2倍をまるごと受け取れます。",
+    "rewardModePooledDesc": "連帯 — 全員で上がり、全員で下がります。まるごと2倍になるのは参加者全員がすべての期間を達成したときだけ。誰かが届かなければ、全員がグループの平均で按分されます。ただし自分がすべての期間を達成すれば、グループの結果にかかわらず自分の実の +10% が上乗せされます。",
+    "rewardTitleProjected": "現在のボーナス",
+    "rewardTitleFinal": "ボーナス",
+    "rewardBase": "「{{tag}}」で貯めた実",
+    "rewardMyCompletion": "あなたの達成率",
+    "rewardGroupCompletion": "グループの達成率",
+    "rewardMultiplier": "倍率",
+    "rewardFullDouble": "まるごと2倍",
+    "rewardClaimable": "受け取れる分",
+    "rewardIfEndedNow": "今終わった場合",
+    "rewardClaimedLabel": "受け取り済み",
+    "rewardClaimCta": "ボーナスを受け取る",
+    "rewardClaimedToast": "+{{count}} 🍎 を受け取りました！",
+    "rewardPerfectBonus": "完全達成ボーナス（+10%）",
+    "rewardPerfectBonusToGo": "残り {{count}} {{unit}}",
+    "rewardPerfectBonusMissed": "未達成"
   },
   "preferences": {
     "general": "一般",
@@ -853,7 +875,8 @@
     "summary": "全員が「{{tag}}」タグで{{period}}あたり{{duration}}集中します。{{date}}に終了。",
     "sendChallenge": "チャレンジを送る",
     "andOthers_one": "{{names}}、他{{count}}人",
-    "andOthers_other": "{{names}}、他{{count}}人"
+    "andOthers_other": "{{names}}、他{{count}}人",
+    "rewardTitle": "ボーナス"
   },
   "challengesList": {
     "failedDecline": "チャレンジを辞退できませんでした。もう一度お試しください。",
@@ -1185,6 +1208,7 @@
     "asDiscard": "破棄",
     "asEditCostTitle": "ブロックリストを変更しますか？",
     "asEditCostMessage": "この変更には {{cost}} 🍎 かかります。料金は編集のたびに倍増し、毎週始めにリセットされます。",
-    "asEditCostConfirm": "{{cost}} 🍎 を支払う"
+    "asEditCostConfirm": "{{cost}} 🍎 を支払う",
+    "notifClaimPartial": "達成率 {{percent}}% — {{count}} 🍎 を受け取る"
   }
 }

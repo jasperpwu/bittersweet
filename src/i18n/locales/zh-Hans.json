@@ -599,7 +599,29 @@
     "targetWeekly": "{{value}}/周",
     "progress": "{{hits}}/{{total}} {{unit}}",
     "yourProgress": "你的进度",
-    "ranking": "排行榜"
+    "ranking": "排行榜",
+    "fruitsSoFar": "目前 +{{count}} 果实",
+    "fruitsCount": "{{count}} 🍎",
+    "rewardExplainer": "挑战结束后可以领取一份奖励，数量取决于挑战期间用这个标签攒下的果实。全部周期都达成就完整翻倍（×1）；没做满则按 80% 折算——达成 80% 就是 ×0.64。",
+    "rewardModeIsolated": "各自结算",
+    "rewardModePooled": "共同结算",
+    "rewardModeIsolatedDesc": "各自结算——奖励只看你自己的记录。只要你做满每个周期，就算别人中途放弃，你照样拿完整翻倍。",
+    "rewardModePooledDesc": "共同结算——大家一起涨、一起跌。只有每位参与者都做满每个周期才有完整翻倍；只要有人没做到，所有人都按小组平均折算。不过只要你自己做满每个周期，无论小组表现如何，都会额外加上你自己果实的 10%。",
+    "rewardTitleProjected": "目前奖励",
+    "rewardTitleFinal": "奖励",
+    "rewardBase": "用“{{tag}}”攒下的果实",
+    "rewardMyCompletion": "你的完成度",
+    "rewardGroupCompletion": "小组完成度",
+    "rewardMultiplier": "倍率",
+    "rewardFullDouble": "完整翻倍",
+    "rewardClaimable": "可领取",
+    "rewardIfEndedNow": "若现在结束",
+    "rewardClaimedLabel": "已领取",
+    "rewardClaimCta": "领取奖励",
+    "rewardClaimedToast": "已领取 +{{count}} 🍎！",
+    "rewardPerfectBonus": "全勤奖励（+10%）",
+    "rewardPerfectBonusToGo": "还差 {{count}} {{unit}}",
+    "rewardPerfectBonusMissed": "未达成"
   },
   "preferences": {
     "general": "通用",
@@ -853,7 +875,8 @@
     "summary": "所有人都要用“{{tag}}”标签每{{period}}专注 {{duration}}。{{date}}结束。",
     "sendChallenge": "发送挑战",
     "andOthers_one": "{{names}} 等 {{count}} 人",
-    "andOthers_other": "{{names}} 等 {{count}} 人"
+    "andOthers_other": "{{names}} 等 {{count}} 人",
+    "rewardTitle": "奖励"
   },
   "challengesList": {
     "failedDecline": "无法拒绝挑战，请重试。",
@@ -1185,6 +1208,7 @@
     "asDiscard": "放弃",
     "asEditCostTitle": "更新屏蔽列表？",
     "asEditCostMessage": "此更改需要 {{cost}} 🍎。价格每次编辑翻倍，并在每周开始时重置。",
-    "asEditCostConfirm": "支付 {{cost}} 🍎"
+    "asEditCostConfirm": "支付 {{cost}} 🍎",
+    "notifClaimPartial": "完成 {{percent}}% — 领取 {{count}} 🍎"
   }
 }

@@ -297,7 +297,17 @@ CREATE TABLE grove_challenges (
   -- Legacy hit columns kept for backward compatibility during transition
   challenger_hits INTEGER NOT NULL DEFAULT 0,
   challengee_hits INTEGER NOT NULL DEFAULT 0,
+  -- Legacy flat bounty. Superseded by the proportional reward (see
+  -- claim_challenge_reward + src/utils/challengeReward.ts); kept as the fallback
+  -- payout for pre-20260730 rows.
   fruit_reward INTEGER NOT NULL DEFAULT 10,
+  -- Whose completion record sets the payout multiplier.
+  --   'isolated' — the claimant's own hits only.
+  --   'pooled'   — participants are bound: the full x1.00 double is paid only if
+  --                EVERY accepted participant hit EVERY period, otherwise the
+  --                group average drops everyone into the 80% band.
+  reward_mode TEXT NOT NULL DEFAULT 'isolated'
+    CHECK (reward_mode IN ('isolated', 'pooled')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -336,6 +346,10 @@ CREATE TABLE grove_challenge_participants (
   -- When this participant claimed their (individual) fruit reward; NULL = unclaimed.
   -- Idempotency guard so fruits are credited exactly once. See claim_challenge_reward.
   reward_claimed_at TIMESTAMPTZ,
+  -- Fruits actually banked at claim time; NULL = unclaimed. Kept so the UI can
+  -- show the historical payout without recomputing it from sessions that may
+  -- since have been edited or deleted.
+  reward_amount INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT unique_challenge_participant UNIQUE (challenge_id, user_id)
@@ -382,13 +396,14 @@ RETURNS TABLE (
   outcome TEXT,
   tag_id TEXT,
   reward_claimed_at TIMESTAMPTZ,
+  reward_amount INTEGER,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql STABLE SECURITY DEFINER AS $$
 BEGIN
   RETURN QUERY
     SELECT cp.id, cp.challenge_id, cp.user_id, cp.role, cp.status,
-           cp.hits, cp.outcome, cp.tag_id, cp.reward_claimed_at,
+           cp.hits, cp.outcome, cp.tag_id, cp.reward_claimed_at, cp.reward_amount,
            cp.created_at, cp.updated_at
     FROM grove_challenge_participants cp
     WHERE cp.challenge_id = ANY(p_challenge_ids)
@@ -403,16 +418,29 @@ $$;
 -- RPC: claim_challenge_reward
 -- Records the caller's individual fruit-reward claim for a finished challenge.
 -- Idempotent and race-safe (conditional UPDATE on reward_claimed_at IS NULL), so
--- fruits are credited exactly once. Eligibility is decided client-side (challenge
--- over + I hit all periods) and trusted here, like 20260606's trust-client-hits.
+-- fruits are credited exactly once.
+--
+-- The payout is proportional to the fruits the claimant earned with the challenge
+-- tag during the window, prorated by completion (full run x1.00, otherwise
+-- ratio x 0.80). Per-session fruits never reach the cloud (migration 20260620), so
+-- the amount is computed client-side and trusted here, like 20260606's
+-- trust-client-hits. p_amount defaults to NULL so an older client passing only
+-- p_challenge_id falls back to the legacy flat fruit_reward.
+--
+-- Deliberately does NOT stamp outcome: a partial run is claimable too, and
+-- stamping 'completed' would make fetchChallenges badge an 80% run as "Done".
 -- Returns { claimed, fruit_reward } — claimed is true only on the first claim.
-CREATE OR REPLACE FUNCTION claim_challenge_reward(p_challenge_id UUID)
+CREATE OR REPLACE FUNCTION claim_challenge_reward(
+  p_challenge_id UUID,
+  p_amount INTEGER DEFAULT NULL
+)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_participant_id UUID;
-  v_fruit_reward INTEGER;
+  v_reward INTEGER;
+  v_existing INTEGER;
 BEGIN
-  SELECT id INTO v_participant_id
+  SELECT id, reward_amount INTO v_participant_id, v_existing
   FROM grove_challenge_participants
   WHERE challenge_id = p_challenge_id
     AND user_id = auth.uid();
@@ -421,22 +449,25 @@ BEGIN
     RAISE EXCEPTION 'Not a participant of this challenge';
   END IF;
 
-  SELECT fruit_reward INTO v_fruit_reward
-  FROM grove_challenges
-  WHERE id = p_challenge_id;
+  IF p_amount IS NULL THEN
+    SELECT fruit_reward INTO v_reward FROM grove_challenges WHERE id = p_challenge_id;
+  ELSE
+    v_reward := GREATEST(p_amount, 0);
+  END IF;
 
   UPDATE grove_challenge_participants
   SET reward_claimed_at = now(),
-      outcome = 'completed',
+      reward_amount = COALESCE(v_reward, 0),
       updated_at = now()
   WHERE id = v_participant_id
     AND reward_claimed_at IS NULL;
 
   IF NOT FOUND THEN
-    RETURN json_build_object('claimed', false, 'fruit_reward', COALESCE(v_fruit_reward, 0));
+    -- Already claimed: report the amount actually banked, not this caller's.
+    RETURN json_build_object('claimed', false, 'fruit_reward', COALESCE(v_existing, 0));
   END IF;
 
-  RETURN json_build_object('claimed', true, 'fruit_reward', COALESCE(v_fruit_reward, 0));
+  RETURN json_build_object('claimed', true, 'fruit_reward', COALESCE(v_reward, 0));
 END;
 $$;
 

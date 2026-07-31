@@ -600,7 +600,29 @@
     "targetWeekly": "{{value}}/semaine",
     "progress": "{{hits}}/{{total}} {{unit}}",
     "yourProgress": "Votre progression",
-    "ranking": "Classement"
+    "ranking": "Classement",
+    "fruitsSoFar": "+{{count}} fruits pour l’instant",
+    "fruitsCount": "{{count}} 🍎",
+    "rewardExplainer": "À la fin du défi, vous récupérez un bonus calculé sur les fruits gagnés avec cette étiquette pendant sa durée. Si vous validez chaque période, vous les doublez intégralement (×1). Sinon, le bonus est calculé au prorata sur 80 % : 80 % de périodes validées donnent ×0,64.",
+    "rewardModeIsolated": "Solo",
+    "rewardModePooled": "Liés",
+    "rewardModeIsolatedDesc": "Solo — votre bonus ne dépend que de votre propre parcours. Validez chaque période et vous gardez le double intégral, même si les autres abandonnent.",
+    "rewardModePooledDesc": "Liés — vous montez et descendez ensemble. Le double intégral n’est versé que si chaque participant valide chaque période ; si l’un flanche, tout le monde passe au prorata de la moyenne du groupe. Si vous validez vous-même chaque période, vous ajoutez +10 % de vos propres fruits par-dessus, quel que soit le résultat du groupe.",
+    "rewardTitleProjected": "Bonus actuel",
+    "rewardTitleFinal": "Bonus",
+    "rewardBase": "Fruits gagnés avec {{tag}}",
+    "rewardMyCompletion": "Votre réussite",
+    "rewardGroupCompletion": "Réussite du groupe",
+    "rewardMultiplier": "Multiplicateur",
+    "rewardFullDouble": "double intégral",
+    "rewardClaimable": "À récupérer",
+    "rewardIfEndedNow": "Si ça se terminait maintenant",
+    "rewardClaimedLabel": "Récupéré",
+    "rewardClaimCta": "Récupérer le bonus",
+    "rewardClaimedToast": "+{{count}} 🍎 récupérés !",
+    "rewardPerfectBonus": "Bonus sans-faute (+10 %)",
+    "rewardPerfectBonusToGo": "encore {{count}} {{unit}}",
+    "rewardPerfectBonusMissed": "manqué"
   },
   "preferences": {
     "general": "Général",
@@ -856,7 +878,8 @@
     "summary": "Chacun se concentre avec l’étiquette « {{tag}} » pendant {{duration}} par {{period}}. Fin le {{date}}.",
     "sendChallenge": "Envoyer le défi",
     "andOthers_one": "{{names}} et {{count}} autre",
-    "andOthers_other": "{{names}} et {{count}} autres"
+    "andOthers_other": "{{names}} et {{count}} autres",
+    "rewardTitle": "Récompense"
   },
   "challengesList": {
     "failedDecline": "Impossible de refuser le défi. Réessaie.",
@@ -1188,6 +1211,7 @@
     "asDiscard": "Abandonner",
     "asEditCostTitle": "Modifier la liste de blocage ?",
     "asEditCostMessage": "Ce changement coûte {{cost}} 🍎. Le prix double à chaque modification et se réinitialise au début de chaque semaine.",
-    "asEditCostConfirm": "Payer {{cost}} 🍎"
+    "asEditCostConfirm": "Payer {{cost}} 🍎",
+    "notifClaimPartial": "{{percent}} % atteint — récupérez {{count}} 🍎"
   }
 }
