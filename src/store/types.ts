@@ -238,6 +238,10 @@ export interface CoachInsightCard {
   body: string;
   severity: CoachInsightSeverity;
   action: CoachAction;
+  // Keep the engine's body verbatim through narration. The on-device model is asked
+  // for "one or two sentences", which would reflow a structured multi-line body (the
+  // goal breakdown) into prose and blur its numbers. Headline stays rewritable.
+  bodyLocked?: boolean;
 }
 
 export interface CoachTagStat {
@@ -245,6 +249,30 @@ export interface CoachTagStat {
   minutes: number;
   sessions: number;
   avgRating: number | null; // null when no rated sessions for this tag
+}
+
+export interface CoachGoalBucket {
+  goals: number; // tracked goals of this cadence
+  onTrack: number; // goals that fully cleared their own period, judged on its own terms
+}
+
+/**
+ * Weekly goal outcomes split by cadence, because the three cadences don't answer the
+ * same question and averaging them into one "X of Y met" fraction is what made the
+ * old number misleading:
+ *   - daily   — the week is 7 chances per goal, so it's reported in DAYS hit, not goals.
+ *   - weekly  — the only cadence whose period IS the report period; a clean met/missed.
+ *   - monthly — judged on month-to-date pace as of the week's end, so a front-loaded
+ *               month reads as on track instead of "missed" for its remaining weeks.
+ * A cadence key is present only when the user actually has goals of that cadence, so
+ * the report never shows a row for something they haven't set up. Cumulative
+ * (`period: 'none'`) goals have no cadence and are left out of the breakdown entirely.
+ * Optional: reports generated before the breakdown existed don't carry it.
+ */
+export interface CoachGoalBreakdown {
+  daily?: CoachGoalBucket & { daysTracked: number; daysMet: number };
+  weekly?: CoachGoalBucket;
+  monthly?: CoachGoalBucket;
 }
 
 // The deterministic "facts" the score is built from and the narrator is handed.
@@ -272,6 +300,9 @@ export interface CoachWeeklyStats {
   byTag: CoachTagStat[];
   goalsTracked: number; // active goals during the week
   goalsMet: number; // goals whose weekly-equivalent target was met
+  // Per-cadence outcomes — what the report actually shows the user. `goalsMet` above
+  // is kept as the score's legacy fallback and is deliberately NOT the same number.
+  goalBreakdown?: CoachGoalBreakdown;
   // Mean partial credit [0,1] across tracked goals — daily goals score by days-hit,
   // weekly/monthly by minutes ratio. Drives the consistency sub-score so a partial
   // week isn't graded the same as an empty one. Optional: reports generated before

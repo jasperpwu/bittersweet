@@ -72,27 +72,80 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
     headline: string,
     body: string,
     severity: CoachInsightCard['severity'],
-    action: CoachAction
-  ): CoachInsightCard => ({ id: `tpl-${idx++}`, headline, body, severity, action });
+    action: CoachAction,
+    bodyLocked?: boolean
+  ): CoachInsightCard => ({ id: `tpl-${idx++}`, headline, body, severity, action, bodyLocked });
   const tip = (headline: string, body: string, severity: CoachInsightCard['severity']) =>
     card(headline, body, severity, { type: 'none' });
 
   const topTag = stats.byTag[0];
 
   // --- Goals (actionable) ---
-  if (stats.goalsTracked > 0 && stats.goalsMet < stats.goalsTracked) {
+  // One card carrying a per-cadence breakdown, because daily/weekly/monthly goals are
+  // graded on different periods and can't honestly share a single "X of Y met"
+  // fraction. Only cadences the user actually has goals for get a line, and the whole
+  // breakdown lives in one card so it doesn't crowd out the rest of the week's
+  // insights against the 3-card cap.
+  const gb = stats.goalBreakdown;
+  const goalLines: string[] = [];
+  let goalCount = 0;
+  let onTrackCount = 0;
+  // `count` is always the TOTAL (the second number). Every locale's phrasing is written
+  // so its noun agrees with that total, because i18next selects the plural form from
+  // `count` alone — passing the numerator here is what made French read "1 objectifs
+  // sur 3".
+  if (gb?.daily) {
+    // Days, not goals: a daily goal is 7 chances a week, and summing them into one
+    // pass/fail is what made a 5-of-7 week read the same as an empty one.
+    goalLines.push(
+      i18n.t('coachTpl.goalsLineDaily', { met: gb.daily.daysMet, count: gb.daily.daysTracked })
+    );
+    goalCount += gb.daily.goals;
+    onTrackCount += gb.daily.onTrack;
+  }
+  if (gb?.weekly) {
+    goalLines.push(
+      i18n.t('coachTpl.goalsLineWeekly', { met: gb.weekly.onTrack, count: gb.weekly.goals })
+    );
+    goalCount += gb.weekly.goals;
+    onTrackCount += gb.weekly.onTrack;
+  }
+  if (gb?.monthly) {
+    // "On pace" (month-to-date), not "met" — the month isn't over yet.
+    goalLines.push(
+      i18n.t('coachTpl.goalsLineMonthly', { onPace: gb.monthly.onTrack, count: gb.monthly.goals })
+    );
+    goalCount += gb.monthly.goals;
+    onTrackCount += gb.monthly.onTrack;
+  }
+  const hasCadenceGoals = goalLines.length > 0;
+  const allOnTrack = hasCadenceGoals && onTrackCount === goalCount;
+
+  if (hasCadenceGoals) {
+    const body = `${goalLines.join('\n')}\n\n${i18n.t(
+      allOnTrack ? 'coachTpl.allGoalsB' : 'coachTpl.goalsMetPartialB'
+    )}`;
     cards.push(
       card(
-        i18n.t('coachTpl.goalsMetPartialH', { met: stats.goalsMet, tracked: stats.goalsTracked }),
-        i18n.t('coachTpl.goalsMetPartialB'),
-        'attention',
-        { type: 'open_goals', label: i18n.t('aiCoach.actOpenGoals') }
+        allOnTrack
+          ? i18n.t('coachTpl.goalsAllOnTrackH')
+          : i18n.t('coachTpl.goalsOnTrackH', { onTrack: onTrackCount, count: goalCount }),
+        body,
+        allOnTrack ? 'positive' : 'attention',
+        // A single Open Goals button, and only when there's something to go fix.
+        allOnTrack
+          ? { type: 'none' }
+          : { type: 'open_goals', label: i18n.t('aiCoach.actOpenGoals') },
+        true // structured lines — narration must not reflow them into prose
       )
     );
   } else if (stats.goalsTracked === 0 && topTag) {
     cards.push(
       card(
-        i18n.t('coachTpl.topTagH', { mins: fmtMins(topTag.minutes), tag: ctx.tagName(topTag.tagId) }),
+        i18n.t('coachTpl.topTagH', {
+          mins: fmtMins(topTag.minutes),
+          tag: ctx.tagName(topTag.tagId),
+        }),
         i18n.t('coachTpl.topTagB'),
         'neutral',
         {
@@ -102,14 +155,6 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
           period: 'weekly',
           targetMinutes: roundTo(topTag.minutes, 30),
         }
-      )
-    );
-  } else if (stats.goalsTracked > 0 && stats.goalsMet === stats.goalsTracked) {
-    cards.push(
-      tip(
-        i18n.t('coachTpl.allGoalsH', { tracked: stats.goalsTracked }),
-        i18n.t('coachTpl.allGoalsB'),
-        'positive'
       )
     );
   }
@@ -129,21 +174,17 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
   // --- Notifications: surface whichever layer is off (actionable) ---
   if (!ctx.osNotificationsEnabled) {
     cards.push(
-      card(
-        i18n.t('aiCoach.actEnableNotifs'),
-        i18n.t('coachTpl.notifsB'),
-        'attention',
-        { type: 'enable_notifications', label: i18n.t('aiCoach.actEnableNotifs') }
-      )
+      card(i18n.t('aiCoach.actEnableNotifs'), i18n.t('coachTpl.notifsB'), 'attention', {
+        type: 'enable_notifications',
+        label: i18n.t('aiCoach.actEnableNotifs'),
+      })
     );
   } else if (!ctx.goalRemindersEnabled && stats.goalsTracked > 0) {
     cards.push(
-      card(
-        i18n.t('coachTpl.remindersH'),
-        i18n.t('coachTpl.remindersB'),
-        'neutral',
-        { type: 'enable_goal_reminders', label: i18n.t('aiCoach.actEnableReminders') }
-      )
+      card(i18n.t('coachTpl.remindersH'), i18n.t('coachTpl.remindersB'), 'neutral', {
+        type: 'enable_goal_reminders',
+        label: i18n.t('aiCoach.actEnableReminders'),
+      })
     );
   }
 
@@ -197,33 +238,29 @@ export function candidateCards(stats: CoachWeeklyStats, ctx: NarratorContext): C
 
   // --- Widget nudges (info bullets, only when that specific widget isn't installed) ---
   if (!ctx.hasFocusWidget && stats.totalMinutes < LOW_VOLUME_MINUTES) {
-    cards.push(
-      tip(
-        i18n.t('coachTpl.focusWidgetH'),
-        i18n.t('coachTpl.focusWidgetB'),
-        'neutral'
-      )
-    );
+    cards.push(tip(i18n.t('coachTpl.focusWidgetH'), i18n.t('coachTpl.focusWidgetB'), 'neutral'));
   }
-  if (!ctx.hasGoalsWidget && stats.goalsTracked > 0 && stats.goalsMet < stats.goalsTracked) {
-    cards.push(
-      tip(
-        i18n.t('coachTpl.goalsWidgetH'),
-        i18n.t('coachTpl.goalsWidgetB'),
-        'neutral'
-      )
-    );
+  if (!ctx.hasGoalsWidget && hasCadenceGoals && !allOnTrack) {
+    cards.push(tip(i18n.t('coachTpl.goalsWidgetH'), i18n.t('coachTpl.goalsWidgetB'), 'neutral'));
   }
 
   // Always return at least one card.
   if (cards.length === 0) {
     cards.push(
       card(
-        i18n.t('coachTpl.fallbackH', { mins: fmtMins(stats.totalMinutes), count: stats.activeDays }),
+        i18n.t('coachTpl.fallbackH', {
+          mins: fmtMins(stats.totalMinutes),
+          count: stats.activeDays,
+        }),
         i18n.t('coachTpl.fallbackB'),
         'neutral',
         topTag
-          ? { type: 'create_goal', label: i18n.t('aiCoach.actSetGoal'), tagId: topTag.tagId, period: 'weekly' }
+          ? {
+              type: 'create_goal',
+              label: i18n.t('aiCoach.actSetGoal'),
+              tagId: topTag.tagId,
+              period: 'weekly',
+            }
           : { type: 'none' }
       )
     );

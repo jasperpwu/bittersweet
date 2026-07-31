@@ -7,7 +7,7 @@
  * the numbers always agree with the rest of the app.
  */
 import { FocusGoal } from '../../store/types';
-import type { CoachWeeklyStats, CoachTagStat } from '../../store/types';
+import type { CoachWeeklyStats, CoachTagStat, CoachGoalBreakdown } from '../../store/types';
 import {
   getGoalCurrentTarget,
   getGoalOffKeys,
@@ -83,6 +83,57 @@ interface GoalAttainment {
    * the volume average rather than counted as a zero.
    */
   hoursAttainment: number | null;
+  /** Cadence this goal reports under; `null` for cumulative goals (no cadence). */
+  bucket: 'daily' | 'weekly' | 'monthly' | null;
+  /**
+   * Whether the goal fully cleared its own period — daily means every tracked day was
+   * hit, weekly means the week's target was met, monthly means month-to-date pace was
+   * held. This, not `met`, is what the user-facing breakdown counts.
+   */
+  onTrack: boolean;
+  /** daily only — the week's day-level tally, reported instead of a goal count. */
+  daysTracked: number;
+  daysMet: number;
+}
+
+const daysInMonthOf = (d: Date): number => new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+
+/**
+ * Whether a monthly goal is holding its month-to-date pace as of `refDay` — minutes
+ * banked this month vs. the share of the target the elapsed days call for.
+ *
+ * This is the honest question for a monthly goal inside a weekly report, and the one
+ * the user-facing breakdown asks. Grading a month by a manufactured weekly slice tells
+ * someone who front-loaded and already banked the whole month that they "missed" it in
+ * each of the remaining three weeks.
+ *
+ * Both sides start at the later of the month's start and the goal's tracked-from date,
+ * so a goal created on the 20th is only asked for the 20th onward.
+ */
+function monthlyPaceHeld(
+  goal: FocusGoal,
+  sessions: any[],
+  refDay: Date,
+  restDays: number[],
+  trackedFromMs: number
+): boolean {
+  const monthStart = new Date(refDay.getFullYear(), refDay.getMonth(), 1, 0, 0, 0, 0);
+  const target = getTargetForDate(goal, refDay, restDays, 'monthly');
+  if (target <= 0) return true; // nothing asked for → nothing to fall behind on
+
+  const paceStart = trackedFromMs > monthStart.getTime() ? new Date(trackedFromMs) : monthStart;
+  const paceEnd = new Date(refDay);
+  paceEnd.setHours(23, 59, 59, 999);
+  if (paceEnd.getTime() < paceStart.getTime()) return true;
+
+  // Days the user has actually had, inclusive of both ends.
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const startMidnight = new Date(paceStart);
+  startMidnight.setHours(0, 0, 0, 0);
+  const elapsedDays = Math.round((paceEnd.getTime() - startMidnight.getTime()) / MS_PER_DAY);
+  const expected = target * clamp01(elapsedDays / daysInMonthOf(refDay));
+  const got = minutesInRange(sessions, paceStart, paceEnd, (goal as any).tagId);
+  return got >= expected;
 }
 
 /**
@@ -115,7 +166,16 @@ function weeklyGoalAttainment(
   restDays: number[],
   now: number
 ): GoalAttainment {
-  const untracked = { tracked: false, met: false, attainment: 0, hoursAttainment: null };
+  const untracked: GoalAttainment = {
+    tracked: false,
+    met: false,
+    attainment: 0,
+    hoursAttainment: null,
+    bucket: null,
+    onTrack: false,
+    daysTracked: 0,
+    daysMet: 0,
+  };
   const period = (goal as any).activePeriod || (goal as any).period || 'daily';
   const tagId = (goal as any).tagId;
   const trackedFromMs = goalTrackedFromMs(goal);
@@ -130,7 +190,15 @@ function weeklyGoalAttainment(
     const lifetimeMinutes = minutesInRange(sessions, new Date(0), weekEnd, tagId);
     if (lifetimeMinutes >= lifetimeTarget) return untracked;
     const touched = minutesInRange(sessions, weekStart, weekEnd, tagId) > 0;
-    return { tracked: true, met: touched, attainment: touched ? 1 : 0, hoursAttainment: null };
+    // `bucket: null` — a lifetime goal has no cadence, so it stays out of the
+    // daily/weekly/monthly breakdown. It still feeds the consistency score below.
+    return {
+      ...untracked,
+      tracked: true,
+      met: touched,
+      attainment: touched ? 1 : 0,
+      hoursAttainment: null,
+    };
   }
 
   // How much of the week is behind us — 1 for any completed week, so scoring a past
@@ -151,20 +219,57 @@ function weeklyGoalAttainment(
     // A whole-week goal has no day granularity, so "days hit" and "hours hit" are the
     // same measurement here.
     const ratio = clamp01(got / target);
-    return { tracked: true, met: got >= target, attainment: ratio, hoursAttainment: ratio };
+    const met = got >= target;
+    return {
+      ...untracked,
+      tracked: true,
+      met,
+      attainment: ratio,
+      hoursAttainment: ratio,
+      bucket: 'weekly',
+      onTrack: met,
+    };
   }
 
   if (period === 'monthly') {
-    // Attribute the week to the month its start falls in; skip if that month is off.
-    const monthStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), 1);
-    if (getGoalOffKeys(goal, 'monthly').has(getPeriodKey(monthStart))) return untracked;
-    if (trackedFromMs > weekStart.getTime()) return untracked;
-    const target =
-      getTargetForDate(goal, weekStart, restDays, 'monthly') * (7 / 30) * elapsedFraction;
-    if (target <= 0) return untracked;
-    const got = minutesInRange(sessions, weekStart, weekEnd, tagId);
+    // The score still asks "what did you put in THIS week" — a month-to-date credit
+    // would let an empty week ride on an earlier one. So the week's share of the month
+    // is summed day by day: that splits a week straddling two months across both, and
+    // uses each month's real length instead of a flat /30.
+    const offKeys = getGoalOffKeys(goal, 'monthly');
+    let target = 0;
+    let got = 0;
+    let daysCounted = 0;
+    let lastCountedDay: Date | null = null;
+    for (let i = 0; i < 7; i++) {
+      const dayStart = new Date(weekStart);
+      dayStart.setDate(weekStart.getDate() + i);
+      dayStart.setHours(0, 0, 0, 0);
+      if (dayStart.getTime() < trackedFromMs) continue; // goal didn't exist yet
+      if (dayStart.getTime() > now) continue; // day hasn't happened yet
+      const monthStart = new Date(dayStart.getFullYear(), dayStart.getMonth(), 1);
+      if (offKeys.has(getPeriodKey(monthStart))) continue; // month off — as if it never existed
+      const monthTarget = getTargetForDate(goal, dayStart, restDays, 'monthly');
+      if (monthTarget <= 0) continue;
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+      target += monthTarget / daysInMonthOf(dayStart);
+      got += minutesInRange(sessions, dayStart, dayEnd, tagId);
+      daysCounted++;
+      lastCountedDay = dayStart;
+    }
+    if (daysCounted === 0 || target <= 0) return untracked;
     const ratio = clamp01(got / target);
-    return { tracked: true, met: got >= target, attainment: ratio, hoursAttainment: ratio };
+    return {
+      ...untracked,
+      tracked: true,
+      met: got >= target,
+      attainment: ratio,
+      hoursAttainment: ratio,
+      bucket: 'monthly',
+      // What the user is shown is the month-to-date question, not the week's slice.
+      onTrack: monthlyPaceHeld(goal, sessions, lastCountedDay!, restDays, trackedFromMs),
+    };
   }
 
   // daily: sum per-day target AND per-day minutes, skipping off-marked days so a
@@ -201,6 +306,12 @@ function weeklyGoalAttainment(
     met: got >= target,
     attainment: daysMet / daysTracked,
     hoursAttainment: clamp01(got / target),
+    bucket: 'daily',
+    // A daily goal is only fully on track when every day it asked for was hit — the
+    // near misses are what the days-hit tally in the breakdown is there to show.
+    onTrack: daysMet === daysTracked,
+    daysTracked,
+    daysMet,
   };
 }
 
@@ -369,15 +480,12 @@ export function computeWeeklyStats(
   let attainmentSum = 0;
   let hoursSum = 0;
   let hoursGoals = 0;
+  // Cadence buckets stay undefined until a goal of that cadence is actually tracked,
+  // so the report never shows a row for a cadence the user hasn't set up.
+  const goalBreakdown: CoachGoalBreakdown = {};
   activeGoals.forEach((goal) => {
-    const { tracked, met, attainment, hoursAttainment } = weeklyGoalAttainment(
-      goal,
-      allSessions,
-      weekStart,
-      weekEnd,
-      restDays,
-      now
-    );
+    const result = weeklyGoalAttainment(goal, allSessions, weekStart, weekEnd, restDays, now);
+    const { tracked, met, attainment, hoursAttainment, bucket, onTrack } = result;
     if (!tracked) return;
     goalsTracked++;
     if (met) goalsMet++;
@@ -385,6 +493,19 @@ export function computeWeeklyStats(
     if (hoursAttainment != null) {
       hoursSum += hoursAttainment;
       hoursGoals++;
+    }
+
+    if (bucket === 'daily') {
+      const b = (goalBreakdown.daily ??= { goals: 0, onTrack: 0, daysTracked: 0, daysMet: 0 });
+      b.goals++;
+      if (onTrack) b.onTrack++;
+      // Summed across daily goals: 2 goals over 7 days is 14 chances, not 7.
+      b.daysTracked += result.daysTracked;
+      b.daysMet += result.daysMet;
+    } else if (bucket === 'weekly' || bucket === 'monthly') {
+      const b = (goalBreakdown[bucket] ??= { goals: 0, onTrack: 0 });
+      b.goals++;
+      if (onTrack) b.onTrack++;
     }
   });
   // Mean partial credit across tracked goals — what the consistency score reads.
@@ -410,6 +531,7 @@ export function computeWeeklyStats(
     byTag,
     goalsTracked,
     goalsMet,
+    goalBreakdown,
     goalAttainment,
     goalHoursAttainment,
   };

@@ -49,6 +49,9 @@ export async function narrate(
         minutesVsAverage: stats.deltaMinutesVsTrailingAvg,
         goalsMet: stats.goalsMet,
         goalsTracked: stats.goalsTracked,
+        // Per-cadence outcomes, so a rewritten headline can't contradict the breakdown
+        // shown right under it. Absent keys mean the user has no goals of that cadence.
+        goalsByPeriod: stats.goalBreakdown,
       },
       candidates: candidates.map((c, i) => ({ index: i, headline: c.headline, body: c.body })),
     });
@@ -63,11 +66,14 @@ export async function narrate(
       const base = candidates[p.index];
       if (!base || seen.has(p.index)) continue; // ignore invented/duplicate indices
       seen.add(p.index);
-      // Keep the grounded action/severity; only the prose is model-written.
+      // Keep the grounded action/severity; only the prose is model-written. A
+      // `bodyLocked` card (the goal breakdown) keeps its structured body verbatim —
+      // the model is asked for one or two sentences and would flatten the per-cadence
+      // lines into prose, losing the numbers they exist to show.
       cards.push({
         ...base,
         headline: (p.headline || base.headline).trim(),
-        body: (p.body || base.body).trim(),
+        body: base.bodyLocked ? base.body : (p.body || base.body).trim(),
       });
       if (cards.length >= 3) break;
     }
