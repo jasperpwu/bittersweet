@@ -349,14 +349,17 @@ export default function SessionCompleteModal() {
       );
       for (const challenge of activeChallenges) {
         const myHits = challenge.myParticipant?.hits ?? 0;
-        const periodLabel =
-          challenge.period === 'daily' ? t('sessionComplete.day') : t('sessionComplete.week');
         showToast(
-          t('sessionComplete.challengeToast', {
-            period: periodLabel,
-            hits: myHits,
-            total: challenge.totalPeriods,
-          }),
+          t(
+            challenge.period === 'daily'
+              ? 'sessionComplete.challengeToastDaily'
+              : 'sessionComplete.challengeToastWeekly',
+            {
+              tag: `${challenge.tagIcon} ${challenge.tagName}`.trim(),
+              hits: myHits,
+              total: challenge.totalPeriods,
+            }
+          ),
           'success'
         );
       }

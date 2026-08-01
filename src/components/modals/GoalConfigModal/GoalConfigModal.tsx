@@ -1,5 +1,5 @@
 import React, { FC, useCallback, useRef, useState } from 'react';
-import { Alert, View, Pressable, useWindowDimensions } from 'react-native';
+import { Alert, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { Typography } from '../../ui/Typography';
@@ -117,7 +117,7 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
     return false;
   };
 
-  // Guard for the explicit close (✕ / Cancel) buttons.
+  // Guard for the form's explicit Cancel button.
   const handleClosePress = () => {
     if (isDirtyRef.current) promptDiscard();
     else onClose();
@@ -136,16 +136,12 @@ export const GoalConfigModal: FC<GoalConfigModalProps> = ({
           onUpgrade?.();
         }
       }}>
-      {/* Header */}
-      <View className="mb-6 flex-row items-center justify-between">
+      {/* Header — BottomSheet renders its own ✕ at top-right, so leave room
+          for it rather than adding a second close button. */}
+      <View className="mb-6 pr-10">
         <Typography variant="headline-20" color="primary">
           {title}
         </Typography>
-        <Pressable onPress={handleClosePress} className="p-2 active:opacity-70">
-          <Typography variant="headline-18" color="secondary">
-            ✕
-          </Typography>
-        </Pressable>
       </View>
 
       {/* Form Content */}

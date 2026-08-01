@@ -272,10 +272,10 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   };
 
   return (
-    <View className="gap-y-4">
+    <View className="gap-y-3">
       {/* Goal Name */}
       <View>
-        <Typography variant="subtitle-16" color="primary" className="mb-2">
+        <Typography variant="subtitle-16" color="primary" className="mb-1.5">
           {t('goals.nameLabel')}
         </Typography>
         <TextInput
@@ -285,14 +285,14 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
           placeholderTextColor={
             isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary
           }
-          className="bg-light-border dark:bg-dark-border rounded-xl p-4 text-light-text-primary dark:text-dark-text-primary text-base"
+          className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-3 text-light-text-primary dark:text-dark-text-primary text-base"
           style={{ fontFamily: 'Poppins-Regular' }}
         />
       </View>
 
       {/* Time Period */}
       <View>
-        <Typography variant="subtitle-16" color="primary" className="mb-2">
+        <Typography variant="subtitle-16" color="primary" className="mb-1.5">
           {t('goals.timePeriod')}
         </Typography>
         <View className="flex-row gap-x-2">
@@ -300,7 +300,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
             <Pressable
               key={p}
               onPress={() => setActivePeriod(p)}
-              className={`flex-1 py-2.5 rounded-xl ${
+              className={`flex-1 py-2 rounded-xl ${
                 activePeriod === p ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
               }`}
             >
@@ -317,7 +317,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
 
       {/* Target Duration — slider for periodic goals, wheel picker for no-period */}
       <View>
-        <Typography variant="subtitle-16" color="primary" className="mb-2">
+        <Typography variant="subtitle-16" color="primary" className="mb-1.5">
           {activePeriod === 'daily' ? t('goals.regularDayTarget')
             : activePeriod === 'none' ? t('goals.totalTarget')
             : t('goals.targetDuration')}
@@ -325,8 +325,8 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
         {activePeriod === 'none' ? (
           <TotalTargetPicker value={totalTargetMinutes} onChange={setTotalTargetMinutes} />
         ) : (
-          <View className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-3 items-center">
-            <Typography variant="headline-20" color="primary" className="mb-1">
+          <View className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-2 items-center">
+            <Typography variant="headline-20" color="primary">
               {formatSliderValue(currentTargetHours)}
             </Typography>
             <Slider
@@ -345,16 +345,22 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
             {t('goals.cumulativeNote')}
           </Typography>
         )}
+        {/* Reassure that retargeting doesn't rewrite already-earned history */}
+        {editingGoal && (
+          <Typography variant="body-12" color="secondary" className="mt-1.5">
+            {t('goals.targetChangeNote')}
+          </Typography>
+        )}
       </View>
 
       {/* Rest Day Target — only for daily goals */}
       {activePeriod === 'daily' && (
         <View>
-          <Typography variant="subtitle-16" color="primary" className="mb-2">
+          <Typography variant="subtitle-16" color="primary" className="mb-1.5">
             {t('goals.restDayTarget')}
           </Typography>
-          <View className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-3 items-center">
-            <Typography variant="headline-20" color="primary" className="mb-1">
+          <View className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-2 items-center">
+            <Typography variant="headline-20" color="primary">
               {formatSliderValue(dailyRestDayTargetHours)}
             </Typography>
             <Slider
@@ -373,18 +379,9 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
         </View>
       )}
 
-      {/* Target preservation note */}
-      {editingGoal && (
-        <View className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-3">
-          <Typography variant="body-12" color="secondary">
-            {t('goals.targetChangeNote')}
-          </Typography>
-        </View>
-      )}
-
       {/* Settings */}
       <View className="bg-light-border dark:bg-dark-border rounded-xl">
-        <View className="flex-row items-center justify-between p-4">
+        <View className="flex-row items-center justify-between px-4 py-3">
           <View className="flex-1 mr-3">
             <Typography variant="subtitle-16" color="primary">
               {t('goals.showTotalHours')}
@@ -398,10 +395,10 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
       </View>
 
       {/* Action Buttons */}
-      <View className="flex-row gap-x-3 pt-1 pb-4">
+      <View className="flex-row gap-x-3 pb-4">
         <Pressable
           onPress={onCancel}
-          className="flex-1 bg-light-border dark:bg-dark-border rounded-xl py-4 active:opacity-70"
+          className="flex-1 bg-light-border dark:bg-dark-border rounded-xl py-3.5 active:opacity-70"
         >
           <Typography variant="body-14" color="primary" className="text-center">
             {t('common.cancel')}
@@ -410,7 +407,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
         <Pressable
           onPress={handleSubmit}
           disabled={!isValid}
-          className={`flex-1 rounded-xl py-4 active:opacity-70 ${
+          className={`flex-1 rounded-xl py-3.5 active:opacity-70 ${
             isValid ? 'bg-primary' : 'bg-light-border dark:bg-dark-border opacity-50'
           }`}
         >
