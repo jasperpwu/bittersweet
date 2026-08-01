@@ -15,7 +15,8 @@ export default function SubscriptionScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { triggerHaptic } = useDeviceIntegration();
-  const { openPlans, upgradeModals } = useUpgradeFlow();
+  // 'settings': a voluntary upgrade tap, not a feature gate — see PaywallSource.
+  const { openPlans, upgradeModals } = useUpgradeFlow('settings');
   const subscriptionTier = useAppStore((state) => state.subscription.tier);
 
   return (

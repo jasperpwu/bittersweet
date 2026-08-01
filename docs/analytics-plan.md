@@ -23,6 +23,35 @@
 - `reset()` on sign-out (also a privacy requirement — no analytics identity leaks
   to the next person on the device).
 
+### Sign-ups
+
+| Signal | What it answers |
+|---|---|
+| `is_signed_in` (person, bool) | **stock** — how many accounts exist right now (tile 7) |
+| `signed_up` (event, prop `provider`) | **flow** — sign-ups per day/week, and `Application Opened` → `signed_up` conversion |
+| `signup_provider` (person, setOnce) | Apple vs Google vs email split, and retention broken down by it |
+
+`signed_up` fires from the same `onAuthStateChange` block as `identify`, when
+`user.created_at` is within 5 minutes of now **and** `previousUserId !== user.id`.
+
+**Why `created_at` and not the cloud-emptiness probe.** The sign-in handler
+already classifies brand-new vs. returning accounts via `probeCloudHasData()`,
+but that probe answers "is there data to pull?", which is a different question
+and wrong for this one in two ways: it returns `null` on a network error (a
+returning user would be counted as a sign-up), and an account that signed up but
+never created a tag or session reads as brand-new on *every* return. `created_at`
+is the account's actual birth timestamp. This is analytics only — the data
+lifecycle branch still keys on cloud-emptiness exactly as the auth policy in
+CLAUDE.md requires, because there the priority is never destroying data, not
+classification accuracy.
+
+**Known limits.** Sign-ups that happen entirely outside the app (there are none
+today) are invisible. The 5-minute window is loose on purpose: the only thing a
+wider window catches is the same account signing in on a second device shortly
+after creation, which is the same PostHog person and so cannot inflate the
+unique-user count. `profiles.created_at` in Supabase remains the exact ledger —
+use SQL if you need a precise total; PostHog is for the trend and the funnel.
+
 ---
 
 ## Milestone 1 — Minimum viable insight
@@ -35,11 +64,11 @@ blocklist cohort. **Ship this, look at it for a couple of weeks, then expand.**
 | Event | Fires from | Why it exists |
 |---|---|---|
 | `app_opened` | app lifecycle (PostHog can autocapture this) | DAU / WAU / MAU, raw retention |
-| `onboarding_completed` | end of `app/onboarding.tsx` | activation funnel endpoint |
+| `onboarding_completed` | end of `app/onboarding.tsx` | activation funnel endpoint; also the last step of the onboarding drop-off funnel (see "Onboarding funnel") |
 | `focus_session_completed` | `focus.completeSession` | **the** core-loop + activation + "continuous use" retention signal |
 | `blocklist_configured` | blocklist save (≥1 app) | blocking adoption; updates blocklist person props |
 | `app_unlocked` | `spendFruits(purpose: 'app_unlock')` — fires when the user spends fruit to unlock app(s), i.e. the unlock action (not the session expiring) | blocking-economy adoption (earn → spend loop closes) |
-| `goal_activated` | `updateGoal` isActive false→true (goals are auto-created per tag, so *activation* is the real user intent) | goal adoption; updates `has_set_goal` |
+| `goal_activated` | `updateGoal` isActive false→true (goals are auto-created per tag, so *activation* is the real user intent), **excluding onboarding's goal slide** | goal adoption; updates `has_set_goal` |
 | `store_opened` | `router.push('/fruit-store')` (`app/(tabs)/index.tsx`) | fruit-store adoption / intent to spend |
 | `widget_active` | app foreground, when ≥1 home-screen widget is first observed (see note) | widget adoption; strong retention cohort |
 
@@ -67,7 +96,7 @@ Suggested properties (keep minimal):
 |---|---|---|
 | `ever_configured_blocklist` (bool, sticky true) | first `blocklist_configured` | "did they ever try blocking?" |
 | `blocklist_app_count` (number) | every blocklist save | active blockers vs. set-and-emptied |
-| `has_set_goal` (bool) | `goal_activated` | goal cohort |
+| `has_set_goal` (bool) | `goal_activated` — post-onboarding activations only, so this means "set a goal *beyond* the onboarding one" | goal cohort |
 | `has_active_widget` (bool, sticky true) | first `widget_active` | widget-vs-no-widget retention cohort |
 | `total_focus_sessions` (number) | every `focus_session_completed` | power-user segmentation |
 
@@ -113,8 +142,33 @@ abandonment rate; neither one alone tells you anything.
 | `focus_session_started` | `focus.startSession` | `duration_minutes`, `tag_id`, `has_blocklist` |
 | `screentime_permission_requested` | `blocklist.requestAuthorization` (before the await) | — |
 | `screentime_permission_granted` | same method, on `authorized === true` | `status` |
-| `paywall_viewed` | `UpgradeSheet` on open | `source` (`tags`/`goals`/`adhd`/`health`) |
+| `paywall_gate_hit` | `useUpgradeFlow().triggerUpgrade` — the moment the free tier blocks someone | `source`, `signed_in` |
+| `paywall_viewed` | `UpgradeSheet` on open | `source` (`tags`/`goals`/`adhd`/`health`/`settings`) |
 | `subscription_started` | `purchaseUpdatedListener` (StoreKit confirms, not `purchase()`) | `product_id` |
+
+#### The monetization funnel is three steps, not two
+
+`paywall_gate_hit` → `paywall_viewed` → `subscription_started`. The first step
+was missing, and its absence was hiding the largest drop-off in the funnel:
+`triggerUpgrade` opens a **"paid feature" prompt**, and only after the user taps
+through it (and, when signed out, completes a **mandatory sign-in** — entitlements
+are account-keyed) does `UpgradeSheet` mount and fire `paywall_viewed`. So plan
+views alone count people who pushed through two sheets, and silently omit
+everyone who hit the wall and bounced — the population you most want to size.
+
+Both steps use the same `source` property name, so one breakdown reads across the
+whole funnel. `signed_in` on the gate hit separates the two reasons for the
+gate → plans drop: not interested, vs. wouldn't create an account.
+
+**Where a paywall impression can come from.** All 11 gated features share
+`useUpgradeFlow`, so `triggerUpgrade` is the single instrumentation point — a new
+gate is covered automatically. The 2 voluntary "Upgrade" buttons
+(`SubscriptionGate`, `app/settings/subscription.tsx`) call `openPlans` instead:
+no gate, no prompt, straight to plans, so they fire `paywall_viewed` **without** a
+preceding `paywall_gate_hit` — correctly, since nobody was blocked. They now pass
+`source: 'settings'`; they previously fell through to the `'tags'` default
+argument, which credited tags with voluntary upgrades nobody was gated into
+(tile 16 undercounts `settings` and overcounts `tags` for all data before this).
 
 ### Creation funnels (`_attempted` → `_completed`)
 
@@ -136,7 +190,7 @@ abandonment rate; neither one alone tells you anything.
 |---|---|---|
 | `todo_created` | `focus.createTodo` | `scheduled` separates checklist users from timeline users |
 | `todo_completed` | `toggleTodo` / `setTodoCompleted` | only on false→true; un-checking is a correction |
-| `tag_created` | `focus.createTag` | sets `tag_count` — the free-tier (3 tag) paywall pressure gauge |
+| `tag_created` | `focus.createTag`, **excluding onboarding's tag picker** | sets `tag_count` — the free-tier (3 tag) paywall pressure gauge (that property *is* stamped during onboarding, eventlessly) |
 | `session_rated` | `applyFocusRating` **when `source === 'user'`** | `'suggested'` fires on ~every session and would just shadow `focus_session_completed` |
 | `badge_earned` | `focus.concludeGoal` | the only place a badge is minted |
 | `reward_purchased` | `rewards.addPurchase` | single choke point for tips, themes **and** custom rewards |
@@ -164,6 +218,63 @@ self-heals for users who set a preference before this instrumentation existed.
 | `is_premium`, `first_subscribed_at` | `subscription_started` |
 | `friend_count`, `inner_circle_count`, `tag_count`, `total_todos`, `total_purchases`, `custom_reward_count` | their respective create/accept methods |
 | Sticky `ever_*` flags (`ever_created_todo`, `ever_sent_gift`, `ever_earned_badge`, `acquired_via_referral`, `screentime_authorized`, …) | `setOnce` on first occurrence |
+
+---
+
+## Onboarding funnel — SHIPPED
+
+M1's activation funnel treated onboarding as a single step, so a user who quit
+mid-flow was indistinguishable from one who never opened the app. These events
+break it into its slides and locate the drop-off.
+
+| Event | Fires from | Properties |
+|---|---|---|
+| `onboarding_step_viewed` | `app/onboarding.tsx`, on each slide's first appearance | `step_index` (1-based), `step_name` |
+| `onboarding_signed_in` | `finishSignIn`, after the cloud onboarding probe | `step_index`, `step_name`, `existing_account` |
+| `onboarding_completed` | end of `completeOnboarding` (M1 event, now with props) | `tags_created`, `goal_set` |
+
+`step_name` lives on the slide definition (`ONBOARDING_SLIDES[].step`), so it
+travels with the slide when one is added or reordered: `premise` → `tag_picker`
+→ `goal_picker`. **Funnel:** the three `onboarding_step_viewed` steps filtered by
+`step_name`, then `onboarding_completed`.
+
+**Two things the funnel gets wrong unless you account for them:**
+
+- **Re-reads would break monotonicity.** The pager scrolls freely, so a user can
+  swipe back to slide 1. Each step is therefore captured **once per mount** (a ref
+  of seen step names), or a later step could out-count an earlier one.
+- **Signing in is an exit, not a drop-off.** A returning user who taps "Sign in"
+  is sent straight to the app and never fires `onboarding_completed`. Exclude
+  users who fired `onboarding_signed_in` with `existing_account = true` before
+  reading any drop-off number. The same event with `existing_account = false` is
+  a new account that signed in early and stayed — those users do complete.
+
+### Why `tag_created` / `goal_activated` no longer fire during onboarding
+
+Both were firing for setup the *onboarding flow* performs, not the user: the tag
+picker creates 1–3 tags through `focus.createTag`, and the goal slide activates
+one goal through `focus.updateGoal`, for every single user who completes. That
+made `tag_created` ~100% of activated users by construction (the earlier
+`during_onboarding` property existed only to filter it back out), and it made the
+sticky `has_set_goal` property true for *everyone*, which quietly collapsed the
+goal-vs-no-goal retention breakdown (chart 4) into one curve.
+
+Both events are now emitted only when `hasSeenOnboarding === true` — i.e. for
+tags and goals the user chose to create afterwards — and mean "adopted this
+feature on their own". The onboarding setup is reported once, by
+`onboarding_completed`'s properties.
+
+**`during_onboarding` is gone, and tile 8's `during_onboarding = false` filter
+must be deleted, not left alone.** A PostHog `exact` filter does not match events
+that lack the property, and `tag_created` no longer carries it — so the filter
+would match nothing and tile 8's tag series would read zero from the moment this
+build ships. `scripts/posthog-update-onboarding-paywall.mjs` strips it from every
+insight that still has it.
+
+**`tag_count` is the exception and is still stamped during onboarding**, without
+an event (`setPersonProperties`). It's a state gauge for free-tier paywall
+pressure — the three onboarding tags fill all three free slots, so omitting them
+would understate it for every user.
 
 ---
 
@@ -249,6 +360,16 @@ push in onboarding; if curves match, the core timer is the sticky part.
 - **Insight:** Funnel · **Steps:** `Application Opened` → `onboarding_completed` →
   `focus_session_completed` · **Window:** 7 days. Shows where new users drop before
   their first completed session. (M2 adds the Screen-Time permission step.)
+
+---
+
+## Dashboard updates for the 2026-07-31 events
+
+`scripts/posthog-update-onboarding-paywall.mjs` (dry run by default, `--apply` to
+write) creates tile 30 (onboarding drop-off funnel) and tile 31 (sign-ups per day
+by `provider`), repoints the monetization funnel at its real first step
+(`paywall_gate_hit`), and strips the dead `during_onboarding` filter. Needs a
+personal API key with insight and dashboard read+write.
 
 ---
 
@@ -362,7 +483,10 @@ code paths that are never executed.
   user's 1–3 chosen tags through the same `createTag`, so every activated user
   fired it and the series read ~100% by construction. Added `during_onboarding`
   (derived from `hasSeenOnboarding`, still false during that loop) and filtered
-  tile 8 to `false`.
+  tile 8 to `false`. **Superseded:** the event is no longer emitted during
+  onboarding at all, and `during_onboarding` is gone — see "Onboarding funnel".
+  `goal_activated` had the same defect (and it also polluted `has_set_goal`);
+  it's now gated the same way.
 - **Completion rate mixed two populations.** Widget / Live-Activity sessions are
   adopted as already-complete and never fire a start event, so
   completed ÷ started could exceed 100%. Added `start_source` to

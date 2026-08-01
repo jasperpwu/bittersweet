@@ -10,7 +10,11 @@ import { View, Text, useColorScheme } from 'react-native';
 import { StatusBar } from '../src/components/ui/StatusBar';
 import { AnimatedSplashScreen } from '../src/components/ui/AnimatedSplashScreen';
 import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
-import { useAppState, initializeUnifiedStore, clearUnifiedStoreData } from '../src/store/unified-store';
+import {
+  useAppState,
+  initializeUnifiedStore,
+  clearUnifiedStoreData,
+} from '../src/store/unified-store';
 import { useDeviceActivityListener } from '../src/hooks/useDeviceActivityListener';
 import { useGoalNudgeNotifications } from '../src/hooks/useGoalNudgeNotifications';
 import { useTodoNotifications } from '../src/hooks/useTodoNotifications';
@@ -110,6 +114,11 @@ async function reconcileHealthIfScreenTimeReady() {
   syncHealthKitWorkouts();
 }
 
+// How recently a Supabase account must have been created for the sign-in that
+// observes it to count as the sign-up itself (analytics only — see the
+// `signed_up` event in the auth handler).
+const SIGNUP_DETECTION_WINDOW_MS = 5 * 60 * 1000;
+
 // Where each re-engagement nudge (data.feature from reengagement-cron) lands
 // when tapped. 'suggest', 'grove', 'todos' and 'blocklist' are handled
 // separately (see below), and anything unknown falls back to the focus tab.
@@ -153,8 +162,7 @@ function handleReengageTap(feature: unknown) {
     router.navigate({ pathname: '/(tabs)', params: { openBlocklist: String(Date.now()) } });
     return;
   }
-  const route =
-    (typeof feature === 'string' && REENGAGE_ROUTES[feature]) || REENGAGE_ROUTES.focus;
+  const route = (typeof feature === 'string' && REENGAGE_ROUTES[feature]) || REENGAGE_ROUTES.focus;
   router.push(route as never);
 }
 
@@ -250,9 +258,7 @@ export default function RootLayout() {
 
       // If no more active unlocks, clear the widget unlock state
       const { activeSessions } = useAppStore.getState().blocklist;
-      const hasActiveUnlock = activeSessions.allIds.some(
-        id => activeSessions.byId[id]?.isActive
-      );
+      const hasActiveUnlock = activeSessions.allIds.some((id) => activeSessions.byId[id]?.isActive);
       if (!hasActiveUnlock) {
         WidgetService.syncUnlockSessionState(null);
       }
@@ -518,6 +524,36 @@ export default function RootLayout() {
               { is_signed_in: true },
               { first_signed_in_at: new Date().toISOString() }
             );
+
+            // Sign-ups. `is_signed_in` already gives the *stock* (how many accounts
+            // exist); this event gives the *flow* — sign-ups per day, and the
+            // Application Opened → signed_up conversion.
+            //
+            // Detected from `user.created_at`, the account's actual birth timestamp
+            // from Supabase, NOT from the cloud-emptiness probe used below. The probe
+            // answers a different question ("is there data to pull?") and gets this
+            // one wrong twice over: it returns null on a network error (counting a
+            // returning user as a sign-up) and it reads an account that signed up but
+            // never made a tag or session as brand-new every time they come back.
+            // Using created_at here changes no data-lifecycle behaviour — that branch
+            // still runs on cloud-emptiness exactly as the auth policy requires.
+            //
+            // The window is deliberately loose: sign-up → this handler is immediate,
+            // and the only thing a wider window can catch is the same account signing
+            // in elsewhere minutes later, which is the same PostHog person and so
+            // can't inflate the unique-user count. Paired with the previousUserId
+            // check it also survives supabase-js re-emitting SIGNED_IN on foreground.
+            const accountAgeMs = user.created_at
+              ? Date.now() - new Date(user.created_at).getTime()
+              : Infinity;
+            if (accountAgeMs < SIGNUP_DETECTION_WINDOW_MS && previousUserId !== user.id) {
+              const provider = user.app_metadata?.provider ?? 'unknown';
+              AnalyticsTracker.track(
+                'signed_up',
+                { provider },
+                { setOnce: { signup_provider: provider } }
+              );
+            }
 
             // Sync Supabase credentials to UserDefaults for native intent REST calls
             WidgetService.syncSupabaseCredentials(user.id, session.access_token);
@@ -822,7 +858,8 @@ export default function RootLayout() {
 
         const period = goal.activePeriod || 'daily';
         // No-period (cumulative) goals surface as "Total" rather than "None".
-        const periodLabel = period === 'none' ? 'Total' : period.charAt(0).toUpperCase() + period.slice(1);
+        const periodLabel =
+          period === 'none' ? 'Total' : period.charAt(0).toUpperCase() + period.slice(1);
 
         const tag = goal.tagId ? tags.byId[goal.tagId] : null;
         const displayName =
@@ -898,7 +935,6 @@ export default function RootLayout() {
   // Check if app was opened from shield (both on mount and app foreground)
   const checkShieldOpening = async (trigger: string) => {
     try {
-
       if (!fontsLoaded || !isHydrated) {
         return;
       }
@@ -920,7 +956,6 @@ export default function RootLayout() {
           return;
         }
 
-
         // Navigate to calendar tab and show bottom sheet
         router.replace('/(tabs)');
 
@@ -928,7 +963,6 @@ export default function RootLayout() {
         setTimeout(() => {
           setShowUnlockSheet(true);
         }, 100);
-
       }
     } catch (error: any) {
       console.error('❌ [SHIELD_LAYOUT] Error checking shield opening:', error);
@@ -958,7 +992,6 @@ export default function RootLayout() {
   // Check when app comes to foreground
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         checkShieldOpening('foreground');
 
@@ -1305,9 +1338,16 @@ export default function RootLayout() {
                 flex: 1,
                 justifyContent: 'center',
                 alignItems: 'center',
-                backgroundColor: systemColorScheme === 'dark' ? colors.dark.background : colors.light.screen,
+                backgroundColor:
+                  systemColorScheme === 'dark' ? colors.dark.background : colors.light.screen,
               }}>
-              <Text style={{ color: systemColorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary }}>
+              <Text
+                style={{
+                  color:
+                    systemColorScheme === 'dark'
+                      ? colors.dark.textPrimary
+                      : colors.light.screenTextPrimary,
+                }}>
                 Loading...
               </Text>
             </View>

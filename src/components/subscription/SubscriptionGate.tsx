@@ -17,7 +17,8 @@ interface SubscriptionGateProps {
  */
 export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children, fallback }) => {
   const tier = useAppStore((state) => state.subscription.tier);
-  const { openPlans, upgradeModals } = useUpgradeFlow();
+  // 'settings': a voluntary upgrade tap, not a feature gate — see PaywallSource.
+  const { openPlans, upgradeModals } = useUpgradeFlow('settings');
 
   if (tier === 'premium') {
     return <>{children}</>;

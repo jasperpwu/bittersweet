@@ -48,6 +48,7 @@ const ONBOARDING_SLIDES = [
     iconName: 'lock-open-outline',
     iconColor: colors.primary,
     kind: 'info',
+    step: 'premise',
   },
   // 2 — pick starter tags.
   {
@@ -56,6 +57,7 @@ const ONBOARDING_SLIDES = [
     iconName: 'pricetags-outline',
     iconColor: colors.primary,
     kind: 'tags',
+    step: 'tag_picker',
   },
   // 3 — set one daily goal, and finish.
   {
@@ -64,6 +66,7 @@ const ONBOARDING_SLIDES = [
     iconName: 'flag-outline',
     iconColor: colors.success,
     kind: 'goal',
+    step: 'goal_picker',
   },
 ] as const;
 
@@ -109,10 +112,21 @@ export default function OnboardingScreen() {
     // mark + upload hasSeenOnboarding via completeOnboarding at the end. On a read
     // failure (null) default to entering the app so a returning user is never trapped.
     const onboarded = await useAppStore.getState().sync.fetchOnboardingCompleted();
+
+    // Analytics: a returning user signing in here leaves onboarding without ever
+    // firing `onboarding_completed`, which in the step funnel is indistinguishable
+    // from giving up. This event is the marker that separates the two — exclude
+    // users who fired it with `existing_account = true` before reading drop-off.
+    AnalyticsTracker.track('onboarding_signed_in', {
+      step_index: currentIndex + 1,
+      step_name: ONBOARDING_SLIDES[currentIndex]?.step,
+      existing_account: onboarded !== false,
+    });
+
     if (onboarded !== false) {
       router.replace('/(tabs)');
     }
-  }, [t]);
+  }, [t, currentIndex]);
 
   // Dev-only: email/password login to bypass Apple Sign-In (e.g. when testing
   // with an Apple sandbox account). Hardcoded test credentials.
@@ -130,22 +144,50 @@ export default function OnboardingScreen() {
   }, [signInError, clearAuthError]);
 
   /**
+   * Analytics: the onboarding drop-off funnel.
+   *
+   * `onboarding_step_viewed` (`premise` → `tag_picker` → `goal_picker`) followed
+   * by `onboarding_completed` is a four-step PostHog funnel that reads the
+   * abandonment point directly — no separate per-slide events to keep in sync
+   * when a slide is added or reordered, since the step name travels with the
+   * slide definition above.
+   *
+   * Fired once per step per mount: the pager is free-scrolling, so swiping back
+   * to re-read a slide would otherwise inflate that step's count above the one
+   * before it and make the funnel non-monotonic.
+   */
+  const viewedStepsRef = useRef(new Set<string>());
+  useEffect(() => {
+    const slide = ONBOARDING_SLIDES[currentIndex];
+    if (!slide || viewedStepsRef.current.has(slide.step)) return;
+    viewedStepsRef.current.add(slide.step);
+    AnalyticsTracker.track('onboarding_step_viewed', {
+      step_index: currentIndex + 1,
+      step_name: slide.step,
+    });
+  }, [currentIndex]);
+
+  /**
    * Turn the goal slide's pick into an active goal. Runs after the tag loop, so
    * the chosen slot now maps to a real tag — createTag writes the tag and its
    * auto-created (inactive, zero-target) goal in a single `set`, so that goal is
    * already in the store here and we only ever *activate*, never add.
+   *
+   * Returns whether a goal was actually activated, which `onboarding_completed`
+   * reports as `goal_set` — every early return below is a real outcome (blank
+   * tag name, cap already reached) and the event must not claim otherwise.
    */
-  const activateChosenGoal = (createdTagIdBySlot: (string | null)[]) => {
+  const activateChosenGoal = (createdTagIdBySlot: (string | null)[]): boolean => {
     const { slot, dailyTargetMinutes } = goalChoiceRef.current;
     const draft = tagDraftsRef.current[slot];
-    if (!draft) return;
+    if (!draft) return false;
 
     const focusState = useAppStore.getState().focus;
 
     // Free tier allows exactly one active goal (useSubscriptionGate). A brand-new
     // account has none, but someone who signed in mid-onboarding may have pulled
     // one from the cloud — don't push them past their own cap.
-    if (focusState.goals.allIds.some((id) => focusState.goals.byId[id]?.isActive)) return;
+    if (focusState.goals.allIds.some((id) => focusState.goals.byId[id]?.isActive)) return false;
 
     // Normally the tag we just created. If the draft was skipped as a duplicate,
     // fall back to the existing tag of that name — it has its own auto-created
@@ -154,17 +196,17 @@ export default function OnboardingScreen() {
     let tagId = createdTagIdBySlot[slot];
     if (!tagId) {
       const name = resolveDraftName(draft, t).trim().toLowerCase();
-      if (!name) return;
+      if (!name) return false;
       tagId =
         focusState.tags.allIds.find((id) => {
           const tag = focusState.tags.byId[id];
           return tag && !tag.deletedAt && tag.name.trim().toLowerCase() === name;
         }) ?? null;
     }
-    if (!tagId) return;
+    if (!tagId) return false;
 
     const goalId = focusState.goals.allIds.find((id) => focusState.goals.byId[id]?.tagId === tagId);
-    if (!goalId) return;
+    if (!goalId) return false;
 
     updateGoal(goalId, {
       isActive: true,
@@ -173,6 +215,7 @@ export default function OnboardingScreen() {
       dailyRestDayTargetMinutes: 0,
       isRepeating: true,
     });
+    return true;
   };
 
   const completeOnboarding = async () => {
@@ -205,7 +248,8 @@ export default function OnboardingScreen() {
       createdTagIdBySlot[slot] = tag.id;
     });
 
-    activateChosenGoal(createdTagIdBySlot);
+    const goalSet = activateChosenGoal(createdTagIdBySlot);
+    const tagsCreated = createdTagIdBySlot.filter(Boolean).length;
 
     // Set hasSeenOnboarding to true in the store
     const updatePreferences = useUnifiedStore.getState().updatePreferences;
@@ -219,8 +263,18 @@ export default function OnboardingScreen() {
     if (useAppStore.getState().auth.isAuthenticated) {
       await useAppStore.getState().sync.syncSettings();
     }
-    // Analytics: activation-funnel endpoint.
-    AnalyticsTracker.track('onboarding_completed');
+    // Analytics: activation-funnel endpoint, and the last step of the drop-off
+    // funnel started by `onboarding_step_viewed`.
+    //
+    // The setup the user leaves with is reported here rather than by the
+    // `tag_created` / `goal_activated` events those writes would otherwise
+    // fire — both are suppressed during onboarding (see `focus.createTag` /
+    // `focus.updateGoal`), because every completing user would trigger them and
+    // the resulting ~100% series measures onboarding, not feature adoption.
+    AnalyticsTracker.track('onboarding_completed', {
+      tags_created: tagsCreated,
+      goal_set: goalSet,
+    });
     // Navigate to the main tabs
     router.replace('/(tabs)');
   };

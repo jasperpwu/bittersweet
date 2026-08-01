@@ -1486,14 +1486,26 @@ export const useAppStore = create<AppStore>()(
             });
 
             // Analytics: goal adoption + the has_set_goal retention cohort.
+            //
+            // Skipped during onboarding, whose goal slide activates one goal for
+            // every completing user (activateChosenGoal): counting those would peg
+            // the event at ~100% and, worse, make `has_set_goal` true for everyone,
+            // collapsing the goal-vs-no-goal retention breakdown into a single
+            // curve. So both now mean "activated a goal beyond the onboarding
+            // one" — the onboarding goal is reported by
+            // `onboarding_completed.goal_set` / `goal_target_minutes` instead.
             if (updates.isActive === true && !wasActive) {
-              const goal = get().focus.goals.byId[goalId];
-              AnalyticsTracker.track(
-                'goal_activated',
-                { active_period: goal?.activePeriod, tag_id: goal?.tagId },
-                { setOnce: { has_set_goal: true } }
-              );
-              // Activating a goal is the "set up goals" signal — unlock its setup-task claim.
+              if (useUnifiedStore.getState().preferences.hasSeenOnboarding === true) {
+                const goal = get().focus.goals.byId[goalId];
+                AnalyticsTracker.track(
+                  'goal_activated',
+                  { active_period: goal?.activePeriod, tag_id: goal?.tagId },
+                  { setOnce: { has_set_goal: true } }
+                );
+              }
+              // Activating a goal is the "set up goals" signal — unlock its setup-task
+              // claim. Deliberately outside the analytics gate: the reward is owed
+              // however the goal was activated, onboarding included.
               get().rewards.markTaskSetup('goal');
             }
           },
@@ -2130,22 +2142,29 @@ export const useAppStore = create<AppStore>()(
             // Analytics: tag_count doubles as the free-tier paywall pressure gauge
             // (free is capped at 3) — pair it with paywall_viewed source='tags'.
             //
-            // `during_onboarding` is essential, not decoration: onboarding creates
-            // the user's 1-3 picked tags through this same method, so without the
-            // flag every activated user fires tag_created and the series is ~100%
-            // by construction — useless as adoption. hasSeenOnboarding is still
-            // false throughout that loop and is set true immediately after it, so
-            // it discriminates the two exactly. Charts asking "do people make
-            // their OWN tags" must filter during_onboarding = false.
-            AnalyticsTracker.track(
-              'tag_created',
-              {
-                activity_type: (tagData as any)?.activityType,
-                during_onboarding:
-                  useUnifiedStore.getState().preferences.hasSeenOnboarding !== true,
-              },
-              { set: { tag_count: get().focus.tags.allIds.length } }
-            );
+            // Onboarding creates the user's 1-3 picked tags through this same
+            // method, so a `tag_created` fired there would be ~100% of activated
+            // users by construction — it would measure onboarding, not whether
+            // people make their OWN tags. The onboarding funnel already covers
+            // that step (`onboarding_step_viewed` step_name='tag_picker', and
+            // `onboarding_completed.tags_created`), so the event is emitted only
+            // for tags created afterwards. hasSeenOnboarding stays false for the
+            // whole onboarding loop and is set true immediately after it, so it
+            // discriminates the two exactly.
+            //
+            // `tag_count` is stamped either way: it's a state gauge, not an
+            // action count, and the onboarding tags fill 3 of the 3 free slots —
+            // omitting them would understate paywall pressure for every user.
+            const tagCount = get().focus.tags.allIds.length;
+            if (useUnifiedStore.getState().preferences.hasSeenOnboarding === true) {
+              AnalyticsTracker.track(
+                'tag_created',
+                { activity_type: (tagData as any)?.activityType },
+                { set: { tag_count: tagCount } }
+              );
+            } else {
+              AnalyticsTracker.setPersonProperties({ tag_count: tagCount });
+            }
             return tag;
           },
 

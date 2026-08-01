@@ -4,8 +4,18 @@ import { UpgradePrompt } from '../components/subscription/UpgradePrompt';
 import { UpgradeSheet } from '../components/subscription/UpgradeSheet';
 import { SignInSheet } from '../components/auth/SignInSheet';
 import { useAppStore } from '../store';
+import { AnalyticsTracker } from '../services/analytics';
 
+/** A feature gate the free tier blocks — decides the prompt copy AND the paywall source. */
 type LimitType = 'tags' | 'goals' | 'adhd' | 'health';
+
+/**
+ * Where a paywall impression came from. A superset of LimitType: `settings` is
+ * the voluntary "Upgrade" button, which has no gate and never shows the prompt.
+ * Without it those opens reported `source: 'tags'` (the old default argument),
+ * inflating tags' share of tile 16 with people who were never gated at all.
+ */
+type PaywallSource = LimitType | 'settings';
 
 /**
  * Shared paywall flow, sequenced one sheet at a time:
@@ -29,8 +39,11 @@ type LimitType = 'tags' | 'goals' | 'adhd' | 'health';
  * sheet's `overlay` slot (not screen root) so iOS presents it on top, and have
  * that host fire the trigger from its own `onClosed` if it dismisses itself.
  */
-export function useUpgradeFlow(limitType: LimitType = 'tags') {
+export function useUpgradeFlow(source: PaywallSource = 'tags') {
   const { t } = useTranslation();
+  // The prompt only ever appears behind a real gate (triggerUpgrade), which the
+  // voluntary 'settings' entry never calls — so its copy fallback is unreachable.
+  const limitType: LimitType = source === 'settings' ? 'tags' : source;
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
@@ -82,14 +95,30 @@ export function useUpgradeFlow(limitType: LimitType = 'tags') {
         isVisible={showSheet}
         onClose={() => setShowSheet(false)}
         // The gate that triggered this flow is exactly the paywall's `source`.
-        source={limitType}
+        source={source}
       />
     </>
   );
 
   return {
     /** Gated features: open the "paid feature" prompt first. */
-    triggerUpgrade: () => setShowPrompt(true),
+    triggerUpgrade: () => {
+      // Analytics: the top of the monetization funnel — someone was actually
+      // stopped by the free tier. Distinct from `paywall_viewed`, which only
+      // fires two sheets later on the plans screen: between the two sit the
+      // "paid feature" prompt and (for signed-out users) a mandatory sign-in,
+      // so counting plan views alone silently drops everyone who bounced at the
+      // wall. Full funnel: paywall_gate_hit → paywall_viewed →
+      // subscription_started. `source` is named to match `paywall_viewed`'s
+      // property so one breakdown reads across every step.
+      AnalyticsTracker.track('paywall_gate_hit', {
+        source: limitType,
+        // The sign-in step is mandatory before purchase (entitlements are
+        // account-keyed), so it's a real drop-off point, not a detail.
+        signed_in: useAppStore.getState().auth.isAuthenticated,
+      });
+      setShowPrompt(true);
+    },
     /** Voluntary upgrade buttons: skip the prompt, sign-in-gate → plans. */
     openPlans,
     upgradeModals,
