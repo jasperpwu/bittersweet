@@ -1,6 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
+import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../../config/supabase';
@@ -15,6 +16,13 @@ export interface AuthUser {
   createdAt: string | null;
 }
 
+/**
+ * Outcome of an email sign-up. `confirmationSent` means the Supabase project has
+ * "Confirm email" enabled, so no session exists yet — the user must tap the link
+ * we just emailed them, which comes back through the `auth/reset` deep link.
+ */
+export type SignUpOutcome = 'signedIn' | 'confirmationSent' | 'failed';
+
 export interface AuthSlice {
   user: AuthUser | null;
   isAuthenticated: boolean;
@@ -24,12 +32,27 @@ export interface AuthSlice {
 
   signInWithApple: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<boolean>;
+  signUpWithEmail: (email: string, password: string) => Promise<SignUpOutcome>;
+  sendPasswordReset: (email: string) => Promise<boolean>;
+  updatePassword: (newPassword: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   restoreSession: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   clearAuthError: () => void;
 }
+
+/**
+ * Where Supabase sends the user after they tap a link in a confirmation or
+ * password-reset email. `createURL` resolves the variant-aware scheme
+ * (`bittersweet-mobile://` vs `bittersweet-mobile-dev://`), so dev and prod
+ * builds each get their own link — but BOTH must be added to the Supabase
+ * dashboard's redirect allowlist or the link bounces to the Site URL instead.
+ */
+export const AUTH_REDIRECT_URL = Linking.createURL('auth/reset');
+
+/** Minimum enforced by Supabase's default password policy. */
+export const MIN_PASSWORD_LENGTH = 6;
 
 // GoogleSignin.configure() must run once before any other GoogleSignin call.
 // Client IDs come from app.config.js extra (variant-aware: dev vs prod).
@@ -195,45 +218,22 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
     }));
 
     try {
-      const signInResult = await supabase.auth.signInWithPassword({
-        email,
+      // Sign-in only — never falls back to creating an account. Supabase returns
+      // the same `invalid_credentials` error for "no such user" and "wrong
+      // password" (deliberate anti-enumeration), so a silent sign-up fallback
+      // can't tell a typo'd email from a genuinely new one: it would strand the
+      // user in a brand-new empty account instead of showing "wrong password".
+      // Account creation is explicit, via signUpWithEmail.
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
         password,
       });
 
-      let user = signInResult.data.user;
+      if (error) throw error;
+      if (!data.user) throw new Error('Sign-in failed');
 
-      if (signInResult.error) {
-        // No matching auth record (e.g. a test account that was deleted) →
-        // transparently sign up instead. Supabase returns the same
-        // `invalid_credentials` error for "no such user" AND "wrong password"
-        // (deliberate anti-enumeration), so we can't tell them apart: we just
-        // try to create the account. If the email already exists, signUp fails
-        // (or returns no session) and we surface the original sign-in error.
-        if (signInResult.error.code === 'invalid_credentials') {
-          const signUpResult = await supabase.auth.signUp({ email, password });
-          console.log('🔐 Auto-signup fallback:', {
-            signUpError: signUpResult.error?.message,
-            signUpErrorCode: signUpResult.error?.code,
-            hasSession: !!signUpResult.data.session,
-            hasUser: !!signUpResult.data.user,
-            // empty identities array = email already registered (obfuscated)
-            identities: signUpResult.data.user?.identities?.length,
-          });
-          if (signUpResult.error || !signUpResult.data.session) {
-            throw signInResult.error;
-          }
-          // Brand-new account created and signed in. The onAuthStateChange
-          // listener in _layout.tsx handles the new-signup data lifecycle
-          // (cloud-empty probe → initialUpload).
-          user = signUpResult.data.user;
-        } else {
-          throw signInResult.error;
-        }
-      }
-
-      if (!user) throw signInResult.error ?? new Error('Sign-in failed');
-
-      await completeSignIn(set, get, user);
+      await completeSignIn(set, get, data.user);
+      return true;
     } catch (error: any) {
       console.error('Email Sign-In error:', error);
       set((state: any) => ({
@@ -243,6 +243,115 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
           error: error.message || 'Sign-in failed',
         },
       }));
+      return false;
+    }
+  },
+
+  signUpWithEmail: async (email: string, password: string) => {
+    set((state: any) => ({
+      auth: { ...state.auth, isLoading: true, error: null },
+    }));
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: AUTH_REDIRECT_URL },
+      });
+
+      if (error) throw error;
+
+      // Supabase obfuscates "email already registered" rather than erroring, to
+      // avoid leaking which addresses have accounts: it returns a user with an
+      // EMPTY identities array and no session. Surfacing a generic message keeps
+      // that property while still telling the user to try signing in.
+      if (data.user && data.user.identities?.length === 0) {
+        throw new Error('EMAIL_ALREADY_REGISTERED');
+      }
+
+      // "Confirm email" is enabled on the project → no session yet. The user must
+      // tap the emailed link, which returns through the auth/reset deep link and
+      // is exchanged for a session there.
+      if (!data.session) {
+        set((state: any) => ({ auth: { ...state.auth, isLoading: false } }));
+        return 'confirmationSent';
+      }
+
+      // Brand-new account, already signed in. The onAuthStateChange listener in
+      // _layout.tsx runs the new-signup data lifecycle (cloud-empty probe →
+      // initialUpload), which preserves anything built before the account.
+      await completeSignIn(set, get, data.user!);
+      return 'signedIn';
+    } catch (error: any) {
+      console.error('Email Sign-Up error:', error);
+      set((state: any) => ({
+        auth: {
+          ...state.auth,
+          isLoading: false,
+          error: error.message || 'Sign-up failed',
+        },
+      }));
+      return 'failed';
+    }
+  },
+
+  sendPasswordReset: async (email: string) => {
+    set((state: any) => ({
+      auth: { ...state.auth, isLoading: true, error: null },
+    }));
+
+    try {
+      // With flowType 'pkce' this stashes a code verifier (suffixed `/recovery`)
+      // in the Keychain and emails a link carrying the matching challenge. The
+      // verifier is what lets exchangeCodeForSession later mint a session — so
+      // the reset MUST be completed on this same device/install.
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: AUTH_REDIRECT_URL,
+      });
+
+      if (error) throw error;
+
+      set((state: any) => ({ auth: { ...state.auth, isLoading: false } }));
+      return true;
+    } catch (error: any) {
+      console.error('Password reset request error:', error);
+      set((state: any) => ({
+        auth: {
+          ...state.auth,
+          isLoading: false,
+          error: error.message || 'Could not send reset email',
+        },
+      }));
+      return false;
+    }
+  },
+
+  updatePassword: async (newPassword: string) => {
+    set((state: any) => ({
+      auth: { ...state.auth, isLoading: true, error: null },
+    }));
+
+    try {
+      // Requires the recovery session established by exchangeCodeForSession in
+      // the deep-link handler; without it Supabase rejects the update.
+      const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      if (data.user) {
+        await completeSignIn(set, get, data.user);
+      }
+      set((state: any) => ({ auth: { ...state.auth, isLoading: false } }));
+      return true;
+    } catch (error: any) {
+      console.error('Password update error:', error);
+      set((state: any) => ({
+        auth: {
+          ...state.auth,
+          isLoading: false,
+          error: error.message || 'Could not update password',
+        },
+      }));
+      return false;
     }
   },
 

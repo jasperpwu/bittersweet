@@ -92,7 +92,8 @@
     "more": "続きを読む",
     "offlineSyncPending": "オフラインです。接続が回復したら自動的に同期されます",
     "offlineTitle": "オフラインです",
-    "offlineTryFocus": "オフラインのようです。接続を確認するか、その間に「集中」タブで集中セッションをお試しください。"
+    "offlineTryFocus": "オフラインのようです。接続を確認するか、その間に「集中」タブで集中セッションをお試しください。",
+    "or": "または"
   },
   "onboarding": {
     "slide1": {
@@ -1207,5 +1208,39 @@
     "asEditCostMessage": "この変更には {{cost}} 🍎 かかります。料金は編集のたびに倍増し、毎週始めにリセットされます。",
     "asEditCostConfirm": "{{cost}} 🍎 を支払う",
     "notifClaimPartial": "達成率 {{percent}}% — {{count}} 🍎 を受け取る"
+  },
+  "auth": {
+    "continueWithEmail": "メールで続ける",
+    "signInWithEmail": "メールでログイン",
+    "createAccount": "アカウントを作成",
+    "emailPlaceholder": "メールアドレス",
+    "passwordPlaceholder": "パスワード",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "noAccountSignUp": "アカウントをお持ちでない方は新規登録",
+    "haveAccountSignIn": "すでにアカウントをお持ちの方はログイン",
+    "backToOptions": "ほかのログイン方法",
+    "backToSignIn": "ログイン画面に戻る",
+    "resetPassword": "パスワードを再設定",
+    "resetPasswordSubtitle": "メールアドレスを入力すると、再設定用のリンクをお送りします。",
+    "sendResetLink": "リンクを送信",
+    "checkYourEmail": "メールをご確認ください",
+    "checkYourEmailBody": "{{email}} にリンクをお送りしました。この端末で開いて続けてください。",
+    "invalidEmail": "有効なメールアドレスを入力してください。",
+    "passwordTooShort": "パスワードは{{min}}文字以上で入力してください。",
+    "passwordsDoNotMatch": "パスワードが一致しません。",
+    "emailAlreadyRegistered": "このメールアドレスは登録済みです。ログインをお試しください。",
+    "setNewPassword": "新しいパスワードを設定",
+    "setNewPasswordSubtitle": "アカウントの新しいパスワードを決めてください。",
+    "newPassword": "新しいパスワード",
+    "confirmPassword": "パスワードを確認",
+    "updatePassword": "パスワードを更新",
+    "passwordUpdated": "パスワードを更新しました",
+    "passwordUpdateFailed": "パスワードを更新できませんでした。もう一度お試しください。",
+    "cancelResetTitle": "再設定をやめますか？",
+    "cancelResetBody": "パスワードは変更されません。やり直すには新しいリンクが必要です。",
+    "linkExpiredTitle": "リンクの有効期限切れ",
+    "linkExpiredBody": "このリンクは期限切れか、すでに使用されています。新しいリンクをご請求ください。",
+    "linkErrorTitle": "リンクのエラー",
+    "linkErrorBody": "このリンクは使用できませんでした。新しいリンクをご請求ください。"
   }
 }

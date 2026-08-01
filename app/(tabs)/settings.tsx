@@ -16,7 +16,7 @@ import { colors } from '../../src/config/theme';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
 import { AccountActions } from '../../src/components/auth/AccountActions';
-import { GoogleSignInButton } from '../../src/components/auth/SignInSheet';
+import { GoogleSignInButton, SignInSheet } from '../../src/components/auth/SignInSheet';
 import { useUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { useAppStore } from '../../src/store';
@@ -103,6 +103,7 @@ export default function SettingsScreen() {
   const referralCount = useAppStore((s) => s.referral.referralCount);
   const fetchReferralStatus = useAppStore((s) => s.referral.fetchReferralStatus);
   const { shareLink, isGenerating } = useReferralLink();
+  const [emailSignInOpen, setEmailSignInOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -159,6 +160,13 @@ export default function SettingsScreen() {
                       onPress={signInWithApple}
                     />
                     <GoogleSignInButton onPress={signInWithGoogle} />
+                    <Button
+                      variant="outline"
+                      size="medium"
+                      fullWidth
+                      onPress={() => setEmailSignInOpen(true)}>
+                      {t('auth.continueWithEmail')}
+                    </Button>
                   </View>
                 )}
                 {authError && (
@@ -422,6 +430,13 @@ export default function SettingsScreen() {
 
         {/* Apple Health premium gate — prompt → sign-in → subscription sheet */}
         {upgradeModals}
+
+        {/* Opens straight on the email form — Apple/Google are already above. */}
+        <SignInSheet
+          visible={emailSignInOpen}
+          onClose={() => setEmailSignInOpen(false)}
+          initialMode="signIn"
+        />
       </SwipeableTabWrapper>
     </SafeAreaView>
   );

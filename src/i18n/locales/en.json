@@ -92,7 +92,8 @@
     "more": "more",
     "offlineSyncPending": "No connection — your changes will sync once you're back online",
     "offlineTitle": "You're Offline",
-    "offlineTryFocus": "You seem to be offline. Check your connection — or try a focus session on the Focus tab in the meantime."
+    "offlineTryFocus": "You seem to be offline. Check your connection — or try a focus session on the Focus tab in the meantime.",
+    "or": "or"
   },
   "onboarding": {
     "slide1": {
@@ -1210,5 +1211,39 @@
     "asEditCostMessage": "This change costs {{cost}} 🍎. The price doubles with each edit and resets at the start of every week.",
     "asEditCostConfirm": "Pay {{cost}} 🍎",
     "notifClaimPartial": "{{percent}}% done — claim {{count}} 🍎"
+  },
+  "auth": {
+    "continueWithEmail": "Continue with email",
+    "signInWithEmail": "Sign in with email",
+    "createAccount": "Create account",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Password",
+    "forgotPassword": "Forgot password?",
+    "noAccountSignUp": "Don't have an account? Sign up",
+    "haveAccountSignIn": "Already have an account? Sign in",
+    "backToOptions": "More sign-in options",
+    "backToSignIn": "Back to sign in",
+    "resetPassword": "Reset password",
+    "resetPasswordSubtitle": "Enter your email and we'll send you a link to set a new password.",
+    "sendResetLink": "Send reset link",
+    "checkYourEmail": "Check your email",
+    "checkYourEmailBody": "We sent a link to {{email}}. Open it on this device to continue.",
+    "invalidEmail": "Enter a valid email address.",
+    "passwordTooShort": "Password must be at least {{min}} characters.",
+    "passwordsDoNotMatch": "Passwords don't match.",
+    "emailAlreadyRegistered": "That email is already registered. Try signing in instead.",
+    "setNewPassword": "Set a new password",
+    "setNewPasswordSubtitle": "Choose a new password for your account.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "updatePassword": "Update password",
+    "passwordUpdated": "Password updated",
+    "passwordUpdateFailed": "Could not update your password. Please try again.",
+    "cancelResetTitle": "Cancel password reset?",
+    "cancelResetBody": "Your password won't be changed. You'll need a new link to try again.",
+    "linkExpiredTitle": "Link expired",
+    "linkExpiredBody": "This link has expired or was already used. Please request a new one.",
+    "linkErrorTitle": "Link problem",
+    "linkErrorBody": "This link couldn't be used. Please request a new one."
   }
 }

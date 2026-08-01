@@ -92,7 +92,8 @@
     "more": "plus",
     "offlineSyncPending": "Pas de connexion : vos modifications seront synchronisées dès le retour en ligne",
     "offlineTitle": "Vous êtes hors ligne",
-    "offlineTryFocus": "Vous semblez être hors ligne. Vérifiez votre connexion ou, en attendant, lancez une session de focus dans l'onglet Focus."
+    "offlineTryFocus": "Vous semblez être hors ligne. Vérifiez votre connexion ou, en attendant, lancez une session de focus dans l'onglet Focus.",
+    "or": "ou"
   },
   "onboarding": {
     "slide1": {
@@ -1210,5 +1211,39 @@
     "asEditCostMessage": "Ce changement coûte {{cost}} 🍎. Le prix double à chaque modification et se réinitialise au début de chaque semaine.",
     "asEditCostConfirm": "Payer {{cost}} 🍎",
     "notifClaimPartial": "{{percent}} % atteint — récupérez {{count}} 🍎"
+  },
+  "auth": {
+    "continueWithEmail": "Continuer avec un e-mail",
+    "signInWithEmail": "Se connecter par e-mail",
+    "createAccount": "Créer un compte",
+    "emailPlaceholder": "E-mail",
+    "passwordPlaceholder": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "noAccountSignUp": "Pas encore de compte ? S'inscrire",
+    "haveAccountSignIn": "Déjà un compte ? Se connecter",
+    "backToOptions": "Autres options de connexion",
+    "backToSignIn": "Retour à la connexion",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "resetPasswordSubtitle": "Saisis ton e-mail et nous t’enverrons un lien pour définir un nouveau mot de passe.",
+    "sendResetLink": "Envoyer le lien",
+    "checkYourEmail": "Consulte tes e-mails",
+    "checkYourEmailBody": "Nous avons envoyé un lien à {{email}}. Ouvre-le sur cet appareil pour continuer.",
+    "invalidEmail": "Saisis une adresse e-mail valide.",
+    "passwordTooShort": "Le mot de passe doit contenir au moins {{min}} caractères.",
+    "passwordsDoNotMatch": "Les mots de passe ne correspondent pas.",
+    "emailAlreadyRegistered": "Cet e-mail est déjà utilisé. Essaie de te connecter.",
+    "setNewPassword": "Définir un nouveau mot de passe",
+    "setNewPasswordSubtitle": "Choisis un nouveau mot de passe pour ton compte.",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "updatePassword": "Mettre à jour",
+    "passwordUpdated": "Mot de passe mis à jour",
+    "passwordUpdateFailed": "Impossible de mettre à jour ton mot de passe. Réessaie.",
+    "cancelResetTitle": "Annuler la réinitialisation ?",
+    "cancelResetBody": "Ton mot de passe ne sera pas modifié. Il te faudra un nouveau lien pour réessayer.",
+    "linkExpiredTitle": "Lien expiré",
+    "linkExpiredBody": "Ce lien a expiré ou a déjà été utilisé. Demandes-en un nouveau.",
+    "linkErrorTitle": "Problème de lien",
+    "linkErrorBody": "Ce lien n'a pas pu être utilisé. Demandes-en un nouveau."
   }
 }

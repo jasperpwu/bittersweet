@@ -92,7 +92,8 @@
     "more": "더 보기",
     "offlineSyncPending": "인터넷 연결이 없어요. 다시 연결되면 자동으로 동기화돼요",
     "offlineTitle": "오프라인 상태예요",
-    "offlineTryFocus": "오프라인 상태인 것 같아요. 연결을 확인하거나, 그동안 집중 탭에서 집중 세션을 시작해 보세요."
+    "offlineTryFocus": "오프라인 상태인 것 같아요. 연결을 확인하거나, 그동안 집중 탭에서 집중 세션을 시작해 보세요.",
+    "or": "또는"
   },
   "onboarding": {
     "slide1": {
@@ -1207,5 +1208,39 @@
     "asEditCostMessage": "이 변경에는 {{cost}} 🍎가 필요해요. 요금은 편집할 때마다 두 배가 되고 매주 초에 초기화돼요.",
     "asEditCostConfirm": "{{cost}} 🍎 결제",
     "notifClaimPartial": "{{percent}}% 달성 — {{count}} 🍎 받기"
+  },
+  "auth": {
+    "continueWithEmail": "이메일로 계속하기",
+    "signInWithEmail": "이메일로 로그인",
+    "createAccount": "계정 만들기",
+    "emailPlaceholder": "이메일",
+    "passwordPlaceholder": "비밀번호",
+    "forgotPassword": "비밀번호를 잊으셨나요?",
+    "noAccountSignUp": "계정이 없으신가요? 가입하기",
+    "haveAccountSignIn": "이미 계정이 있으신가요? 로그인",
+    "backToOptions": "다른 로그인 방법",
+    "backToSignIn": "로그인으로 돌아가기",
+    "resetPassword": "비밀번호 재설정",
+    "resetPasswordSubtitle": "이메일을 입력하시면 새 비밀번호를 설정할 링크를 보내드려요.",
+    "sendResetLink": "링크 보내기",
+    "checkYourEmail": "이메일을 확인해 주세요",
+    "checkYourEmailBody": "{{email}} 로 링크를 보냈어요. 이 기기에서 열어 계속해 주세요.",
+    "invalidEmail": "올바른 이메일 주소를 입력해 주세요.",
+    "passwordTooShort": "비밀번호는 {{min}}자 이상이어야 해요.",
+    "passwordsDoNotMatch": "비밀번호가 일치하지 않아요.",
+    "emailAlreadyRegistered": "이미 가입된 이메일이에요. 로그인해 보세요.",
+    "setNewPassword": "새 비밀번호 설정",
+    "setNewPasswordSubtitle": "계정에 사용할 새 비밀번호를 정해 주세요.",
+    "newPassword": "새 비밀번호",
+    "confirmPassword": "비밀번호 확인",
+    "updatePassword": "비밀번호 변경",
+    "passwordUpdated": "비밀번호를 변경했어요",
+    "passwordUpdateFailed": "비밀번호를 변경하지 못했어요. 다시 시도해 주세요.",
+    "cancelResetTitle": "재설정을 취소할까요?",
+    "cancelResetBody": "비밀번호는 그대로 유지돼요. 다시 하려면 새 링크가 필요해요.",
+    "linkExpiredTitle": "링크 만료",
+    "linkExpiredBody": "이 링크는 만료되었거나 이미 사용됐어요. 새 링크를 요청해 주세요.",
+    "linkErrorTitle": "링크 오류",
+    "linkErrorBody": "이 링크를 사용할 수 없어요. 새 링크를 요청해 주세요."
   }
 }

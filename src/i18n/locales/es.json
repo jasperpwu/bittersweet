@@ -92,7 +92,8 @@
     "more": "más",
     "offlineSyncPending": "Sin conexión: tus cambios se sincronizarán cuando vuelvas a estar en línea",
     "offlineTitle": "Sin conexión",
-    "offlineTryFocus": "Parece que estás sin conexión. Revisa tu conexión o, mientras tanto, prueba una sesión de enfoque en la pestaña Enfoque."
+    "offlineTryFocus": "Parece que estás sin conexión. Revisa tu conexión o, mientras tanto, prueba una sesión de enfoque en la pestaña Enfoque.",
+    "or": "o"
   },
   "onboarding": {
     "slide1": {
@@ -1210,5 +1211,39 @@
     "asEditCostMessage": "Este cambio cuesta {{cost}} 🍎. El precio se duplica con cada edición y se reinicia al comenzar cada semana.",
     "asEditCostConfirm": "Pagar {{cost}} 🍎",
     "notifClaimPartial": "{{percent}} % cumplido: reclama {{count}} 🍎"
+  },
+  "auth": {
+    "continueWithEmail": "Continuar con correo",
+    "signInWithEmail": "Iniciar sesión con correo",
+    "createAccount": "Crear cuenta",
+    "emailPlaceholder": "Correo electrónico",
+    "passwordPlaceholder": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "noAccountSignUp": "¿No tienes cuenta? Regístrate",
+    "haveAccountSignIn": "¿Ya tienes cuenta? Inicia sesión",
+    "backToOptions": "Más opciones de acceso",
+    "backToSignIn": "Volver al inicio de sesión",
+    "resetPassword": "Restablecer contraseña",
+    "resetPasswordSubtitle": "Escribe tu correo y te enviaremos un enlace para crear una nueva contraseña.",
+    "sendResetLink": "Enviar enlace",
+    "checkYourEmail": "Revisa tu correo",
+    "checkYourEmailBody": "Enviamos un enlace a {{email}}. Ábrelo en este dispositivo para continuar.",
+    "invalidEmail": "Escribe un correo electrónico válido.",
+    "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
+    "passwordsDoNotMatch": "Las contraseñas no coinciden.",
+    "emailAlreadyRegistered": "Ese correo ya está registrado. Prueba a iniciar sesión.",
+    "setNewPassword": "Crea una nueva contraseña",
+    "setNewPasswordSubtitle": "Elige una nueva contraseña para tu cuenta.",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "updatePassword": "Actualizar contraseña",
+    "passwordUpdated": "Contraseña actualizada",
+    "passwordUpdateFailed": "No pudimos actualizar tu contraseña. Inténtalo de nuevo.",
+    "cancelResetTitle": "¿Cancelar el restablecimiento?",
+    "cancelResetBody": "Tu contraseña no cambiará. Necesitarás un enlace nuevo para volver a intentarlo.",
+    "linkExpiredTitle": "Enlace caducado",
+    "linkExpiredBody": "Este enlace ya caducó o se usó. Solicita uno nuevo.",
+    "linkErrorTitle": "Problema con el enlace",
+    "linkErrorBody": "No se pudo usar este enlace. Solicita uno nuevo."
   }
 }

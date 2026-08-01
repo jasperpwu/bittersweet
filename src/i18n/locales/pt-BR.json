@@ -92,7 +92,8 @@
     "more": "mais",
     "offlineSyncPending": "Sem conexão — suas alterações serão sincronizadas quando você voltar a ficar on-line",
     "offlineTitle": "Você está off-line",
-    "offlineTryFocus": "Parece que você está off-line. Verifique sua conexão ou, enquanto isso, experimente uma sessão de foco na aba Foco."
+    "offlineTryFocus": "Parece que você está off-line. Verifique sua conexão ou, enquanto isso, experimente uma sessão de foco na aba Foco.",
+    "or": "ou"
   },
   "onboarding": {
     "slide1": {
@@ -1210,5 +1211,39 @@
     "asEditCostMessage": "Esta alteração custa {{cost}} 🍎. O preço dobra a cada edição e é reiniciado no começo de cada semana.",
     "asEditCostConfirm": "Pagar {{cost}} 🍎",
     "notifClaimPartial": "{{percent}}% cumprido — resgate {{count}} 🍎"
+  },
+  "auth": {
+    "continueWithEmail": "Continuar com e-mail",
+    "signInWithEmail": "Entrar com e-mail",
+    "createAccount": "Criar conta",
+    "emailPlaceholder": "E-mail",
+    "passwordPlaceholder": "Senha",
+    "forgotPassword": "Esqueceu a senha?",
+    "noAccountSignUp": "Não tem conta? Cadastre-se",
+    "haveAccountSignIn": "Já tem conta? Entrar",
+    "backToOptions": "Mais opções de entrada",
+    "backToSignIn": "Voltar para entrar",
+    "resetPassword": "Redefinir senha",
+    "resetPasswordSubtitle": "Informe seu e-mail e enviaremos um link para você criar uma nova senha.",
+    "sendResetLink": "Enviar link",
+    "checkYourEmail": "Confira seu e-mail",
+    "checkYourEmailBody": "Enviamos um link para {{email}}. Abra-o neste dispositivo para continuar.",
+    "invalidEmail": "Digite um e-mail válido.",
+    "passwordTooShort": "A senha precisa ter pelo menos {{min}} caracteres.",
+    "passwordsDoNotMatch": "As senhas não coincidem.",
+    "emailAlreadyRegistered": "Esse e-mail já está cadastrado. Tente entrar na conta.",
+    "setNewPassword": "Criar uma nova senha",
+    "setNewPasswordSubtitle": "Escolha uma nova senha para sua conta.",
+    "newPassword": "Nova senha",
+    "confirmPassword": "Confirmar senha",
+    "updatePassword": "Atualizar senha",
+    "passwordUpdated": "Senha atualizada",
+    "passwordUpdateFailed": "Não foi possível atualizar sua senha. Tente novamente.",
+    "cancelResetTitle": "Cancelar a redefinição?",
+    "cancelResetBody": "Sua senha não será alterada. Você precisará de um novo link para tentar de novo.",
+    "linkExpiredTitle": "Link expirado",
+    "linkExpiredBody": "Este link expirou ou já foi usado. Peça um novo.",
+    "linkErrorTitle": "Problema com o link",
+    "linkErrorBody": "Não foi possível usar este link. Peça um novo."
   }
 }

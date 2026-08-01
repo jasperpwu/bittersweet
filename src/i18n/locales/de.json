@@ -92,7 +92,8 @@
     "more": "mehr",
     "offlineSyncPending": "Keine Verbindung – deine Änderungen werden synchronisiert, sobald du wieder online bist",
     "offlineTitle": "Du bist offline",
-    "offlineTryFocus": "Du scheinst offline zu sein. Prüfe deine Verbindung – oder starte in der Zwischenzeit eine Fokus-Sitzung im Fokus-Tab."
+    "offlineTryFocus": "Du scheinst offline zu sein. Prüfe deine Verbindung – oder starte in der Zwischenzeit eine Fokus-Sitzung im Fokus-Tab.",
+    "or": "oder"
   },
   "onboarding": {
     "slide1": {
@@ -1210,5 +1211,39 @@
     "asEditCostMessage": "Diese Änderung kostet {{cost}} 🍎. Der Preis verdoppelt sich mit jeder Änderung und wird zu Wochenbeginn zurückgesetzt.",
     "asEditCostConfirm": "{{cost}} 🍎 zahlen",
     "notifClaimPartial": "{{percent}} % geschafft – {{count}} 🍎 einlösen"
+  },
+  "auth": {
+    "continueWithEmail": "Mit E-Mail fortfahren",
+    "signInWithEmail": "Mit E-Mail anmelden",
+    "createAccount": "Konto erstellen",
+    "emailPlaceholder": "E-Mail",
+    "passwordPlaceholder": "Passwort",
+    "forgotPassword": "Passwort vergessen?",
+    "noAccountSignUp": "Noch kein Konto? Registrieren",
+    "haveAccountSignIn": "Schon ein Konto? Anmelden",
+    "backToOptions": "Weitere Anmeldeoptionen",
+    "backToSignIn": "Zurück zur Anmeldung",
+    "resetPassword": "Passwort zurücksetzen",
+    "resetPasswordSubtitle": "Gib deine E-Mail ein – wir schicken dir einen Link für ein neues Passwort.",
+    "sendResetLink": "Link senden",
+    "checkYourEmail": "Schau in dein Postfach",
+    "checkYourEmailBody": "Wir haben einen Link an {{email}} geschickt. Öffne ihn auf diesem Gerät, um fortzufahren.",
+    "invalidEmail": "Gib eine gültige E-Mail-Adresse ein.",
+    "passwordTooShort": "Das Passwort muss mindestens {{min}} Zeichen haben.",
+    "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein.",
+    "emailAlreadyRegistered": "Diese E-Mail ist bereits registriert. Versuch es mit der Anmeldung.",
+    "setNewPassword": "Neues Passwort festlegen",
+    "setNewPasswordSubtitle": "Wähle ein neues Passwort für dein Konto.",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "updatePassword": "Passwort aktualisieren",
+    "passwordUpdated": "Passwort aktualisiert",
+    "passwordUpdateFailed": "Passwort konnte nicht aktualisiert werden. Bitte versuch es erneut.",
+    "cancelResetTitle": "Zurücksetzen abbrechen?",
+    "cancelResetBody": "Dein Passwort bleibt unverändert. Für einen neuen Versuch brauchst du einen neuen Link.",
+    "linkExpiredTitle": "Link abgelaufen",
+    "linkExpiredBody": "Dieser Link ist abgelaufen oder wurde schon verwendet. Fordere einen neuen an.",
+    "linkErrorTitle": "Problem mit dem Link",
+    "linkErrorBody": "Dieser Link konnte nicht verwendet werden. Fordere einen neuen an."
   }
 }

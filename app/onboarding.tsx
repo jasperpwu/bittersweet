@@ -93,6 +93,7 @@ export default function OnboardingScreen() {
     isAuthenticated,
   } = useAppStore((state) => state.auth);
   const signInWithEmail = useAppStore((state) => state.auth.signInWithEmail);
+  const signUpWithEmail = useAppStore((state) => state.auth.signUpWithEmail);
   const clearAuthError = useAppStore((state) => state.auth.clearAuthError);
   const createTag = useAppStore((state) => state.focus.createTag);
   const updateGoal = useAppStore((state) => state.focus.updateGoal);
@@ -129,11 +130,15 @@ export default function OnboardingScreen() {
   }, [t, currentIndex]);
 
   // Dev-only: email/password login to bypass Apple Sign-In (e.g. when testing
-  // with an Apple sandbox account). Hardcoded test credentials.
+  // with an Apple sandbox account). Hardcoded test credentials, recreated on
+  // demand so a deleted test account doesn't break the shortcut. The create-on-
+  // miss lives HERE and not in signInWithEmail: in the production flow a failed
+  // sign-in must surface "wrong password", never silently make a new account.
   const handleTestLogin = useCallback(async () => {
-    await signInWithEmail('jasper@test.com', 'Test123456!');
+    const signedIn = await signInWithEmail('jasper@test.com', 'Test123456!');
+    if (!signedIn) await signUpWithEmail('jasper@test.com', 'Test123456!');
     await finishSignIn();
-  }, [signInWithEmail, finishSignIn]);
+  }, [signInWithEmail, signUpWithEmail, finishSignIn]);
 
   // Auto-clear error after 3 seconds
   useEffect(() => {

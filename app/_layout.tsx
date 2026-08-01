@@ -43,6 +43,7 @@ import { supabase } from '../src/config/supabase';
 import { initSyncMiddleware, resetSyncSnapshot } from '../src/store/middleware/syncMiddleware';
 import { takeHeldSessionId } from '../src/services/sync/heldSession';
 import { storeHydrationSettled } from '../src/store/middleware/persistence';
+import { markAuthListenerReady } from '../src/store/authListenerReady';
 
 import { calculateGoalProgress, getTargetForDate } from '../src/utils/goalProgress';
 import { configureCrisp, openChat } from '../src/services/crisp';
@@ -447,7 +448,16 @@ export default function RootLayout() {
             WidgetService.syncSupabaseCredentials(session.user.id, session.access_token);
           }
 
-          if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+          // PASSWORD_RECOVERY is emitted by exchangeCodeForSession when the user
+          // taps a reset link (see useDeepLinkHandler). It establishes a real
+          // session for a real account, so it must run the SAME data lifecycle as
+          // any other sign-in — otherwise a reset performed while signed out
+          // leaves the previous user's local data in place and never pulls the
+          // cloud, which is a cross-account leak. Treated as a sign-in throughout
+          // the block below.
+          const isSignInLike = event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY';
+
+          if ((isSignInLike || event === 'INITIAL_SESSION') && session?.user) {
             console.log('🔑 onAuthStateChange fired:', event, 'user:', session.user.id);
             const user = session.user;
 
@@ -516,6 +526,14 @@ export default function RootLayout() {
               },
             }));
 
+            // The recovery session is live but the account still has its OLD
+            // password — collect the new one now. Routed here, before the sync
+            // work below, so the user isn't left staring at the app for the
+            // seconds a full cloud pull can take.
+            if (event === 'PASSWORD_RECOVERY') {
+              router.push('/(modals)/reset-password');
+            }
+
             // Attribute all subsequent analytics events to this user, and flip
             // the cohort flag so signed-in vs. anonymous persons are separable in
             // PostHog. `first_signed_in_at` is set-once for signup-cohort analysis.
@@ -568,7 +586,10 @@ export default function RootLayout() {
             // (sign-out nulls lastSignedInUserId, and only this handler sets it
             // after a full sign-in). Same user + SIGNED_IN => redundant re-emit;
             // creds were already synced above, so there is nothing more to do.
-            const isSignedInReemit = event === 'SIGNED_IN' && previousUserId === user.id;
+            // Also covers PASSWORD_RECOVERY for the already-signed-in user (they
+            // reset their password from inside the app): same account, so the
+            // clear+pull would needlessly destroy local data that hasn't flushed.
+            const isSignedInReemit = isSignInLike && previousUserId === user.id;
 
             // Sync strategy depends on auth event type
             try {
@@ -576,7 +597,7 @@ export default function RootLayout() {
                 console.log(
                   '🔁 Redundant SIGNED_IN for current user — skipping clear/pull (preserving local data)'
                 );
-              } else if (event === 'SIGNED_IN') {
+              } else if (isSignInLike) {
                 // Distinguish a brand-new sign-up from a sign-in to an existing
                 // account. The app can't tell directly (Apple Sign-In auto-creates
                 // accounts), so we probe the cloud: a brand-new account has no
@@ -769,6 +790,9 @@ export default function RootLayout() {
           }
         });
         authListener = data;
+        // Unblocks the email deep-link handler, which must not exchange an auth
+        // code until this listener can observe the resulting event.
+        markAuthListenerReady();
       });
 
     // Debug: Clear storage if needed (change to true if needed)
@@ -1285,6 +1309,17 @@ export default function RootLayout() {
                     headerShown: false,
                     presentation: 'modal',
                     gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="(modals)/reset-password"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    // Not dismissible by swipe: the recovery session is live and
+                    // single-use, so backing out silently leaves the account on
+                    // its old password with no way back except a new email.
+                    gestureEnabled: false,
                   }}
                 />
                 <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
