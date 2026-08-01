@@ -1245,5 +1245,9 @@
     "linkExpiredBody": "该链接已过期或已被使用，请重新获取。",
     "linkErrorTitle": "链接有问题",
     "linkErrorBody": "无法使用该链接，请重新获取。"
+  },
+  "quickActions": {
+    "contactDeveloperTitle": "👋 联系开发者",
+    "contactDeveloperSubtitle": "我们随时为你提供帮助！"
   }
 }

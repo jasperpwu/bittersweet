@@ -1248,5 +1248,9 @@
     "linkExpiredBody": "Este enlace ya caducó o se usó. Solicita uno nuevo.",
     "linkErrorTitle": "Problema con el enlace",
     "linkErrorBody": "No se pudo usar este enlace. Solicita uno nuevo."
+  },
+  "quickActions": {
+    "contactDeveloperTitle": "👋 Contactar al desarrollador",
+    "contactDeveloperSubtitle": "¡Estamos aquí para ayudarte!"
   }
 }

@@ -1245,5 +1245,9 @@
     "linkExpiredBody": "このリンクは期限切れか、すでに使用されています。新しいリンクをご請求ください。",
     "linkErrorTitle": "リンクのエラー",
     "linkErrorBody": "このリンクは使用できませんでした。新しいリンクをご請求ください。"
+  },
+  "quickActions": {
+    "contactDeveloperTitle": "👋 開発者に連絡",
+    "contactDeveloperSubtitle": "お気軽にご相談ください！"
   }
 }

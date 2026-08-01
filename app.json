@@ -70,19 +70,6 @@
           "websiteId": "cd116fcd-5d88-476c-8051-06566eea723a"
         }
       ],
-      [
-        "expo-quick-actions",
-        {
-          "iosActions": [
-            {
-              "id": "contact-developer",
-              "title": "👋 Contact developer",
-              "subtitle": "We are here to help!",
-              "icon": "symbol:message.fill"
-            }
-          ]
-        }
-      ],
       "./plugins/withDeviceOrientations"
     ],
     "experiments": {

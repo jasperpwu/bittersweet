@@ -1248,5 +1248,9 @@
     "linkExpiredBody": "Ce lien a expiré ou a déjà été utilisé. Demandes-en un nouveau.",
     "linkErrorTitle": "Problème de lien",
     "linkErrorBody": "Ce lien n'a pas pu être utilisé. Demandes-en un nouveau."
+  },
+  "quickActions": {
+    "contactDeveloperTitle": "👋 Contacter le développeur",
+    "contactDeveloperSubtitle": "Nous sommes là pour vous aider !"
   }
 }

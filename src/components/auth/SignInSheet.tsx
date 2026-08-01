@@ -245,7 +245,12 @@ export const SignInSheet: FC<SignInSheetProps> = ({
           </View>
 
           <Button variant="outline" size="medium" fullWidth onPress={() => goToMode('signIn')}>
-            {t('auth.continueWithEmail')}
+            <View className="flex-row items-center">
+              <Ionicons name="mail-outline" size={18} color={colors.primary} />
+              <Typography variant="subtitle-14-semibold" color="primary" className="ml-2">
+                {t('auth.continueWithEmail')}
+              </Typography>
+            </View>
           </Button>
         </View>
       )}

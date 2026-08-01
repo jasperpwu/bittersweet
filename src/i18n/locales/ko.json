@@ -1245,5 +1245,9 @@
     "linkExpiredBody": "이 링크는 만료되었거나 이미 사용됐어요. 새 링크를 요청해 주세요.",
     "linkErrorTitle": "링크 오류",
     "linkErrorBody": "이 링크를 사용할 수 없어요. 새 링크를 요청해 주세요."
+  },
+  "quickActions": {
+    "contactDeveloperTitle": "👋 개발자에게 문의",
+    "contactDeveloperSubtitle": "언제든 도와드릴게요!"
   }
 }
