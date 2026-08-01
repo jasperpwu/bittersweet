@@ -6,6 +6,8 @@
  * When adding a language: add its row here, add `locales/<code>.json`, and
  * register it in the `resources` map in `./index.ts`.
  */
+import { getLocales } from 'expo-localization';
+
 export interface SupportedLanguage {
   /** BCP-47 / i18next locale code (also the locale filename and stored pref). */
   code: string;
@@ -46,6 +48,23 @@ export function resolveSupportedLanguage(locale: string | null | undefined): str
   if (base === 'zh') return 'zh-Hans';
   if (SUPPORTED_CODES.has(base)) return base;
   return undefined;
+}
+
+/**
+ * The device's preferred language, resolved to a shipped code (else English).
+ *
+ * Used both as the initial i18next language and as the default value of the
+ * `language` preference on a fresh install, so a first-time user sees the app
+ * in their system language instead of English. Synchronous — `getLocales()` is
+ * backed by a native constant.
+ */
+export function getDeviceLanguage(): string {
+  const locale = getLocales()[0];
+  return (
+    resolveSupportedLanguage(locale?.languageTag) ??
+    resolveSupportedLanguage(locale?.languageCode) ??
+    DEFAULT_LANGUAGE
+  );
 }
 
 export function getLanguageByCode(code: string): SupportedLanguage | undefined {

@@ -11,6 +11,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
 import { AnalyticsTracker } from '../services/analytics';
+import { getDeviceLanguage } from '../i18n/languages';
 
 // Types
 interface DeviceInfo {
@@ -165,7 +166,9 @@ const createDefaultPreferences = (): AppPreferences => ({
   hasSeenJournalIntro: false,
   hasSeenGoalsIntro: false,
   theme: 'system',
-  language: 'en',
+  // Fresh install has no persisted preference — follow the system language
+  // (falls back to English when we don't ship the device's language).
+  language: getDeviceLanguage(),
   notifications: {
     enabled: true,
     sound: true,

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
 import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsItem';
+import { showManageSubscriptionsIOS } from 'expo-iap';
 import { useAppStore } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { useUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
@@ -18,6 +19,33 @@ export default function SubscriptionScreen() {
   // 'settings': a voluntary upgrade tap, not a feature gate — see PaywallSource.
   const { openPlans, upgradeModals } = useUpgradeFlow('settings');
   const subscriptionTier = useAppStore((state) => state.subscription.tier);
+  const checkSubscriptionStatus = useAppStore(
+    (state) => state.subscription.checkSubscriptionStatus
+  );
+
+  /**
+   * StoreKit's manage-subscriptions sheet, not the apps.apple.com account page.
+   * The account page renders the *production* App Store account, so a sandbox
+   * subscription (TestFlight) isn't listed there and its "cancel" just punts to
+   * Settings, where the sandbox sub also doesn't appear. `showManageSubscriptions`
+   * runs against whatever StoreKit environment the build is in, so it manages the
+   * subscription the user actually bought.
+   *
+   * The sheet stays inside the app, so the foreground handler in _layout.tsx that
+   * normally re-checks tier never fires — refresh explicitly on dismissal.
+   */
+  const handleManageSubscription = async () => {
+    triggerHaptic('light');
+    try {
+      await showManageSubscriptionsIOS();
+    } catch (error) {
+      // Don't strand the user on a dead tap: fall back to the account page.
+      console.error('[IAP] showManageSubscriptions failed:', error);
+      Linking.openURL('https://apps.apple.com/account/subscriptions');
+      return;
+    }
+    await checkSubscriptionStatus();
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-light-bg dark:bg-dark-bg">
@@ -50,10 +78,7 @@ export default function SubscriptionScreen() {
                 subtitle={t('subscription.manageSub')}
                 icon="settings-outline"
                 hasChevron
-                onPress={() => {
-                  triggerHaptic('light');
-                  Linking.openURL('https://apps.apple.com/account/subscriptions');
-                }}
+                onPress={handleManageSubscription}
                 isLast
               />
             </>

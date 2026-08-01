@@ -10,9 +10,8 @@
  */
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { getLocales } from 'expo-localization';
 
-import { DEFAULT_LANGUAGE, resolveSupportedLanguage } from './languages';
+import { DEFAULT_LANGUAGE, getDeviceLanguage } from './languages';
 
 import en from './locales/en.json';
 import es from './locales/es.json';
@@ -34,14 +33,9 @@ const resources = {
   'zh-Hans': { translation: zhHans },
 } as const;
 
-const deviceLanguage =
-  resolveSupportedLanguage(getLocales()[0]?.languageTag) ??
-  resolveSupportedLanguage(getLocales()[0]?.languageCode) ??
-  DEFAULT_LANGUAGE;
-
 i18n.use(initReactI18next).init({
   resources,
-  lng: deviceLanguage,
+  lng: getDeviceLanguage(),
   fallbackLng: DEFAULT_LANGUAGE,
   // RN's Hermes engine has a full Intl.PluralRules, so the modern JSON v4 plural
   // suffixes (_one/_other/...) work without a compat shim.
