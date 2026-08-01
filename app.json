@@ -51,6 +51,7 @@
       "./plugins/withFmtFix",
       "./plugins/withHomeWidget",
       "./plugins/withSiriShortcutsRefresh",
+      "./plugins/withStoreKitConfig",
       [
         "expo-build-properties",
         {

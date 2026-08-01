@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Pressable, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Pressable, ActivityIndicator, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../ui/Typography';
@@ -39,6 +39,7 @@ const formatFromTemplate = (template: string, amount: number): string => {
 
 export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, source }) => {
   const { t } = useTranslation();
+  const isDark = useColorScheme() === 'dark';
   const { products, isLoading, error } = useAppStore((state) => state.subscription);
   const loadProducts = useAppStore((state) => state.subscription.loadProducts);
   const purchase = useAppStore((state) => state.subscription.purchase);
@@ -46,10 +47,21 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, 
 
   // Select-then-confirm: yearly is pre-selected as the best-value default.
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>('yearly');
+  // StoreKit omits unknown SKUs from the result instead of throwing, so a
+  // misconfigured store resolves to an empty product list with no error. Track
+  // whether a fetch has actually completed to tell that apart from "loading"
+  // — otherwise the only symptom is a permanently disabled Continue button.
+  const [loadAttempted, setLoadAttempted] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoadAttempted(false);
+    await loadProducts();
+    setLoadAttempted(true);
+  }, [loadProducts]);
 
   useEffect(() => {
     if (isVisible && products.length === 0) {
-      loadProducts();
+      load();
     }
     // Analytics: this sheet is the one place plans are ever shown, so it is the
     // canonical paywall impression. `source` is the gate that opened it, which is
@@ -93,6 +105,7 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, 
   };
 
   const productsReady = products.length > 0;
+  const productsUnavailable = loadAttempted && !isLoading && !productsReady;
 
   const PlanCard = ({ plan }: { plan: PlanKey }) => {
     const isSelected = selectedPlan === plan;
@@ -226,7 +239,24 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, 
       </View>
 
       {/* Plan selection */}
-      {!productsReady && isLoading ? (
+      {productsUnavailable ? (
+        <View className="items-center rounded-2xl bg-light-border/20 px-4 py-6 dark:bg-white/[0.03]">
+          <Ionicons
+            name="cloud-offline-outline"
+            size={26}
+            color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
+          />
+          <Typography variant="subtitle-14-semibold" color="primary" className="mt-3 text-center">
+            {t('subscription.plansUnavailable')}
+          </Typography>
+          <Typography variant="body-12" color="secondary" className="mt-1 text-center">
+            {t('subscription.plansUnavailableSub')}
+          </Typography>
+          <Button variant="secondary" size="small" className="mt-4" onPress={load}>
+            {t('subscription.retry')}
+          </Button>
+        </View>
+      ) : !productsReady ? (
         <View className="items-center py-8">
           <ActivityIndicator size="small" color={colors.primary} />
         </View>
