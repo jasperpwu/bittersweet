@@ -29,69 +29,43 @@ import { showToast } from '../src/components/ui/Toast';
 // Slide content is keyed by translation namespace; the title/description strings
 // are resolved with t() at render time (see renderItem below).
 //
-// The arc is deliberate: state the premise, show the loop it drives, prime the
-// one permission the loop depends on, and only then ask for setup work. Setup
-// (tags, goal) sits last so the user has been told what they're getting before
-// they're asked to invest in it.
+// The arc is deliberate: state the premise and the loop that delivers it, then
+// ask for setup work. Setup (tags, goal) sits last so the user has been told
+// what they're getting before they're asked to invest in it.
 const ONBOARDING_SLIDES = [
-  // 1 — the premise: screen time is earned, not banned.
+  // 1 — the premise and the loop in one: screen time is earned, not banned, and
+  // fruit is what a finished session pays out. These were two slides; split, the
+  // second only restated the first's "focus, then unlock" in other words.
+  //
+  // There is deliberately no app-picking slide here. Onboarding never presents
+  // the Family Controls prompt — that fires at its own moment of intent (the
+  // home screen's blocklist entry), since iOS never re-presents a denied
+  // request. A slide that only said "choose the apps" without being able to act
+  // on it was asking for a decision the user couldn't make yet.
   {
     id: '1',
     key: 'slide1',
     iconName: 'lock-open-outline',
     iconColor: colors.primary,
     kind: 'info',
-    hasNote: false,
   },
-  // 2 — the loop: focus grows fruit, fruit buys minutes.
+  // 2 — pick starter tags.
   {
     id: '2',
     key: 'slide2',
-    iconName: 'leaf-outline',
-    iconColor: colors.success,
-    kind: 'info',
-    hasNote: false,
-  },
-  // 3 — what gets blocked, plus a plain-language prime for the Screen Time
-  // prompt. The prompt itself still fires at its existing moment of intent (the
-  // home screen's blocklist entry) — iOS never re-presents a denied Family
-  // Controls request, so it isn't worth spending here, before the user has any
-  // reason to say yes.
-  {
-    id: '3',
-    key: 'slide3',
-    iconName: 'phone-portrait-outline',
-    iconColor: colors.error,
-    kind: 'info',
-    hasNote: true,
-  },
-  // 4 — pick starter tags.
-  {
-    id: '4',
-    key: 'slide4',
     iconName: 'pricetags-outline',
     iconColor: colors.primary,
     kind: 'tags',
-    hasNote: false,
   },
-  // 5 — set one daily goal, and finish.
+  // 3 — set one daily goal, and finish.
   {
-    id: '5',
-    key: 'slide5',
+    id: '3',
+    key: 'slide3',
     iconName: 'flag-outline',
     iconColor: colors.success,
     kind: 'goal',
-    hasNote: false,
   },
 ] as const;
-
-/**
- * Sign-in is offered only on the screens before the user starts investing.
- * Its purpose is to let a returning user skip onboarding entirely — once they've
- * picked tags and a goal, signing in would bounce them to the tabs (see
- * finishSignIn) and silently discard that work.
- */
-const LAST_SIGN_IN_SLIDE_INDEX = 2;
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
@@ -334,11 +308,6 @@ export default function OnboardingScreen() {
         <Typography variant="body-16" color="primary" className="text-center opacity-80">
           {description}
         </Typography>
-        {item.hasNote && (
-          <Typography variant="body-12" color="secondary" className="mt-4 text-center">
-            {t(`onboarding.${item.key}.note`)}
-          </Typography>
-        )}
       </View>
     );
   };
@@ -351,9 +320,13 @@ export default function OnboardingScreen() {
         className="flex-row items-center justify-between px-5">
         <LanguageTrigger />
 
-        {/* Sign-in disappears once the user is authenticated, and once they've
-            reached the setup slides — see LAST_SIGN_IN_SLIDE_INDEX. */}
-        {isAuthenticated || currentIndex > LAST_SIGN_IN_SLIDE_INDEX ? (
+        {/* Offered on every slide so a returning user can always find it, and
+            only disappears once they're actually signed in. Signing in from a
+            setup slide is safe: finishSignIn only leaves onboarding when the
+            cloud says the account is already onboarded, in which case the tags
+            and goal picked here are meant to be replaced by the pulled data.
+            A brand-new account stays put and keeps its picks. */}
+        {isAuthenticated ? (
           <View />
         ) : (
           <View className="flex-row items-center">

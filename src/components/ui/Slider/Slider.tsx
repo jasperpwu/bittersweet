@@ -124,7 +124,13 @@ export const Slider: FC<SliderProps> = ({
       translateX.value = newTranslateX;
       runOnJS(updateValue)(valueFromTranslate(newTranslateX));
     },
-    onEnd: () => {
+    // onFinish, not onEnd: reanimated only calls onEnd for a gesture that went
+    // ACTIVE → END. A touch that begins on the track but is then cancelled or
+    // fails — e.g. a parent horizontal pager wins the same drag — skips onEnd
+    // entirely, so onSlidingComplete would never fire and any caller that
+    // disabled something for the duration of the drag would stay stuck.
+    // onFinish runs for END, FAILED and CANCELLED alike.
+    onFinish: () => {
       isSliding.value = false;
       scale.value = withSpring(1);
 

@@ -97,27 +97,18 @@
   "onboarding": {
     "slide1": {
       "title": "Du temps d'écran que vous avez mérité",
-      "description": "Bittersweet ne bannit pas vos apps pour toujours. Concentrez-vous d'abord : le temps que vous y passez ensuite est le vôtre, sans culpabilité."
+      "description": "Bittersweet ne bannit pas vos apps pour toujours. Concentrez-vous, gagnez des fruits et échangez-les contre du temps dans les apps que vous bloquez : ce temps est le vôtre, sans culpabilité."
     },
     "slide2": {
-      "title": "La concentration porte ses fruits",
-      "description": "Chaque session terminée fait grandir votre arbre. Récoltez les fruits et échangez-les contre du temps dans les apps que vous avez mises de côté."
-    },
-    "slide3": {
-      "title": "Choisissez ce qui vous happe",
-      "description": "Sélectionnez les apps qui dévorent vos journées. Elles restent fermées jusqu'à ce que vous ayez mérité d'y revenir.",
-      "note": "iOS vous demandera l'autorisation au moment de la configuration. Bittersweet voit seulement quelles apps vous avez choisies, jamais ce que vous y faites."
-    },
-    "slide4": {
       "title": "Sur quoi voulez-vous vous concentrer ?",
       "description": "Choisissez-en trois pour commencer. Renommez-les, échangez-les, et ajoutez-en d'autres quand vous voulez."
     },
-    "slide5": {
+    "slide3": {
       "title": "Commencez par une seule",
       "description": "Donnez un objectif quotidien à une étiquette. Une heure par jour suffit largement pour démarrer."
     },
     "dailyTargetLabel": "Chaque jour",
-    "restDaysNote": "Aucun objectif les jours de repos ({{days}}) : votre série reste intacte.",
+    "restDaysNote": "Aucun objectif les jours de repos ({{days}} par défaut) : votre série reste intacte.",
     "tagNamePlaceholder": "Études, Travail, Sport…",
     "moreSuggestions": "Autres suggestions",
     "suggestedTags": {

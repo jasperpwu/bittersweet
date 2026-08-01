@@ -97,27 +97,18 @@
   "onboarding": {
     "slide1": {
       "title": "내가 벌어서 쓰는 스크린 타임",
-      "description": "Bittersweet은 앱을 영영 막아두지 않아요. 먼저 집중하면, 그다음 시간은 죄책감 없이 온전히 내 것이 됩니다."
+      "description": "Bittersweet은 앱을 영영 막아두지 않아요. 집중해서 열매를 모으고, 차단할 앱의 시간과 바꿔보세요. 그 시간은 죄책감 없이 온전히 내 것이에요."
     },
     "slide2": {
-      "title": "집중이 열매를 키워요",
-      "description": "세션을 하나 마칠 때마다 나무가 자랍니다. 열매를 수확해 잠시 미뤄둔 앱의 시간과 바꿔보세요."
-    },
-    "slide3": {
-      "title": "나를 붙잡는 앱을 고르세요",
-      "description": "하루를 삼키는 앱을 골라보세요. 집중으로 되찾기 전까지는 열리지 않아요.",
-      "note": "설정할 때 iOS가 권한을 요청합니다. Bittersweet은 어떤 앱을 골랐는지만 알 뿐, 그 안에서 무엇을 하는지는 전혀 보지 않아요."
-    },
-    "slide4": {
       "title": "무엇에 집중할 건가요?",
       "description": "우선 세 개만 골라보세요. 이름을 바꾸거나 교체할 수 있고, 나중에 얼마든지 더 추가할 수 있어요."
     },
-    "slide5": {
+    "slide3": {
       "title": "하나부터 시작해요",
       "description": "태그 하나에 하루 목표를 정해보세요. 하루 한 시간이면 시작하기에 충분해요."
     },
     "dailyTargetLabel": "매일",
-    "restDaysNote": "휴식일({{days}})에는 목표가 없어요. 연속 기록도 끊기지 않습니다.",
+    "restDaysNote": "휴식일(기본값 {{days}})에는 목표가 없어요. 연속 기록도 끊기지 않습니다.",
     "tagNamePlaceholder": "예: 공부, 업무, 운동",
     "moreSuggestions": "다른 제안",
     "suggestedTags": {

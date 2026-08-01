@@ -97,27 +97,18 @@
   "onboarding": {
     "slide1": {
       "title": "El tiempo de pantalla que te has ganado",
-      "description": "Bittersweet no bloquea tus apps para siempre. Concéntrate primero y el rato que pases en ellas será tuyo, sin culpa."
+      "description": "Bittersweet no bloquea tus apps para siempre. Concéntrate, gana fruta y cámbiala por tiempo en las apps que bloquees: ese rato es tuyo, sin culpa."
     },
     "slide2": {
-      "title": "La concentración da fruto",
-      "description": "Cada sesión que completas hace crecer tu árbol. Cosecha la fruta y cámbiala por tiempo en las apps que apartaste."
-    },
-    "slide3": {
-      "title": "Elige lo que te absorbe",
-      "description": "Escoge las apps que se comen tu día. Seguirán cerradas hasta que te ganes la vuelta.",
-      "note": "iOS te pedirá permiso al configurarlo. Bittersweet solo ve qué apps elegiste, nunca lo que haces en ellas."
-    },
-    "slide4": {
       "title": "¿En qué te vas a concentrar?",
       "description": "Elige tres para empezar. Puedes renombrarlas, cambiarlas y añadir más cuando quieras."
     },
-    "slide5": {
+    "slide3": {
       "title": "Empieza con una",
       "description": "Dale una meta diaria a una etiqueta. Con una hora al día basta para empezar."
     },
     "dailyTargetLabel": "Cada día",
-    "restDaysNote": "Sin meta los días de descanso ({{days}}): tu racha sigue intacta.",
+    "restDaysNote": "Sin meta los días de descanso ({{days}} por defecto): tu racha sigue intacta.",
     "tagNamePlaceholder": "Estudio, Trabajo, Ejercicio…",
     "moreSuggestions": "Más sugerencias",
     "suggestedTags": {
