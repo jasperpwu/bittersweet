@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "세션 요약에 사진을 첨부할 수 있도록 Bittersweet이 사진 라이브러리에 접근해요.",
+  "NSCameraUsageDescription": "세션 요약에 넣을 사진을 찍을 수 있도록 Bittersweet이 카메라를 사용해요.",
+  "NSMotionUsageDescription": "세션 중에 얼마나 집중했는지 가늠해서 추천 평가를 제안하려고 Bittersweet이 동작 데이터를 읽어요.",
+  "NSHealthShareUsageDescription": "끝난 운동이 집중 세션으로 나타나도록 Bittersweet이 운동 기록을 읽어요.",
+  "NSHealthUpdateUsageDescription": "Apple 건강에 접근하려면 이 권한이 필요해요. Bittersweet은 끝난 운동을 읽기만 하고 건강에 데이터를 쓰지 않아요."
+}

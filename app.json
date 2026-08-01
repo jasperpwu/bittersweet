@@ -85,6 +85,15 @@
       "backgroundColor": "#F5E6D3"
     },
     "assetBundlePatterns": ["**/*"],
+    "locales": {
+      "de": "./assets/locales/de.json",
+      "es": "./assets/locales/es.json",
+      "fr": "./assets/locales/fr.json",
+      "ja": "./assets/locales/ja.json",
+      "ko": "./assets/locales/ko.json",
+      "pt-BR": "./assets/locales/pt-BR.json",
+      "zh-Hans": "./assets/locales/zh-Hans.json"
+    },
     "ios": {
       "supportsTablet": true,
       "requireFullScreen": true,

@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "セッションまとめに写真を添付できるように、Bittersweetが写真ライブラリにアクセスします。",
+  "NSCameraUsageDescription": "セッションまとめ用の写真を撮影できるように、Bittersweetがカメラを使用します。",
+  "NSMotionUsageDescription": "セッション中にどれくらい集中できていたかを推定して、おすすめの評価を提案するために、Bittersweetがモーションデータを利用します。",
+  "NSHealthShareUsageDescription": "終わったワークアウトを集中セッションとして表示するために、Bittersweetがワークアウトの記録を読み取ります。",
+  "NSHealthUpdateUsageDescription": "Appleヘルスケアにアクセスするために、この許可が必要です。Bittersweetは終わったワークアウトを読み取るだけで、ヘルスケアにデータを書き込むことはありません。"
+}

@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "Bittersweet 需要访问相册，以便你把照片添加到会话总结里。",
+  "NSCameraUsageDescription": "Bittersweet 需要使用相机，以便你为会话总结拍照。",
+  "NSMotionUsageDescription": "Bittersweet 会读取运动数据，用来估算这次会话的专注程度并给出建议评分。",
+  "NSHealthShareUsageDescription": "Bittersweet 会读取你已完成的锻炼，把它们显示为专注会话。",
+  "NSHealthUpdateUsageDescription": "Bittersweet 需要此权限才能访问 Apple 健康。App 只读取你已完成的锻炼，不会向健康写入任何数据。"
+}

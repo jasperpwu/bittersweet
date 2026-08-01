@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "Bittersweet accède à votre galerie pour vous permettre d'ajouter des photos aux résumés de session.",
+  "NSCameraUsageDescription": "Bittersweet utilise l'appareil photo pour vous permettre de prendre des photos pour vos résumés de session.",
+  "NSMotionUsageDescription": "Bittersweet analyse vos données de mouvement pour estimer votre concentration pendant une session et vous suggérer une note.",
+  "NSHealthShareUsageDescription": "Bittersweet lit vos entraînements terminés pour les afficher comme sessions de concentration.",
+  "NSHealthUpdateUsageDescription": "Bittersweet a besoin de cette autorisation pour accéder à Apple Santé. L'app lit uniquement vos entraînements terminés et n'écrit aucune donnée dans Santé."
+}

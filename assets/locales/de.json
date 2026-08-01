@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "Bittersweet greift auf deine Fotogalerie zu, damit du Fotos an Session-Zusammenfassungen anhängen kannst.",
+  "NSCameraUsageDescription": "Bittersweet nutzt die Kamera, damit du Fotos für deine Session-Zusammenfassungen aufnehmen kannst.",
+  "NSMotionUsageDescription": "Bittersweet wertet deine Bewegungsdaten aus, um einzuschätzen, wie konzentriert eine Session war, und dir eine Bewertung vorzuschlagen.",
+  "NSHealthShareUsageDescription": "Bittersweet liest deine abgeschlossenen Workouts, damit sie als Fokus-Sessions erscheinen.",
+  "NSHealthUpdateUsageDescription": "Bittersweet braucht diese Berechtigung für den Zugriff auf Apple Health. Die App liest nur deine abgeschlossenen Workouts und schreibt keine Daten in Health."
+}

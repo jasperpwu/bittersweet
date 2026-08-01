@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "O Bittersweet acessa sua galeria para você anexar fotos aos resumos de sessão.",
+  "NSCameraUsageDescription": "O Bittersweet usa a câmera para você tirar fotos para os resumos de sessão.",
+  "NSMotionUsageDescription": "O Bittersweet lê seus dados de movimento para estimar o quanto você se concentrou na sessão e sugerir uma avaliação.",
+  "NSHealthShareUsageDescription": "O Bittersweet lê seus treinos finalizados para que eles apareçam como sessões de foco.",
+  "NSHealthUpdateUsageDescription": "O Bittersweet precisa desta permissão para acessar o Apple Saúde. O app só lê seus treinos finalizados e não grava nenhum dado no Saúde."
+}
