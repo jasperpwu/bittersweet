@@ -26,6 +26,14 @@ export const posthog = POSTHOG_KEY
       // In dev, send each event immediately instead of waiting for the batch
       // flush, so events appear in PostHog right away during local testing.
       flushAt: __DEV__ ? 1 : 20,
+      // Stamps `$geoip_disable: true` on every event so PostHog's ingestion skips
+      // the server-side IP → city/region/country lookup. The client SDK defaults
+      // this to FALSE, so without it every event would carry `$geoip_*` properties
+      // — i.e. derived coarse location, which we'd then have to declare on the App
+      // Store privacy label. We have no product use for it, so turn it off at the
+      // source. (Pair with "Discard client IP data" in the PostHog project
+      // settings, which drops the raw `$ip` the server attaches.)
+      disableGeoip: true,
     })
   : null;
 
