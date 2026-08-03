@@ -127,7 +127,10 @@
   "settings": {
     "language": {
       "title": "Language",
-      "subtitle": "Choose your app language"
+      "subtitle": "Choose your app language",
+      "restartTitle": "Restart Required",
+      "restartMessage": "Bittersweet needs to restart to apply this language's text direction.",
+      "restartConfirm": "Restart"
     },
     "tab": {
       "header": "Settings",

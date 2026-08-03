@@ -18,6 +18,7 @@ import { useReferralLink } from '../../src/hooks/useReferralLink';
 import { REFERRAL_TIERS } from '../../src/store/slices/referralSlice';
 import { showToast } from '../../src/components/ui/Toast';
 import { useTranslation } from 'react-i18next';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 export default function ReferralDetailsModal() {
   const { t } = useTranslation();
@@ -70,7 +71,7 @@ export default function ReferralDetailsModal() {
       <View className="h-[56px] flex-row items-center px-5">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
           <Ionicons
-            name="chevron-back"
+            name={directionalIcon('chevron-back')}
             size={24}
             color={isDark ? colors.dark.textSecondary : colors.light.screenTextPrimary}
           />

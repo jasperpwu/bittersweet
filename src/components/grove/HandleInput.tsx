@@ -5,6 +5,7 @@ import { Typography } from '../ui/Typography';
 import { colors } from '../../config/theme';
 import { HandleStatus } from '../../hooks/useHandleValidation';
 import { useTranslation } from 'react-i18next';
+import { useBrandFonts } from '../../hooks/useBrandFonts';
 
 interface HandleInputProps {
   value: string;
@@ -31,6 +32,7 @@ export const HandleInput: React.FC<HandleInputProps> = ({
   status,
 }) => {
   const { t } = useTranslation();
+  const fonts = useBrandFonts();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const config = statusConfig[status];
@@ -66,7 +68,7 @@ export const HandleInput: React.FC<HandleInputProps> = ({
             flex: 1,
             fontSize: 14,
             color: isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary,
-            fontFamily: 'Poppins-Regular',
+            ...fonts.regular,
           }}
         />
         {status === 'checking' && (

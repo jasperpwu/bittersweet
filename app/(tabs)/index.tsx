@@ -71,6 +71,8 @@ import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { useTagUpgradeFlow } from '../../src/hooks/useTagUpgradeFlow';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 import { colors } from '../../src/config/theme';
+import { useBrandFonts } from '../../src/hooks/useBrandFonts';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
 
@@ -371,6 +373,7 @@ type PersistedSession = {
 };
 
 export default function FocusScreen() {
+  const fonts = useBrandFonts();
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { height: screenHeight } = useWindowDimensions();
@@ -2094,7 +2097,7 @@ export default function FocusScreen() {
                             : colors.light.screenTextPrimary,
                         fontSize: 24,
                         lineHeight: 28,
-                        fontFamily: 'Poppins-SemiBold',
+                        ...fonts.semibold,
                         textAlign: 'center',
                         marginBottom: 4,
                       }}>
@@ -2110,7 +2113,7 @@ export default function FocusScreen() {
                           : colors.light.screenTextSecondary,
                       fontSize: 12,
                       lineHeight: 18,
-                      fontFamily: 'Poppins-Regular',
+                      ...fonts.regular,
                       textAlign: 'center',
                     }}>
                     {t('home.growHint')}
@@ -2124,7 +2127,7 @@ export default function FocusScreen() {
                       color: colors.success,
                       fontSize: 20,
                       lineHeight: 26,
-                      fontFamily: 'Poppins-SemiBold',
+                      ...fonts.semibold,
                       textAlign: 'center',
                     }}>
                     {t('home.overTime')}
@@ -2136,7 +2139,7 @@ export default function FocusScreen() {
                   fontSize: 96,
                   lineHeight: 120,
                   color: timerTextColor,
-                  fontFamily: 'Poppins-Bold',
+                  ...fonts.bold,
                   textAlign: 'center',
                 }}>
                 {timerDisplayTime}
@@ -2172,7 +2175,7 @@ export default function FocusScreen() {
                     </Typography>
                   </View>
                   <Ionicons
-                    name="chevron-forward"
+                    name={directionalIcon('chevron-forward')}
                     size={20}
                     color={
                       colorScheme === 'dark'

@@ -4,6 +4,7 @@ import { View, useColorScheme } from 'react-native';
 import { useAppStore } from '../../src/store';
 import { Typography } from '../../src/components/ui/Typography';
 import { colors } from '../../src/config/theme';
+import { useBrandFonts } from '../../src/hooks/useBrandFonts';
 import { useTranslation } from 'react-i18next';
 
 const ActiveDot = () => (
@@ -20,6 +21,7 @@ const ActiveDot = () => (
 
 export default function TabLayout() {
   const { t } = useTranslation();
+  const fonts = useBrandFonts();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -46,7 +48,7 @@ export default function TabLayout() {
         },
         tabBarShowLabel: true,
         tabBarLabelStyle: {
-          fontFamily: 'Poppins-Medium',
+          ...fonts.medium,
           fontSize: 10,
         },
         tabBarItemStyle: {
@@ -64,7 +66,7 @@ export default function TabLayout() {
             <View style={{ alignItems: 'center' }}>
               <Typography
                 variant="tiny-10"
-                style={{ color, fontFamily: 'Poppins-Medium' }}
+                style={{ color, ...fonts.medium }}
               >
                 {t('tabs.journal')}
               </Typography>
@@ -84,7 +86,7 @@ export default function TabLayout() {
             <View style={{ alignItems: 'center' }}>
               <Typography
                 variant="tiny-10"
-                style={{ color, fontFamily: 'Poppins-Medium' }}
+                style={{ color, ...fonts.medium }}
               >
                 {t('tabs.focus')}
               </Typography>
@@ -104,7 +106,7 @@ export default function TabLayout() {
             <View style={{ alignItems: 'center' }}>
               <Typography
                 variant="tiny-10"
-                style={{ color, fontFamily: 'Poppins-Medium' }}
+                style={{ color, ...fonts.medium }}
               >
                 {t('tabs.goals')}
               </Typography>
@@ -140,7 +142,7 @@ export default function TabLayout() {
             <View style={{ alignItems: 'center' }}>
               <Typography
                 variant="tiny-10"
-                style={{ color, fontFamily: 'Poppins-Medium' }}
+                style={{ color, ...fonts.medium }}
               >
                 {t('tabs.grove')}
               </Typography>
@@ -160,7 +162,7 @@ export default function TabLayout() {
             <View style={{ alignItems: 'center' }}>
               <Typography
                 variant="tiny-10"
-                style={{ color, fontFamily: 'Poppins-Medium' }}
+                style={{ color, ...fonts.medium }}
               >
                 {t('tabs.settings')}
               </Typography>

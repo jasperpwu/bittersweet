@@ -24,6 +24,7 @@ import { inferActivityType } from '../../../utils/inferActivityType';
 import { inferTagEmoji } from '../../../utils/inferTagEmoji';
 import type { ActivityType } from '../../../utils/focusRating';
 import type { SessionTag } from '../../../types/models';
+import { directionalIcon } from '../../../utils/directionalIcon';
 
 /** Fallback emoji shown on open and used when name-based inference finds no match. */
 const DEFAULT_TAG_EMOJI = '🏷️';
@@ -229,7 +230,7 @@ export const CreateTagModal: FC<CreateTagModalProps> = ({
           className="flex-row items-center justify-between rounded-xl border border-light-border bg-light-border/30 px-4 py-3 active:opacity-80 dark:border-dark-border dark:bg-dark-card">
           <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: color }} />
           <Ionicons
-            name="chevron-forward"
+            name={directionalIcon('chevron-forward')}
             size={18}
             color={
               colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary

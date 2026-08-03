@@ -29,6 +29,7 @@ import {
 } from '../../src/services/health/HealthKitService';
 import { syncHealthKitWorkouts } from '../../src/services/health/syncHealthKitWorkouts';
 import { useTranslation } from 'react-i18next';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 // Workout-oriented emoji suggestions for the inline tag creator.
 const WORKOUT_EMOJIS = ['🏋️', '💪', '🏃', '🧘', '🚴', '🏊', '⚽', '🤸'];
@@ -160,7 +161,7 @@ export default function HealthScreen() {
       <View className="h-[56px] flex-row items-center px-5">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
           <Ionicons
-            name="chevron-back"
+            name={directionalIcon('chevron-back')}
             size={24}
             color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
           />
@@ -230,7 +231,7 @@ export default function HealthScreen() {
             <View className="mb-4 flex-row items-center">
               <Pressable onPress={() => setCreatingTag(false)} className="mr-2 active:opacity-70">
                 <Ionicons
-                  name="chevron-back"
+                  name={directionalIcon('chevron-back')}
                   size={22}
                   color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
                 />

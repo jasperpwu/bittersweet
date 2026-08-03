@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { useWindowDimensions } from 'react-native';
+import { I18nManager, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -49,8 +49,9 @@ export function SwipeableTabWrapper({ currentTab, children }: SwipeableTabWrappe
         const direction = pendingSlideDirection;
         pendingSlideDirection = 0;
 
-        // Start off-screen: if direction=1 (swiped left), new screen enters from right
-        translateX.value = direction * screenWidth;
+        // Start off-screen: if direction=1 (advancing), the new screen enters
+        // from the side the swipe came from — mirrored in RTL to match.
+        translateX.value = direction * screenWidth * (I18nManager.isRTL ? -1 : 1);
         translateX.value = withTiming(0, {
           duration: 300,
           easing: Easing.out(Easing.cubic),
@@ -89,8 +90,11 @@ export function SwipeableTabWrapper({ currentTab, children }: SwipeableTabWrappe
           Math.abs(event.velocityX) > VELOCITY_THRESHOLD;
 
         if (triggered) {
-          const direction = event.translationX < 0 ? 1 : -1;
-          runOnJS(handleSwipe)(direction);
+          // The tab bar itself is mirrored in RTL, so the gesture has to be too:
+          // in Arabic the next tab sits to the *left*, and swiping right must
+          // advance rather than go back. Transforms are never auto-flipped.
+          const forward = I18nManager.isRTL ? event.translationX > 0 : event.translationX < 0;
+          runOnJS(handleSwipe)(forward ? 1 : -1);
         }
       }),
     [handleSwipe]

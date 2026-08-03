@@ -4,6 +4,7 @@ import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from './Typography';
 import { Toggle } from './Toggle';
+import { directionalIcon } from '../../utils/directionalIcon';
 
 export interface SettingsItemProps {
   title: string;
@@ -89,7 +90,7 @@ export const SettingsItem: React.FC<SettingsItemProps> = ({
       )}
 
       {hasChevron && (
-        <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
+        <Ionicons name={directionalIcon('chevron-forward')} size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
       )}
     </Pressable>
   );

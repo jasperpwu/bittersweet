@@ -1,6 +1,12 @@
 import { FC, ReactNode } from 'react';
 import { Text, TextProps, TextStyle } from 'react-native';
-import { TYPOGRAPHY_VARIANTS, TypographyVariant } from '../../config/fonts';
+import {
+  TYPOGRAPHY_VARIANTS,
+  TypographyVariant,
+  resolveBrandFontClasses,
+  resolveTypographyStyle,
+} from '../../config/fonts';
+import { useLanguage } from '../../i18n/useLanguage';
 import { createNoClipTextStyle } from '../../utils/textUtils';
 
 interface TypographyProps extends TextProps {
@@ -25,19 +31,27 @@ export const Typography: FC<TypographyProps> = ({
   style,
   ...props
 }) => {
-  const baseTypographyStyle = TYPOGRAPHY_VARIANTS[variant] as TextStyle;
+  // Poppins has no glyphs for several shipped scripts (Cyrillic, Bengali,
+  // Arabic, CJK), so the family is resolved per language — see resolveFontFamily.
+  const language = useLanguage();
+  const { className: resolvedClassName, weightStyle } = resolveBrandFontClasses(
+    className,
+    language
+  );
+  const baseTypographyStyle = TYPOGRAPHY_VARIANTS[variant]
+    ? resolveTypographyStyle(variant, language)
+    : (undefined as unknown as TextStyle);
 
   if (!baseTypographyStyle) {
     console.error(`Typography variant "${variant}" not found. Using body-14 as fallback.`);
-    const fallbackStyle = TYPOGRAPHY_VARIANTS['body-14'] as TextStyle;
+    const fallbackStyle = resolveTypographyStyle('body-14', language);
     const noClipStyle = createNoClipTextStyle(fallbackStyle);
 
     return (
       <Text
-        className={`${colorClasses[color]} ${className || ''}`}
-        style={[noClipStyle, style]}
-        {...props}
-      >
+        className={`${colorClasses[color]} ${resolvedClassName || ''}`}
+        style={[noClipStyle, weightStyle, style]}
+        {...props}>
         {children}
       </Text>
     );
@@ -47,10 +61,9 @@ export const Typography: FC<TypographyProps> = ({
 
   return (
     <Text
-      className={`${colorClasses[color]} ${className || ''}`}
-      style={[noClipStyle, style]}
-      {...props}
-    >
+      className={`${colorClasses[color]} ${resolvedClassName || ''}`}
+      style={[noClipStyle, weightStyle, style]}
+      {...props}>
       {children}
     </Text>
   );

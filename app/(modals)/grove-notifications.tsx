@@ -14,6 +14,7 @@ import {
 } from '../../src/utils/groveNotifications';
 import type { GroveProfile } from '../../src/services/grove/GroveService';
 import { computeChallengeReward } from '../../src/utils/challengeReward';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 // Avatar shared by the rows that reference a grove profile.
 function NotificationAvatar({ profile }: { profile: GroveProfile }) {
@@ -277,7 +278,7 @@ export default function GroveNotificationsModal() {
                 {t('gm.notifChallengeReview', { icon: challenge.tagIcon, name: challenge.tagName })}
               </Typography>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.light.textSecondary} />
+            <Ionicons name={directionalIcon('chevron-forward')} size={16} color={colors.light.textSecondary} />
           </Pressable>
         );
       }
@@ -350,7 +351,7 @@ export default function GroveNotificationsModal() {
                 </Typography>
               </View>
             ) : (
-              <Ionicons name="chevron-forward" size={16} color={colors.light.textSecondary} />
+              <Ionicons name={directionalIcon('chevron-forward')} size={16} color={colors.light.textSecondary} />
             )}
           </Pressable>
         );
@@ -367,7 +368,7 @@ export default function GroveNotificationsModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
+          <Ionicons name={directionalIcon('arrow-back')} size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
           {t('gm.notifTitle')}

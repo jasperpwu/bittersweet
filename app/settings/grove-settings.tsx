@@ -18,6 +18,7 @@ import { SignInSheet } from '../../src/components/auth/SignInSheet';
 import { useAppStore } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { useTranslation } from 'react-i18next';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 export default function GroveSettingsScreen() {
   const { t } = useTranslation();
@@ -93,7 +94,7 @@ export default function GroveSettingsScreen() {
       <View className="h-[56px] flex-row items-center px-5">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
           <Ionicons
-            name="chevron-back"
+            name={directionalIcon('chevron-back')}
             size={24}
             color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
           />

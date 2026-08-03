@@ -8,6 +8,7 @@ import { TotalTargetPicker } from './TotalTargetPicker';
 import { useAppSettings } from '../../../store/unified-store';
 import { FocusGoal } from '../../../store/types';
 import { colors } from '../../../config/theme';
+import { useBrandFonts } from '../../../hooks/useBrandFonts';
 
 type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'none';
 
@@ -98,6 +99,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
   onDirtyChange,
 }) => {
   const { t } = useTranslation();
+  const fonts = useBrandFonts();
   const isDark = useColorScheme() === 'dark';
   const [dailyTargetHours, setDailyTargetHours] = useState(1);
   const [dailyRestDayTargetHours, setDailyRestDayTargetHours] = useState(0.5);
@@ -286,7 +288,7 @@ export const FocusGoalForm: FC<FocusGoalFormProps> = ({
             isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary
           }
           className="bg-light-border dark:bg-dark-border rounded-xl px-4 py-3 text-light-text-primary dark:text-dark-text-primary text-base"
-          style={{ fontFamily: 'Poppins-Regular' }}
+          style={fonts.regular}
         />
       </View>
 

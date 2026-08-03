@@ -15,6 +15,7 @@ import { colors } from '../../config/theme';
 import { useAppStore } from '../../store';
 import { showToast } from '../ui/Toast';
 import type { Todo } from '../../store/types';
+import { useBrandFonts } from '../../hooks/useBrandFonts';
 
 // Surfaced under the running focus timer: the active tag's open tasks, ordered by
 // start time (via sortOrder), reorderable by long-press drag. Reordering persists
@@ -40,6 +41,7 @@ interface RunningTodoListProps {
 }
 
 export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor, onAddTodo }) => {
+  const fonts = useBrandFonts();
   // Read the todo collection WITHOUT useSyncExternalStore. Zustand v4's useStore
   // subscribes through useSyncExternalStore, whose mount-time consistency check
   // can dispatch a forceUpdate while React is flushing insertion effects during
@@ -215,7 +217,7 @@ export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor, 
             style={{
               flex: 1,
               fontSize: 14,
-              fontFamily: 'Poppins-Regular',
+              ...fonts.regular,
               color: addTint,
             }}>
             {t('todos.addRow')}
@@ -254,6 +256,7 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
   onDragMove,
   onDragEnd,
 }) => {
+  const fonts = useBrandFonts();
   const isDark = useColorScheme() === 'dark';
   const isBeingDragged = isDragging && dragOriginalIndex === index;
   const translateY = useSharedValue(0);
@@ -372,7 +375,7 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
             style={{
               flex: 1,
               fontSize: 14,
-              fontFamily: 'Poppins-Regular',
+              ...fonts.regular,
               color: textPrimary,
             }}>
             {todo.name}
@@ -383,7 +386,7 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
               style={{
                 marginLeft: 8,
                 fontSize: 11,
-                fontFamily: 'Poppins-Regular',
+                ...fonts.regular,
                 color: accent,
               }}>
               {timeLabel}

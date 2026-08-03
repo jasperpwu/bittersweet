@@ -22,6 +22,7 @@ import {
 } from '../../src/utils/goalProgress';
 import type { FocusGoal, FocusSession } from '../../src/store/types';
 import type { SessionTag } from '../../src/types/models';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 type Period = 'daily' | 'weekly' | 'monthly';
 const WEEK_START_DAY = 1; // Monday — matches GoalProgress / GoalProgressBanner
@@ -221,7 +222,7 @@ export default function OffMarkerScreen() {
           onPress={() => router.back()}
           className="flex-row items-center active:opacity-70"
           hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color={colors.light.screenTextSecondary} />
+          <Ionicons name={directionalIcon('chevron-back')} size={24} color={colors.light.screenTextSecondary} />
         </Pressable>
         <Typography variant="headline-18">{t('offMarker.title')}</Typography>
         <FruitCounter fruitCount={balance} size="small" />

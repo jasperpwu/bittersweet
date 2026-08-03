@@ -15,6 +15,24 @@ export interface SupportedLanguage {
   label: string;
   /** Endonym — how speakers write the language's name themselves. */
   nativeName: string;
+  /**
+   * Written right-to-left. Drives `I18nManager.forceRTL` — see `./rtl.ts`.
+   * Flipping this direction requires an app restart (React Native limitation).
+   */
+  rtl?: boolean;
+  /**
+   * Poppins has no glyphs for this language's script, so text must fall back to
+   * the iOS system font (SF Pro / SF Arabic / Kohinoor Bengali / PingFang …).
+   *
+   * Verified against the bundled `assets/fonts/Poppins-*.ttf` cmap tables:
+   * Poppins covers Latin and Devanagari (94/128) but has **zero** glyphs for
+   * Cyrillic, Bengali, Arabic, Han, Hiragana or Hangul. Without this flag iOS
+   * still renders the text — CoreText substitutes per glyph — but a Latin word
+   * inside the sentence stays Poppins while everything around it changes face,
+   * and the Poppins weight scale is lost. See `resolveFontFamily` in
+   * `src/config/fonts.ts`.
+   */
+  systemFont?: boolean;
 }
 
 export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
@@ -23,9 +41,15 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
   { code: 'fr', label: 'French', nativeName: 'Français' },
   { code: 'de', label: 'German', nativeName: 'Deutsch' },
   { code: 'pt-BR', label: 'Portuguese (Brazil)', nativeName: 'Português (Brasil)' },
-  { code: 'ja', label: 'Japanese', nativeName: '日本語' },
-  { code: 'ko', label: 'Korean', nativeName: '한국어' },
-  { code: 'zh-Hans', label: 'Chinese (Simplified)', nativeName: '简体中文' },
+  { code: 'ja', label: 'Japanese', nativeName: '日本語', systemFont: true },
+  { code: 'ko', label: 'Korean', nativeName: '한국어', systemFont: true },
+  { code: 'zh-Hans', label: 'Chinese (Simplified)', nativeName: '简体中文', systemFont: true },
+  // Devanagari is one of the two scripts Poppins ships, so Hindi keeps the brand font.
+  { code: 'hi', label: 'Hindi', nativeName: 'हिन्दी' },
+  { code: 'bn', label: 'Bengali', nativeName: 'বাংলা', systemFont: true },
+  { code: 'ru', label: 'Russian', nativeName: 'Русский', systemFont: true },
+  { code: 'ar', label: 'Arabic', nativeName: 'العربية', rtl: true, systemFont: true },
+  { code: 'ur', label: 'Urdu', nativeName: 'اردو', rtl: true, systemFont: true },
 ];
 
 export const DEFAULT_LANGUAGE = 'en';
@@ -59,14 +83,30 @@ export function resolveSupportedLanguage(locale: string | null | undefined): str
  * backed by a native constant.
  */
 export function getDeviceLanguage(): string {
-  const locale = getLocales()[0];
-  return (
-    resolveSupportedLanguage(locale?.languageTag) ??
-    resolveSupportedLanguage(locale?.languageCode) ??
-    DEFAULT_LANGUAGE
-  );
+  // `getLocales()` is the user's whole preference list, most-preferred first —
+  // walk it rather than reading only [0], so a device set to [Swedish, German]
+  // lands on German (which we ship) instead of falling all the way to English.
+  for (const locale of getLocales()) {
+    const resolved =
+      resolveSupportedLanguage(locale?.languageTag) ??
+      resolveSupportedLanguage(locale?.languageCode);
+    if (resolved) return resolved;
+  }
+  return DEFAULT_LANGUAGE;
 }
 
 export function getLanguageByCode(code: string): SupportedLanguage | undefined {
   return SUPPORTED_LANGUAGES.find((l) => l.code === code);
+}
+
+/** Whether a language code is written right-to-left (Arabic, Urdu). */
+export function isRtlLanguage(code: string | null | undefined): boolean {
+  if (!code) return false;
+  return getLanguageByCode(resolveSupportedLanguage(code) ?? '')?.rtl === true;
+}
+
+/** Whether a language's script needs the system font instead of Poppins. */
+export function usesSystemFont(code: string | null | undefined): boolean {
+  if (!code) return false;
+  return getLanguageByCode(resolveSupportedLanguage(code) ?? '')?.systemFont === true;
 }

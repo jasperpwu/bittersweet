@@ -8,6 +8,7 @@ import { SessionNotes } from '../../src/components/ui/SessionNotes';
 import { colors } from '../../src/config/theme';
 import { useFocus } from '../../src/store';
 import i18n from '../../src/i18n';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -54,7 +55,7 @@ export default function MySessionFeedModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          <Ionicons name={directionalIcon('arrow-back')} size={24} color={colors.primary} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
           {t('gm.feedMySessions')}

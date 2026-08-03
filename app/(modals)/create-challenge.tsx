@@ -13,6 +13,7 @@ import { useAppStore } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
 import { useTranslation } from 'react-i18next';
 import { AnalyticsTracker } from '../../src/services/analytics';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 type Period = 'daily' | 'weekly';
 type CreationMode = 'streak' | 'until';
@@ -198,7 +199,7 @@ export default function CreateChallengeModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          <Ionicons name={directionalIcon('arrow-back')} size={24} color={colors.primary} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2 flex-1">
           {stepTitle}
@@ -290,7 +291,7 @@ export default function CreateChallengeModal() {
                 <Typography variant="subtitle-14-medium" color="primary" className="flex-1">
                   {tag.name}
                 </Typography>
-                <Ionicons name="chevron-forward" size={18} color={colors.light.textSecondary} />
+                <Ionicons name={directionalIcon('chevron-forward')} size={18} color={colors.light.textSecondary} />
               </Pressable>
             ))}
           </View>

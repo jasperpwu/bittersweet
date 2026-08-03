@@ -127,7 +127,10 @@
   "settings": {
     "language": {
       "title": "Sprache",
-      "subtitle": "Wähle die Sprache der App"
+      "subtitle": "Wähle die Sprache der App",
+      "restartTitle": "Neustart erforderlich",
+      "restartMessage": "Bittersweet muss neu starten, um die Schreibrichtung dieser Sprache zu übernehmen.",
+      "restartConfirm": "Neu starten"
     },
     "tab": {
       "header": "Einstellungen",

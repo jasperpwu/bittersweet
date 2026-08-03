@@ -1,5 +1,5 @@
 import React, { FC, useState } from 'react';
-import { Pressable, useWindowDimensions } from 'react-native';
+import { Alert, Pressable, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
@@ -9,14 +9,19 @@ import { BottomSheet } from '../ui/BottomSheet';
 import { colors } from '../../config/theme';
 import { useUnifiedStore } from '../../store/unified-store';
 import { useAppStore } from '../../store';
-import { setLanguage } from '../../i18n';
+import i18n, { setLanguage } from '../../i18n';
 import { SUPPORTED_LANGUAGES, getLanguageByCode, DEFAULT_LANGUAGE } from '../../i18n/languages';
+import { applyLayoutDirection, layoutDirectionMatches } from '../../i18n/rtl';
 
 /**
  * Apply a language choice everywhere: switch the live UI, persist it to the
  * synced preference, and (if signed in) push it to the cloud now. The explicit
  * `syncSettings()` mirrors the onboarding flow — the sync middleware's
  * first-change baseline skip can otherwise drop a settings change.
+ *
+ * The layout-direction step is last on purpose: it restarts the app when the
+ * user crosses between an LTR and an RTL language, so the preference must
+ * already be persisted and pushed by the time it runs.
  */
 async function changeAppLanguage(code: string): Promise<void> {
   setLanguage(code);
@@ -24,6 +29,31 @@ async function changeAppLanguage(code: string): Promise<void> {
   if (useAppStore.getState().auth.isAuthenticated) {
     await useAppStore.getState().sync.syncSettings();
   }
+  await applyLayoutDirection(code);
+}
+
+/**
+ * Switch language, asking first if it means restarting.
+ *
+ * Only Arabic and Urdu can trigger the prompt, and only when coming from an LTR
+ * language (or leaving for one) — every other switch applies silently. The copy
+ * is read from the *incoming* language via `getFixedT`, because by the time the
+ * user reads it that's the language they asked for.
+ */
+async function selectLanguage(code: string): Promise<void> {
+  if (layoutDirectionMatches(code)) {
+    await changeAppLanguage(code);
+    return;
+  }
+
+  const tNext = i18n.getFixedT(code);
+  Alert.alert(tNext('settings.language.restartTitle'), tNext('settings.language.restartMessage'), [
+    { text: tNext('common.cancel'), style: 'cancel' },
+    {
+      text: tNext('settings.language.restartConfirm'),
+      onPress: () => void changeAppLanguage(code),
+    },
+  ]);
 }
 
 interface LanguageSelectorSheetProps {
@@ -38,16 +68,13 @@ export const LanguageSelectorSheet: FC<LanguageSelectorSheetProps> = ({ visible,
   const current = useUnifiedStore((state) => state.preferences.language) ?? DEFAULT_LANGUAGE;
 
   const handleSelect = (code: string) => {
-    changeAppLanguage(code);
     onClose();
+    void selectLanguage(code);
   };
 
   return (
     <BottomSheet isVisible={visible} onClose={onClose} height={screenHeight * 0.6} scrollable>
-      <Typography
-        variant="headline-20"
-        color="primary"
-        className="mb-5 text-center font-semibold">
+      <Typography variant="headline-20" color="primary" className="mb-5 text-center font-semibold">
         {t('settings.language.title')}
       </Typography>
 
@@ -57,7 +84,7 @@ export const LanguageSelectorSheet: FC<LanguageSelectorSheetProps> = ({ visible,
           <Pressable
             key={lang.code}
             onPress={() => handleSelect(lang.code)}
-            className="flex-row items-center justify-between py-3.5 px-2 active:opacity-70">
+            className="flex-row items-center justify-between px-2 py-3.5 active:opacity-70">
             <Typography variant="subtitle-16" color={selected ? 'primary' : 'secondary'}>
               {lang.nativeName}
             </Typography>
@@ -83,9 +110,8 @@ export const LanguageTrigger: FC<{ className?: string }> = ({ className }) => {
       <Button
         variant="ghost"
         size="small"
-        className={`flex-row py-2 px-3 ${className ?? ''}`}
-        onPress={() => setOpen(true)}
-      >
+        className={`flex-row px-3 py-2 ${className ?? ''}`}
+        onPress={() => setOpen(true)}>
         <Ionicons name="globe-outline" size={18} color={colors.primary} />
         <Typography variant="body-14" className="ml-1.5 text-primary">
           {label}

@@ -10,6 +10,7 @@ import { openChat } from '../../src/services/crisp';
 import { openFeedbackBoard } from '../../src/services/userjot';
 import { useTranslation } from 'react-i18next';
 import * as Application from 'expo-application';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 export default function SupportScreen() {
   const { t } = useTranslation();
@@ -45,7 +46,7 @@ export default function SupportScreen() {
       {/* Header */}
       <View className="h-[56px] px-5 flex-row items-center">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
-          <Ionicons name="chevron-back" size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
+          <Ionicons name={directionalIcon('chevron-back')} size={24} color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary} />
         </Pressable>
         <Typography variant="headline-20" color="primary">
           {t('settings.tab.support')}

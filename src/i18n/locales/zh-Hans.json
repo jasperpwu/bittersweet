@@ -127,7 +127,10 @@
   "settings": {
     "language": {
       "title": "语言",
-      "subtitle": "选择应用语言"
+      "subtitle": "选择应用语言",
+      "restartTitle": "需要重启",
+      "restartMessage": "需要重启 Bittersweet 才能应用该语言的文字方向。",
+      "restartConfirm": "重启"
     },
     "tab": {
       "header": "设置",

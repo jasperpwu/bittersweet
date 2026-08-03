@@ -24,6 +24,7 @@ import { showToast } from '../../src/components/ui/Toast';
 import { getFontFamily } from '../../src/utils/typography';
 import type { FriendItem, FriendRequest } from '../../src/services/grove/GroveFriendService';
 import type { GroveProfile } from '../../src/services/grove/GroveService';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 export default function AddFriendsModal() {
   const { t } = useTranslation();
@@ -332,7 +333,7 @@ export default function AddFriendsModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          <Ionicons name={directionalIcon('arrow-back')} size={24} color={colors.primary} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2 flex-1">
           {t('gm.afTitle')}

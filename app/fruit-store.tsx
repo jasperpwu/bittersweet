@@ -54,6 +54,7 @@ import {
 } from '../src/config/sliderThemes';
 import { useUnifiedStore } from '../src/store/unified-store';
 import { AnalyticsTracker } from '../src/services/analytics';
+import { directionalIcon } from '../src/utils/directionalIcon';
 
 // A history row's tipId is only renderable if it's still in the catalog —
 // retired/unknown ids (see tips.ts contract) fall back to a generic label
@@ -683,7 +684,7 @@ export default function FruitStoreScreen() {
           className="flex-row items-center active:opacity-70"
           hitSlop={8}>
           <Ionicons
-            name="chevron-back"
+            name={directionalIcon('chevron-back')}
             size={24}
             color={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary}
           />

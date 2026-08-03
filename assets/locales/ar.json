@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "يصل Bittersweet إلى مكتبة صورك لتتمكّن من إرفاق الصور بملخّصات الجلسات.",
+  "NSCameraUsageDescription": "يستخدم Bittersweet الكاميرا لتتمكّن من التقاط صور لملخّصات جلساتك.",
+  "NSMotionUsageDescription": "يحلّل Bittersweet بيانات حركتك ليقدّر مدى تركيزك في الجلسة ويقترح عليك تقييمًا.",
+  "NSHealthShareUsageDescription": "يقرأ Bittersweet تمارينك المكتملة لتظهر بوصفها جلسات تركيز.",
+  "NSHealthUpdateUsageDescription": "يحتاج Bittersweet هذا الإذن للوصول إلى Apple Health. يقرأ التطبيق تمارينك المكتملة فقط ولا يكتب أي بيانات في Health."
+}

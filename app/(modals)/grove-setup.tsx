@@ -25,6 +25,8 @@ import { useHandleValidation } from '../../src/hooks/useHandleValidation';
 import { useAppStore } from '../../src/store';
 import { isDeviceOffline } from '../../src/utils/network';
 import { useTranslation } from 'react-i18next';
+import { useBrandFonts } from '../../src/hooks/useBrandFonts';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 const TOTAL_STEPS = 4;
 
@@ -36,6 +38,7 @@ const AVATAR_COLORS = [
 type Gender = 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
 
 export default function GroveSetupModal() {
+  const fonts = useBrandFonts();
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -176,7 +179,7 @@ export default function GroveSetupModal() {
                 height: 48,
                 fontSize: 14,
                 color: isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary,
-                fontFamily: 'Poppins-Regular',
+                ...fonts.regular,
                 borderWidth: 1,
                 borderColor: isDark ? colors.dark.border : colors.light.screenBorder,
               }}
@@ -289,7 +292,7 @@ export default function GroveSetupModal() {
               className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
               hitSlop={8}
             >
-              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+              <Ionicons name={directionalIcon('arrow-back')} size={24} color={colors.primary} />
             </Pressable>
           ) : (
             <Pressable

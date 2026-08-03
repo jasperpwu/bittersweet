@@ -92,10 +92,15 @@
       "ja": "./assets/locales/ja.json",
       "ko": "./assets/locales/ko.json",
       "pt-BR": "./assets/locales/pt-BR.json",
-      "zh-Hans": "./assets/locales/zh-Hans.json"
+      "zh-Hans": "./assets/locales/zh-Hans.json",
+      "hi": "./assets/locales/hi.json",
+      "bn": "./assets/locales/bn.json",
+      "ru": "./assets/locales/ru.json",
+      "ar": "./assets/locales/ar.json",
+      "ur": "./assets/locales/ur.json"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "requireFullScreen": true,
       "deploymentTarget": "18.0",
       "appleTeamId": "WFHA987U5W",
@@ -112,7 +117,10 @@
       "bundleIdentifier": "com.path2us.bittersweet",
       "infoPlist": {
         "CFBundleDisplayName": "Bittersweet",
-        "CFBundleLocalizations": ["en", "de", "es", "fr", "ja", "ko", "pt-BR", "zh-Hans"],
+        "CFBundleLocalizations": [
+          "en", "de", "es", "fr", "ja", "ko", "pt-BR", "zh-Hans",
+          "hi", "bn", "ru", "ar", "ur"
+        ],
         "NSFamilyControlsUsageDescription": "This app uses Family Controls to help you manage app usage and focus time by blocking selected apps during work sessions.",
         "NSPhotoLibraryUsageDescription": "Bittersweet uses your photo library to let you attach photos to focus session summaries.",
         "NSCameraUsageDescription": "Bittersweet uses the camera to let you take photos for focus session summaries.",

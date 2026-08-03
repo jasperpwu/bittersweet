@@ -127,7 +127,10 @@
   "settings": {
     "language": {
       "title": "언어",
-      "subtitle": "앱 표시 언어 선택"
+      "subtitle": "앱 표시 언어 선택",
+      "restartTitle": "재시작 필요",
+      "restartMessage": "이 언어의 문자 방향을 적용하려면 Bittersweet을 다시 시작해야 합니다.",
+      "restartConfirm": "다시 시작"
     },
     "tab": {
       "header": "설정",

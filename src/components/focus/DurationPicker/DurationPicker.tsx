@@ -14,6 +14,7 @@ import { Typography } from '../../ui/Typography';
 import { colors } from '../../../config/theme';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { WheelColumn } from '../../ui/WheelColumn';
+import { useBrandFonts } from '../../../hooks/useBrandFonts';
 
 interface DurationPickerProps {
   selectedTime: number; // total minutes
@@ -42,6 +43,7 @@ const formatDisplay = (totalMinutes: number): string => {
 
 export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeChange }) => {
   const colorScheme = useColorScheme();
+  const fonts = useBrandFonts();
   const [isOpen, setIsOpen] = useState(false);
   const [pendingHours, setPendingHours] = useState(Math.floor(selectedTime / 60));
   const [pendingMinutes, setPendingMinutes] = useState(selectedTime % 60);
@@ -98,7 +100,7 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
           style={{
             color: colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary,
             fontSize: 64,
-            fontFamily: 'Poppins-Bold',
+            ...fonts.bold,
             textAlign: 'center',
           }}>
           {formatDisplay(selectedTime)}

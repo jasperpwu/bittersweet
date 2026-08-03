@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "Bittersweet обращается к вашей медиатеке, чтобы вы могли добавлять фото к итогам сессий.",
+  "NSCameraUsageDescription": "Bittersweet использует камеру, чтобы вы могли снимать фото для итогов сессий.",
+  "NSMotionUsageDescription": "Bittersweet анализирует данные о движении, чтобы оценить, насколько сосредоточенной была сессия, и предложить вам оценку.",
+  "NSHealthShareUsageDescription": "Bittersweet читает ваши завершённые тренировки, чтобы они появлялись как сессии фокуса.",
+  "NSHealthUpdateUsageDescription": "Это разрешение нужно Bittersweet для доступа к Apple Health. Приложение только читает завершённые тренировки и ничего не записывает в Health."
+}

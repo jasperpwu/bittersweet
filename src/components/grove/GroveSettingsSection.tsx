@@ -8,6 +8,7 @@ import { Button } from '../ui/Button';
 import { DefaultAvatar } from './DefaultAvatar';
 import { useAppStore } from '../../store';
 import { colors } from '../../config/theme';
+import { directionalIcon } from '../../utils/directionalIcon';
 
 export const GroveSettingsSection: React.FC = () => {
   const colorScheme = useColorScheme();
@@ -66,7 +67,7 @@ export const GroveSettingsSection: React.FC = () => {
                 Share your focus journey with friends
               </Typography>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.white} />
+            <Ionicons name={directionalIcon('chevron-forward')} size={16} color={colors.white} />
           </View>
         </Button>
       </View>
@@ -127,7 +128,7 @@ export const GroveSettingsSection: React.FC = () => {
                 </Typography>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
+            <Ionicons name={directionalIcon('chevron-forward')} size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
           </Pressable>
         )}
 
@@ -150,7 +151,7 @@ export const GroveSettingsSection: React.FC = () => {
                 </Typography>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
+            <Ionicons name={directionalIcon('chevron-forward')} size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
           </Pressable>
         )}
 

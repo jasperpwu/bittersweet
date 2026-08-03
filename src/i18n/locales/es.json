@@ -127,7 +127,10 @@
   "settings": {
     "language": {
       "title": "Idioma",
-      "subtitle": "Elige el idioma de la app"
+      "subtitle": "Elige el idioma de la app",
+      "restartTitle": "Reinicio necesario",
+      "restartMessage": "Bittersweet debe reiniciarse para aplicar la dirección de escritura de este idioma.",
+      "restartConfirm": "Reiniciar"
     },
     "tab": {
       "header": "Ajustes",

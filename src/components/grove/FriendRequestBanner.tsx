@@ -3,6 +3,7 @@ import { View, Pressable } from 'react-native';
 import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
+import { directionalIcon } from '../../utils/directionalIcon';
 
 interface FriendRequestBannerProps {
   count: number;
@@ -31,7 +32,7 @@ export const FriendRequestBanner: React.FC<FriendRequestBannerProps> = ({
           Tap to review
         </Typography>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+      <Ionicons name={directionalIcon('chevron-forward')} size={16} color={colors.primary} />
     </Pressable>
   );
 };

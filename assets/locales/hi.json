@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "Bittersweet आपकी फ़ोटो गैलरी तक पहुँचता है ताकि आप सत्र सारांश में फ़ोटो जोड़ सकें।",
+  "NSCameraUsageDescription": "Bittersweet कैमरे का उपयोग करता है ताकि आप अपने सत्र सारांश के लिए फ़ोटो ले सकें।",
+  "NSMotionUsageDescription": "Bittersweet आपके गति डेटा का विश्लेषण करता है ताकि आँक सके कि सत्र कितना एकाग्र था और आपको एक रेटिंग सुझा सके।",
+  "NSHealthShareUsageDescription": "Bittersweet आपके पूरे किए गए वर्कआउट पढ़ता है ताकि वे फ़ोकस सत्रों के रूप में दिखें।",
+  "NSHealthUpdateUsageDescription": "Apple Health तक पहुँच के लिए Bittersweet को यह अनुमति चाहिए। ऐप केवल आपके पूरे किए गए वर्कआउट पढ़ता है और Health में कोई डेटा नहीं लिखता।"
+}

@@ -127,7 +127,10 @@
   "settings": {
     "language": {
       "title": "言語",
-      "subtitle": "アプリの表示言語を選択"
+      "subtitle": "アプリの表示言語を選択",
+      "restartTitle": "再起動が必要です",
+      "restartMessage": "この言語の文字方向を適用するには、Bittersweet を再起動する必要があります。",
+      "restartConfirm": "再起動"
     },
     "tab": {
       "header": "設定",

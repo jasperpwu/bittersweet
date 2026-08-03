@@ -21,6 +21,7 @@ import { ActivityTypePicker } from '../ActivityTypePicker/ActivityTypePicker';
 import { useAppStore, useFocus } from '../../../store';
 import { inferActivityType } from '../../../utils/inferActivityType';
 import type { ActivityType } from '../../../utils/focusRating';
+import { directionalIcon } from '../../../utils/directionalIcon';
 
 interface EditTagSheetProps {
   visible: boolean;
@@ -231,7 +232,7 @@ export const EditTagSheet: FC<EditTagSheetProps> = ({ visible, tagId, onClose })
           }}
           className="flex-row items-center justify-between rounded-xl border border-light-border bg-light-border/30 px-4 py-3 active:opacity-80 dark:border-dark-border dark:bg-dark-card">
           <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: color }} />
-          <Ionicons name="chevron-forward" size={18} color={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
+          <Ionicons name={directionalIcon('chevron-forward')} size={18} color={colorScheme === 'dark' ? colors.dark.textSecondary : colors.light.screenTextSecondary} />
         </Pressable>
       </View>
 

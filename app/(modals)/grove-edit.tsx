@@ -22,10 +22,12 @@ import { InterestPicker } from '../../src/components/grove/InterestPicker';
 import { useHandleValidation } from '../../src/hooks/useHandleValidation';
 import { useAppStore } from '../../src/store';
 import { useTranslation } from 'react-i18next';
+import { useBrandFonts } from '../../src/hooks/useBrandFonts';
 
 type Gender = 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
 
 export default function GroveEditModal() {
+  const fonts = useBrandFonts();
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -235,7 +237,7 @@ export default function GroveEditModal() {
                 height: 48,
                 fontSize: 14,
                 color: isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary,
-                fontFamily: 'Poppins-Regular',
+                ...fonts.regular,
                 borderWidth: 1,
                 borderColor: isDark ? colors.dark.border : colors.light.screenBorder,
               }}

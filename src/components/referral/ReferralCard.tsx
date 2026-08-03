@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Typography } from '../ui/Typography';
 import { useReferralLink } from '../../hooks/useReferralLink';
 import { useAppStore } from '../../store';
+import { directionalIcon } from '../../utils/directionalIcon';
 
 export const ReferralCard: React.FC = () => {
   const colorScheme = useColorScheme();
@@ -64,7 +65,7 @@ export const ReferralCard: React.FC = () => {
             Tap to see rewards
           </Typography>
           <Ionicons
-            name="chevron-forward"
+            name={directionalIcon('chevron-forward')}
             size={14}
             color={isDark ? colors.dark.border : colors.light.screenBorder}
             style={{ marginLeft: 4 }}

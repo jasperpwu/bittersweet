@@ -21,6 +21,7 @@ import { useAppStore } from '../../src/store';
 import i18n from '../../src/i18n';
 import type { InnerCircleMember } from '../../src/services/grove/GroveHeartbeatService';
 import type { FriendItem } from '../../src/services/grove/GroveFriendService';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 const MAX_INNER_CIRCLE = 3;
 const THRESHOLD_OPTIONS = [3, 5, 7, 14] as const;
@@ -198,7 +199,7 @@ export default function InnerCircleModal() {
             className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
             hitSlop={8}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.error} />
+            <Ionicons name={directionalIcon('arrow-back')} size={24} color={colors.error} />
           </Pressable>
           <Typography variant="headline-18" color="primary" className="ml-2">
             {t('gm.icChooseFriend')}
@@ -260,7 +261,7 @@ export default function InnerCircleModal() {
           className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           hitSlop={8}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.error} />
+          <Ionicons name={directionalIcon('arrow-back')} size={24} color={colors.error} />
         </Pressable>
         <Typography variant="headline-18" color="primary" className="ml-2">
           {t('gm.icTitle')}
@@ -443,7 +444,7 @@ export default function InnerCircleModal() {
                 </Typography>
               )}
             </View>
-            <Ionicons name="chevron-forward" size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
+            <Ionicons name={directionalIcon('chevron-forward')} size={16} color={isDark ? colors.dark.border : colors.light.screenBorder} />
           </Pressable>
         </View>
       </ScrollView>

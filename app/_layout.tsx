@@ -20,6 +20,7 @@ import { useGoalNudgeNotifications } from '../src/hooks/useGoalNudgeNotification
 import { useTodoNotifications } from '../src/hooks/useTodoNotifications';
 import { useWeeklyCoach } from '../src/hooks/useWeeklyCoach';
 import { useApplyLanguage } from '../src/hooks/useApplyLanguage';
+import { useLayoutDirection } from '../src/hooks/useLayoutDirection';
 import { useEffect, useRef, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -236,6 +237,10 @@ export default function RootLayout() {
 
   // Apply the persisted/synced language preference to i18next
   useApplyLanguage();
+
+  // Reconcile the native RTL flag with that preference (restarts once if the
+  // app booted left-to-right but the saved language is Arabic or Urdu)
+  useLayoutDirection();
 
   // Initialize Device Activity Listener
   const { isListening } = useDeviceActivityListener();

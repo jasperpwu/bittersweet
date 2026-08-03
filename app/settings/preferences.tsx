@@ -27,6 +27,7 @@ import {
   ensureMotionPermission,
 } from '../../src/services/motionInsights';
 import { useTranslation } from 'react-i18next';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 export default function PreferencesScreen() {
   const { t } = useTranslation();
@@ -173,7 +174,7 @@ export default function PreferencesScreen() {
       <View className="h-[56px] flex-row items-center px-5">
         <Pressable onPress={() => router.back()} className="mr-3 active:opacity-70">
           <Ionicons
-            name="chevron-back"
+            name={directionalIcon('chevron-back')}
             size={24}
             color={isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary}
           />

@@ -1,0 +1,7 @@
+{
+  "NSPhotoLibraryUsageDescription": "Bittersweet আপনার ফটো লাইব্রেরিতে প্রবেশ করে যাতে আপনি সেশনের সারসংক্ষেপে ছবি যোগ করতে পারেন।",
+  "NSCameraUsageDescription": "Bittersweet ক্যামেরা ব্যবহার করে যাতে আপনি সেশনের সারসংক্ষেপের জন্য ছবি তুলতে পারেন।",
+  "NSMotionUsageDescription": "Bittersweet আপনার গতিবিধির তথ্য বিশ্লেষণ করে বোঝে সেশনটি কতটা মনোযোগী ছিল এবং একটি রেটিং প্রস্তাব করে।",
+  "NSHealthShareUsageDescription": "Bittersweet আপনার সম্পন্ন ওয়ার্কআউট পড়ে যাতে সেগুলো ফোকাস সেশন হিসেবে দেখা যায়।",
+  "NSHealthUpdateUsageDescription": "Apple Health-এ প্রবেশের জন্য Bittersweet-এর এই অনুমতি দরকার। অ্যাপটি কেবল আপনার সম্পন্ন ওয়ার্কআউট পড়ে, Health-এ কোনো তথ্য লেখে না।"
+}

@@ -24,6 +24,7 @@ import { ProfileAvatar } from '../../src/components/grove/ProfileAvatar';
 import { SwipeableTabWrapper } from '../../src/components/ui/SwipeableTabWrapper';
 import { useReferralLink } from '../../src/hooks/useReferralLink';
 import { useTranslation } from 'react-i18next';
+import { directionalIcon } from '../../src/utils/directionalIcon';
 
 interface CategoryCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -74,7 +75,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
         </Typography>
       </View>
       <Ionicons
-        name="chevron-forward"
+        name={directionalIcon('chevron-forward')}
         size={16}
         color={isDark ? colors.dark.border : colors.light.screenBorder}
       />
@@ -375,7 +376,7 @@ export default function SettingsScreen() {
                       {t('settings.tab.seeRewards')}
                     </Typography>
                     <Ionicons
-                      name="chevron-forward"
+                      name={directionalIcon('chevron-forward')}
                       size={14}
                       color={isDark ? colors.dark.border : colors.light.screenBorder}
                       style={{ marginLeft: 2 }}
