@@ -242,7 +242,7 @@
     "introTitle": "Willkommen in deinem Journal",
     "introStep1": "Jede abgeschlossene Fokus-Session landet hier auf der Zeitleiste.",
     "introStep2": "Mal vergessen zu tracken? Mit „+“ trägst du sie nachträglich ein – sie zählt trotzdem für deine Ziele.",
-    "introStep3": "Lege hier Aufgaben an – sie erscheinen im Fokus-Tab unter ihrem Label.",
+    "introStep3": "Wechsle zu Aufgaben, um vorauszuplanen – jede erscheint auch im Fokus-Tab unter ihrem Label.",
     "introDismiss": "Verstanden",
     "todaySuffix": ", heute",
     "viewSessions": "Sitzungen",
@@ -281,7 +281,9 @@
     "permissionTitle": "Berechtigung erforderlich",
     "permissionBodyCamera": "Erlaube den Zugriff auf deine Kamera in den Einstellungen, um Fotos hinzuzufügen.",
     "permissionBodyLibrary": "Erlaube den Zugriff auf deine Fotogalerie in den Einstellungen, um Fotos hinzuzufügen.",
-    "openSettings": "Einstellungen öffnen"
+    "openSettings": "Einstellungen öffnen",
+    "introStep2Title": "Session vergessen?",
+    "introStep3Title": "Mit Aufgaben planen"
   },
   "grove": {
     "deleteChallengeTitle": "Challenge löschen",
@@ -311,10 +313,12 @@
     "concludeBodyNew": "{{name}} abschließen? Es wird ein Abzeichen mit einer Zusammenfassung deiner Leistung erstellt und das Ziel wird deaktiviert.",
     "conclude": "Abschließen",
     "introTitle": "Ziele & Abzeichen",
-    "introStep1": "Gib jedem Label ein Ziel – wie viele Stunden du dem widmen willst, was dir wirklich wichtig ist. Tippe unten einfach auf „Aktivieren“.",
+    "introStep1": "Gib jedem Label ein Ziel – wie viele Stunden du dem widmen willst, was dir wirklich wichtig ist. Tippe auf „Aktivieren“, um zu starten.",
     "introStep2": "Wische ein Ziel nach rechts und tippe auf „Abzeichen“ – daraus wird ein Abzeichen, das die investierte Zeit festhält.",
-    "introStep3": "Das kannst du so oft machen, wie du magst – jedes Mal wird dasselbe Abzeichen mit deinen neuesten Zahlen aktualisiert. Es bleibt für immer in deiner Sammlung, auch wenn du das Label löschst.",
-    "introDismiss": "Verstanden"
+    "introStep3": "Hier bleiben deine Abzeichen – für immer, auch wenn du das Label löschst. Präge ein Ziel jederzeit neu, dann steht es mit deinen aktuellen Zahlen da.",
+    "introDismiss": "Verstanden",
+    "introStep2Title": "Zeit wird zum Abzeichen",
+    "introStep3Title": "Deine Sammlung"
   },
   "tabs": {
     "focus": "Fokus",

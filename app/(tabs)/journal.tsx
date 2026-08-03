@@ -85,7 +85,9 @@ export default function JournalScreen() {
   const secondaryTagEnabled = useSecondaryTagEnabled();
 
   // --- One-time Journal intro ---
-  // Spotlights the manual-entry "+" button and explains what this tab is for.
+  // A three-stop walkthrough: each step spotlights the element its copy is
+  // about (timeline → manual "+" → view switcher) instead of stacking every
+  // point on one target.
   // The "seen" flag lives in user_settings (cloud), so hold the overlay until the
   // cold-start sync has landed: a reinstall wipes local prefs while the Keychain
   // session survives, and showing it before the pull would replay the walkthrough
@@ -95,6 +97,8 @@ export default function JournalScreen() {
     (s) => !s.auth.isAuthenticated || (!!s.sync.lastSyncTime && !s.sync.isSyncing)
   );
   const addButtonRef = useRef<View>(null);
+  const timelineRef = useRef<View>(null);
+  const viewSwitcherRef = useRef<View>(null);
   const [showIntro, setShowIntro] = useState(false);
   // The tab can be mounted while another tab is on screen; measureInWindow returns
   // zeros then and CoachMark would silently skip rendering. Wait for focus.
@@ -749,13 +753,19 @@ export default function JournalScreen() {
   }, [sessions, selectedDate]);
 
   return (
-    <View className="flex-1 bg-light-bg dark:bg-dark-bg" style={{ paddingTop: insets.top }}>
+    // The screen's top inset lives on the header, not on this root: CoachMark
+    // positions itself with absoluteFill against measureInWindow coordinates,
+    // and an absolutely positioned child starts inside its parent's padding box —
+    // a padded root would push every spotlight a top-inset too low.
+    <View className="flex-1 bg-light-bg dark:bg-dark-bg">
       {/* Normal journal UI — header, date carousel, timeline. Always rendered so
           the "+" manual-entry button stays available even with no sessions; when
           empty, the calendar area is dimmed and the placeholder overlays it. */}
       <>
         {/* Header + Date Selector */}
-        <View className="border-b border-light-border bg-light-bg dark:border-dark-border dark:bg-dark-bg">
+        <View
+          style={{ paddingTop: insets.top }}
+          className="border-b border-light-border bg-light-bg dark:border-dark-border dark:bg-dark-bg">
           {/* Header row */}
           <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
             <Typography variant="headline-20" color="primary" style={{ fontWeight: '700' }}>
@@ -775,7 +785,10 @@ export default function JournalScreen() {
 
           {/* View switcher: Sessions (single-day) / TODOs (3-day planner) */}
           <View className="px-4 pb-2">
-            <View className="flex-row self-start rounded-full bg-black/10 p-1 dark:bg-white/10">
+            <View
+              ref={viewSwitcherRef}
+              collapsable={false}
+              className="flex-row self-start rounded-full bg-black/10 p-1 dark:bg-white/10">
               {(
                 [
                   { key: 'sessions', label: t('journal.viewSessions') },
@@ -808,6 +821,8 @@ export default function JournalScreen() {
         <View className="flex-1">
           {/* Calendar/timeline — dimmed and non-interactive while empty */}
           <View
+            ref={timelineRef}
+            collapsable={false}
             className="flex-1"
             style={!hasAnySessions ? { opacity: 0.35 } : undefined}
             pointerEvents={!hasAnySessions ? 'none' : 'auto'}>
@@ -1460,12 +1475,28 @@ export default function JournalScreen() {
       />
       {upgradeModals}
 
-      {/* First-visit walkthrough — spotlights the manual-entry "+" button */}
+      {/* First-visit walkthrough — one spotlight per point */}
       <CoachMark
         visible={showIntro && !preferences.hasSeenJournalIntro}
         targetRef={addButtonRef}
-        title={t('journal.introTitle')}
-        steps={[t('journal.introStep1'), t('journal.introStep2'), t('journal.introStep3')]}
+        steps={[
+          {
+            targetRef: timelineRef,
+            title: t('journal.introTitle'),
+            message: t('journal.introStep1'),
+          },
+          {
+            targetRef: addButtonRef,
+            title: t('journal.introStep2Title'),
+            message: t('journal.introStep2'),
+          },
+          {
+            targetRef: viewSwitcherRef,
+            title: t('journal.introStep3Title'),
+            message: t('journal.introStep3'),
+          },
+        ]}
+        nextLabel={t('common.next')}
         dismissLabel={t('journal.introDismiss')}
         onDismiss={dismissIntro}
       />

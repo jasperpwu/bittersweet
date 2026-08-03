@@ -241,7 +241,7 @@
     "introTitle": "欢迎来到日志",
     "introStep1": "每次完成的专注都会出现在这条时间轴上。",
     "introStep2": "忘记记录了？点 + 手动补上，一样计入目标。",
-    "introStep3": "在这里创建待办，它们会显示在专注页对应的标签下。",
+    "introStep3": "切换到「待办」来安排接下来的事，它们也会显示在专注页对应的标签下。",
     "introDismiss": "知道了",
     "todaySuffix": "，今天",
     "viewSessions": "会话",
@@ -280,7 +280,9 @@
     "permissionTitle": "需要权限",
     "permissionBodyCamera": "请在“设置”中允许访问相机以添加照片。",
     "permissionBodyLibrary": "请在“设置”中允许访问相册以添加照片。",
-    "openSettings": "打开设置"
+    "openSettings": "打开设置",
+    "introStep2Title": "忘记记录了？",
+    "introStep3Title": "用待办做计划"
   },
   "grove": {
     "deleteChallengeTitle": "删除挑战",
@@ -310,10 +312,12 @@
     "concludeBodyNew": "结束 {{name}}？将创建一枚总结你表现的徽章，目标将被停用。",
     "conclude": "结束",
     "introTitle": "目标与徽章",
-    "introStep1": "给任意标签设一个目标，定下你想为重要之事投入的时间。点下方的「激活」就能开始。",
+    "introStep1": "给任意标签设一个目标，定下你想为重要之事投入的时间。点「激活」就能开始。",
     "introStep2": "把目标向右滑，点「徽章」就能铸成一枚徽章，记下你真正投入的时间。",
-    "introStep3": "想铸几次都行，每次都会用最新的记录更新同一枚徽章。即使删掉标签，徽章也会一直留在你的收藏里。",
-    "introDismiss": "知道了"
+    "introStep3": "徽章会一直留在这里，即使删掉标签也在。想更新时再铸一次，同一枚徽章就会换成最新的记录。",
+    "introDismiss": "知道了",
+    "introStep2Title": "把时间铸成徽章",
+    "introStep3Title": "你的收藏"
   },
   "tabs": {
     "focus": "专注",

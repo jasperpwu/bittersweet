@@ -242,7 +242,7 @@
     "introTitle": "Welcome to your Journal",
     "introStep1": "Every focus session you finish shows up here on the timeline.",
     "introStep2": "Forgot to track one? Tap + to add it by hand — it still counts toward your goals.",
-    "introStep3": "Create TODOs here and they appear under their tag on the Focus tab.",
+    "introStep3": "Switch to TODOs to plan what’s ahead — each one also shows up under its tag on the Focus tab.",
     "introDismiss": "Got it",
     "todaySuffix": ", Today",
     "viewSessions": "Sessions",
@@ -281,7 +281,9 @@
     "permissionTitle": "Permission Required",
     "permissionBodyCamera": "Please allow access to your camera in Settings to add photos.",
     "permissionBodyLibrary": "Please allow access to your photo library in Settings to add photos.",
-    "openSettings": "Open Settings"
+    "openSettings": "Open Settings",
+    "introStep2Title": "Missed a session?",
+    "introStep3Title": "Plan with TODOs"
   },
   "grove": {
     "deleteChallengeTitle": "Delete Challenge",
@@ -311,10 +313,12 @@
     "concludeBodyNew": "Conclude {{name}}? A badge will be created summarizing your performance, and the goal will be deactivated.",
     "conclude": "Conclude",
     "introTitle": "Goals & Badges",
-    "introStep1": "Set a goal on any tag — a target for the hours you want to give to the parts of life that matter. Tap Activate on one below to start.",
+    "introStep1": "Set a goal on any tag — a target for the hours you want to give to the parts of life that matter. Tap Activate to start.",
     "introStep2": "Swipe right on a goal and tap Badge to mint it — a keepsake of the time you actually put in.",
-    "introStep3": "Badge a goal as many times as you like — each one refreshes the same badge with your latest numbers. It stays in your collection for good, even if you delete the tag.",
-    "introDismiss": "Got it"
+    "introStep3": "Your badges live here for good — even if you delete the tag. Badge a goal again any time to refresh it with your latest numbers.",
+    "introDismiss": "Got it",
+    "introStep2Title": "Turn time into a badge",
+    "introStep3Title": "Your collection"
   },
   "tabs": {
     "focus": "Focus",

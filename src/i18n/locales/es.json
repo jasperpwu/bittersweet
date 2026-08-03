@@ -242,7 +242,7 @@
     "introTitle": "Bienvenido a tu Diario",
     "introStep1": "Cada sesión de enfoque que completas aparece aquí, en la línea de tiempo.",
     "introStep2": "¿Se te olvidó registrar una? Toca «+» para añadirla a mano: igual cuenta para tus metas.",
-    "introStep3": "Crea tareas aquí y aparecerán bajo su etiqueta en la pestaña Enfoque.",
+    "introStep3": "Cambia a Tareas para planear lo que viene: cada una aparece también bajo su etiqueta en la pestaña Enfoque.",
     "introDismiss": "Entendido",
     "todaySuffix": ", hoy",
     "viewSessions": "Sesiones",
@@ -281,7 +281,9 @@
     "permissionTitle": "Permiso necesario",
     "permissionBodyCamera": "Permite el acceso a tu cámara en Ajustes para añadir fotos.",
     "permissionBodyLibrary": "Permite el acceso a tu galería en Ajustes para añadir fotos.",
-    "openSettings": "Abrir Ajustes"
+    "openSettings": "Abrir Ajustes",
+    "introStep2Title": "¿Olvidaste una sesión?",
+    "introStep3Title": "Planifica con tareas"
   },
   "grove": {
     "deleteChallengeTitle": "Eliminar reto",
@@ -311,10 +313,12 @@
     "concludeBodyNew": "¿Concluir {{name}}? Se creará una insignia con un resumen de tu rendimiento y la meta se desactivará.",
     "conclude": "Concluir",
     "introTitle": "Metas e insignias",
-    "introStep1": "Ponle una meta a cualquier etiqueta: las horas que quieres dedicarle a lo que de verdad importa. Toca «Activar» en una de abajo.",
+    "introStep1": "Ponle una meta a cualquier etiqueta: las horas que quieres dedicarle a lo que de verdad importa. Toca «Activar» para empezar.",
     "introStep2": "Desliza una meta hacia la derecha y toca «Insignia» para acuñarla: un recuerdo del tiempo que de verdad le dedicaste.",
-    "introStep3": "Puedes hacerlo tantas veces como quieras: cada vez se actualiza la misma insignia con tus datos más recientes. Se queda en tu colección para siempre, aunque borres la etiqueta.",
-    "introDismiss": "Entendido"
+    "introStep3": "Aquí viven tus insignias, para siempre, aunque borres la etiqueta. Vuelve a acuñar una meta cuando quieras y se actualizará con tus datos más recientes.",
+    "introDismiss": "Entendido",
+    "introStep2Title": "Convierte el tiempo en insignia",
+    "introStep3Title": "Tu colección"
   },
   "tabs": {
     "focus": "Enfoque",

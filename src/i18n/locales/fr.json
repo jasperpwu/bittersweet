@@ -242,7 +242,7 @@
     "introTitle": "Bienvenue dans ton Journal",
     "introStep1": "Chaque session de focus terminée apparaît ici, sur la frise.",
     "introStep2": "Oublié d'en enregistrer une ? Touche « + » pour l'ajouter à la main : elle compte quand même pour tes objectifs.",
-    "introStep3": "Crée tes à faire ici : ils apparaissent sous leur étiquette dans l'onglet Focus.",
+    "introStep3": "Passe à « À faire » pour préparer la suite : chacun apparaît aussi sous son étiquette dans l’onglet Focus.",
     "introDismiss": "Compris",
     "todaySuffix": ", aujourd'hui",
     "viewSessions": "Sessions",
@@ -281,7 +281,9 @@
     "permissionTitle": "Autorisation requise",
     "permissionBodyCamera": "Autorisez l'accès à votre appareil photo dans Réglages pour ajouter des photos.",
     "permissionBodyLibrary": "Autorisez l'accès à votre galerie dans Réglages pour ajouter des photos.",
-    "openSettings": "Ouvrir Réglages"
+    "openSettings": "Ouvrir Réglages",
+    "introStep2Title": "Session oubliée ?",
+    "introStep3Title": "Planifie avec les à faire"
   },
   "grove": {
     "deleteChallengeTitle": "Supprimer le défi",
@@ -311,10 +313,12 @@
     "concludeBodyNew": "Conclure {{name}} ? Un badge résumant vos performances sera créé, et l'objectif sera désactivé.",
     "conclude": "Conclure",
     "introTitle": "Objectifs & badges",
-    "introStep1": "Donne un objectif à n'importe quelle étiquette : le temps que tu veux consacrer à ce qui compte vraiment. Touche « Activer » sur l'une d'elles ci-dessous.",
+    "introStep1": "Donne un objectif à n’importe quelle étiquette : le temps que tu veux consacrer à ce qui compte vraiment. Touche « Activer » pour commencer.",
     "introStep2": "Fais glisser un objectif vers la droite et touche « Badge » pour le frapper : un souvenir du temps que tu y as vraiment passé.",
-    "introStep3": "Tu peux le refaire autant de fois que tu veux : à chaque fois, le même badge est mis à jour avec tes derniers chiffres. Il reste dans ta collection pour de bon, même si tu supprimes l'étiquette.",
-    "introDismiss": "Compris"
+    "introStep3": "Tes badges vivent ici, pour de bon, même si tu supprimes l’étiquette. Refrappe un objectif quand tu veux : le badge se met à jour avec tes derniers chiffres.",
+    "introDismiss": "Compris",
+    "introStep2Title": "Transforme le temps en badge",
+    "introStep3Title": "Ta collection"
   },
   "tabs": {
     "focus": "Focus",

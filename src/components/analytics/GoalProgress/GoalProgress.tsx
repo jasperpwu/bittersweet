@@ -1,4 +1,4 @@
-import React, { FC, useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { FC, RefObject, useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { View, Text, Pressable, Share, Platform } from 'react-native';
@@ -51,6 +51,16 @@ interface GoalProgressProps {
   onConcludeGoal?: (goalId: string) => void;
   onActivateGoal?: (goalId: string) => void;
   onReorderGoals?: (orderedIds: string[]) => void;
+  /**
+   * Spotlight targets for the Goals tab walkthrough. Each lands on whichever
+   * variant of the section is actually rendered: the activate target on the
+   * unactivated-goals list (or the CTA when there is none), the row target on
+   * the first real goal row (or the example row shown in its place).
+   */
+  introActivateRef?: RefObject<View | null>;
+  introGoalRowRef?: RefObject<View | null>;
+  /** Walkthrough: reveal the first goal row's actions (the Badge button). */
+  introSwipeOpen?: boolean;
 }
 
 interface ProcessedGoal extends FocusGoal {
@@ -110,6 +120,12 @@ type DraggableGoalRowProps = {
   onDragMove: (translationY: number) => void;
   onDragEnd: () => void;
   shouldNudge: boolean;
+  /**
+   * Walkthrough control: `true` slides the row open on its management actions so
+   * the Badge button is visible while the coach mark talks about it, `false`
+   * slides it back. `undefined` leaves the row alone.
+   */
+  introOpen?: boolean;
 };
 
 function DraggableGoalRow({
@@ -129,6 +145,7 @@ function DraggableGoalRow({
   onDragMove,
   onDragEnd,
   shouldNudge,
+  introOpen,
 }: DraggableGoalRowProps) {
   const { t } = useTranslation();
   const isBeingDragged = isDragging && dragOriginalIndex === index;
@@ -155,6 +172,15 @@ function DraggableGoalRow({
       )
     );
   }, [shouldNudge]);
+
+  // Show, then put back, the management actions during the goals walkthrough.
+  // openLeft() reports as a 'right' swipe (translation sign), so handleWillOpen
+  // treats it as a plain reveal and never fires the start-session commit.
+  React.useEffect(() => {
+    if (introOpen === undefined) return;
+    if (introOpen) swipeableRef.current?.openLeft();
+    else swipeableRef.current?.close();
+  }, [introOpen]);
 
   // Reset shared values when drag ends and array has reordered
   React.useEffect(() => {
@@ -389,6 +415,9 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   onConcludeGoal,
   onActivateGoal,
   onReorderGoals,
+  introActivateRef,
+  introGoalRowRef,
+  introSwipeOpen,
 }) => {
   const { t } = useTranslation();
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
@@ -573,7 +602,9 @@ export const GoalProgress: FC<GoalProgressProps> = ({
   return (
     <View className="mb-6 px-5">
       {/* CTA when no active goals */}
-      {!hasActiveGoals && <GoalCTAHeader />}
+      {!hasActiveGoals && (
+        <GoalCTAHeader introRef={hasInactiveGoals ? undefined : introActivateRef} />
+      )}
 
       {/* Active Goals */}
       {hasActiveGoals && (
@@ -583,7 +614,10 @@ export const GoalProgress: FC<GoalProgressProps> = ({
             const isExpanded =
               goal.isRepeating && goalPeriod !== 'none' && expandedGoalId === goal.id;
             return (
-              <View key={goal.id}>
+              <View
+                key={goal.id}
+                ref={index === 0 ? introGoalRowRef : undefined}
+                collapsable={false}>
                 {!isExpanded && (
                   <DraggableGoalRow
                     goal={goal}
@@ -602,6 +636,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
                     onDragMove={handleDragMove}
                     onDragEnd={handleDragEnd}
                     shouldNudge={shouldNudge}
+                    introOpen={index === 0 ? introSwipeOpen : undefined}
                   />
                 )}
                 {isExpanded && (
@@ -633,7 +668,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
               <View className="h-px flex-1 bg-light-border dark:bg-dark-border" />
             </View>
           )}
-          <View className="gap-y-2">
+          <View ref={introActivateRef} collapsable={false} className="gap-y-2">
             {inactiveGoals!.map((goal) => {
               const tag = tags.byId[goal.tagId];
               if (!tag) return null;
@@ -662,7 +697,7 @@ export const GoalProgress: FC<GoalProgressProps> = ({
       )}
 
       {/* Example placeholder when no active goals — sits below the unactivated goals */}
-      {!hasActiveGoals && <GoalPlaceholderExample />}
+      {!hasActiveGoals && <GoalPlaceholderExample introRowRef={introGoalRowRef} />}
     </View>
   );
 };
@@ -1365,10 +1400,10 @@ const GoalConsistencyCalendar: FC<GoalConsistencyCalendarProps> = ({
 
 // ---------- Empty State Placeholder ----------
 
-const GoalCTAHeader: FC = () => {
+const GoalCTAHeader: FC<{ introRef?: RefObject<View | null> }> = ({ introRef }) => {
   const { t } = useTranslation();
   return (
-    <View className="mb-4 items-center">
+    <View ref={introRef} collapsable={false} className="mb-4 items-center">
       <Typography
         variant="headline-18"
         className="text-center text-light-text-primary dark:text-white">
@@ -1378,7 +1413,7 @@ const GoalCTAHeader: FC = () => {
   );
 };
 
-const GoalPlaceholderExample: FC = () => {
+const GoalPlaceholderExample: FC<{ introRowRef?: RefObject<View | null> }> = ({ introRowRef }) => {
   const { t } = useTranslation();
   const targetHours = 10;
   const placeholderWeeks = [
@@ -1406,7 +1441,10 @@ const GoalPlaceholderExample: FC = () => {
       </View>
 
       {/* Placeholder Goal Row */}
-      <View className="mb-3 rounded-xl border border-light-border bg-light-bg px-4 py-3 opacity-60 dark:border-dark-border dark:bg-dark-bg">
+      <View
+        ref={introRowRef}
+        collapsable={false}
+        className="mb-3 rounded-xl border border-light-border bg-light-bg px-4 py-3 opacity-60 dark:border-dark-border dark:bg-dark-bg">
         <View className="flex-row items-center">
           <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-light-border dark:bg-dark-border">
             <Typography

@@ -34,7 +34,9 @@ export default function InsightsScreen() {
   const weekStartDay = 1; // Always Monday
 
   // --- One-time Goals & Badges intro ---
-  // Spotlights the tab header and explains what goals and badges are for.
+  // A three-stop walkthrough: each step spotlights the element its copy is about
+  // (activate a goal → a goal row to swipe → the badge collection) instead of
+  // stacking every point on the header.
   // The "seen" flag lives in user_settings (cloud), so hold the overlay until the
   // cold-start sync has landed: a reinstall wipes local prefs while the Keychain
   // session survives, and showing it before the pull would replay the walkthrough
@@ -43,7 +45,13 @@ export default function InsightsScreen() {
     (s) => !s.auth.isAuthenticated || (!!s.sync.lastSyncTime && !s.sync.isSyncing)
   );
   const headerRef = useRef<View>(null);
+  const goalActivateRef = useRef<View>(null);
+  const goalRowRef = useRef<View>(null);
+  const badgeSectionRef = useRef<View>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollOffset = useRef(0);
   const [showIntro, setShowIntro] = useState(false);
+  const [introStep, setIntroStep] = useState(0);
   // The tab can be mounted while another tab is on screen; measureInWindow returns
   // zeros then and CoachMark would silently skip rendering. Wait for focus.
   const isInsightsFocused = useIsFocused();
@@ -60,6 +68,26 @@ export default function InsightsScreen() {
     setShowIntro(false);
     updatePreferences({ hasSeenGoalsIntro: true });
   }, [updatePreferences]);
+
+  // Prep each step before CoachMark measures it (it waits `stepDelay` first):
+  // the badge collection usually sits below the fold, so scroll it into view —
+  // and the badge step demonstrates the swipe it describes on the goal row.
+  const prepareIntroStep = useCallback((index: number) => {
+    setIntroStep(index);
+    const ref = index === 2 ? badgeSectionRef : null;
+    if (!ref) {
+      if (index === 0) scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    ref.current?.measureInWindow((_x, y, _w, h) => {
+      if (h <= 0) return;
+      // Land the target a comfortable distance below the header.
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, scrollOffset.current + y - 180),
+        animated: true,
+      });
+    });
+  }, []);
 
   // Get data from focus store
   // Narrow subscription: only re-render when one of these fields changes, not on
@@ -164,8 +192,7 @@ export default function InsightsScreen() {
     if (!safeSessions || !Array.isArray(safeSessions) || !safeSessions.length) return [];
 
     const now = new Date();
-    const chartData: Array<{ date: Date; value: number; label: string; segments: ChartSegment[] }> =
-      [];
+    const chartData: { date: Date; value: number; label: string; segments: ChartSegment[] }[] = [];
 
     if (period === 'weekly') {
       for (let i = 6; i >= 0; i--) {
@@ -377,7 +404,13 @@ export default function InsightsScreen() {
 
           {/* Content */}
           {currentView === 'statistics' ? (
-            <ScrollView className="flex-1">
+            <ScrollView
+              ref={scrollRef}
+              className="flex-1"
+              scrollEventThrottle={16}
+              onScroll={(e) => {
+                scrollOffset.current = e.nativeEvent.contentOffset.y;
+              }}>
               {/* Goal Progress Section */}
               <GoalProgress
                 goals={storeGoals}
@@ -388,10 +421,17 @@ export default function InsightsScreen() {
                 onConcludeGoal={handleConcludeGoal}
                 onActivateGoal={handleActivateGoal}
                 onReorderGoals={reorderGoals}
+                introActivateRef={goalActivateRef}
+                introGoalRowRef={goalRowRef}
+                introSwipeOpen={showIntro && introStep === 1}
               />
 
               {/* Badge Collection */}
-              <BadgeCollection badges={badges} onDeleteBadge={deleteBadge} />
+              <BadgeCollection
+                badges={badges}
+                onDeleteBadge={deleteBadge}
+                sectionRef={badgeSectionRef}
+              />
 
               {/* AI Focus Coach — collapsible weekly reports */}
               <CoachSection />
@@ -429,12 +469,31 @@ export default function InsightsScreen() {
         </SwipeableTabWrapper>
       </SafeAreaView>
 
-      {/* First-visit walkthrough — spotlights the Goals tab header */}
+      {/* First-visit walkthrough — one spotlight per point. The header is the
+          fallback target for any step whose element isn't mounted. */}
       <CoachMark
         visible={showIntro && !preferences.hasSeenGoalsIntro}
         targetRef={headerRef}
-        title={t('insights.introTitle')}
-        steps={[t('insights.introStep1'), t('insights.introStep2'), t('insights.introStep3')]}
+        steps={[
+          {
+            targetRef: goalActivateRef,
+            title: t('insights.introTitle'),
+            message: t('insights.introStep1'),
+          },
+          {
+            targetRef: goalRowRef,
+            title: t('insights.introStep2Title'),
+            message: t('insights.introStep2'),
+          },
+          {
+            targetRef: badgeSectionRef,
+            title: t('insights.introStep3Title'),
+            message: t('insights.introStep3'),
+          },
+        ]}
+        onStepChange={prepareIntroStep}
+        stepDelay={400}
+        nextLabel={t('common.next')}
         dismissLabel={t('insights.introDismiss')}
         onDismiss={dismissIntro}
       />

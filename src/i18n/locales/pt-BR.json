@@ -242,7 +242,7 @@
     "introTitle": "Bem-vindo ao seu Diário",
     "introStep1": "Cada sessão de foco concluída aparece aqui na linha do tempo.",
     "introStep2": "Esqueceu de registrar? Toque em “+” para adicionar à mão — continua contando para suas metas.",
-    "introStep3": "Crie tarefas aqui e elas aparecem sob a tag correspondente na aba Foco.",
+    "introStep3": "Vá para Tarefas para planejar o que vem — cada uma também aparece sob sua tag na aba Foco.",
     "introDismiss": "Entendi",
     "todaySuffix": ", hoje",
     "viewSessions": "Sessões",
@@ -281,7 +281,9 @@
     "permissionTitle": "Permissão necessária",
     "permissionBodyCamera": "Permita o acesso à sua câmera em Ajustes para adicionar fotos.",
     "permissionBodyLibrary": "Permita o acesso à sua galeria em Ajustes para adicionar fotos.",
-    "openSettings": "Abrir Ajustes"
+    "openSettings": "Abrir Ajustes",
+    "introStep2Title": "Esqueceu uma sessão?",
+    "introStep3Title": "Planeje com tarefas"
   },
   "grove": {
     "deleteChallengeTitle": "Excluir desafio",
@@ -311,10 +313,12 @@
     "concludeBodyNew": "Concluir {{name}}? Uma medalha será criada com um resumo do seu desempenho, e a meta será desativada.",
     "conclude": "Concluir",
     "introTitle": "Metas e medalhas",
-    "introStep1": "Dê uma meta a qualquer tag: as horas que você quer dedicar ao que realmente importa. Toque em “Ativar” em uma delas abaixo.",
+    "introStep1": "Dê uma meta a qualquer tag: as horas que você quer dedicar ao que realmente importa. Toque em “Ativar” para começar.",
     "introStep2": "Deslize uma meta para a direita e toque em “Medalha” para cunhá-la: um registro do tempo que você de fato dedicou.",
-    "introStep3": "Você pode fazer isso quantas vezes quiser: a cada vez, a mesma medalha é atualizada com seus números mais recentes. Ela fica na sua coleção para sempre, mesmo que você apague a tag.",
-    "introDismiss": "Entendi"
+    "introStep3": "Suas medalhas ficam aqui para sempre, mesmo que você apague a tag. Cunhe uma meta de novo quando quiser e ela se atualiza com seus números mais recentes.",
+    "introDismiss": "Entendi",
+    "introStep2Title": "Transforme tempo em medalha",
+    "introStep3Title": "Sua coleção"
   },
   "tabs": {
     "focus": "Foco",

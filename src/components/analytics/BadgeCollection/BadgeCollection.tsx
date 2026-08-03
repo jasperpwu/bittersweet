@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { FC, RefObject, useState } from 'react';
 import { View, Alert, Pressable, useColorScheme } from 'react-native';
 import { colors } from '../../../config/theme';
 import { Typography } from '../../ui/Typography';
@@ -11,9 +11,15 @@ import { useTranslation } from 'react-i18next';
 interface BadgeCollectionProps {
   badges: Badge[];
   onDeleteBadge: (badgeId: string) => void;
+  /** Spotlight target for the Goals tab walkthrough. */
+  sectionRef?: RefObject<View | null>;
 }
 
-export const BadgeCollection: FC<BadgeCollectionProps> = ({ badges, onDeleteBadge }) => {
+export const BadgeCollection: FC<BadgeCollectionProps> = ({
+  badges,
+  onDeleteBadge,
+  sectionRef,
+}) => {
   const { t } = useTranslation();
   const [selectedBadgeId, setSelectedBadgeId] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -21,7 +27,7 @@ export const BadgeCollection: FC<BadgeCollectionProps> = ({ badges, onDeleteBadg
   const isDark = colorScheme === 'dark';
 
   const hasBadges = badges && badges.length > 0;
-  const selectedBadge = selectedBadgeId ? badges.find(b => b.id === selectedBadgeId) : null;
+  const selectedBadge = selectedBadgeId ? badges.find((b) => b.id === selectedBadgeId) : null;
 
   const handleDeleteBadge = (badgeId: string) => {
     Alert.alert(
@@ -43,13 +49,12 @@ export const BadgeCollection: FC<BadgeCollectionProps> = ({ badges, onDeleteBadg
   };
 
   return (
-    <View className="px-5 mb-6">
+    <View ref={sectionRef} collapsable={false} className="mb-6 px-5">
       {/* Section Header */}
-      <Pressable 
-        className="flex-row items-center mb-3"
+      <Pressable
+        className="mb-3 flex-row items-center"
         onPress={() => setIsCollapsed(!isCollapsed)}
-        style={{ paddingVertical: 4 }}
-      >
+        style={{ paddingVertical: 4 }}>
         <Typography variant="subtitle-16" color="primary" className="mr-2">
           {t('badge.sectionTitle')}
         </Typography>
@@ -58,34 +63,30 @@ export const BadgeCollection: FC<BadgeCollectionProps> = ({ badges, onDeleteBadg
             {badges.length}
           </Typography>
         )}
-        <Ionicons 
-          name={isCollapsed ? "chevron-down" : "chevron-up"} 
-          size={16} 
+        <Ionicons
+          name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+          size={16}
           color={isDark ? colors.dark.textSecondary : colors.light.screenTextSecondary}
         />
       </Pressable>
 
       {/* Content */}
-      {!isCollapsed && (
-        hasBadges ? (
-          <View className="flex-row flex-wrap -mx-1.5">
-            {badges.map(badge => (
-              <View key={badge.id} className="w-1/2 px-1.5 mb-3">
-                <BadgeCard
-                  badge={badge}
-                  onPress={() => setSelectedBadgeId(badge.id)}
-                />
+      {!isCollapsed &&
+        (hasBadges ? (
+          <View className="-mx-1.5 flex-row flex-wrap">
+            {badges.map((badge) => (
+              <View key={badge.id} className="mb-3 w-1/2 px-1.5">
+                <BadgeCard badge={badge} onPress={() => setSelectedBadgeId(badge.id)} />
               </View>
             ))}
           </View>
         ) : (
-          <View className="py-6 items-center">
+          <View className="items-center py-6">
             <Typography variant="body-14" color="secondary" className="text-center">
               {t('badge.empty')}
             </Typography>
           </View>
-        )
-      )}
+        ))}
 
       {/* Summary Sheet */}
       <BadgeSummarySheet
