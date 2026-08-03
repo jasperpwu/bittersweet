@@ -67,7 +67,9 @@
     "showTotalHoursSub": "Affiche les heures cumulées dans la vue des séries",
     "updateGoal": "Mettre à jour l'objectif",
     "totalTargetHours": "Heures",
-    "totalTargetMinutes": "Minutes"
+    "totalTargetMinutes": "Minutes",
+    "notifTitle_one": "Un objectif a besoin d’attention",
+    "notifTitle_other": "{{count}} objectifs ont besoin d’attention"
   },
   "common": {
     "next": "Suivant",
@@ -855,7 +857,9 @@
     "actBlockApps": "Choisir les apps à bloquer",
     "actLinkHealth": "Connecter Apple Health",
     "actEnableNotifs": "Activer les notifications",
-    "actEnableReminders": "Activer les rappels d’objectifs"
+    "actEnableReminders": "Activer les rappels d’objectifs",
+    "notifTitle": "Votre bilan de la semaine est prêt",
+    "notifBody": "Découvrez votre score de concentration et les conseils de votre coach."
   },
   "createChallenge": {
     "sent": "Défi envoyé !",
@@ -1090,7 +1094,9 @@
     "start": "Démarrer",
     "end": "Terminer",
     "unlocked": "Débloqué",
-    "unblockExpired": "Déblocage terminé"
+    "unblockExpired": "Déblocage terminé",
+    "overTime": "Temps supplémentaire",
+    "idleTitle": "Concentration"
   },
   "unlock": {
     "trendTitle": "Tendance de déblocage",

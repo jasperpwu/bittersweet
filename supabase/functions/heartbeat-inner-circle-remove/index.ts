@@ -14,6 +14,8 @@
 // Body: { memberId: string }  // heartbeat_inner_circle row id
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { fetchUserLanguages, langOf, format } from '../_shared/i18n.ts';
+import { ALERT_TITLE, HEARTBEAT_TEXT, SOMEONE } from '../_shared/heartbeatCopy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -100,9 +102,15 @@ Deno.serve(async (req: Request) => {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        const displayName = profile?.display_name || 'Someone';
-        const notificationText = `${displayName} removed you from their inner circle.`;
         const targetId = membership.circle_member_id;
+
+        // Localize for the REMOVED member — they're the one reading this.
+        const langs = await fetchUserLanguages(admin, [targetId]);
+        const lang = langOf(langs, targetId);
+        const displayName = profile?.display_name || SOMEONE[lang];
+        const notificationText = format(HEARTBEAT_TEXT.circle_removed[lang], {
+          name: displayName,
+        });
 
         const { error: insertError } = await admin
           .from('heartbeat_notifications')
@@ -126,7 +134,7 @@ Deno.serve(async (req: Request) => {
           const pushMessages = tokens.map((t: { expo_push_token: string }) => ({
             to: t.expo_push_token,
             sound: 'default',
-            title: 'Inner Circle Alert',
+            title: ALERT_TITLE[lang],
             body: notificationText,
             data: {
               type: 'heartbeat_alert',

@@ -67,7 +67,9 @@
     "showTotalHoursSub": "ストリーク表示に累計時間を表示します",
     "updateGoal": "目標を更新",
     "totalTargetHours": "時間",
-    "totalTargetMinutes": "分"
+    "totalTargetMinutes": "分",
+    "notifTitle_one": "{{count}}件の目標が遅れています",
+    "notifTitle_other": "{{count}}件の目標が遅れています"
   },
   "common": {
     "next": "次へ",
@@ -852,7 +854,9 @@
     "actBlockApps": "ブロックするアプリを選ぶ",
     "actLinkHealth": "Apple Healthを連携",
     "actEnableNotifs": "通知をオンにする",
-    "actEnableReminders": "目標リマインダーをオンにする"
+    "actEnableReminders": "目標リマインダーをオンにする",
+    "notifTitle": "今週のフォーカスレポートができました",
+    "notifBody": "今週のフォーカススコアとコーチの提案をチェックしましょう。"
   },
   "createChallenge": {
     "sent": "チャレンジを送りました！",
@@ -1087,7 +1091,9 @@
     "start": "開始",
     "end": "終了",
     "unlocked": "アンロック中",
-    "unblockExpired": "アンロック終了"
+    "unblockExpired": "アンロック終了",
+    "overTime": "延長中",
+    "idleTitle": "フォーカス"
   },
   "unlock": {
     "trendTitle": "アンロック時間の推移",

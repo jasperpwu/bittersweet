@@ -67,7 +67,9 @@
     "showTotalHoursSub": "सिलसिले वाले दृश्य में संचयी घंटे दिखाएँ",
     "updateGoal": "लक्ष्य अपडेट करें",
     "totalTargetHours": "घंटे",
-    "totalTargetMinutes": "मिनट"
+    "totalTargetMinutes": "मिनट",
+    "notifTitle_one": "एक लक्ष्य पर ध्यान चाहिए",
+    "notifTitle_other": "{{count}} लक्ष्यों पर ध्यान चाहिए"
   },
   "common": {
     "next": "आगे",
@@ -855,7 +857,9 @@
     "actBlockApps": "ब्लॉक करने को ऐप्स चुनें",
     "actLinkHealth": "Apple Health जोड़ें",
     "actEnableNotifs": "सूचनाएँ चालू करें",
-    "actEnableReminders": "लक्ष्य रिमाइंडर चालू करें"
+    "actEnableReminders": "लक्ष्य रिमाइंडर चालू करें",
+    "notifTitle": "आपके हफ़्ते की फ़ोकस रिपोर्ट तैयार है",
+    "notifBody": "इस हफ़्ते का फ़ोकस स्कोर और कोच के सुझाव देखें।"
   },
   "createChallenge": {
     "sent": "चुनौती भेज दी गई!",
@@ -1090,7 +1094,9 @@
     "start": "शुरू",
     "end": "समाप्त",
     "unlocked": "अनलॉक",
-    "unblockExpired": "अनब्लॉक समाप्त"
+    "unblockExpired": "अनब्लॉक समाप्त",
+    "overTime": "अतिरिक्त समय",
+    "idleTitle": "फ़ोकस"
   },
   "unlock": {
     "trendTitle": "अनलॉक समय की प्रवृत्ति",

@@ -6,6 +6,8 @@
 // Body: { userId: string, triggerType: 'blocklist_edit' | 'blocklist_cleared' | 'heartbeat_paused' | 'threshold_changed' }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { fetchUserLanguages, langOf, format } from '../_shared/i18n.ts';
+import { ALERT_TITLE, HEARTBEAT_TEXT } from '../_shared/heartbeatCopy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +15,8 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 };
 
+// This function owns four of the seven heartbeat triggers; the copy for all of
+// them lives in _shared/heartbeatCopy.ts alongside the other functions'.
 const VALID_TRIGGERS = [
   'blocklist_edit',
   'blocklist_cleared',
@@ -20,22 +24,6 @@ const VALID_TRIGGERS = [
   'threshold_changed',
 ] as const;
 type TriggerType = (typeof VALID_TRIGGERS)[number];
-
-const NOTIFICATION_TEXT: Record<TriggerType, (name: string) => string> = {
-  blocklist_edit: (name) => `${name} made changes to their blocked apps.`,
-  blocklist_cleared: (name) =>
-    `Heads up — ${name} cleared their entire blocklist and is no longer blocking any apps.`,
-  heartbeat_paused: (name) => `${name} is taking a break from their heartbeat.`,
-  threshold_changed: (name) =>
-    `${name} raised their quiet threshold, so they can go quiet longer before you're alerted.`,
-};
-
-const PUSH_TITLE: Record<TriggerType, string> = {
-  blocklist_edit: 'Inner Circle Alert',
-  blocklist_cleared: 'Inner Circle Alert',
-  heartbeat_paused: 'Inner Circle Alert',
-  threshold_changed: 'Inner Circle Alert',
-};
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -154,14 +142,21 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const notificationBody = NOTIFICATION_TEXT[triggerType as TriggerType](profile.display_name);
+    // Members can each read a different language, so build the text per
+    // recipient — it lands in both the stored row and the push body.
+    const memberUserIds = members.map((m) => m.circle_member_id);
+    const langs = await fetchUserLanguages(supabase, memberUserIds);
+    const textFor = (memberId: string): string =>
+      format(HEARTBEAT_TEXT[triggerType as TriggerType][langOf(langs, memberId)], {
+        name: profile.display_name,
+      });
 
     // Insert notifications for each member
     const notifications = members.map((m) => ({
       target_user_id: m.circle_member_id,
       about_user_id: userId,
       trigger_type: triggerType,
-      notification_text: notificationBody,
+      notification_text: textFor(m.circle_member_id),
     }));
 
     const { error: insertError } = await supabase
@@ -176,19 +171,19 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Send push notifications to members via Expo Push API
-    const memberUserIds = members.map((m) => m.circle_member_id);
+    // Send push notifications to members via Expo Push API. user_id comes along
+    // so each token can be matched back to its owner's language.
     const { data: tokens, error: tokensError } = await supabase
       .from('push_tokens')
-      .select('expo_push_token')
+      .select('user_id, expo_push_token')
       .in('user_id', memberUserIds);
 
     if (!tokensError && tokens && tokens.length > 0) {
       const pushMessages = tokens.map((t) => ({
         to: t.expo_push_token,
         sound: 'default',
-        title: PUSH_TITLE[triggerType as TriggerType],
-        body: notificationBody,
+        title: ALERT_TITLE[langOf(langs, t.user_id)],
+        body: textFor(t.user_id),
         data: { type: 'heartbeat_alert', triggerType, aboutUserId: userId },
       }));
 

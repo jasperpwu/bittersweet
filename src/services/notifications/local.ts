@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FocusGoal, FocusSession } from '../../store/types';
 import { calculateGoalProgress } from '../../utils/goalProgress';
 import { calculateUrgency } from '../../utils/goalUrgency';
+import i18n from '../../i18n';
 
 const GOAL_NUDGE_IDS_KEY = 'goal-nudge-notification-ids';
 const GOAL_NUDGE_NOTIFICATION_ID = 'goal-nudge-daily-reminder';
@@ -11,7 +12,7 @@ const GOAL_NUDGE_NOTIFICATION_TYPE = 'goal-nudge';
 let goalNudgeOperationQueue: Promise<void> = Promise.resolve();
 
 const getGoalDisplayName = (goal: FocusGoal): string => {
-  return (goal as any).customName || (goal as any).name || 'Goal';
+  return (goal as any).customName || (goal as any).name || i18n.t('goals.focusGoalFallback');
 };
 
 const enqueueGoalNudgeOperation = (operation: () => Promise<void>): Promise<void> => {
@@ -86,10 +87,7 @@ const scheduleGoalNudgesInternal = async (
     item => tagMap[item.goal.tagId]?.name || getGoalDisplayName(item.goal),
   );
 
-  const title =
-    tagNames.length === 1
-      ? 'Goal needs attention'
-      : `${tagNames.length} goals need attention`;
+  const title = i18n.t('goals.notifTitle', { count: tagNames.length });
   const body = tagNames.join(', ');
 
   // Parse reminder time

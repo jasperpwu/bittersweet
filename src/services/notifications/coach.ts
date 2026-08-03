@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import i18n from '../../i18n';
 
 /**
  * Weekly "your week in focus is ready" nudge for the AI Focus Coach.
@@ -60,8 +61,8 @@ const scheduleInternal = async (soundEnabled: boolean): Promise<void> => {
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Your week in focus is ready',
-        body: "See this week's focus score and what your coach suggests.",
+        title: i18n.t('aiCoach.notifTitle'),
+        body: i18n.t('aiCoach.notifBody'),
         sound: soundEnabled,
         data: { type: COACH_NUDGE_NOTIFICATION_TYPE },
       },

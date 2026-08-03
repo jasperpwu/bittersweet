@@ -67,7 +67,9 @@
     "showTotalHoursSub": "ধারার ভিউতে ক্রমযোজিত ঘণ্টা দেখান",
     "updateGoal": "লক্ষ্য হালনাগাদ করুন",
     "totalTargetHours": "ঘণ্টা",
-    "totalTargetMinutes": "মিনিট"
+    "totalTargetMinutes": "মিনিট",
+    "notifTitle_one": "একটি লক্ষ্যে মনোযোগ দরকার",
+    "notifTitle_other": "{{count}}টি লক্ষ্যে মনোযোগ দরকার"
   },
   "common": {
     "next": "পরবর্তী",
@@ -855,7 +857,9 @@
     "actBlockApps": "ব্লক করার অ্যাপ বাছুন",
     "actLinkHealth": "Apple Health যুক্ত করুন",
     "actEnableNotifs": "বিজ্ঞপ্তি চালু করুন",
-    "actEnableReminders": "লক্ষ্যের রিমাইন্ডার চালু করুন"
+    "actEnableReminders": "লক্ষ্যের রিমাইন্ডার চালু করুন",
+    "notifTitle": "আপনার সপ্তাহের ফোকাস রিপোর্ট তৈরি",
+    "notifBody": "এই সপ্তাহের ফোকাস স্কোর আর কোচের পরামর্শ দেখুন।"
   },
   "createChallenge": {
     "sent": "চ্যালেঞ্জ পাঠানো হয়েছে!",
@@ -1090,7 +1094,9 @@
     "start": "শুরু",
     "end": "শেষ",
     "unlocked": "আনলক হয়েছে",
-    "unblockExpired": "আনব্লক শেষ"
+    "unblockExpired": "আনব্লক শেষ",
+    "overTime": "অতিরিক্ত সময়",
+    "idleTitle": "ফোকাস"
   },
   "unlock": {
     "trendTitle": "আনলক সময়ের ধারা",

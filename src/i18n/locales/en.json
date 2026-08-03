@@ -67,7 +67,9 @@
     "showTotalHoursSub": "Display cumulative hours in the streaks view",
     "updateGoal": "Update Goal",
     "totalTargetHours": "Hours",
-    "totalTargetMinutes": "Minutes"
+    "totalTargetMinutes": "Minutes",
+    "notifTitle_one": "Goal needs attention",
+    "notifTitle_other": "{{count}} goals need attention"
   },
   "common": {
     "next": "Next",
@@ -855,7 +857,9 @@
     "actBlockApps": "Choose apps to block",
     "actLinkHealth": "Link Apple Health",
     "actEnableNotifs": "Turn on notifications",
-    "actEnableReminders": "Turn on goal reminders"
+    "actEnableReminders": "Turn on goal reminders",
+    "notifTitle": "Your week in focus is ready",
+    "notifBody": "See this week's focus score and what your coach suggests."
   },
   "createChallenge": {
     "sent": "Challenge sent!",
@@ -1090,7 +1094,9 @@
     "start": "Start",
     "end": "End",
     "unlocked": "Unlocked",
-    "unblockExpired": "Unblock Expired"
+    "unblockExpired": "Unblock Expired",
+    "overTime": "Over Time",
+    "idleTitle": "Focus"
   },
   "unlock": {
     "trendTitle": "Unlock time trend",

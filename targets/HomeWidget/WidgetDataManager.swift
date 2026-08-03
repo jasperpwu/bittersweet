@@ -26,6 +26,9 @@ enum WidgetKeys {
   static let todoList = "widgetTodoList"
   static let todoToggles = "widgetTodoToggles"
   static let openNewTodo = "widgetOpenNewTodo"
+  // Localized strings for text the widget/Live Activity renders itself (JS isn't
+  // running when iOS draws them). Synced from JS on launch + language change.
+  static let widgetStrings = "widgetStrings"
 
   // Supabase sync keys (written by JS for native intent REST calls)
   static let supabaseUserId = "supabaseUserId"
@@ -190,6 +193,16 @@ struct WidgetDataManager {
 
   private var userDefaults: UserDefaults? {
     UserDefaults(suiteName: appGroupId)
+  }
+
+  // MARK: - Localized Strings
+
+  /// Localized UI strings synced from JS, keyed by name. Falls back to the
+  /// English literal when JS has never run (fresh install, widget added before
+  /// first launch) or when a key predates the installed app version.
+  func widgetString(_ key: String, fallback: String) -> String {
+    let strings = userDefaults?.dictionary(forKey: WidgetKeys.widgetStrings) as? [String: String]
+    return strings?[key] ?? fallback
   }
 
   // MARK: - Read

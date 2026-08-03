@@ -12,6 +12,7 @@
 // Deployment: supabase functions deploy reengagement-cron
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { type Lang, normalizeLang } from '../_shared/i18n.ts';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const HOUR_MS = 60 * 60 * 1000;
@@ -45,8 +46,8 @@ type Feature = (typeof FEATURES)[number];
 // Fallbacks when the user has already used everything.
 type Promo = Feature | 'focus' | 'suggest';
 
-type Lang = 'en' | 'de' | 'es' | 'fr' | 'ja' | 'ko' | 'pt-BR' | 'zh-Hans';
-const LANGS: Lang[] = ['en', 'de', 'es', 'fr', 'ja', 'ko', 'pt-BR', 'zh-Hans'];
+// Lang + normalizeLang come from _shared/i18n.ts (see import above) so every
+// pushing function agrees on the supported set.
 
 // Push copy per promo × language. "Grove" is a product proper noun kept
 // untranslated everywhere (matches the app's own locale files). Kept in the
@@ -62,6 +63,11 @@ const COPY: Record<Promo, Record<Lang, { title: string; body: string }>> = {
     ko: { title: '집중 목표를 세워보세요 🎯', body: '집중에 방향을 더하세요. 주간 목표를 정하고 연속 기록을 쌓아보세요.' },
     'pt-BR': { title: 'Defina uma meta de foco 🎯', body: 'Dê rumo à sua concentração: defina uma meta semanal e crie uma sequência.' },
     'zh-Hans': { title: '设定一个专注目标 🎯', body: '给专注一个方向——设定每周目标，积累连续记录。' },
+    hi: { title: 'फ़ोकस लक्ष्य तय करें 🎯', body: 'अपने फ़ोकस को दिशा दें — साप्ताहिक लक्ष्य तय करें और सिलसिला बनाएँ।' },
+    bn: { title: 'একটি ফোকাস লক্ষ্য ঠিক করুন 🎯', body: 'আপনার ফোকাসকে দিশা দিন — সাপ্তাহিক লক্ষ্য ঠিক করুন আর ধারা গড়ে তুলুন।' },
+    ru: { title: 'Поставьте цель фокуса 🎯', body: 'Задайте фокусу направление — поставьте цель на неделю и соберите серию.' },
+    ar: { title: 'حدّد هدف تركيز 🎯', body: 'امنح تركيزك وجهة — حدّد هدفًا أسبوعيًا وابنِ سلسلة.' },
+    ur: { title: 'فوکس ہدف مقرر کریں 🎯', body: 'اپنے فوکس کو سمت دیں — ہفتہ وار ہدف رکھیں اور تسلسل بنائیں۔' },
   },
   todos: {
     en: { title: 'Plan your next session 📝', body: "Add a few to-dos and check them off during your next focus session." },
@@ -72,6 +78,11 @@ const COPY: Record<Promo, Record<Lang, { title: string; body: string }>> = {
     ko: { title: '다음 세션을 계획해보세요 📝', body: '할 일을 몇 개 추가하고 다음 집중 세션에서 하나씩 완료해보세요.' },
     'pt-BR': { title: 'Planeje sua próxima sessão 📝', body: 'Adicione algumas tarefas e marque-as durante sua próxima sessão de foco.' },
     'zh-Hans': { title: '规划你的下一次专注 📝', body: '添加几项待办，在下一次专注中逐一完成。' },
+    hi: { title: 'अगला सत्र प्लान करें 📝', body: 'कुछ काम जोड़ें और अगले फ़ोकस सत्र में उन्हें पूरा करते जाएँ।' },
+    bn: { title: 'পরের সেশন পরিকল্পনা করুন 📝', body: 'কয়েকটি কাজ যোগ করুন আর পরের ফোকাস সেশনে সেগুলো শেষ করুন।' },
+    ru: { title: 'Спланируйте следующую сессию 📝', body: 'Добавьте пару задач и отмечайте их в следующей сессии фокуса.' },
+    ar: { title: 'خطّط لجلستك القادمة 📝', body: 'أضف بعض المهام وأنجزها خلال جلسة التركيز القادمة.' },
+    ur: { title: 'اگلے سیشن کی منصوبہ بندی کریں 📝', body: 'کچھ کام شامل کریں اور اگلے فوکس سیشن میں انہیں مکمل کریں۔' },
   },
   grove: {
     en: { title: 'Grow your Grove 🌳', body: "Add a friend and keep each other focused. Your Grove is waiting for you." },
@@ -82,6 +93,11 @@ const COPY: Record<Promo, Record<Lang, { title: string; body: string }>> = {
     ko: { title: 'Grove를 키워보세요 🌳', body: '친구를 추가하고 서로 집중을 이어가세요. Grove가 당신을 기다리고 있어요.' },
     'pt-BR': { title: 'Faça seu Grove crescer 🌳', body: 'Adicione um amigo e mantenham o foco juntos. Seu Grove está esperando por você.' },
     'zh-Hans': { title: '培育你的 Grove 🌳', body: '添加好友，一起保持专注。你的 Grove 正在等你。' },
+    hi: { title: 'अपना Grove बढ़ाएँ 🌳', body: 'एक दोस्त जोड़ें और एक-दूसरे को फ़ोकस में रखें। आपका Grove आपका इंतज़ार कर रहा है।' },
+    bn: { title: 'আপনার Grove বড় করুন 🌳', body: 'একজন বন্ধু যোগ করুন আর একে অপরকে ফোকাসে রাখুন। আপনার Grove অপেক্ষা করছে।' },
+    ru: { title: 'Растите свой Grove 🌳', body: 'Добавьте друга и держите фокус вместе. Ваш Grove ждёт вас.' },
+    ar: { title: 'وسّع Grove الخاص بك 🌳', body: 'أضف صديقًا وحافظا على التركيز معًا. Grove في انتظارك.' },
+    ur: { title: 'اپنا Grove بڑھائیں 🌳', body: 'ایک دوست شامل کریں اور ایک دوسرے کو فوکس میں رکھیں۔ آپ کا Grove آپ کا منتظر ہے۔' },
   },
   store: {
     en: { title: 'Treat yourself 🍎', body: "You've earned fruits — spend them on a reward or a fresh theme in the Store." },
@@ -92,6 +108,11 @@ const COPY: Record<Promo, Record<Lang, { title: string; body: string }>> = {
     ko: { title: '나를 위한 선물 🍎', body: '과일을 모았어요. 스토어에서 보상이나 새로운 테마에 사용해보세요.' },
     'pt-BR': { title: 'Dê um mimo a você 🍎', body: 'Você ganhou frutas — use-as em uma recompensa ou um tema novo na Loja.' },
     'zh-Hans': { title: '犒赏一下自己 🍎', body: '你已经攒下了水果——在商店里兑换奖励或全新主题吧。' },
+    hi: { title: 'खुद को इनाम दें 🍎', body: 'आपने फल कमाए हैं — स्टोर में इन्हें इनाम या नई थीम पर खर्च करें।' },
+    bn: { title: 'নিজেকে পুরস্কার দিন 🍎', body: 'আপনি ফল জমিয়েছেন — স্টোরে সেগুলো পুরস্কার বা নতুন থিমে খরচ করুন।' },
+    ru: { title: 'Побалуйте себя 🍎', body: 'Вы накопили фрукты — потратьте их в Магазине на награду или новую тему.' },
+    ar: { title: 'كافئ نفسك 🍎', body: 'لقد جمعت فواكه — أنفقها في المتجر على مكافأة أو مظهر جديد.' },
+    ur: { title: 'اپنے آپ کو انعام دیں 🍎', body: 'آپ نے پھل کمائے ہیں — اسٹور میں انہیں انعام یا نئی تھیم پر خرچ کریں۔' },
   },
   blocklist: {
     en: { title: 'Silence the distractions 🛡️', body: 'Pick the apps to block during focus and stay in the zone.' },
@@ -102,6 +123,11 @@ const COPY: Record<Promo, Record<Lang, { title: string; body: string }>> = {
     ko: { title: '방해 요소를 차단하세요 🛡️', body: '집중하는 동안 차단할 앱을 골라 몰입을 유지하세요.' },
     'pt-BR': { title: 'Silencie as distrações 🛡️', body: 'Escolha os apps para bloquear durante o foco e mantenha o ritmo.' },
     'zh-Hans': { title: '屏蔽干扰 🛡️', body: '选择专注时要屏蔽的应用，保持心流状态。' },
+    hi: { title: 'ध्यान भटकाने वालों को चुप कराएँ 🛡️', body: 'फ़ोकस के दौरान ब्लॉक होने वाले ऐप चुनें और लय में बने रहें।' },
+    bn: { title: 'মনোযোগ নষ্ট করা অ্যাপ থামান 🛡️', body: 'ফোকাসের সময় কোন অ্যাপ ব্লক হবে বেছে নিন আর ছন্দে থাকুন।' },
+    ru: { title: 'Заглушите отвлечения 🛡️', body: 'Выберите приложения, которые блокируются во время фокуса, и оставайтесь в потоке.' },
+    ar: { title: 'أسكِت المشتتات 🛡️', body: 'اختر التطبيقات التي تُحجب أثناء التركيز وابقَ في تدفقك.' },
+    ur: { title: 'خلفشار کو خاموش کریں 🛡️', body: 'فوکس کے دوران بلاک ہونے والی ایپس منتخب کریں اور بہاؤ میں رہیں۔' },
   },
   health: {
     en: { title: 'Connect Apple Health ❤️', body: 'Log your focus time as mindful minutes by linking Apple Health.' },
@@ -112,6 +138,11 @@ const COPY: Record<Promo, Record<Lang, { title: string; body: string }>> = {
     ko: { title: 'Apple Health 연결 ❤️', body: 'Apple Health를 연결해 집중 시간을 마음챙김 시간으로 기록하세요.' },
     'pt-BR': { title: 'Conecte o Apple Health ❤️', body: 'Registre seu tempo de foco como minutos de atenção plena conectando o Apple Health.' },
     'zh-Hans': { title: '连接 Apple 健康 ❤️', body: '连接 Apple 健康，把专注时间记录为正念时刻。' },
+    hi: { title: 'Apple Health जोड़ें ❤️', body: 'Apple Health से जोड़कर अपने फ़ोकस समय को माइंडफुल मिनट के रूप में दर्ज करें।' },
+    bn: { title: 'Apple Health যুক্ত করুন ❤️', body: 'Apple Health যুক্ত করে আপনার ফোকাস সময়কে মাইন্ডফুল মিনিট হিসেবে রাখুন।' },
+    ru: { title: 'Подключите Apple Health ❤️', body: 'Свяжите Apple Health, чтобы время фокуса записывалось как минуты осознанности.' },
+    ar: { title: 'اربط Apple Health ❤️', body: 'اربط Apple Health لتسجيل وقت تركيزك كدقائق يقظة ذهنية.' },
+    ur: { title: 'Apple Health منسلک کریں ❤️', body: 'Apple Health منسلک کر کے اپنے فوکس وقت کو مائنڈفل منٹس کے طور پر محفوظ کریں۔' },
   },
   focus: {
     en: { title: 'Your Grove misses you 🌱', body: "It's been a while. Start a quick focus session and pick up where you left off." },
@@ -122,6 +153,11 @@ const COPY: Record<Promo, Record<Lang, { title: string; body: string }>> = {
     ko: { title: 'Grove가 당신을 기다려요 🌱', body: '오랜만이에요. 짧은 집중 세션을 시작하고 멈춘 곳부터 이어가요.' },
     'pt-BR': { title: 'Seu Grove sente sua falta 🌱', body: 'Faz um tempo. Comece uma sessão rápida de foco e continue de onde parou.' },
     'zh-Hans': { title: '你的 Grove 想你了 🌱', body: '有段时间没见了。开始一次简短的专注，从上次停下的地方继续吧。' },
+    hi: { title: 'आपका Grove आपको याद कर रहा है 🌱', body: 'काफ़ी वक़्त हो गया। एक छोटा फ़ोकस सत्र शुरू करें और वहीं से आगे बढ़ें।' },
+    bn: { title: 'আপনার Grove আপনাকে মিস করছে 🌱', body: 'অনেক দিন হলো। ছোট একটা ফোকাস সেশন শুরু করে যেখানে থেমেছিলেন সেখান থেকে এগোন।' },
+    ru: { title: 'Ваш Grove скучает 🌱', body: 'Давно вас не было. Начните короткую сессию фокуса и продолжите с того же места.' },
+    ar: { title: 'Grove يفتقدك 🌱', body: 'مرّ وقت طويل. ابدأ جلسة تركيز قصيرة وأكمل من حيث توقفت.' },
+    ur: { title: 'آپ کا Grove آپ کو یاد کر رہا ہے 🌱', body: 'کافی وقت ہو گیا۔ ایک مختصر فوکس سیشن شروع کریں اور وہیں سے آگے بڑھیں۔' },
   },
   suggest: {
     en: { title: 'Help shape Bittersweet 💡', body: 'What would make Bittersweet better for you? Tap to tell us — we’re listening.' },
@@ -132,6 +168,11 @@ const COPY: Record<Promo, Record<Lang, { title: string; body: string }>> = {
     ko: { title: 'Bittersweet를 함께 만들어요 💡', body: 'Bittersweet가 어떻게 더 나아지면 좋을까요? 탭해서 알려주세요. 귀 기울이고 있어요.' },
     'pt-BR': { title: 'Ajude a moldar o Bittersweet 💡', body: 'O que tornaria o Bittersweet melhor para você? Toque e conte — estamos ouvindo.' },
     'zh-Hans': { title: '一起打造 Bittersweet 💡', body: '怎样能让 Bittersweet 对你更好用？点一下告诉我们，我们在倾听。' },
+    hi: { title: 'Bittersweet को बेहतर बनाएँ 💡', body: 'Bittersweet आपके लिए किस तरह बेहतर हो सकता है? टैप करके बताएँ — हम सुन रहे हैं।' },
+    bn: { title: 'Bittersweet গড়তে সাহায্য করুন 💡', body: 'Bittersweet কীভাবে আপনার জন্য আরও ভালো হতে পারে? ট্যাপ করে বলুন — আমরা শুনছি।' },
+    ru: { title: 'Помогите сделать Bittersweet лучше 💡', body: 'Что сделало бы Bittersweet лучше для вас? Нажмите и расскажите — мы слушаем.' },
+    ar: { title: 'ساعدنا في تطوير Bittersweet 💡', body: 'ما الذي يجعل Bittersweet أفضل بالنسبة لك؟ اضغط وأخبرنا — نحن نصغي.' },
+    ur: { title: 'Bittersweet کو بہتر بنانے میں مدد کریں 💡', body: 'Bittersweet آپ کے لیے کیسے بہتر ہو سکتا ہے؟ ٹیپ کر کے بتائیں — ہم سن رہے ہیں۔' },
   },
 };
 
@@ -142,15 +183,6 @@ function jsonResponse(body: Record<string, unknown>, status: number) {
   });
 }
 
-function normalizeLang(raw: string | null | undefined): Lang {
-  if (raw && (LANGS as string[]).includes(raw)) return raw as Lang;
-  // Tolerate region variants like "pt", "zh", "en-US".
-  if (raw?.startsWith('pt')) return 'pt-BR';
-  if (raw?.startsWith('zh')) return 'zh-Hans';
-  const base = raw?.split('-')[0];
-  if (base && (LANGS as string[]).includes(base)) return base as Lang;
-  return 'en';
-}
 
 // User's local hour (0-23) for the given IANA timezone; falls back to UTC when
 // the timezone is missing or unparseable.

@@ -67,7 +67,11 @@
     "showTotalHoursSub": "Отображать накопленные часы в разделе серий",
     "updateGoal": "Обновить цель",
     "totalTargetHours": "Часы",
-    "totalTargetMinutes": "Минуты"
+    "totalTargetMinutes": "Минуты",
+    "notifTitle_one": "{{count}} цель требует внимания",
+    "notifTitle_other": "{{count}} цели требуют внимания",
+    "notifTitle_few": "{{count}} цели требуют внимания",
+    "notifTitle_many": "{{count}} целей требуют внимания"
   },
   "common": {
     "next": "Далее",
@@ -875,7 +879,9 @@
     "actBlockApps": "Выбрать приложения для блокировки",
     "actLinkHealth": "Подключить Apple Health",
     "actEnableNotifs": "Включить уведомления",
-    "actEnableReminders": "Включить напоминания о целях"
+    "actEnableReminders": "Включить напоминания о целях",
+    "notifTitle": "Ваш недельный отчёт готов",
+    "notifBody": "Посмотрите свой балл фокуса и советы коуча."
   },
   "createChallenge": {
     "sent": "Челлендж отправлен!",
@@ -1128,7 +1134,9 @@
     "start": "Старт",
     "end": "Стоп",
     "unlocked": "Разблокировано",
-    "unblockExpired": "Разблокировка истекла"
+    "unblockExpired": "Разблокировка истекла",
+    "overTime": "Дополнительное время",
+    "idleTitle": "Фокус"
   },
   "unlock": {
     "trendTitle": "Динамика времени разблокировок",

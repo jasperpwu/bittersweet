@@ -67,7 +67,13 @@
     "showTotalHoursSub": "اعرض الساعات التراكمية في عرض السلاسل",
     "updateGoal": "تحديث الهدف",
     "totalTargetHours": "ساعات",
-    "totalTargetMinutes": "دقائق"
+    "totalTargetMinutes": "دقائق",
+    "notifTitle_one": "هدف يحتاج انتباهك",
+    "notifTitle_other": "{{count}} هدف يحتاج انتباهك",
+    "notifTitle_zero": "{{count}} هدف يحتاج انتباهك",
+    "notifTitle_two": "هدفان يحتاجان انتباهك",
+    "notifTitle_few": "{{count}} أهداف تحتاج انتباهك",
+    "notifTitle_many": "{{count}} هدفًا يحتاج انتباهك"
   },
   "common": {
     "next": "التالي",
@@ -895,7 +901,9 @@
     "actBlockApps": "اختر تطبيقات لحظرها",
     "actLinkHealth": "اربط Apple Health",
     "actEnableNotifs": "فعّل الإشعارات",
-    "actEnableReminders": "فعّل تذكيرات الأهداف"
+    "actEnableReminders": "فعّل تذكيرات الأهداف",
+    "notifTitle": "تقرير تركيزك الأسبوعي جاهز",
+    "notifBody": "اطّلع على درجة تركيزك هذا الأسبوع واقتراحات مدرّبك."
   },
   "createChallenge": {
     "sent": "أُرسل التحدي!",
@@ -1166,7 +1174,9 @@
     "start": "ابدأ",
     "end": "إنهاء",
     "unlocked": "مفتوح",
-    "unblockExpired": "انتهى الفتح"
+    "unblockExpired": "انتهى الفتح",
+    "overTime": "وقت إضافي",
+    "idleTitle": "تركيز"
   },
   "unlock": {
     "trendTitle": "اتجاه وقت الفتح",

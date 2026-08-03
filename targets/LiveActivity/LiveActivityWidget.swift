@@ -58,7 +58,10 @@ struct ResolvedIdleTag {
 
   var durationLabel: String? {
     guard let duration = duration else { return nil }
-    return duration > 0 ? "\(duration) min" : "\u{221E}"
+    guard duration > 0 else { return "\u{221E}" }
+    return WidgetDataManager.shared
+      .widgetString("minutesShort", fallback: "{count} min")
+      .replacingOccurrences(of: "{count}", with: "\(duration)")
   }
 }
 
@@ -70,7 +73,8 @@ func resolveIdleTag() -> ResolvedIdleTag {
   let selected = tags.first(where: { $0.id == selectedId })
   let mostRecent = tags.max(by: { $0.lastUsedAt < $1.lastUsedAt })
   guard let tag = selected ?? mostRecent else {
-    return ResolvedIdleTag(title: "Focus", tagId: nil, duration: nil)
+    let fallbackTitle = manager.widgetString("idleTitle", fallback: "Focus")
+    return ResolvedIdleTag(title: fallbackTitle, tagId: nil, duration: nil)
   }
   let icon = tag.icon.isEmpty ? "\u{1F3AF}" : tag.icon
   return ResolvedIdleTag(title: "\(icon) \(tag.name)", tagId: tag.id, duration: tag.lastDuration)
@@ -128,7 +132,7 @@ struct StaleBonusBannerView: View {
             .font(.title2)
             .fontWeight(.semibold)
             .foregroundStyle(textColor)
-          Text("Over Time")
+          Text(WidgetDataManager.shared.widgetString("overTime", fallback: "Over Time"))
             .font(.title3)
             .foregroundStyle(subtitleTextColor.opacity(0.7))
         }

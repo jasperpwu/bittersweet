@@ -67,7 +67,9 @@
     "showTotalHoursSub": "在连续记录视图中显示累计小时数",
     "updateGoal": "更新目标",
     "totalTargetHours": "小时",
-    "totalTargetMinutes": "分钟"
+    "totalTargetMinutes": "分钟",
+    "notifTitle_one": "{{count}} 个目标需要关注",
+    "notifTitle_other": "{{count}} 个目标需要关注"
   },
   "common": {
     "next": "下一步",
@@ -852,7 +854,9 @@
     "actBlockApps": "选择要屏蔽的应用",
     "actLinkHealth": "连接 Apple Health",
     "actEnableNotifs": "开启通知",
-    "actEnableReminders": "开启目标提醒"
+    "actEnableReminders": "开启目标提醒",
+    "notifTitle": "本周专注报告已就绪",
+    "notifBody": "看看本周的专注得分和教练的建议。"
   },
   "createChallenge": {
     "sent": "挑战已发送！",
@@ -1087,7 +1091,9 @@
     "start": "开始",
     "end": "结束",
     "unlocked": "已解锁",
-    "unblockExpired": "解锁已结束"
+    "unblockExpired": "解锁已结束",
+    "overTime": "加时中",
+    "idleTitle": "专注"
   },
   "unlock": {
     "trendTitle": "解锁时长趋势",

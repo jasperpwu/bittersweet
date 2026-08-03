@@ -1,5 +1,6 @@
 import * as ReactNativeDeviceActivity from 'react-native-device-activity';
 import { reloadWidgetTimelines } from 'expo-live-activity';
+import i18n from '../i18n';
 
 // UserDefaults keys (must match WidgetKeys in WidgetDataManager.swift)
 const SESSION_DATA_KEY = 'widgetSessionData';
@@ -23,6 +24,7 @@ const GROVE_ACTIVE_CHALLENGES_KEY = 'groveActiveChallenges';
 const TODO_LIST_KEY = 'widgetTodoList';
 const TODO_TOGGLES_KEY = 'widgetTodoToggles';
 const OPEN_NEW_TODO_KEY = 'widgetOpenNewTodo';
+const WIDGET_STRINGS_KEY = 'widgetStrings';
 
 export interface WidgetSessionData {
   isActive: boolean;
@@ -109,6 +111,29 @@ export interface WidgetTodoToggle {
  * Mirrors the LiveActivityService pattern — all static methods, no instantiation.
  */
 export class WidgetService {
+  /**
+   * Sync localized strings for text the widget extension renders itself.
+   * iOS draws the Live Activity (and widgets) while JS is asleep, so anything
+   * the extension composes on its own has to be handed over ahead of time —
+   * the same approach `configureShield` uses for the shield labels.
+   *
+   * `{count}` is a literal token the Swift side substitutes at render time;
+   * it must survive interpolation here, hence the string count.
+   * Call on app mount and whenever the language changes.
+   */
+  static syncLocalizedStrings(): void {
+    try {
+      ReactNativeDeviceActivity.userDefaultsSet(WIDGET_STRINGS_KEY, {
+        overTime: i18n.t('liveActivity.overTime'),
+        idleTitle: i18n.t('liveActivity.idleTitle'),
+        minutesShort: i18n.t('home.minutesShort', { count: '{count}' }),
+      });
+      reloadWidgetTimelines();
+    } catch (error) {
+      console.error('📱 [Widget] Failed to sync localized strings:', error);
+    }
+  }
+
   /**
    * Sync current session state to the widget.
    * Call when a session starts, stops, or is recovered.

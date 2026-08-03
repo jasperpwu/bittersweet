@@ -67,7 +67,9 @@
     "showTotalHoursSub": "Zeigt kumulierte Stunden in der Serien-Ansicht",
     "updateGoal": "Ziel aktualisieren",
     "totalTargetHours": "Stunden",
-    "totalTargetMinutes": "Minuten"
+    "totalTargetMinutes": "Minuten",
+    "notifTitle_one": "Ein Ziel braucht Aufmerksamkeit",
+    "notifTitle_other": "{{count}} Ziele brauchen Aufmerksamkeit"
   },
   "common": {
     "next": "Weiter",
@@ -855,7 +857,9 @@
     "actBlockApps": "Apps zum Blockieren wählen",
     "actLinkHealth": "Apple Health verbinden",
     "actEnableNotifs": "Mitteilungen aktivieren",
-    "actEnableReminders": "Ziel-Erinnerungen aktivieren"
+    "actEnableReminders": "Ziel-Erinnerungen aktivieren",
+    "notifTitle": "Deine Fokus-Woche ist fertig",
+    "notifBody": "Sieh dir deinen Fokus-Score an und was dein Coach vorschlägt."
   },
   "createChallenge": {
     "sent": "Challenge gesendet!",
@@ -1090,7 +1094,9 @@
     "start": "Starten",
     "end": "Beenden",
     "unlocked": "Freigeschaltet",
-    "unblockExpired": "Freischaltung abgelaufen"
+    "unblockExpired": "Freischaltung abgelaufen",
+    "overTime": "Zusatzzeit",
+    "idleTitle": "Fokus"
   },
   "unlock": {
     "trendTitle": "Freischaltzeit-Verlauf",

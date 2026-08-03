@@ -4,6 +4,7 @@ import { useAppStore } from '../store';
 import { useUnifiedStore } from '../store/unified-store';
 import { scheduleGoalNudges, cancelAllGoalNudges } from '../services/notifications/local';
 import { getGoalCurrentTarget } from '../utils/goalProgress';
+import { useLanguage } from '../i18n/useLanguage';
 import type { FocusGoal, FocusSession } from '../store/types';
 
 /**
@@ -54,6 +55,9 @@ export const useGoalNudgeNotifications = () => {
   // Lightweight counters to detect data changes without subscribing to the whole slice
   const goalCount = useAppStore(state => state.focus.goals?.allIds?.length ?? 0);
   const sessionCount = useAppStore(state => state.focus.sessions?.allIds?.length ?? 0);
+  // The scheduled notification's text is localized at schedule time, so a language
+  // switch has to re-schedule it — hence part of the cache key, not just a dep.
+  const language = useLanguage();
 
   const cacheKeyRef = useRef<string>('');
 
@@ -68,7 +72,7 @@ export const useGoalNudgeNotifications = () => {
     const { goals, sessions, tagMap } = getFocusData();
 
     const goalsKey = goals.map(g => `${g.id}:${getGoalCurrentTarget(g)}`).join(',');
-    const newKey = `${goalsKey}|${sessions.length}|${goalReminderTime}`;
+    const newKey = `${goalsKey}|${sessions.length}|${goalReminderTime}|${language}`;
 
     if (newKey === cacheKeyRef.current) return;
     cacheKeyRef.current = newKey;
@@ -80,7 +84,7 @@ export const useGoalNudgeNotifications = () => {
   useEffect(() => {
     if (!isHydrated) return;
     reschedule();
-  }, [isHydrated, goalReminderEnabled, goalReminderTime, goalCount, sessionCount]);
+  }, [isHydrated, goalReminderEnabled, goalReminderTime, goalCount, sessionCount, language]);
 
   // Reschedule on app foreground
   useEffect(() => {

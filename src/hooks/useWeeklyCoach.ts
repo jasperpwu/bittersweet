@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { useUnifiedStore } from '../store/unified-store';
 import { generateWeeklyReport, hasReportForWeek } from '../services/coach';
 import { scheduleWeeklyCoachNudge, cancelWeeklyCoachNudge } from '../services/notifications/coach';
+import { useLanguage } from '../i18n/useLanguage';
 
 /** Reference date inside the last completed (Mon–Sun) week. */
 const lastCompletedWeekRef = (): Date => {
@@ -30,6 +31,8 @@ export const useWeeklyCoach = () => {
     (state) => state.preferences.notifications?.enabled ?? true
   );
   const soundEnabled = useUnifiedStore((state) => state.preferences.notifications?.sound ?? true);
+  // The nudge text is localized at schedule time, so a language switch must re-schedule it.
+  const language = useLanguage();
 
   const generatingRef = useRef(false);
 
@@ -69,7 +72,7 @@ export const useWeeklyCoach = () => {
     if (!isHydrated) return;
     void tick();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHydrated, notificationsEnabled, soundEnabled]);
+  }, [isHydrated, notificationsEnabled, soundEnabled, language]);
 
   // Re-check on app foreground (a new week may have rolled over while backgrounded).
   useEffect(() => {

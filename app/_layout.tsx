@@ -21,6 +21,7 @@ import { useTodoNotifications } from '../src/hooks/useTodoNotifications';
 import { useWeeklyCoach } from '../src/hooks/useWeeklyCoach';
 import { useApplyLanguage } from '../src/hooks/useApplyLanguage';
 import { useLayoutDirection } from '../src/hooks/useLayoutDirection';
+import { useLanguage } from '../src/i18n/useLanguage';
 import { useEffect, useRef, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -241,6 +242,14 @@ export default function RootLayout() {
   // Reconcile the native RTL flag with that preference (restarts once if the
   // app booted left-to-right but the saved language is Arabic or Urdu)
   useLayoutDirection();
+
+  // Hand the widget extension its localized strings. iOS renders the Live
+  // Activity (and widgets) while JS is asleep, so the text it composes itself
+  // has to be written to the app group up front — and rewritten on a switch.
+  const language = useLanguage();
+  useEffect(() => {
+    WidgetService.syncLocalizedStrings();
+  }, [language]);
 
   // Initialize Device Activity Listener
   const { isListening } = useDeviceActivityListener();

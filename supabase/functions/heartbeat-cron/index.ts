@@ -8,6 +8,8 @@
 // Deployment: supabase functions deploy heartbeat-cron
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { fetchUserLanguages, langOf, format } from '../_shared/i18n.ts';
+import { ALERT_TITLE, HEARTBEAT_TEXT } from '../_shared/heartbeatCopy.ts';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
@@ -148,15 +150,23 @@ Deno.serve(async (req: Request) => {
 
       if (!circleMembers || circleMembers.length === 0) continue;
 
-      const notificationText = `${quietUser.display_name} has been quiet for ${quietUser.quiet_threshold_days} days. Maybe check in?`;
       const memberIds = circleMembers.map((m) => m.circle_member_id);
+
+      // Members of one circle can each read a different language, so the alert
+      // text is built per recipient rather than once per quiet user.
+      const langs = await fetchUserLanguages(supabase, memberIds);
+      const textFor = (memberId: string): string =>
+        format(HEARTBEAT_TEXT.quiet_threshold[langOf(langs, memberId)], {
+          name: quietUser.display_name,
+          days: quietUser.quiet_threshold_days,
+        });
 
       // Insert DB notifications
       const notifications = memberIds.map((memberId) => ({
         target_user_id: memberId,
         about_user_id: quietUser.user_id,
         trigger_type: 'quiet_threshold',
-        notification_text: notificationText,
+        notification_text: textFor(memberId),
       }));
 
       const { error: insertError } = await supabase
@@ -173,15 +183,15 @@ Deno.serve(async (req: Request) => {
       // Send push notifications
       const { data: tokens } = await supabase
         .from('push_tokens')
-        .select('expo_push_token')
+        .select('user_id, expo_push_token')
         .in('user_id', memberIds);
 
       if (tokens && tokens.length > 0) {
         const pushMessages = tokens.map((t) => ({
           to: t.expo_push_token,
           sound: 'default',
-          title: 'Inner Circle Alert',
-          body: notificationText,
+          title: ALERT_TITLE[langOf(langs, t.user_id)],
+          body: textFor(t.user_id),
           data: {
             type: 'heartbeat_alert',
             triggerType: 'quiet_threshold',

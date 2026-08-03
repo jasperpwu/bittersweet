@@ -22,6 +22,8 @@
 // Deployment: supabase functions deploy delete-account
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { fetchUserLanguages, langOf, format } from '../_shared/i18n.ts';
+import { ALERT_TITLE, HEARTBEAT_TEXT, A_FRIEND } from '../_shared/heartbeatCopy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -92,8 +94,6 @@ async function notifyInnerCircleOfDeletion(
       .eq('user_id', userId)
       .maybeSingle();
 
-    const displayName = profile?.display_name || 'A friend';
-
     const { data: members } = await admin
       .from('heartbeat_inner_circle')
       .select('circle_member_id')
@@ -102,14 +102,23 @@ async function notifyInnerCircleOfDeletion(
 
     if (!members || members.length === 0) return;
 
-    const notificationText = `${displayName} has deleted their Bittersweet account.`;
+    // Each member may read in a different language, so the text is built per
+    // recipient rather than once for the whole circle.
+    const memberIds = members.map((m: { circle_member_id: string }) => m.circle_member_id);
+    const langs = await fetchUserLanguages(admin, memberIds);
+    const textFor = (memberId: string): string => {
+      const lang = langOf(langs, memberId);
+      return format(HEARTBEAT_TEXT.account_deleted[lang], {
+        name: profile?.display_name || A_FRIEND[lang],
+      });
+    };
 
     // about_user_id is NULL: the user no longer exists; the name lives in text.
-    const notifications = members.map((m: { circle_member_id: string }) => ({
-      target_user_id: m.circle_member_id,
+    const notifications = memberIds.map((memberId: string) => ({
+      target_user_id: memberId,
       about_user_id: null,
       trigger_type: 'account_deleted',
-      notification_text: notificationText,
+      notification_text: textFor(memberId),
     }));
 
     const { error: insertError } = await admin
@@ -119,19 +128,19 @@ async function notifyInnerCircleOfDeletion(
       console.error('Failed to insert deletion notifications:', insertError.message);
     }
 
-    // Push to members (best-effort).
-    const memberIds = members.map((m: { circle_member_id: string }) => m.circle_member_id);
+    // Push to members (best-effort). Selecting user_id too so each token can be
+    // matched back to its owner's language.
     const { data: tokens } = await admin
       .from('push_tokens')
-      .select('expo_push_token')
+      .select('user_id, expo_push_token')
       .in('user_id', memberIds);
 
     if (tokens && tokens.length > 0) {
-      const pushMessages = tokens.map((t: { expo_push_token: string }) => ({
+      const pushMessages = tokens.map((t: { user_id: string; expo_push_token: string }) => ({
         to: t.expo_push_token,
         sound: 'default',
-        title: 'Inner Circle Alert',
-        body: notificationText,
+        title: ALERT_TITLE[langOf(langs, t.user_id)],
+        body: textFor(t.user_id),
         data: { type: 'heartbeat_alert', triggerType: 'account_deleted' },
       }));
 

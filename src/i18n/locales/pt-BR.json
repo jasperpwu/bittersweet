@@ -67,7 +67,9 @@
     "showTotalHoursSub": "Exibe as horas acumuladas na visão de sequências",
     "updateGoal": "Atualizar meta",
     "totalTargetHours": "Horas",
-    "totalTargetMinutes": "Minutos"
+    "totalTargetMinutes": "Minutos",
+    "notifTitle_one": "Uma meta precisa de atenção",
+    "notifTitle_other": "{{count}} metas precisam de atenção"
   },
   "common": {
     "next": "Avançar",
@@ -855,7 +857,9 @@
     "actBlockApps": "Escolher apps para bloquear",
     "actLinkHealth": "Conectar Apple Health",
     "actEnableNotifs": "Ativar notificações",
-    "actEnableReminders": "Ativar lembretes de metas"
+    "actEnableReminders": "Ativar lembretes de metas",
+    "notifTitle": "Sua semana de foco está pronta",
+    "notifBody": "Veja sua pontuação de foco e o que seu coach sugere."
   },
   "createChallenge": {
     "sent": "Desafio enviado!",
@@ -1090,7 +1094,9 @@
     "start": "Iniciar",
     "end": "Encerrar",
     "unlocked": "Desbloqueado",
-    "unblockExpired": "Desbloqueio encerrado"
+    "unblockExpired": "Desbloqueio encerrado",
+    "overTime": "Tempo extra",
+    "idleTitle": "Foco"
   },
   "unlock": {
     "trendTitle": "Tendência de desbloqueio",

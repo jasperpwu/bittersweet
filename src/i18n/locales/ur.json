@@ -67,7 +67,9 @@
     "showTotalHoursSub": "تسلسل کے منظر میں مجموعی گھنٹے دکھائیں",
     "updateGoal": "ہدف اپ ڈیٹ کریں",
     "totalTargetHours": "گھنٹے",
-    "totalTargetMinutes": "منٹ"
+    "totalTargetMinutes": "منٹ",
+    "notifTitle_one": "ایک ہدف پر توجہ درکار ہے",
+    "notifTitle_other": "{{count}} اہداف پر توجہ درکار ہیں"
   },
   "common": {
     "next": "آگے",
@@ -855,7 +857,9 @@
     "actBlockApps": "بلاک کرنے کو ایپس منتخب کریں",
     "actLinkHealth": "Apple Health جوڑیں",
     "actEnableNotifs": "اطلاعات چالو کریں",
-    "actEnableReminders": "اہداف کی یاد دہانیاں چالو کریں"
+    "actEnableReminders": "اہداف کی یاد دہانیاں چالو کریں",
+    "notifTitle": "آپ کی ہفتہ وار فوکس رپورٹ تیار ہے",
+    "notifBody": "اس ہفتے کا فوکس اسکور اور کوچ کے مشورے دیکھیں۔"
   },
   "createChallenge": {
     "sent": "چیلنج بھیج دیا گیا!",
@@ -1090,7 +1094,9 @@
     "start": "شروع",
     "end": "ختم",
     "unlocked": "اَن لاک",
-    "unblockExpired": "اَن بلاک ختم"
+    "unblockExpired": "اَن بلاک ختم",
+    "overTime": "اضافی وقت",
+    "idleTitle": "فوکس"
   },
   "unlock": {
     "trendTitle": "اَن لاک وقت کا رجحان",

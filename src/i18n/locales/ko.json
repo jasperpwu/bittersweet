@@ -67,7 +67,9 @@
     "showTotalHoursSub": "스트릭 화면에 누적 시간을 표시해요",
     "updateGoal": "목표 업데이트",
     "totalTargetHours": "시간",
-    "totalTargetMinutes": "분"
+    "totalTargetMinutes": "분",
+    "notifTitle_one": "{{count}}개의 목표가 뒤처지고 있어요",
+    "notifTitle_other": "{{count}}개의 목표가 뒤처지고 있어요"
   },
   "common": {
     "next": "다음",
@@ -852,7 +854,9 @@
     "actBlockApps": "차단할 앱 선택",
     "actLinkHealth": "Apple Health 연결",
     "actEnableNotifs": "알림 켜기",
-    "actEnableReminders": "목표 리마인더 켜기"
+    "actEnableReminders": "목표 리마인더 켜기",
+    "notifTitle": "이번 주 집중 리포트가 준비됐어요",
+    "notifBody": "이번 주 집중 점수와 코치의 제안을 확인해 보세요."
   },
   "createChallenge": {
     "sent": "챌린지를 보냈어요!",
@@ -1087,7 +1091,9 @@
     "start": "시작",
     "end": "종료",
     "unlocked": "잠금 해제됨",
-    "unblockExpired": "잠금 해제 종료"
+    "unblockExpired": "잠금 해제 종료",
+    "overTime": "추가 시간",
+    "idleTitle": "집중"
   },
   "unlock": {
     "trendTitle": "잠금 해제 시간 추이",
