@@ -35,6 +35,33 @@ const formatTickLabel = (minutes: number): string => {
   return m === 0 ? `${h}h` : `${h}h${m}`;
 };
 
+/**
+ * Index of the tick that best represents `time`.
+ *
+ * Durations regularly arrive off this coarse grid — a goal row's remaining
+ * minutes, a TODO's duration, a recovered session's target, or a value the
+ * wheel-style picker allowed. A plain indexOf returns -1 for those, which used
+ * to park the scroller on the first tick (∞) while the real duration stayed
+ * whatever it was, so "start focus" ran a countdown the scale never showed.
+ * Falling back to the nearest tick keeps the scale honest; the caller commits
+ * that value so state and display can't diverge.
+ */
+const nearestTickIndex = (time: number): number => {
+  const exact = TIME_VALUES.indexOf(time);
+  if (exact >= 0) return exact;
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+  TIME_VALUES.forEach((value, index) => {
+    if (value < 0) return; // never auto-snap onto the dev-only second timers
+    const distance = Math.abs(value - time);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
+};
+
 const FONT_BOLD = 'Poppins-Bold';
 
 /**
@@ -159,16 +186,22 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   const scrollViewRef = useRef<typeof Animated.ScrollView | null>(null);
   const isUserScrollingRef = useRef(false);
   const lastSnappedRef = useRef(selectedTime);
-  const timeToIndex = (time: number) => TIME_VALUES.indexOf(time);
-  const scrollX = useRef(new Animated.Value(timeToIndex(selectedTime) * TICK_SPACING)).current;
+  const scrollX = useRef(new Animated.Value(nearestTickIndex(selectedTime) * TICK_SPACING)).current;
 
   useEffect(() => {
     if (isUserScrollingRef.current) return;
+    const tickIndex = nearestTickIndex(selectedTime);
     if (scrollViewRef.current) {
-      const tickIndex = timeToIndex(selectedTime);
-      const scrollPosition = tickIndex * TICK_SPACING;
-      (scrollViewRef.current as any).scrollTo({ x: scrollPosition, animated: false });
+      (scrollViewRef.current as any).scrollTo({ x: tickIndex * TICK_SPACING, animated: false });
     }
+    // The incoming value has no tick of its own — adopt the tick we just centered
+    // as the real duration so the number under the indicator is the one that runs.
+    const tickTime = TIME_VALUES[tickIndex];
+    if (tickTime !== selectedTime) {
+      lastSnappedRef.current = tickTime;
+      onTimeChange(tickTime);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTime]);
 
   // Haptic feedback during scroll — fire when crossing a snap boundary
@@ -189,18 +222,8 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
     isUserScrollingRef.current = true;
   };
 
-  // Only finalize on momentum end — with snapToInterval the snap animation
-  // always triggers onMomentumScrollEnd, so this is the reliable "settled" event.
-  // Handling onScrollEndDrag too would update state before the snap animation
-  // finishes, causing a feedback loop (jiggle) between programmatic scrollTo
-  // and the native snap.
-  const handleMomentumScrollEnd = (event: any) => {
-    // Only handle user-initiated scrolls (started with onScrollBeginDrag).
-    // Programmatic scrolls and initial layout snaps also fire this event,
-    // which would incorrectly overwrite the persisted duration.
-    if (!isUserScrollingRef.current) return;
-
-    const scrollXVal = event.nativeEvent.contentOffset.x;
+  // Commit whatever tick the scroller came to rest on.
+  const settleAt = (scrollXVal: number) => {
     const snappedIndex = Math.round(scrollXVal / TICK_SPACING);
     const clampedIndex = Math.max(0, Math.min(TIME_VALUES.length - 1, snappedIndex));
     const snappedTime = TIME_VALUES[clampedIndex];
@@ -211,6 +234,29 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
 
     lastSnappedRef.current = snappedTime;
     isUserScrollingRef.current = false;
+  };
+
+  const handleMomentumScrollEnd = (event: any) => {
+    // Only handle user-initiated scrolls (started with onScrollBeginDrag).
+    // Animated programmatic scrolls and initial layout snaps also fire this event
+    // (RCTScrollView sends onMomentumScrollEnd from scrollViewDidEndScrollingAnimation
+    // too), which would incorrectly overwrite the persisted duration.
+    if (!isUserScrollingRef.current) return;
+    settleAt(event.nativeEvent.contentOffset.x);
+  };
+
+  // A slow release with no fling never decelerates, and onMomentumScrollEnd is
+  // only sent from scrollViewDidEndDecelerating — so without this the value is
+  // never committed AND isUserScrollingRef stays true forever, permanently
+  // disabling the sync effect above. That's how the scale ends up resting on one
+  // tick while "start focus" runs the previously selected duration. Skip when
+  // there's real velocity: momentum will follow and commit the final tick, and
+  // settling now would also let the sync effect fight the native snap (jiggle).
+  const handleScrollEndDrag = (event: any) => {
+    const velocityX = event.nativeEvent.velocity?.x ?? 0;
+    if (Math.abs(velocityX) < 0.05) {
+      settleAt(event.nativeEvent.contentOffset.x);
+    }
   };
 
   const onScroll = useMemo(
@@ -243,6 +289,7 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
           horizontal
           showsHorizontalScrollIndicator={false}
           onScrollBeginDrag={handleScrollBeginDrag}
+          onScrollEndDrag={handleScrollEndDrag}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           onScroll={onScroll}
           scrollEventThrottle={16}
