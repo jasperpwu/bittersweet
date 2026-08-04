@@ -23,12 +23,18 @@ const SHIELD_ACTIONS_KEY = 'shieldActions';
 const SHIELD_STRINGS_KEY = 'shieldStrings';
 const APP_GROUP_ID =
   Constants.expoConfig?.extra?.appGroupId ?? 'group.com.path2us.bittersweet.appblocker';
-const MAIN_APP_BUNDLE_ID = Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.path2us.bittersweet';
 
 // MARK: - Custom Data Types (for events only, not shield config)
 
 // UserDefaults communication keys for shield extension communication
 const PENDING_MAIN_APP_ACTION_KEY = 'pendingMainAppAction';
+
+/**
+ * Marks a local notification as posted by the shield extension. The shield can't
+ * open the app itself, so tapping this notification is what brings the user
+ * across; `app/_layout.tsx` routes on this value.
+ */
+export const SHIELD_NOTIFICATION_SOURCE = 'shieldAction';
 
 // MARK: - Custom Event Types (extending official types)
 
@@ -95,7 +101,18 @@ class BitterSweetFamilyControlsModule {
             secondaryButtonLabelColor: { red: 100, green: 100, blue: 100, alpha: 1.0 }, // Dark gray (readable on light secondary button bg)
           };
 
-      // Configure shield actions - during focus session, just close; otherwise open app for unlock
+      // Configure shield actions - during focus session, just close; otherwise
+      // hand off to the main app for unlock.
+      //
+      // iOS 26.5+ opens Bittersweet directly via
+      // ShieldActionResponse.openParentalControlsApp. Below that there is no
+      // supported way for an extension to open its containing app (the
+      // private-API workarounds get rejected under guideline 2.5.1), so the
+      // shield closes and posts a notification instead — tapping it opens the
+      // app. The native side picks the path with #available and skips the
+      // `isOpenAppFallback` action when it can open directly, so this one config
+      // serves both. Either way the shield writes `pendingMainAppAction`, which
+      // `checkShieldOpening` in app/_layout.tsx reads to raise the unlock sheet.
       const shieldActions: ShieldActions = focusSessionActive
         ? {
             primary: {
@@ -107,11 +124,20 @@ class BitterSweetFamilyControlsModule {
           }
         : {
             primary: {
-              behavior: 'defer',
+              behavior: 'openParentalControlsApp',
               actions: [
                 {
-                  type: 'openAppWithBundleId',
-                  bundleId: MAIN_APP_BUNDLE_ID,
+                  type: 'sendNotification',
+                  isOpenAppFallback: true,
+                  payload: {
+                    title: i18n.t('shield.unlockNotificationTitle'),
+                    body: i18n.t('shield.unlockNotificationBody'),
+                    sound: 'default',
+                    interruptionLevel: 'active',
+                    userInfo: {
+                      source: SHIELD_NOTIFICATION_SOURCE,
+                    },
+                  },
                 },
               ],
             },
@@ -133,6 +159,8 @@ class BitterSweetFamilyControlsModule {
         balanceSubtitle: i18n.t('shield.balanceSubtitle', { balance: '{balance}' }),
         unlockButton: i18n.t('shield.unlockButton'),
         closeButton: i18n.t('shield.closeButton'),
+        unlockNotificationTitle: i18n.t('shield.unlockNotificationTitle'),
+        unlockNotificationBody: i18n.t('shield.unlockNotificationBody'),
       });
 
       // Sync balance to app group so native widget/intent code can write

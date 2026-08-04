@@ -509,11 +509,26 @@ struct WidgetDataManager {
       "secondaryButtonLabelColor": ["red": 100.0, "green": 100.0, "blue": 100.0, "alpha": 1.0],
     ]
 
+    // iOS 26.5+ opens Bittersweet directly (ShieldActionResponse
+    // .openParentalControlsApp); below that the shield closes and posts a
+    // notification the user taps. ShieldActionExtension picks the path with
+    // #available and skips the fallback action when it can open directly.
+    // Mirrors configureShield() in src/modules/BitterSweetFamilyControls.ts.
     let shieldActions: [String: Any] = [
       "primary": [
-        "behavior": "defer",
+        "behavior": "openParentalControlsApp",
         "actions": [
-          ["type": "openAppWithBundleId", "bundleId": Bundle.main.bundleIdentifier ?? "com.path2us.bittersweet"]
+          [
+            "type": "sendNotification",
+            "isOpenAppFallback": true,
+            "payload": [
+              "title": strings["unlockNotificationTitle"] ?? "Unlock this app?",
+              "body": strings["unlockNotificationBody"] ?? "Tap to open Bittersweet and spend fruits.",
+              "sound": "default",
+              "interruptionLevel": "active",
+              "userInfo": ["source": "shieldAction"],
+            ] as [String: Any],
+          ] as [String: Any]
         ]
       ] as [String: Any],
       "secondary": [

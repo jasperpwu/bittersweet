@@ -1121,7 +1121,12 @@
     "focusSubtitle": "Focus session in progress\nStay focused!",
     "balanceSubtitle": "You have {{balance}} 🍎\nSpend fruits to unlock temporarily",
     "unlockButton": "Unlock App",
-    "closeButton": "Close"
+    "closeButton": "Close",
+    "unlockNotificationTitle": "Unlock this app?",
+    "unlockNotificationBody": "Tap to open Bittersweet and spend fruits.",
+    "notifPromptTitle": "Turn on notifications to unlock",
+    "notifPromptBody": "When a blocked app is open, tapping Unlock sends you a notification that opens Bittersweet. Without notifications that button can't reach the app — you'd have to open Bittersweet yourself.",
+    "notifPromptEnable": "Turn On"
   },
   "datePicker": {
     "selectDate": "Select Date",

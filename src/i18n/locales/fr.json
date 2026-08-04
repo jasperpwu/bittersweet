@@ -1121,7 +1121,12 @@
     "focusSubtitle": "Session de concentration en cours\nRestez concentré !",
     "balanceSubtitle": "Vous avez {{balance}} 🍎\nDépensez des fruits pour débloquer temporairement",
     "unlockButton": "Débloquer l'app",
-    "closeButton": "Fermer"
+    "closeButton": "Fermer",
+    "unlockNotificationTitle": "Débloquer cette app ?",
+    "unlockNotificationBody": "Touchez pour ouvrir Bittersweet et dépenser des fruits.",
+    "notifPromptTitle": "Activez les notifications pour débloquer",
+    "notifPromptBody": "Quand vous touchez Débloquer dans une app bloquée, nous vous envoyons une notification qui ouvre Bittersweet. Sans notifications, ce bouton n'atteint pas l'app et vous devrez ouvrir Bittersweet vous-même.",
+    "notifPromptEnable": "Activer"
   },
   "datePicker": {
     "selectDate": "Sélectionner une date",

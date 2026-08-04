@@ -1121,7 +1121,12 @@
     "focusSubtitle": "ফোকাস সেশন চলছে\nমন দিয়ে থাকুন!",
     "balanceSubtitle": "আপনার আছে {{balance}} 🍎\nকিছুক্ষণের জন্য আনলক করতে ফল খরচ করুন",
     "unlockButton": "অ্যাপ আনলক করুন",
-    "closeButton": "বন্ধ করুন"
+    "closeButton": "বন্ধ করুন",
+    "unlockNotificationTitle": "এই অ্যাপ আনলক করবেন?",
+    "unlockNotificationBody": "Bittersweet খুলে ফল খরচ করতে ট্যাপ করুন।",
+    "notifPromptTitle": "আনলক করতে বিজ্ঞপ্তি চালু করুন",
+    "notifPromptBody": "ব্লক করা অ্যাপে «আনলক» ট্যাপ করলে আমরা এমন একটি বিজ্ঞপ্তি পাঠাই যা Bittersweet খুলে দেয়। বিজ্ঞপ্তি বন্ধ থাকলে ওই বোতামটি অ্যাপ পর্যন্ত পৌঁছয় না — আপনাকে নিজেই Bittersweet খুলতে হবে।",
+    "notifPromptEnable": "চালু করুন"
   },
   "datePicker": {
     "selectDate": "তারিখ বাছুন",

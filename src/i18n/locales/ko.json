@@ -1118,7 +1118,12 @@
     "focusSubtitle": "집중 세션 진행 중\n계속 집중해 봐요!",
     "balanceSubtitle": "🍎 {{balance}}개 보유 중\n열매를 사용해 잠시 잠금 해제할 수 있어요",
     "unlockButton": "앱 잠금 해제",
-    "closeButton": "닫기"
+    "closeButton": "닫기",
+    "unlockNotificationTitle": "이 앱을 잠금 해제할까요?",
+    "unlockNotificationBody": "탭해서 Bittersweet을 열고 열매를 사용해 보세요.",
+    "notifPromptTitle": "잠금 해제하려면 알림을 켜 주세요",
+    "notifPromptBody": "차단된 앱에서 잠금 해제를 누르면 Bittersweet을 여는 알림을 보내 드려요. 알림이 꺼져 있으면 그 버튼으로는 앱에 갈 수 없어서 직접 Bittersweet을 열어야 해요.",
+    "notifPromptEnable": "켜기"
   },
   "datePicker": {
     "selectDate": "날짜 선택",

@@ -1121,7 +1121,12 @@
     "focusSubtitle": "فوکس سیشن جاری ہے\nتوجہ برقرار رکھیں!",
     "balanceSubtitle": "آپ کے پاس {{balance}} 🍎 ہیں\nکچھ دیر کے لیے اَن لاک کرنے کو پھل خرچ کریں",
     "unlockButton": "ایپ اَن لاک کریں",
-    "closeButton": "بند کریں"
+    "closeButton": "بند کریں",
+    "unlockNotificationTitle": "کیا یہ ایپ اَن لاک کریں؟",
+    "unlockNotificationBody": "Bittersweet کھولنے اور پھل خرچ کرنے کے لیے ٹیپ کریں۔",
+    "notifPromptTitle": "اَن لاک کرنے کے لیے اطلاعات آن کریں",
+    "notifPromptBody": "بلاک شدہ ایپ میں «اَن لاک» دبانے پر ہم آپ کو ایک اطلاع بھیجتے ہیں جو Bittersweet کھول دیتی ہے۔ اطلاعات بند ہوں تو یہ بٹن ایپ تک نہیں پہنچتا — آپ کو Bittersweet خود کھولنا پڑے گا۔",
+    "notifPromptEnable": "آن کریں"
   },
   "datePicker": {
     "selectDate": "تاریخ منتخب کریں",

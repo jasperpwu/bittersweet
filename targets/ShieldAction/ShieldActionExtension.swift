@@ -47,65 +47,48 @@ func handleShieldAction(
     logger.log("📋 Full config: \(configString, privacy: .public)")
   }
 
+  let behavior = configForSelectedAction["behavior"] as? String ?? "close"
+
+  // iOS 26.5 added ShieldActionResponse.openParentalControlsApp — the first
+  // supported way for a shield to open the app that applied it. Below 26.5 there
+  // is none, so the config also carries fallback actions (a tappable
+  // notification) which we run only when we can't open the app directly.
+  var opensParentalControlsApp = false
+  if behavior == "openParentalControlsApp", #available(iOS 26.5, *) {
+    opensParentalControlsApp = true
+  }
+
   if let actions = configForSelectedAction["actions"] as? [[String: Any]] {
     let actionCount = actions.count
     logger.log("🎯 Found \(actionCount) actions to execute")
+
+    // Recorded either way: the main app reads this on next foreground to know it
+    // was opened from the shield and resume the unlock flow.
+    writeShieldCommunicationToUserDefaults(
+      actionType: "\(actionButton ?? "unknown")ButtonTapped",
+      bundleId: nil,
+      shieldId: configForSelectedAction["shieldId"] as? String
+    )
+
     for (index, action) in actions.enumerated() {
       let actionNumber = index + 1
+
+      if opensParentalControlsApp, action["isOpenAppFallback"] as? Bool == true {
+        logger.log("⏭️ Skipping open-app fallback action \(actionNumber)/\(actionCount)")
+        continue
+      }
+
       logger.log("▶️ Executing action \(actionNumber)/\(actionCount)")
 
-      // Check if this is an openApp action and handle it directly
-      if let actionType = action["type"] as? String, actionType == "openApp" {
-        if let bundleId = action["bundleId"] as? String {
-          logger.log("🚀 Using openAppWithBundleId with: \(bundleId, privacy: .public)")
+      executeGenericAction(
+        action: action,
+        placeholders: placeholders,
+        triggeredBy: "shieldAction",
+        applicationToken: applicationToken,
+        webdomainToken: webdomainToken,
+        categoryToken: categoryToken
+      )
 
-          // Write communication data to UserDefaults before opening app
-          writeShieldCommunicationToUserDefaults(
-            actionType: "\(actionButton ?? "unknown")ButtonTapped",
-            bundleId: bundleId,
-            shieldId: action["shieldId"] as? String
-          )
-
-          let success = openAppWithBundleId(bundleId: bundleId)
-          logger.log("🎯 openAppWithBundleId result: \(success)")
-        } else if let deeplinkUrl = action["deeplinkUrl"] as? String {
-          logger.log("🚀 Using openAppWithUrl with: \(deeplinkUrl, privacy: .public)")
-          let success = openAppWithUrl(urlString: deeplinkUrl)
-          logger.log("🎯 openAppWithUrl result: \(success)")
-        } else {
-          logger.log("🚀 Using default bundle ID")
-          let success = openAppWithBundleId(bundleId: "com.path2us.bittersweet")
-          logger.log("🎯 openAppWithBundleId (default) result: \(success)")
-        }
-      } else {
-        // Handle openAppWithBundleId action type with communication
-        if let actionType = action["type"] as? String, actionType == "openAppWithBundleId" {
-          if let bundleId = action["bundleId"] as? String {
-            logger.log("🚀 Using openAppWithBundleId with: \(bundleId, privacy: .public)")
-
-            // Write communication data to UserDefaults before opening app
-            writeShieldCommunicationToUserDefaults(
-              actionType: "\(actionButton ?? "unknown")ButtonTapped",
-              bundleId: bundleId,
-              shieldId: action["shieldId"] as? String
-            )
-
-            let success = openAppWithBundleId(bundleId: bundleId)
-            logger.log("🎯 openAppWithBundleId result: \(success)")
-          } else {
-            logger.log("❌ Missing bundleId for openAppWithBundleId action")
-          }
-        } else {
-          executeGenericAction(
-            action: action,
-            placeholders: placeholders,
-            triggeredBy: "shieldAction",
-            applicationToken: applicationToken,
-            webdomainToken: webdomainToken,
-            categoryToken: categoryToken
-          )
-        }
-      }
       logger.log("✅ Completed action \(actionNumber)")
     }
   } else {
@@ -197,15 +180,6 @@ func handleShieldAction(
       resetBlocks(triggeredBy: "shieldAction")
     }
 
-    let url = configForSelectedAction["url"] as? String
-    let deeplinkUrl = configForSelectedAction["deeplinkUrl"] as? String
-
-    let urlStr = url ?? "nil"
-    let deeplinkStr = deeplinkUrl ?? "nil"
-    logger.log("🔍 Extracted values - url: \(urlStr, privacy: .public), deeplinkUrl: \(deeplinkStr, privacy: .public)")
-
-    // Legacy types removed - use the new actions array format instead
-
     if type == "sendNotification" {
       logger.log("🔔 Executing sendNotification")
       if let payload = configForSelectedAction["payload"] as? [String: Any] {
@@ -239,8 +213,11 @@ func handleShieldAction(
 
   CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication)
 
-  let behavior = configForSelectedAction["behavior"] as? String ?? "close"
   logger.log("🏁 Shield action completed, returning behavior: \(behavior, privacy: .public)")
+
+  if opensParentalControlsApp, #available(iOS 26.5, *) {
+    return .openParentalControlsApp
+  }
 
   if behavior == "defer" {
     return .defer

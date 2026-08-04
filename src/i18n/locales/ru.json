@@ -1161,7 +1161,12 @@
     "focusSubtitle": "Идёт сессия фокуса\nНе отвлекайтесь!",
     "balanceSubtitle": "У вас {{balance}} 🍎\nПотратьте фрукты, чтобы разблокировать на время",
     "unlockButton": "Разблокировать",
-    "closeButton": "Закрыть"
+    "closeButton": "Закрыть",
+    "unlockNotificationTitle": "Разблокировать это приложение?",
+    "unlockNotificationBody": "Нажмите, чтобы открыть Bittersweet и потратить фрукты.",
+    "notifPromptTitle": "Включите уведомления для разблокировки",
+    "notifPromptBody": "Когда вы нажимаете «Разблокировать» в заблокированном приложении, мы отправляем уведомление, которое открывает Bittersweet. Без уведомлений эта кнопка не сработает — Bittersweet придётся открывать вручную.",
+    "notifPromptEnable": "Включить"
   },
   "datePicker": {
     "selectDate": "Выберите дату",

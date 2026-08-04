@@ -1121,7 +1121,12 @@
     "focusSubtitle": "फ़ोकस सत्र चल रहा है\nध्यान बनाए रखें!",
     "balanceSubtitle": "आपके पास {{balance}} 🍎 हैं\nकुछ देर के लिए अनलॉक करने हेतु फल ख़र्च करें",
     "unlockButton": "ऐप अनलॉक करें",
-    "closeButton": "बंद करें"
+    "closeButton": "बंद करें",
+    "unlockNotificationTitle": "इस ऐप को अनलॉक करें?",
+    "unlockNotificationBody": "Bittersweet खोलने और फल ख़र्च करने के लिए टैप करें।",
+    "notifPromptTitle": "अनलॉक के लिए सूचनाएँ चालू करें",
+    "notifPromptBody": "किसी अवरुद्ध ऐप में «अनलॉक» दबाने पर हम आपको एक सूचना भेजते हैं जो Bittersweet खोल देती है। सूचनाएँ बंद हों तो वह बटन ऐप तक नहीं पहुँचता — आपको Bittersweet ख़ुद खोलना पड़ेगा।",
+    "notifPromptEnable": "चालू करें"
   },
   "datePicker": {
     "selectDate": "तारीख़ चुनें",

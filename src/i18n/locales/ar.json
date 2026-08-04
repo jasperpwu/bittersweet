@@ -1201,7 +1201,12 @@
     "focusSubtitle": "جلسة تركيز جارية\nحافظ على تركيزك!",
     "balanceSubtitle": "لديك {{balance}} 🍎\nأنفق الثمار لفتح التطبيق مؤقتًا",
     "unlockButton": "فتح التطبيق",
-    "closeButton": "إغلاق"
+    "closeButton": "إغلاق",
+    "unlockNotificationTitle": "هل تريد فتح هذا التطبيق؟",
+    "unlockNotificationBody": "اضغط لفتح Bittersweet وإنفاق الثمار.",
+    "notifPromptTitle": "فعّل الإشعارات لفتح التطبيقات",
+    "notifPromptBody": "عند الضغط على «فتح التطبيق» داخل تطبيق محظور، نرسل لك إشعارًا يفتح Bittersweet. بدون الإشعارات لا يصل ذلك الزر إلى التطبيق، وسيتعيّن عليك فتح Bittersweet بنفسك.",
+    "notifPromptEnable": "تفعيل"
   },
   "datePicker": {
     "selectDate": "اختر التاريخ",

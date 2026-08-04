@@ -1121,7 +1121,12 @@
     "focusSubtitle": "Fokus-Sitzung läuft\nBleib konzentriert!",
     "balanceSubtitle": "Du hast {{balance}} 🍎\nGib Früchte aus, um vorübergehend freizuschalten",
     "unlockButton": "App freischalten",
-    "closeButton": "Schließen"
+    "closeButton": "Schließen",
+    "unlockNotificationTitle": "Diese App freischalten?",
+    "unlockNotificationBody": "Tippe, um Bittersweet zu öffnen und Früchte auszugeben.",
+    "notifPromptTitle": "Mitteilungen für das Freischalten aktivieren",
+    "notifPromptBody": "Wenn du in einer blockierten App auf „Freischalten“ tippst, schicken wir dir eine Mitteilung, die Bittersweet öffnet. Ohne Mitteilungen kommt der Button nicht durch — du müsstest Bittersweet selbst öffnen.",
+    "notifPromptEnable": "Aktivieren"
   },
   "datePicker": {
     "selectDate": "Datum auswählen",

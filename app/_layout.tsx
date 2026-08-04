@@ -56,6 +56,7 @@ import { ActivityPingService } from '../src/services/notifications/activity';
 import { AnalyticsTracker } from '../src/services/analytics';
 import { getInstalledWidgetFamilies } from '../modules/widget-info';
 import { installNavigationGuard } from '../src/utils/navigationGuard';
+import { maybePromptForShieldUnlockNotifications } from '../src/utils/shieldUnlockHandoff';
 
 // Dedupe duplicate navigations from fast double-taps (router.push/navigate/replace).
 installNavigationGuard();
@@ -1001,6 +1002,16 @@ export default function RootLayout() {
         setTimeout(() => {
           setShowUnlockSheet(true);
         }, 100);
+        return;
+      }
+
+      // Not opened from the shield, so nothing is competing for the screen —
+      // the moment to re-raise the notification ask. On iOS < 26.5 the shield's
+      // Unlock button can only reach the app via a notification, so without the
+      // permission that button is a dead end. Self-limits to the nag interval,
+      // no-ops on 26.5+ and when already granted.
+      if (useAppStore.getState().blocklist.currentSelectionId) {
+        maybePromptForShieldUnlockNotifications();
       }
     } catch (error: any) {
       console.error('❌ [SHIELD_LAYOUT] Error checking shield opening:', error);

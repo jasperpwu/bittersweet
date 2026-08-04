@@ -1118,7 +1118,12 @@
     "focusSubtitle": "专注会话进行中\n保持专注！",
     "balanceSubtitle": "你有 {{balance}} 🍎\n花费果实可暂时解锁",
     "unlockButton": "解锁应用",
-    "closeButton": "关闭"
+    "closeButton": "关闭",
+    "unlockNotificationTitle": "要解锁这个应用吗？",
+    "unlockNotificationBody": "点按打开 Bittersweet，花费果实解锁。",
+    "notifPromptTitle": "开启通知才能解锁",
+    "notifPromptBody": "在被屏蔽的应用里点按「解锁」时，我们会发一条通知带你打开 Bittersweet。关闭通知的话这个按钮就走不通，你得自己打开 Bittersweet。",
+    "notifPromptEnable": "开启"
   },
   "datePicker": {
     "selectDate": "选择日期",

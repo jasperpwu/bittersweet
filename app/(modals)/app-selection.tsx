@@ -12,6 +12,7 @@ import { colors } from '../../src/config/theme';
 import { useBlocklist, useBlocklistActions } from '../../src/store';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { showToast } from '../../src/components/ui/Toast';
+import { maybePromptForShieldUnlockNotifications } from '../../src/utils/shieldUnlockHandoff';
 import { router } from 'expo-router';
 import { DeviceActivitySelectionView, DeviceActivitySelectionViewPersisted, getFamilyActivitySelectionId, setFamilyActivitySelectionId } from 'react-native-device-activity';
 import { Stack } from 'expo-router';
@@ -158,6 +159,14 @@ export default function AppSelectionScreen() {
 
       // Navigate back without showing alert
       router.back();
+
+      // Blocking is live from here, so the shield is now reachable. On iOS < 26.5
+      // its Unlock button hands off through a notification (no supported way to
+      // open the app directly), so make sure one can actually arrive. No-ops on
+      // 26.5+, when already granted, and after the first time.
+      if (selectionId) {
+        maybePromptForShieldUnlockNotifications();
+      }
     } catch (error: any) {
       console.error('❌ Failed to save app selection:', error);
       // The store throws an English "Insufficient fruits. Required: X, Available: Y"

@@ -1118,7 +1118,12 @@
     "focusSubtitle": "集中セッション中\nこのまま集中を続けましょう！",
     "balanceSubtitle": "{{balance}} 🍎 を持っています\n実を使うと一時的にアンロックできます",
     "unlockButton": "アプリをアンロック",
-    "closeButton": "閉じる"
+    "closeButton": "閉じる",
+    "unlockNotificationTitle": "このアプリをアンロックしますか？",
+    "unlockNotificationBody": "タップして Bittersweet を開き、実を使いましょう。",
+    "notifPromptTitle": "アンロックには通知をオンに",
+    "notifPromptBody": "ブロック中のアプリで「アンロック」をタップすると、Bittersweet を開く通知が届きます。通知がオフだとそのボタンからはアプリに移動できず、自分で Bittersweet を開く必要があります。",
+    "notifPromptEnable": "オンにする"
   },
   "datePicker": {
     "selectDate": "日付を選択",
