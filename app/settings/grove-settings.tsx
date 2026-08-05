@@ -196,6 +196,13 @@ export default function GroveSettingsScreen() {
                     icon="heart-outline"
                     hasChevron
                     onPress={() => router.push('/(modals)/inner-circle')}
+                  />
+                  <SettingsItem
+                    title={t('moderation.blockedAccounts')}
+                    subtitle={t('moderation.blockedAccountsSub')}
+                    icon="ban-outline"
+                    hasChevron
+                    onPress={() => router.push('/(modals)/blocked-accounts')}
                     isLast
                   />
                 </SettingsSection>

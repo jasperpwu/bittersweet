@@ -1267,5 +1267,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 개발자에게 문의",
     "contactDeveloperSubtitle": "언제든 도와드릴게요!"
+  },
+  "moderation": {
+    "menuTitle": "계정 옵션",
+    "report": "신고하기",
+    "block": "차단",
+    "unblock": "차단 해제",
+    "thisAccount": "이 계정",
+    "reportTitle": "계정 신고",
+    "reportSubtitle": "{{name}}님의 활동에서 어떤 점이 문제인지 알려주세요. 모든 신고는 저희가 검토해요.",
+    "reason": {
+      "inappropriate": "부적절한 콘텐츠",
+      "harassment": "괴롭힘 또는 따돌림",
+      "spam": "스팸",
+      "impersonation": "사칭",
+      "other": "기타"
+    },
+    "reportSent": "신고를 보냈어요. 알려줘서 고마워요.",
+    "reportFailed": "신고를 보내지 못했어요. 다시 시도해 주세요.",
+    "blockConfirmTitle": "{{name}}님을 차단할까요?",
+    "blockConfirmBody": "서로의 세션을 볼 수 없게 돼요. 친구였다면 친구 관계도 해제돼요.",
+    "blockedToast": "계정을 차단했어요",
+    "blockFailed": "계정을 차단하지 못했어요. 다시 시도해 주세요.",
+    "blockedAccounts": "차단한 계정",
+    "blockedAccountsSub": "차단한 사람을 관리해요",
+    "blockedAccountsIntro": "차단한 계정은 내 세션을 볼 수 없고, Grove 어디에서도 그 사람의 세션이 보이지 않아요.",
+    "blockedEmpty": "차단한 계정이 없어요.",
+    "unblockConfirmTitle": "{{name}}님의 차단을 해제할까요?",
+    "unblockConfirmBody": "서로의 공개 세션을 다시 볼 수 있어요. 친구 관계는 자동으로 돌아오지 않아요.",
+    "unblockedToast": "차단을 해제했어요",
+    "unblockFailed": "차단을 해제하지 못했어요. 다시 시도해 주세요."
   }
 }

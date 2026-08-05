@@ -1270,5 +1270,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 Contacter le développeur",
     "contactDeveloperSubtitle": "Nous sommes là pour vous aider !"
+  },
+  "moderation": {
+    "menuTitle": "Options du compte",
+    "report": "Signaler…",
+    "block": "Bloquer",
+    "unblock": "Débloquer",
+    "thisAccount": "ce compte",
+    "reportTitle": "Signaler ce compte",
+    "reportSubtitle": "Dis-nous ce qui ne va pas dans l'activité de {{name}}. Notre équipe examine chaque signalement.",
+    "reason": {
+      "inappropriate": "Contenu inapproprié",
+      "harassment": "Harcèlement ou intimidation",
+      "spam": "Spam",
+      "impersonation": "Usurpation d'identité",
+      "other": "Autre raison"
+    },
+    "reportSent": "Signalement envoyé. Merci de ta vigilance.",
+    "reportFailed": "Impossible d'envoyer le signalement. Réessaie.",
+    "blockConfirmTitle": "Bloquer {{name}} ?",
+    "blockConfirmBody": "Cette personne ne verra plus tes sessions et tu ne verras plus les siennes. Votre amitié sera supprimée.",
+    "blockedToast": "Compte bloqué",
+    "blockFailed": "Impossible de bloquer ce compte. Réessaie.",
+    "blockedAccounts": "Comptes bloqués",
+    "blockedAccountsSub": "Gère les personnes que tu as bloquées",
+    "blockedAccountsIntro": "Les comptes bloqués ne voient pas tes sessions, et tu ne vois plus les leurs nulle part dans Grove.",
+    "blockedEmpty": "Tu n'as bloqué personne.",
+    "unblockConfirmTitle": "Débloquer {{name}} ?",
+    "unblockConfirmBody": "Vous pourrez de nouveau voir vos sessions publiques. Vous ne redeviendrez pas amis automatiquement.",
+    "unblockedToast": "Compte débloqué",
+    "unblockFailed": "Impossible de débloquer ce compte. Réessaie."
   }
 }

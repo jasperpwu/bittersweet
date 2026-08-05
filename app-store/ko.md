@@ -58,3 +58,9 @@ GROVE — 친구와 함께 집중
 무료로는 태그 3개와 진행 중인 목표 1개를 쓸 수 있어요. 프리미엄은 태그와 목표 무제한, Apple 건강 연동 등을 열어주고 월간 또는 연간으로 결제돼요. 구독은 현재 기간이 끝나기 최소 24시간 전에 취소하지 않으면 자동으로 갱신돼요.
 
 앱을 차단하려면 Bittersweet에 스크린 타임 권한이 필요해요. Grove와 동기화는 선택이에요. 앱만으로도 충분히 다 쓸 수 있어요.
+
+이용약관(EULA):
+https://bittersweet-app.github.io/terms.html
+
+개인정보 처리방침:
+https://bittersweet-app.github.io/privacy.html

@@ -1270,5 +1270,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 ڈویلپر سے رابطہ",
     "contactDeveloperSubtitle": "ہم مدد کے لیے حاضر ہیں!"
+  },
+  "moderation": {
+    "menuTitle": "اکاؤنٹ کے اختیارات",
+    "report": "رپورٹ کریں",
+    "block": "بلاک کریں",
+    "unblock": "ان بلاک کریں",
+    "thisAccount": "یہ اکاؤنٹ",
+    "reportTitle": "اکاؤنٹ رپورٹ کریں",
+    "reportSubtitle": "بتائیں کہ {{name}} کی سرگرمی میں کیا مسئلہ ہے۔ ہم ہر رپورٹ دیکھتے ہیں۔",
+    "reason": {
+      "inappropriate": "نامناسب مواد",
+      "harassment": "ہراسانی یا بدسلوکی",
+      "spam": "اسپیم",
+      "impersonation": "جعلی شناخت",
+      "other": "کوئی اور وجہ"
+    },
+    "reportSent": "رپورٹ بھیج دی گئی۔ بتانے کا شکریہ۔",
+    "reportFailed": "رپورٹ نہیں بھیجی جا سکی۔ دوبارہ کوشش کریں۔",
+    "blockConfirmTitle": "{{name}} کو بلاک کریں؟",
+    "blockConfirmBody": "آپ دونوں ایک دوسرے کے سیشن نہیں دیکھ سکیں گے۔ دوستی بھی ختم ہو جائے گی۔",
+    "blockedToast": "اکاؤنٹ بلاک کر دیا گیا",
+    "blockFailed": "اکاؤنٹ بلاک نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+    "blockedAccounts": "بلاک کیے گئے اکاؤنٹس",
+    "blockedAccountsSub": "دیکھیں آپ نے کس کو بلاک کیا ہے",
+    "blockedAccountsIntro": "بلاک کیے گئے اکاؤنٹس آپ کے سیشن نہیں دیکھ سکتے، اور Grove میں کہیں بھی آپ کو اُن کے سیشن نظر نہیں آئیں گے۔",
+    "blockedEmpty": "آپ نے کسی کو بلاک نہیں کیا۔",
+    "unblockConfirmTitle": "{{name}} کو ان بلاک کریں؟",
+    "unblockConfirmBody": "آپ دوبارہ ایک دوسرے کے پبلک سیشن دیکھ سکیں گے۔ دوستی خود بخود واپس نہیں آئے گی۔",
+    "unblockedToast": "اکاؤنٹ ان بلاک کر دیا گیا",
+    "unblockFailed": "اکاؤنٹ ان بلاک نہیں ہو سکا۔ دوبارہ کوشش کریں۔"
   }
 }

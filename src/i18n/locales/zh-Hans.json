@@ -1267,5 +1267,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 联系开发者",
     "contactDeveloperSubtitle": "我们随时为你提供帮助！"
+  },
+  "moderation": {
+    "menuTitle": "账号操作",
+    "report": "举报",
+    "block": "拉黑",
+    "unblock": "解除拉黑",
+    "thisAccount": "该账号",
+    "reportTitle": "举报账号",
+    "reportSubtitle": "说说 {{name}} 的动态哪里有问题，我们会逐条查看。",
+    "reason": {
+      "inappropriate": "不当内容",
+      "harassment": "骚扰或霸凌",
+      "spam": "垃圾信息",
+      "impersonation": "冒充他人",
+      "other": "其他原因"
+    },
+    "reportSent": "举报已提交，谢谢你的反馈。",
+    "reportFailed": "举报没能提交，请再试一次。",
+    "blockConfirmTitle": "拉黑 {{name}}？",
+    "blockConfirmBody": "你们将看不到彼此的专注记录，已有的好友关系也会解除。",
+    "blockedToast": "已拉黑",
+    "blockFailed": "拉黑失败，请再试一次。",
+    "blockedAccounts": "已拉黑的账号",
+    "blockedAccountsSub": "管理你拉黑的人",
+    "blockedAccountsIntro": "被拉黑的账号看不到你的专注记录，你也不会在 Grove 的任何地方看到他们。",
+    "blockedEmpty": "你还没有拉黑任何人。",
+    "unblockConfirmTitle": "解除拉黑 {{name}}？",
+    "unblockConfirmBody": "你们又能看到彼此的公开记录了，但不会自动恢复好友关系。",
+    "unblockedToast": "已解除拉黑",
+    "unblockFailed": "解除拉黑失败，请再试一次。"
   }
 }

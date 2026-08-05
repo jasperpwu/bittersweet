@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
-import { View, SafeAreaView, Pressable, ScrollView, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, SafeAreaView, Pressable, ScrollView, ActivityIndicator, Alert, useColorScheme } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,8 @@ import { DefaultAvatar } from '../../src/components/grove/DefaultAvatar';
 import i18n from '../../src/i18n';
 import { FocusingBadge } from '../../src/components/grove/FocusingBadge';
 import { ReactionButton } from '../../src/components/grove/ReactionButton';
+import { ReportSheet } from '../../src/components/grove/ReportSheet';
+import type { ReportReason } from '../../src/services/grove/GroveModerationService';
 import { useAppStore } from '../../src/store';
 import { showToast } from '../../src/components/ui/Toast';
 import type { FeedItem, FeedSession } from '../../src/services/grove/GroveFeedService';
@@ -66,6 +68,63 @@ export default function FriendFeedModal() {
     [friends, userId]
   );
   const [invited, setInvited] = useState(false);
+
+  // Moderation (App Store Guideline 1.2)
+  const blockUser = useAppStore((s) => s.grove.blockUser);
+  const reportUser = useAppStore((s) => s.grove.reportUser);
+  const [showReportSheet, setShowReportSheet] = useState(false);
+
+  // The profile header is derived from the loaded feed, which can be empty for
+  // an account with no visible sessions — fall back to a generic noun so the
+  // confirm copy never reads "Block ?".
+  const profileName =
+    friendFeed[0]?.profile.display_name ?? t('moderation.thisAccount');
+
+  const handleReport = useCallback(
+    async (reason: ReportReason) => {
+      if (!userId) return;
+      setShowReportSheet(false);
+      try {
+        await reportUser({ reportedUserId: userId, reason });
+        showToast(t('moderation.reportSent'), 'success');
+      } catch {
+        showToast(t('moderation.reportFailed'), 'error');
+      }
+    },
+    [userId, reportUser, t]
+  );
+
+  const handleBlock = useCallback(() => {
+    if (!userId) return;
+    Alert.alert(
+      t('moderation.blockConfirmTitle', { name: profileName }),
+      t('moderation.blockConfirmBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('moderation.block'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(userId);
+              showToast(t('moderation.blockedToast'), 'success');
+              router.back();
+            } catch {
+              showToast(t('moderation.blockFailed'), 'error');
+            }
+          },
+        },
+      ]
+    );
+  }, [userId, blockUser, t, profileName]);
+
+  const openModerationMenu = useCallback(() => {
+    Alert.alert(t('moderation.menuTitle'), undefined, [
+      { text: t('moderation.report'), onPress: () => setShowReportSheet(true) },
+      { text: t('moderation.block'), style: 'destructive', onPress: handleBlock },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  }, [t, handleBlock]);
 
   const handleInvite = useCallback(async () => {
     if (!userId) return;
@@ -241,17 +300,33 @@ export default function FriendFeedModal() {
             {headerTitle}
           </Typography>
         </View>
-        <Pressable
-          onPress={() => setShowFilters((v) => !v)}
-          className="w-10 h-10 items-center justify-center -mr-2 active:opacity-60"
-          hitSlop={8}
-        >
-          <Ionicons
-            name={showFilters ? 'filter' : 'filter-outline'}
-            size={22}
-            color={hasActiveFilters ? colors.primary : (colorScheme === 'dark' ? colors.white : colors.light.screenTextPrimary)}
-          />
-        </Pressable>
+        <View className="flex-row items-center">
+          <Pressable
+            onPress={() => setShowFilters((v) => !v)}
+            className="w-10 h-10 items-center justify-center active:opacity-60"
+            hitSlop={8}
+          >
+            <Ionicons
+              name={showFilters ? 'filter' : 'filter-outline'}
+              size={22}
+              color={hasActiveFilters ? colors.primary : (colorScheme === 'dark' ? colors.white : colors.light.screenTextPrimary)}
+            />
+          </Pressable>
+          {/* Report / block — only on someone else's feed. */}
+          {!isCurrentUser && (
+            <Pressable
+              onPress={openModerationMenu}
+              className="w-10 h-10 items-center justify-center -mr-2 active:opacity-60"
+              hitSlop={8}
+            >
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={22}
+                color={colorScheme === 'dark' ? colors.white : colors.light.screenTextPrimary}
+              />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {/* Filter bar */}
@@ -508,6 +583,13 @@ export default function FriendFeedModal() {
           )}
         </ScrollView>
       )}
+
+      <ReportSheet
+        isVisible={showReportSheet}
+        onClose={() => setShowReportSheet(false)}
+        displayName={profileName}
+        onSubmit={handleReport}
+      />
     </SafeAreaView>
   );
 }

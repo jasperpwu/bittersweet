@@ -58,3 +58,9 @@ GRATUIT ET PREMIUM
 La version gratuite te donne 3 étiquettes et 1 objectif actif. Premium débloque les étiquettes et objectifs illimités, l'intégration Santé d'Apple et plus encore, facturé au mois ou à l'année. Les abonnements se renouvellent automatiquement sauf résiliation au moins 24 heures avant la fin de la période en cours.
 
 Bittersweet a besoin de l'autorisation Temps d'écran pour bloquer les apps. Grove et la synchronisation sont facultatifs : l'app fonctionne très bien toute seule.
+
+Conditions d'utilisation (EULA) :
+https://bittersweet-app.github.io/terms.html
+
+Politique de confidentialité :
+https://bittersweet-app.github.io/privacy.html

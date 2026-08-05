@@ -1270,5 +1270,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 Entwickler kontaktieren",
     "contactDeveloperSubtitle": "Wir helfen dir gern!"
+  },
+  "moderation": {
+    "menuTitle": "Konto-Optionen",
+    "report": "Melden…",
+    "block": "Blockieren",
+    "unblock": "Blockierung aufheben",
+    "thisAccount": "dieses Konto",
+    "reportTitle": "Konto melden",
+    "reportSubtitle": "Sag uns, was mit der Aktivität von {{name}} nicht stimmt. Unser Team prüft jede Meldung.",
+    "reason": {
+      "inappropriate": "Unangemessene Inhalte",
+      "harassment": "Belästigung oder Mobbing",
+      "spam": "Spam",
+      "impersonation": "Identitätsdiebstahl",
+      "other": "Etwas anderes"
+    },
+    "reportSent": "Meldung gesendet. Danke, dass du hinschaust.",
+    "reportFailed": "Meldung konnte nicht gesendet werden. Versuch es nochmal.",
+    "blockConfirmTitle": "{{name}} blockieren?",
+    "blockConfirmBody": "Ihr seht eure Sessions gegenseitig nicht mehr. Eine bestehende Freundschaft wird aufgelöst.",
+    "blockedToast": "Konto blockiert",
+    "blockFailed": "Konto konnte nicht blockiert werden. Versuch es nochmal.",
+    "blockedAccounts": "Blockierte Konten",
+    "blockedAccountsSub": "Verwalte, wen du blockiert hast",
+    "blockedAccountsIntro": "Blockierte Konten sehen deine Sessions nicht, und du siehst ihre nirgendwo in Grove.",
+    "blockedEmpty": "Du hast niemanden blockiert.",
+    "unblockConfirmTitle": "Blockierung von {{name}} aufheben?",
+    "unblockConfirmBody": "Ihr könnt eure öffentlichen Sessions wieder sehen. Freunde werdet ihr nicht automatisch wieder.",
+    "unblockedToast": "Blockierung aufgehoben",
+    "unblockFailed": "Blockierung konnte nicht aufgehoben werden. Versuch es nochmal."
   }
 }

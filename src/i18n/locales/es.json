@@ -1270,5 +1270,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 Contactar al desarrollador",
     "contactDeveloperSubtitle": "¡Estamos aquí para ayudarte!"
+  },
+  "moderation": {
+    "menuTitle": "Opciones de la cuenta",
+    "report": "Denunciar…",
+    "block": "Bloquear",
+    "unblock": "Desbloquear",
+    "thisAccount": "esta cuenta",
+    "reportTitle": "Denunciar cuenta",
+    "reportSubtitle": "Cuéntanos qué pasa con la actividad de {{name}}. Nuestro equipo revisa todas las denuncias.",
+    "reason": {
+      "inappropriate": "Contenido inapropiado",
+      "harassment": "Acoso o intimidación",
+      "spam": "Spam",
+      "impersonation": "Suplantación de identidad",
+      "other": "Otro motivo"
+    },
+    "reportSent": "Denuncia enviada. Gracias por avisar.",
+    "reportFailed": "No se pudo enviar la denuncia. Inténtalo de nuevo.",
+    "blockConfirmTitle": "¿Bloquear a {{name}}?",
+    "blockConfirmBody": "No verá tus sesiones ni tú las suyas. Si erais amigos, dejaréis de serlo.",
+    "blockedToast": "Cuenta bloqueada",
+    "blockFailed": "No se pudo bloquear la cuenta. Inténtalo de nuevo.",
+    "blockedAccounts": "Cuentas bloqueadas",
+    "blockedAccountsSub": "Gestiona a quién has bloqueado",
+    "blockedAccountsIntro": "Las cuentas bloqueadas no pueden ver tus sesiones, y tú no verás las suyas en ninguna parte de Grove.",
+    "blockedEmpty": "No has bloqueado a nadie.",
+    "unblockConfirmTitle": "¿Desbloquear a {{name}}?",
+    "unblockConfirmBody": "Volveréis a ver las sesiones públicas del otro. No volveréis a ser amigos automáticamente.",
+    "unblockedToast": "Cuenta desbloqueada",
+    "unblockFailed": "No se pudo desbloquear la cuenta. Inténtalo de nuevo."
   }
 }

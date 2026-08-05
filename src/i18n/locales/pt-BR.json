@@ -1270,5 +1270,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 Falar com o desenvolvedor",
     "contactDeveloperSubtitle": "Estamos aqui para ajudar!"
+  },
+  "moderation": {
+    "menuTitle": "Opções da conta",
+    "report": "Denunciar…",
+    "block": "Bloquear",
+    "unblock": "Desbloquear",
+    "thisAccount": "esta conta",
+    "reportTitle": "Denunciar conta",
+    "reportSubtitle": "Conta pra gente o que há de errado na atividade de {{name}}. Nosso time revisa todas as denúncias.",
+    "reason": {
+      "inappropriate": "Conteúdo impróprio",
+      "harassment": "Assédio ou bullying",
+      "spam": "Spam",
+      "impersonation": "Perfil falso",
+      "other": "Outro motivo"
+    },
+    "reportSent": "Denúncia enviada. Valeu por avisar.",
+    "reportFailed": "Não deu pra enviar a denúncia. Tente de novo.",
+    "blockConfirmTitle": "Bloquear {{name}}?",
+    "blockConfirmBody": "Vocês não verão mais as sessões um do outro. Se forem amigos, a amizade será desfeita.",
+    "blockedToast": "Conta bloqueada",
+    "blockFailed": "Não deu pra bloquear a conta. Tente de novo.",
+    "blockedAccounts": "Contas bloqueadas",
+    "blockedAccountsSub": "Gerencie quem você bloqueou",
+    "blockedAccountsIntro": "Contas bloqueadas não veem suas sessões, e você não vê as delas em nenhum lugar do Grove.",
+    "blockedEmpty": "Você não bloqueou ninguém.",
+    "unblockConfirmTitle": "Desbloquear {{name}}?",
+    "unblockConfirmBody": "Vocês voltarão a ver as sessões públicas um do outro. A amizade não volta automaticamente.",
+    "unblockedToast": "Conta desbloqueada",
+    "unblockFailed": "Não deu pra desbloquear a conta. Tente de novo."
   }
 }

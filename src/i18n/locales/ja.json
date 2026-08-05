@@ -1267,5 +1267,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 開発者に連絡",
     "contactDeveloperSubtitle": "お気軽にご相談ください！"
+  },
+  "moderation": {
+    "menuTitle": "アカウントの操作",
+    "report": "報告する",
+    "block": "ブロック",
+    "unblock": "ブロックを解除",
+    "thisAccount": "このアカウント",
+    "reportTitle": "アカウントを報告",
+    "reportSubtitle": "{{name}} さんの活動について、気になる点を教えてください。運営がすべて確認します。",
+    "reason": {
+      "inappropriate": "不適切なコンテンツ",
+      "harassment": "嫌がらせ・いじめ",
+      "spam": "スパム",
+      "impersonation": "なりすまし",
+      "other": "その他"
+    },
+    "reportSent": "報告を送信しました。ご協力ありがとうございます。",
+    "reportFailed": "報告を送信できませんでした。もう一度お試しください。",
+    "blockConfirmTitle": "{{name}} さんをブロックしますか？",
+    "blockConfirmBody": "お互いのセッションが見えなくなります。フレンドの場合は解除されます。",
+    "blockedToast": "ブロックしました",
+    "blockFailed": "ブロックできませんでした。もう一度お試しください。",
+    "blockedAccounts": "ブロックしたアカウント",
+    "blockedAccountsSub": "ブロック中のアカウントを管理",
+    "blockedAccountsIntro": "ブロックしたアカウントはあなたのセッションを見られません。Grove のどこにも相手のセッションは表示されません。",
+    "blockedEmpty": "ブロックしているアカウントはありません。",
+    "unblockConfirmTitle": "{{name}} さんのブロックを解除しますか？",
+    "unblockConfirmBody": "お互いの公開セッションがまた見えるようになります。フレンドには自動では戻りません。",
+    "unblockedToast": "ブロックを解除しました",
+    "unblockFailed": "ブロックを解除できませんでした。もう一度お試しください。"
   }
 }

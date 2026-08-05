@@ -40,6 +40,13 @@ export type {
   CreateGiftInput,
 } from './GiftRewardService';
 
+export { GroveModerationService } from './GroveModerationService';
+export type {
+  ReportReason,
+  ReportInput,
+  BlockedUser,
+} from './GroveModerationService';
+
 export { GroveHeartbeatService } from './GroveHeartbeatService';
 export type {
   HeartbeatSettings,

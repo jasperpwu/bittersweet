@@ -1312,6 +1312,14 @@ export default function RootLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="(modals)/blocked-accounts"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    gestureEnabled: true,
+                  }}
+                />
+                <Stack.Screen
                   name="(modals)/friend-feed"
                   options={{
                     headerShown: false,

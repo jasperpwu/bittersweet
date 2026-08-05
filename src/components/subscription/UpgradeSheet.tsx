@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Pressable, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, Pressable, ActivityIndicator, Linking, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../ui/Typography';
 import { Button } from '../ui/Button';
 import { BottomSheet } from '../ui/BottomSheet';
 import { useAppStore } from '../../store';
-import { SUBSCRIPTION_PRODUCTS } from '../../config/constants';
+import { SUBSCRIPTION_PRODUCTS, LEGAL_URLS } from '../../config/constants';
 import { colors } from '../../config/theme';
 import { PREMIUM_PERKS } from './premiumPerks';
 import { AnalyticsTracker } from '../../services/analytics';
@@ -200,6 +200,24 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, 
       <Typography variant="tiny-10" color="secondary" className="mt-3 text-center">
         {t('subscription.autoRenewTerms')}
       </Typography>
+
+      {/* Guideline 3.1.2 requires the purchase screen itself to link the EULA
+          and privacy policy — not just the App Store description. */}
+      <View className="mt-2 flex-row items-center justify-center">
+        <Pressable onPress={() => Linking.openURL(LEGAL_URLS.terms)}>
+          <Typography variant="tiny-10" color="secondary" className="underline">
+            {t('settings.tab.terms')}
+          </Typography>
+        </Pressable>
+        <Typography variant="tiny-10" color="secondary" className="mx-2">
+          ·
+        </Typography>
+        <Pressable onPress={() => Linking.openURL(LEGAL_URLS.privacy)}>
+          <Typography variant="tiny-10" color="secondary" className="underline">
+            {t('settings.tab.privacy')}
+          </Typography>
+        </Pressable>
+      </View>
     </View>
   );
 

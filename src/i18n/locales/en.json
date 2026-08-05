@@ -1270,5 +1270,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 Contact developer",
     "contactDeveloperSubtitle": "We are here to help!"
+  },
+  "moderation": {
+    "menuTitle": "Account options",
+    "report": "Report…",
+    "block": "Block",
+    "unblock": "Unblock",
+    "thisAccount": "this account",
+    "reportTitle": "Report account",
+    "reportSubtitle": "Tell us what's wrong with {{name}}'s activity. Our team reviews every report.",
+    "reason": {
+      "inappropriate": "Inappropriate content",
+      "harassment": "Harassment or bullying",
+      "spam": "Spam",
+      "impersonation": "Impersonation",
+      "other": "Something else"
+    },
+    "reportSent": "Report sent. Thanks for looking out.",
+    "reportFailed": "Couldn't send the report. Try again.",
+    "blockConfirmTitle": "Block {{name}}?",
+    "blockConfirmBody": "They won't see your sessions and you won't see theirs. Any friendship between you is removed.",
+    "blockedToast": "Account blocked",
+    "blockFailed": "Couldn't block that account. Try again.",
+    "blockedAccounts": "Blocked Accounts",
+    "blockedAccountsSub": "Manage who you've blocked",
+    "blockedAccountsIntro": "Blocked accounts can't see your sessions, and you won't see theirs anywhere in Grove.",
+    "blockedEmpty": "You haven't blocked anyone.",
+    "unblockConfirmTitle": "Unblock {{name}}?",
+    "unblockConfirmBody": "You'll be able to see each other's public sessions again. You won't become friends automatically.",
+    "unblockedToast": "Account unblocked",
+    "unblockFailed": "Couldn't unblock that account. Try again."
   }
 }

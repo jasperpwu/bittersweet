@@ -1350,5 +1350,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 تواصل مع المطوّر",
     "contactDeveloperSubtitle": "نحن هنا للمساعدة!"
+  },
+  "moderation": {
+    "menuTitle": "خيارات الحساب",
+    "report": "إبلاغ",
+    "block": "حظر",
+    "unblock": "إلغاء الحظر",
+    "thisAccount": "هذا الحساب",
+    "reportTitle": "الإبلاغ عن الحساب",
+    "reportSubtitle": "أخبرنا بما لا يعجبك في نشاط {{name}}. نراجع كل بلاغ.",
+    "reason": {
+      "inappropriate": "محتوى غير لائق",
+      "harassment": "تحرش أو تنمر",
+      "spam": "رسائل مزعجة",
+      "impersonation": "انتحال شخصية",
+      "other": "سبب آخر"
+    },
+    "reportSent": "تم إرسال البلاغ. شكرًا لتنبيهنا.",
+    "reportFailed": "تعذّر إرسال البلاغ. حاول مرة أخرى.",
+    "blockConfirmTitle": "حظر {{name}}؟",
+    "blockConfirmBody": "لن يرى أي منكما جلسات الآخر، وسيتم إلغاء الصداقة بينكما.",
+    "blockedToast": "تم حظر الحساب",
+    "blockFailed": "تعذّر حظر الحساب. حاول مرة أخرى.",
+    "blockedAccounts": "الحسابات المحظورة",
+    "blockedAccountsSub": "أدر قائمة من حظرتهم",
+    "blockedAccountsIntro": "الحسابات المحظورة لا ترى جلساتك، ولن ترى جلساتهم في أي مكان داخل Grove.",
+    "blockedEmpty": "لم تحظر أحدًا.",
+    "unblockConfirmTitle": "إلغاء حظر {{name}}؟",
+    "unblockConfirmBody": "ستتمكنان من رؤية الجلسات العامة لبعضكما مجددًا، لكن الصداقة لن تعود تلقائيًا.",
+    "unblockedToast": "تم إلغاء الحظر",
+    "unblockFailed": "تعذّر إلغاء الحظر. حاول مرة أخرى."
   }
 }

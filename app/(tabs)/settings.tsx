@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../../src/components/ui/Typography';
 import { Button } from '../../src/components/ui/Button';
 import { colors } from '../../src/config/theme';
+import { LEGAL_URLS } from '../../src/config/constants';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { router } from 'expo-router';
 import { AccountActions } from '../../src/components/auth/AccountActions';
@@ -181,7 +182,7 @@ export default function SettingsScreen() {
                   </Typography>
                 )}
                 <View className="mt-3 flex-row items-center justify-center">
-                  <Pressable onPress={() => Linking.openURL('https://bittersweet-app.github.io/terms.html')}>
+                  <Pressable onPress={() => Linking.openURL(LEGAL_URLS.terms)}>
                     <Typography variant="body-12" color="secondary" className="underline">
                       {t('settings.tab.terms')}
                     </Typography>
@@ -189,7 +190,7 @@ export default function SettingsScreen() {
                   <Typography variant="body-12" color="secondary" className="mx-2">
                     ·
                   </Typography>
-                  <Pressable onPress={() => Linking.openURL('https://bittersweet-app.github.io/privacy.html')}>
+                  <Pressable onPress={() => Linking.openURL(LEGAL_URLS.privacy)}>
                     <Typography variant="body-12" color="secondary" className="underline">
                       {t('settings.tab.privacy')}
                     </Typography>

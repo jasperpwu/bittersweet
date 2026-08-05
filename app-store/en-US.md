@@ -57,3 +57,9 @@ FREE AND PREMIUM
 Free tier gives you 3 tags and 1 active goal. Premium unlocks unlimited tags and goals, apple health integration, and more, billed monthly or yearly. Subscriptions auto-renew unless cancelled at least 24 hours before the current period ends.
 
 Bittersweet needs Screen Time permission to block apps. Grove and sync are optional — the app is fully functional on its own.
+
+Terms of Use (EULA):
+https://bittersweet-app.github.io/terms.html
+
+Privacy Policy:
+https://bittersweet-app.github.io/privacy.html

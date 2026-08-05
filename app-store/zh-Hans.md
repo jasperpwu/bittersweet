@@ -59,3 +59,9 @@ GROVE — 和朋友一起专注
 免费版可以用 3 个标签和 1 个进行中的目标。高级版解锁无限标签与目标、Apple 健康集成等更多功能，按月或按年计费。订阅会自动续期，除非你在当前订阅周期结束前至少 24 小时取消。
 
 Bittersweet 需要屏幕使用时间权限才能屏蔽应用。Grove 和同步都是可选的，这个 App 单独用也完全够。
+
+使用条款（EULA）：
+https://bittersweet-app.github.io/terms.html
+
+隐私政策：
+https://bittersweet-app.github.io/privacy.html

@@ -58,3 +58,9 @@ GRATIS Y PREMIUM
 El plan gratuito te da 3 etiquetas y 1 meta activa. Premium desbloquea etiquetas y metas ilimitadas, la integración con Salud de Apple y más, con facturación mensual o anual. Las suscripciones se renuevan automáticamente salvo que las canceles al menos 24 horas antes de que termine el periodo en curso.
 
 Bittersweet necesita permiso de Tiempo de uso para bloquear apps. Grove y la sincronización son opcionales: la app funciona perfectamente por sí sola.
+
+Términos de uso (EULA):
+https://bittersweet-app.github.io/terms.html
+
+Política de privacidad:
+https://bittersweet-app.github.io/privacy.html

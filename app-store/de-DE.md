@@ -58,3 +58,9 @@ KOSTENLOS UND PREMIUM
 In der kostenlosen Version bekommst du 3 Labels und 1 aktives Ziel. Premium schaltet unbegrenzte Labels und Ziele, die Apple-Health-Integration und mehr frei, monatlich oder jährlich abgerechnet. Abos verlängern sich automatisch, sofern du sie nicht mindestens 24 Stunden vor Ende des laufenden Zeitraums kündigst.
 
 Bittersweet braucht die Bildschirmzeit-Berechtigung, um Apps zu blockieren. Grove und Sync sind optional – die App funktioniert auch komplett für sich.
+
+Nutzungsbedingungen (EULA):
+https://bittersweet-app.github.io/terms.html
+
+Datenschutzerklärung:
+https://bittersweet-app.github.io/privacy.html

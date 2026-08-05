@@ -54,6 +54,14 @@ export const SUBSCRIPTION_PRODUCTS = {
   yearly: 'com.path2us.bittersweet.premium.yearly',
 } as const;
 
+// Public legal docs (GitHub Pages, source in `public_docs/`). Linked from the
+// paywall and Settings, and mirrored in the App Store description — Apple
+// checks that all three point at a live page.
+export const LEGAL_URLS = {
+  terms: 'https://bittersweet-app.github.io/terms.html',
+  privacy: 'https://bittersweet-app.github.io/privacy.html',
+} as const;
+
 // Developer Debug Flags — dev builds only (every flag is AND-ed with `__DEV__`,
 // so flipping one on can never leak logging into a release build).
 export const DEBUG_FLAGS = {

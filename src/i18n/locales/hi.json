@@ -1270,5 +1270,35 @@
   "quickActions": {
     "contactDeveloperTitle": "👋 डेवलपर से संपर्क करें",
     "contactDeveloperSubtitle": "हम मदद के लिए मौजूद हैं!"
+  },
+  "moderation": {
+    "menuTitle": "अकाउंट विकल्प",
+    "report": "रिपोर्ट करें",
+    "block": "ब्लॉक करें",
+    "unblock": "अनब्लॉक करें",
+    "thisAccount": "यह अकाउंट",
+    "reportTitle": "अकाउंट रिपोर्ट करें",
+    "reportSubtitle": "बताइए कि {{name}} की गतिविधि में क्या गड़बड़ है। हमारी टीम हर रिपोर्ट देखती है।",
+    "reason": {
+      "inappropriate": "अनुचित सामग्री",
+      "harassment": "उत्पीड़न या बदसलूकी",
+      "spam": "स्पैम",
+      "impersonation": "फर्जी पहचान",
+      "other": "कोई और वजह"
+    },
+    "reportSent": "रिपोर्ट भेज दी गई। बताने के लिए शुक्रिया।",
+    "reportFailed": "रिपोर्ट नहीं भेजी जा सकी। फिर कोशिश करें।",
+    "blockConfirmTitle": "{{name}} को ब्लॉक करें?",
+    "blockConfirmBody": "आप दोनों एक-दूसरे के सेशन नहीं देख पाएंगे। दोस्ती भी हट जाएगी।",
+    "blockedToast": "अकाउंट ब्लॉक कर दिया",
+    "blockFailed": "अकाउंट ब्लॉक नहीं हो सका। फिर कोशिश करें।",
+    "blockedAccounts": "ब्लॉक किए गए अकाउंट",
+    "blockedAccountsSub": "देखें कि आपने किसे ब्लॉक किया है",
+    "blockedAccountsIntro": "ब्लॉक किए गए अकाउंट आपके सेशन नहीं देख सकते, और Grove में कहीं भी आपको उनके सेशन नहीं दिखेंगे।",
+    "blockedEmpty": "आपने किसी को ब्लॉक नहीं किया है।",
+    "unblockConfirmTitle": "{{name}} को अनब्लॉक करें?",
+    "unblockConfirmBody": "आप फिर से एक-दूसरे के पब्लिक सेशन देख पाएंगे। दोस्ती अपने आप वापस नहीं होगी।",
+    "unblockedToast": "अकाउंट अनब्लॉक कर दिया",
+    "unblockFailed": "अकाउंट अनब्लॉक नहीं हो सका। फिर कोशिश करें।"
   }
 }

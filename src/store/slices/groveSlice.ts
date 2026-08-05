@@ -10,8 +10,10 @@ import {
   GroveRankingService,
   GroveChallengeService,
   GroveHeartbeatService,
+  GroveModerationService,
   GiftRewardService,
 } from '../../services/grove';
+import type { BlockedUser, ReportInput } from '../../services/grove/GroveModerationService';
 import type { GiftItem, CreateGiftInput } from '../../services/grove/GiftRewardService';
 import { giftProductId } from '../../config/giftRewards';
 import type { FriendItem, FriendRequest } from '../../services/grove/GroveFriendService';
@@ -58,6 +60,14 @@ export interface GroveSlice {
   friendFeed: FeedItem[];
   friendFeedLoading: boolean;
 
+  // Moderation (App Store Guideline 1.2). `blockedUserIds` mirrors what RLS
+  // already enforces server-side — it exists so cached feeds and the rankings
+  // RPC (SECURITY DEFINER, so RLS does not apply to it) can be filtered
+  // without waiting for a refetch.
+  blockedUserIds: string[];
+  blockedUsers: BlockedUser[];
+  blockedLoading: boolean;
+
   // Phase 3
   rankingsWeek: RankingItem[];
   rankingsMonth: RankingItem[];
@@ -102,6 +112,13 @@ export interface GroveSlice {
 
   // Friend feed actions
   fetchFriendFeed: (friendUserId: string) => Promise<void>;
+
+  // Moderation
+  fetchBlockedUserIds: () => Promise<void>;
+  fetchBlockedUsers: () => Promise<void>;
+  blockUser: (userId: string) => Promise<void>;
+  unblockUser: (userId: string) => Promise<void>;
+  reportUser: (input: ReportInput) => Promise<void>;
 
   // Phase 3 actions
   fetchRankings: () => Promise<void>;
@@ -182,6 +199,10 @@ const initialState = {
   // Friend feed
   friendFeed: [],
   friendFeedLoading: false,
+  // Moderation
+  blockedUserIds: [] as string[],
+  blockedUsers: [] as BlockedUser[],
+  blockedLoading: false,
   // Phase 3
   rankingsWeek: [],
   rankingsMonth: [],
@@ -818,6 +839,88 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
     }
   },
 
+  // ========== Moderation Actions ==========
+
+  fetchBlockedUserIds: async () => {
+    try {
+      const blockedUserIds = await GroveModerationService.fetchBlockedUserIds();
+      set((state: any) => ({
+        grove: { ...state.grove, blockedUserIds },
+      }));
+    } catch (error: any) {
+      console.error('Failed to fetch blocked user IDs:', error);
+    }
+  },
+
+  fetchBlockedUsers: async () => {
+    set((state: any) => ({
+      grove: { ...state.grove, blockedLoading: true },
+    }));
+
+    try {
+      const blockedUsers = await GroveModerationService.fetchBlockedUsers();
+      set((state: any) => ({
+        grove: {
+          ...state.grove,
+          blockedUsers,
+          blockedUserIds: blockedUsers.map((b: BlockedUser) => b.userId),
+          blockedLoading: false,
+        },
+      }));
+    } catch (error: any) {
+      console.error('Failed to fetch blocked users:', error);
+      set((state: any) => ({
+        grove: { ...state.grove, blockedLoading: false },
+      }));
+    }
+  },
+
+  blockUser: async (userId: string) => {
+    await GroveModerationService.blockUser(userId);
+
+    // Purge the blocked user from everything already in memory. RLS keeps them
+    // out of future fetches, but the current feed/friend list would otherwise
+    // keep showing them until the next refresh.
+    set((state: any) => ({
+      grove: {
+        ...state.grove,
+        blockedUserIds: state.grove.blockedUserIds.includes(userId)
+          ? state.grove.blockedUserIds
+          : [...state.grove.blockedUserIds, userId],
+        friends: state.grove.friends.filter(
+          (f: FriendItem) => f.profile.user_id !== userId
+        ),
+        incomingRequests: state.grove.incomingRequests.filter(
+          (r: FriendRequest) => r.profile.user_id !== userId
+        ),
+        feed: state.grove.feed.filter((item: FeedItem) => item.session.user_id !== userId),
+        friendFeed: state.grove.friendFeed.filter(
+          (item: FeedItem) => item.session.user_id !== userId
+        ),
+        rankingsWeek: state.grove.rankingsWeek.filter((r: RankingItem) => r.userId !== userId),
+        rankingsMonth: state.grove.rankingsMonth.filter((r: RankingItem) => r.userId !== userId),
+      },
+    }));
+
+    AnalyticsTracker.track('grove_user_blocked');
+  },
+
+  unblockUser: async (userId: string) => {
+    await GroveModerationService.unblockUser(userId);
+    set((state: any) => ({
+      grove: {
+        ...state.grove,
+        blockedUserIds: state.grove.blockedUserIds.filter((id: string) => id !== userId),
+        blockedUsers: state.grove.blockedUsers.filter((b: BlockedUser) => b.userId !== userId),
+      },
+    }));
+  },
+
+  reportUser: async (input: ReportInput) => {
+    await GroveModerationService.reportUser(input);
+    AnalyticsTracker.track('grove_content_reported', { reason: input.reason });
+  },
+
   // ========== Phase 3 Actions ==========
 
   fetchRankings: async () => {
@@ -830,8 +933,25 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
         GroveRankingService.fetchRankings('week'),
         GroveRankingService.fetchRankings('month'),
       ]);
+      // get_grove_rankings is SECURITY DEFINER, so the blocked-pair RLS guard
+      // does not apply to it — blocked users must be filtered here or they
+      // reappear on the leaderboard.
+      const blocked: string[] = get().grove.blockedUserIds ?? [];
+      // Ranks are assigned by position in the service, so they have to be
+      // renumbered after a removal or the board reads 1, 2, 4.
+      const withoutBlocked = (rows: RankingItem[]) =>
+        blocked.length === 0
+          ? rows
+          : rows
+              .filter((r) => !blocked.includes(r.userId))
+              .map((r, i) => ({ ...r, rank: i + 1 }));
       set((state: any) => ({
-        grove: { ...state.grove, rankingsWeek: weekRankings, rankingsMonth: monthRankings, rankingsLoading: false },
+        grove: {
+          ...state.grove,
+          rankingsWeek: withoutBlocked(weekRankings),
+          rankingsMonth: withoutBlocked(monthRankings),
+          rankingsLoading: false,
+        },
       }));
     } catch (error: any) {
       console.error('Failed to fetch rankings:', error);

@@ -46,6 +46,7 @@ export default function GroveScreen() {
   const fetchHeartbeatSettings = useAppStore((s) => s.grove.fetchHeartbeatSettings);
   const fetchHeartbeatAlerts = useAppStore((s) => s.grove.fetchHeartbeatAlerts);
   const fetchIncomingCircleInvites = useAppStore((s) => s.grove.fetchIncomingCircleInvites);
+  const fetchBlockedUserIds = useAppStore((s) => s.grove.fetchBlockedUserIds);
   const recordHeartbeatActivity = useAppStore((s) => s.grove.recordHeartbeatActivity);
 
   const deleteChallengeAction = useAppStore((s) => s.grove.deleteChallenge);
@@ -61,6 +62,9 @@ export default function GroveScreen() {
   const fetchAllData = useCallback(async (showSpinner: boolean) => {
     if (showSpinner) setRefreshing(true);
     try {
+      // Must settle before fetchRankings — the rankings RPC bypasses RLS, so
+      // it filters blocked users against this list rather than the server.
+      await fetchBlockedUserIds();
       await Promise.all([
         fetchFriends(),
         fetchFeed(),
@@ -75,7 +79,7 @@ export default function GroveScreen() {
     } finally {
       if (showSpinner) setRefreshing(false);
     }
-  }, [fetchFriends, fetchFeed, fetchFriendRequests, fetchRankings, fetchChallenges, fetchGifts, fetchHeartbeatSettings, fetchHeartbeatAlerts, fetchIncomingCircleInvites]);
+  }, [fetchBlockedUserIds, fetchFriends, fetchFeed, fetchFriendRequests, fetchRankings, fetchChallenges, fetchGifts, fetchHeartbeatSettings, fetchHeartbeatAlerts, fetchIncomingCircleInvites]);
 
   // Fetch data on tab focus
   useFocusEffect(
