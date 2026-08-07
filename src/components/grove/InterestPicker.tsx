@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Pressable, ScrollView, useColorScheme } from 'react-native';
+import { View, Pressable, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../ui/Typography';
 import { colors } from '../../config/theme';
@@ -81,17 +81,28 @@ export const InterestPicker: React.FC<InterestPickerProps> = ({ value, onChange 
       </Pressable>
 
       {/* Bottom Sheet */}
-      <BottomSheet isVisible={isVisible} onClose={() => setIsVisible(false)} height={500}>
-        <View className="flex-1">
+      <BottomSheet
+        isVisible={isVisible}
+        onClose={() => setIsVisible(false)}
+        height={500}
+        scrollable
+        footer={
+          <View className="border-t border-light-border px-6 pb-2 pt-3 dark:border-dark-border">
+            <Pressable
+              onPress={handleDone}
+              className="items-center rounded-xl bg-primary py-3 active:opacity-80">
+              <Typography variant="subtitle-14-medium" color="white">
+                {t('common.done')}
+              </Typography>
+            </Pressable>
+          </View>
+        }>
+        <View>
           <Typography variant="headline-18" color="primary" className="mb-4">
             {t('interests.selectTitle', { current: draft.length, max: MAX_INTERESTS })}
           </Typography>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 80 }}
-          >
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {INTERESTS.map((interest) => {
                 const isSelected = draft.includes(interest);
                 return (
@@ -125,28 +136,6 @@ export const InterestPicker: React.FC<InterestPickerProps> = ({ value, onChange 
                   </Pressable>
                 );
               })}
-            </View>
-          </ScrollView>
-
-          {/* Done button */}
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              paddingVertical: 12,
-              backgroundColor: isDark ? colors.dark.background : colors.light.screen,
-            }}
-          >
-            <Pressable
-              onPress={handleDone}
-              className="bg-primary rounded-xl py-3 items-center active:opacity-80"
-            >
-              <Typography variant="subtitle-14-medium" color="white">
-                {t('common.done')}
-              </Typography>
-            </Pressable>
           </View>
         </View>
       </BottomSheet>

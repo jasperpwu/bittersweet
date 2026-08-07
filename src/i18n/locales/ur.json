@@ -232,7 +232,10 @@
     "badgeChallenge": "چیلنج",
     "activityStationary": "ساکن",
     "activitySelfRated": "خود-درجہ بند",
-    "activityActive": "متحرک"
+    "activityActive": "متحرک",
+    "setDuration": "دورانیہ منتخب کریں",
+    "durationHours": "گھنٹے",
+    "durationMinutes": "منٹ"
   },
   "journal": {
     "sessionDeleted": "فوکس سیشن حذف ہو گیا",

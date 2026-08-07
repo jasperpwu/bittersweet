@@ -232,7 +232,10 @@
     "badgeChallenge": "चुनौती",
     "activityStationary": "स्थिर",
     "activitySelfRated": "स्व-आँकलित",
-    "activityActive": "सक्रिय"
+    "activityActive": "सक्रिय",
+    "setDuration": "अवधि चुनें",
+    "durationHours": "घंटे",
+    "durationMinutes": "मिनट"
   },
   "journal": {
     "sessionDeleted": "फ़ोकस सत्र हटाया गया",

@@ -43,7 +43,41 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
   };
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose} onClosed={onClosed} height={480}>
+    <BottomSheet
+      isVisible={isVisible}
+      onClose={onClose}
+      onClosed={onClosed}
+      height={480}
+      scrollable
+      footer={
+        <View className="border-t border-light-border px-6 pb-2 pt-3 dark:border-dark-border">
+          {/* CTA */}
+          <Button
+            variant="primary"
+            size="large"
+            fullWidth
+            haptic
+            className="rounded-2xl"
+            onPress={() => {
+              onClose();
+              onUpgrade();
+            }}>
+            {t('subscription.seePlans')}
+          </Button>
+
+          {/* Dismiss */}
+          <Button
+            variant="ghost"
+            size="small"
+            fullWidth
+            textColor="secondary"
+            textVariant="body-12"
+            className="mt-2"
+            onPress={onClose}>
+            {t('subscription.maybeLater')}
+          </Button>
+        </View>
+      }>
       <View className="mb-4 items-center">
         <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-primary/15">
           <Ionicons name="diamond-outline" size={28} color={colors.primary} />
@@ -69,32 +103,6 @@ export const UpgradePrompt: FC<UpgradePromptProps> = ({
           </View>
         ))}
       </View>
-
-      {/* CTA */}
-      <Button
-        variant="primary"
-        size="large"
-        fullWidth
-        haptic
-        className="rounded-2xl"
-        onPress={() => {
-          onClose();
-          onUpgrade();
-        }}>
-        {t('subscription.seePlans')}
-      </Button>
-
-      {/* Dismiss */}
-      <Button
-        variant="ghost"
-        size="small"
-        fullWidth
-        textColor="secondary"
-        textVariant="body-12"
-        className="mt-2"
-        onPress={onClose}>
-        {t('subscription.maybeLater')}
-      </Button>
     </BottomSheet>
   );
 };

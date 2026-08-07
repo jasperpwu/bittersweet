@@ -69,7 +69,7 @@ export const HeartbeatPauseSheet: React.FC<HeartbeatPauseSheetProps> = ({
   };
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose} height={isPaused ? 280 : 380}>
+    <BottomSheet isVisible={isVisible} onClose={onClose} height={isPaused ? 280 : 380} scrollable>
       <View className="px-1">
         <View className="flex-row items-center mb-4">
           <Ionicons name="heart" size={20} color={colors.error} />

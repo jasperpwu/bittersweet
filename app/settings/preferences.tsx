@@ -319,7 +319,8 @@ export default function PreferencesScreen() {
       <BottomSheet
         isVisible={notificationSheetVisible}
         onClose={() => setNotificationSheetVisible(false)}
-        height={340}>
+        height={340}
+        scrollable>
         <Typography variant="headline-20" color="primary" className="mb-4">
           {t('preferences.notifications')}
         </Typography>

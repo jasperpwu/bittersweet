@@ -238,7 +238,10 @@
     "activitySelfRated": "Своя оценка",
     "activityActive": "В движении",
     "todoCountPill_few": "{{count}} задачи",
-    "todoCountPill_many": "{{count}} задач"
+    "todoCountPill_many": "{{count}} задач",
+    "setDuration": "Выберите длительность",
+    "durationHours": "Часы",
+    "durationMinutes": "Минуты"
   },
   "journal": {
     "sessionDeleted": "Сессия удалена",

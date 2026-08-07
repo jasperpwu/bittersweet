@@ -231,7 +231,10 @@
     "badgeChallenge": "チャレンジ",
     "activityStationary": "静止",
     "activitySelfRated": "自己評価",
-    "activityActive": "アクティブ"
+    "activityActive": "アクティブ",
+    "setDuration": "時間を設定",
+    "durationHours": "時間",
+    "durationMinutes": "分"
   },
   "journal": {
     "sessionDeleted": "集中セッションを削除しました",

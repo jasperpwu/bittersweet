@@ -232,7 +232,10 @@
     "badgeChallenge": "Challenge",
     "activityStationary": "Ruhig",
     "activitySelfRated": "Selbst bewertet",
-    "activityActive": "Aktiv"
+    "activityActive": "Aktiv",
+    "setDuration": "Dauer wählen",
+    "durationHours": "Stunden",
+    "durationMinutes": "Minuten"
   },
   "journal": {
     "sessionDeleted": "Fokus-Sitzung gelöscht",

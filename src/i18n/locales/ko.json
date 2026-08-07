@@ -231,7 +231,10 @@
     "badgeChallenge": "챌린지",
     "activityStationary": "정지",
     "activitySelfRated": "직접 평가",
-    "activityActive": "활동적"
+    "activityActive": "활동적",
+    "setDuration": "시간 설정",
+    "durationHours": "시간",
+    "durationMinutes": "분"
   },
   "journal": {
     "sessionDeleted": "집중 세션을 삭제했어요",

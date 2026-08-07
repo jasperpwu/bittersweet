@@ -71,8 +71,13 @@ export const BottomSheet: FC<BottomSheetProps> = ({
   footer,
 }) => {
   const { height: screenHeight } = useWindowDimensions();
-  const height = heightProp ?? screenHeight * 0.8;
   const insets = useSafeAreaInsets();
+  // Clamp to the viewport. Callers pass fixed pixel heights tuned against a
+  // phone; on a shorter viewport (iPadOS windowed mode gives an iPhone app a
+  // squatter-than-phone window) an unclamped height runs the content past the
+  // bottom edge, where the non-scrollable branch below clips it — taking any
+  // primary CTA out of reach. Never let the sheet exceed the screen.
+  const height = Math.min(heightProp ?? screenHeight * 0.8, screenHeight * 0.9 - insets.bottom);
   const colorScheme = useColorScheme();
   const closeIconColor =
     colorScheme === 'dark' ? colors.dark.textPrimary : colors.light.screenTextPrimary;

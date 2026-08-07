@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { Dimensions, StyleSheet } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,8 +8,6 @@ import Animated, {
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const CONFETTI_COLORS = [
   '#6592E9', // primary blue
@@ -36,14 +34,17 @@ interface Particle {
   shape: 'square' | 'rect' | 'circle';
 }
 
-function generateParticles(): Particle[] {
+// Takes the live viewport rather than reading it once at module load — a stale
+// width/height (iPadOS resizes an iPhone app's window) spawns the burst outside
+// the visible area.
+function generateParticles(screenWidth: number, screenHeight: number): Particle[] {
   const particles: Particle[] = [];
   for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const startX = SCREEN_WIDTH * 0.3 + Math.random() * SCREEN_WIDTH * 0.4;
+    const startX = screenWidth * 0.3 + Math.random() * screenWidth * 0.4;
     const startY = -20;
-    const endX = startX + (Math.random() - 0.5) * SCREEN_WIDTH * 0.8;
-    const endY = SCREEN_HEIGHT + 50;
-    const shapes: Array<'square' | 'rect' | 'circle'> = ['square', 'rect', 'circle'];
+    const endX = startX + (Math.random() - 0.5) * screenWidth * 0.8;
+    const endY = screenHeight + 50;
+    const shapes: ('square' | 'rect' | 'circle')[] = ['square', 'rect', 'circle'];
 
     particles.push({
       id: i,
@@ -127,7 +128,8 @@ interface ConfettiOverlayProps {
 }
 
 export function ConfettiOverlay({ onComplete }: ConfettiOverlayProps) {
-  const particles = useMemo(() => generateParticles(), []);
+  const { width, height } = useWindowDimensions();
+  const particles = useMemo(() => generateParticles(width, height), [width, height]);
 
   useEffect(() => {
     // Longest possible animation: max delay (600) + max duration (3500) = 4100ms

@@ -668,7 +668,11 @@ export default function SessionCompleteModal() {
       />
 
       {/* Motion permission priming — explains why before the one-shot OS prompt */}
-      <BottomSheet isVisible={showMotionPrimer} onClose={handleMotionPrimerDecline} height={400}>
+      <BottomSheet
+        isVisible={showMotionPrimer}
+        onClose={handleMotionPrimerDecline}
+        height={400}
+        scrollable>
         <View className="mb-4 items-center">
           <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-primary-soft">
             <Ionicons name="walk-outline" size={32} color={colors.primary} />

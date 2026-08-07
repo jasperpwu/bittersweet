@@ -231,7 +231,10 @@
     "badgeChallenge": "挑战",
     "activityStationary": "静止",
     "activitySelfRated": "自评",
-    "activityActive": "活动"
+    "activityActive": "活动",
+    "setDuration": "设置时长",
+    "durationHours": "小时",
+    "durationMinutes": "分钟"
   },
   "journal": {
     "sessionDeleted": "已删除专注会话",

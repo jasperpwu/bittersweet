@@ -10,6 +10,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui/Typography';
 import { colors } from '../../../config/theme';
 import { BottomSheet } from '../../ui/BottomSheet';
@@ -42,6 +43,7 @@ const formatDisplay = (totalMinutes: number): string => {
 
 
 export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeChange }) => {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const fonts = useBrandFonts();
   const [isOpen, setIsOpen] = useState(false);
@@ -115,7 +117,7 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
 >
         <View style={{ paddingTop: 24 }}>
           <Typography variant="headline-20" color="primary" className="mb-3">
-            Set Duration
+            {t('home.setDuration')}
           </Typography>
 
           <View style={{ flexDirection: 'row', marginHorizontal: -24 }}>
@@ -123,7 +125,7 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
               values={HOURS}
               selectedValue={pendingHours}
               onValueChange={handleHourChange}
-              label="Hours"
+              label={t('home.durationHours')}
               indicatorPadding={16}
               loop
             />
@@ -131,7 +133,7 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
               values={MINUTES}
               selectedValue={pendingMinutes}
               onValueChange={handleMinuteChange}
-              label="Minutes"
+              label={t('home.durationMinutes')}
               formatValue={(v) => String(v).padStart(2, '0')}
               indicatorPadding={16}
               loop
@@ -144,7 +146,7 @@ export const DurationPicker: FC<DurationPickerProps> = ({ selectedTime, onTimeCh
             onPress={handleConfirm}
             className="mb-2 mt-2 items-center rounded-2xl bg-primary py-3 active:opacity-80">
             <Typography variant="subtitle-16" color="white">
-              Confirm
+              {t('common.confirm')}
             </Typography>
           </Pressable>
         </View>

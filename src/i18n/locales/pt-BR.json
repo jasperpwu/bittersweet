@@ -232,7 +232,10 @@
     "badgeChallenge": "Desafio",
     "activityStationary": "Parado",
     "activitySelfRated": "Você avalia",
-    "activityActive": "Ativo"
+    "activityActive": "Ativo",
+    "setDuration": "Escolha a duração",
+    "durationHours": "Horas",
+    "durationMinutes": "Minutos"
   },
   "journal": {
     "sessionDeleted": "Sessão de foco excluída",

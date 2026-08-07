@@ -232,7 +232,10 @@
     "badgeChallenge": "চ্যালেঞ্জ",
     "activityStationary": "স্থির",
     "activitySelfRated": "নিজে-দেওয়া",
-    "activityActive": "সক্রিয়"
+    "activityActive": "সক্রিয়",
+    "setDuration": "সময়কাল বাছুন",
+    "durationHours": "ঘণ্টা",
+    "durationMinutes": "মিনিট"
   },
   "journal": {
     "sessionDeleted": "ফোকাস সেশন মুছে ফেলা হয়েছে",

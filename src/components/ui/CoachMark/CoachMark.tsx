@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, RefObject } from 'react';
-import { View, Pressable, useColorScheme, StyleSheet, Dimensions } from 'react-native';
+import { View, Pressable, useColorScheme, StyleSheet, useWindowDimensions } from 'react-native';
 import { colors } from '../../../config/theme';
 import Animated, {
   useSharedValue,
@@ -50,8 +50,6 @@ interface TargetLayout {
   height: number;
 }
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 const PADDING = 8;
 const TOOLTIP_MARGIN = 12;
 // Keep the tooltip clear of the status bar and the tab bar when it has to be
@@ -73,6 +71,10 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // Read live, not once at module load: the spotlight is positioned against
+  // measured window coordinates, so a stale viewport (iPadOS resizes an iPhone
+  // app's window) would place the tooltip off-screen or clamp it wrongly.
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const opacity = useSharedValue(0);
   const [targetLayout, setTargetLayout] = useState<TargetLayout | null>(null);
   const [tooltipHeight, setTooltipHeight] = useState(0);
