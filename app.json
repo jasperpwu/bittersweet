@@ -100,7 +100,7 @@
       "ur": "./assets/locales/ur.json"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "requireFullScreen": true,
       "deploymentTarget": "18.0",
       "appleTeamId": "WFHA987U5W",
