@@ -17,6 +17,7 @@ import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsI
 import { BottomSheet } from '../../src/components/ui/BottomSheet';
 import { TimePicker } from '../../src/components/ui/TimePicker';
 import { useAppSettings } from '../../src/store/unified-store';
+import { useFocusActions } from '../../src/store';
 import { LanguageSelectorSheet } from '../../src/components/settings/LanguageSelector';
 import { getLanguageByCode } from '../../src/i18n/languages';
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
@@ -34,6 +35,7 @@ export default function PreferencesScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { preferences, updatePreferences } = useAppSettings();
+  const { snapshotRestDaysChange } = useFocusActions();
   const { isPremium } = useSubscriptionGate();
   const { hasNotifications, triggerHaptic, requestNotificationPermissions } =
     useDeviceIntegration();
@@ -248,6 +250,10 @@ export default function PreferencesScreen() {
                           ? current.filter((d: number) => d !== dayIndex)
                           : [...current, dayIndex].sort((a: number, b: number) => a - b);
                         try {
+                          // Version the old layout into every daily goal's
+                          // target history first, so already-completed days stay
+                          // scored against the rest days they actually had.
+                          snapshotRestDaysChange(current, next);
                           await updatePreferences({ restDays: next } as any);
                           triggerHaptic('light');
                         } catch (error) {

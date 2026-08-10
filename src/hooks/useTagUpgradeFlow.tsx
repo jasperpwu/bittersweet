@@ -20,7 +20,7 @@ type PaywallSource = LimitType | 'settings';
 /**
  * Shared paywall flow, sequenced one sheet at a time:
  *
- *   [UpgradePrompt "paid feature"] → [SignInSheet if signed out] → [UpgradeSheet]
+ *   [UpgradePrompt "paid feature"] → [UpgradeSheet] ⇄ [SignInSheet, optional]
  *
  *   const { triggerUpgrade, upgradeModals } = useUpgradeFlow('goals');
  *   ...call triggerUpgrade() at the gate; render {upgradeModals}.
@@ -31,9 +31,13 @@ type PaywallSource = LimitType | 'settings';
  * touch-blocking overlay). So every hand-off waits for the current sheet's
  * `onClosed` before opening the next — never more than one paywall modal at once.
  *
- * Sign-in is gated BEFORE the subscription sheet because a purchase made while
- * signed out is charged by Apple but never recorded (entitlement lives on the
- * cloud profile row keyed by user id).
+ * Sign-in is NEVER required to buy. App Review guideline 5.1.1 forbids gating an
+ * In-App Purchase behind registration when the purchased features aren't
+ * account-specific (ours are local: tags, goals, Health import, Multi-Task).
+ * Premium therefore lives on the device's StoreKit entitlement, and signing in
+ * is offered from inside the paywall purely as a way to carry it to other
+ * devices — `subscriptionSlice.syncEntitlementToServer()` attaches an already-
+ * bought subscription to the account whenever the user does sign in later.
  *
  * When the trigger lives inside a BottomSheet, render `upgradeModals` in that
  * sheet's `overlay` slot (not screen root) so iOS presents it on top, and have
@@ -50,12 +54,9 @@ export function useUpgradeFlow(source: PaywallSource = 'tags') {
   // What to open once the currently-closing sheet is fully gone.
   const next = useRef<null | 'signin' | 'sheet'>(null);
 
-  // Open the subscription sheet, gating sign-in first when needed. Used both as
-  // the prompt's follow-on and directly by voluntary "Upgrade" buttons.
-  const openPlans = () => {
-    if (useAppStore.getState().auth.isAuthenticated) setShowSheet(true);
-    else setShowSignIn(true);
-  };
+  // Open the subscription sheet. Used both as the prompt's follow-on and
+  // directly by voluntary "Upgrade" buttons. No auth check — see header.
+  const openPlans = () => setShowSheet(true);
 
   const upgradeModals = (
     <>
@@ -64,22 +65,23 @@ export function useUpgradeFlow(source: PaywallSource = 'tags') {
         onClose={() => setShowPrompt(false)}
         // Record intent now; act once the prompt has fully dismissed.
         onUpgrade={() => {
-          next.current = useAppStore.getState().auth.isAuthenticated ? 'sheet' : 'signin';
+          next.current = 'sheet';
         }}
         onClosed={() => {
-          const step = next.current;
-          next.current = null;
-          if (step === 'sheet') setShowSheet(true);
-          else if (step === 'signin') setShowSignIn(true);
+          if (next.current === 'sheet') {
+            next.current = null;
+            setShowSheet(true);
+          }
         }}
         limitType={limitType}
       />
 
       <SignInSheet
         visible={showSignIn}
-        subtitle={t('subscription.signInToSubscribe')}
+        subtitle={t('subscription.signInToSync')}
         onClose={() => setShowSignIn(false)}
-        // Sheet closes itself on success, then we open the plans on full dismiss.
+        // Sheet closes itself on success, then we reopen the plans on full
+        // dismiss so the user lands back where they left off.
         onSignedIn={() => {
           next.current = 'sheet';
         }}
@@ -94,6 +96,18 @@ export function useUpgradeFlow(source: PaywallSource = 'tags') {
       <UpgradeSheet
         isVisible={showSheet}
         onClose={() => setShowSheet(false)}
+        // Optional "use Premium on your other devices" link inside the paywall:
+        // close the plans first, then present sign-in (one modal at a time).
+        onRequestSignIn={() => {
+          next.current = 'signin';
+          setShowSheet(false);
+        }}
+        onClosed={() => {
+          if (next.current === 'signin') {
+            next.current = null;
+            setShowSignIn(true);
+          }
+        }}
         // The gate that triggered this flow is exactly the paywall's `source`.
         source={source}
       />
@@ -105,16 +119,15 @@ export function useUpgradeFlow(source: PaywallSource = 'tags') {
     triggerUpgrade: () => {
       // Analytics: the top of the monetization funnel — someone was actually
       // stopped by the free tier. Distinct from `paywall_viewed`, which only
-      // fires two sheets later on the plans screen: between the two sit the
-      // "paid feature" prompt and (for signed-out users) a mandatory sign-in,
-      // so counting plan views alone silently drops everyone who bounced at the
-      // wall. Full funnel: paywall_gate_hit → paywall_viewed →
-      // subscription_started. `source` is named to match `paywall_viewed`'s
-      // property so one breakdown reads across every step.
+      // fires a sheet later on the plans screen: between the two sits the
+      // "paid feature" prompt, so counting plan views alone silently drops
+      // everyone who bounced at the wall. Full funnel: paywall_gate_hit →
+      // paywall_viewed → subscription_started. `source` is named to match
+      // `paywall_viewed`'s property so one breakdown reads across every step.
       AnalyticsTracker.track('paywall_gate_hit', {
         source: limitType,
-        // The sign-in step is mandatory before purchase (entitlements are
-        // account-keyed), so it's a real drop-off point, not a detail.
+        // Signed-out users can now buy directly; kept as a cohort split to see
+        // whether having an account still correlates with converting.
         signed_in: useAppStore.getState().auth.isAuthenticated,
       });
       setShowPrompt(true);

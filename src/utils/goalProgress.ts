@@ -395,7 +395,10 @@ export const getTargetForDate = (
   if (goalPeriod === 'none') return getGoalCurrentTarget(goal);
   const normalizedPeriod = goalPeriod === 'yearly' ? 'monthly' : goalPeriod;
   const history = goal.targetHistory;
-  const dateStr = date.toISOString().split('T')[0];
+  // Local calendar key, matching how effectiveDate is stamped on write. Using
+  // toISOString() here would shift the day backward for every UTC+ timezone, so
+  // an edit made today wouldn't take effect until tomorrow for those users.
+  const dateStr = getPeriodKey(date);
 
   // Default to current goal values if no history
   if (!history || history.length === 0) {

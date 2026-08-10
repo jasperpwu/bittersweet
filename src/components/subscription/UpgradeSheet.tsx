@@ -14,6 +14,12 @@ import { AnalyticsTracker } from '../../services/analytics';
 interface UpgradeSheetProps {
   isVisible: boolean;
   onClose: () => void;
+  /** Fired once the sheet is fully dismissed — lets the caller sequence a
+   *  follow-on sheet without overlapping modal presents. */
+  onClosed?: () => void;
+  /** Optional: the caller offers a way to sign in (to carry Premium to other
+   *  devices). Omit and the link is hidden. Never a purchase requirement. */
+  onRequestSignIn?: () => void;
   /** Which gate opened the paywall — becomes the `source` on `paywall_viewed`. */
   source?: string;
 }
@@ -37,13 +43,21 @@ const formatFromTemplate = (template: string, amount: number): string => {
   return `${prefix}${formatted}${suffix}`;
 };
 
-export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, source }) => {
+export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({
+  isVisible,
+  onClose,
+  onClosed,
+  onRequestSignIn,
+  source,
+}) => {
   const { t } = useTranslation();
   const isDark = useColorScheme() === 'dark';
+  const isAuthenticated = useAppStore((state) => state.auth.isAuthenticated);
   const { products, isLoading, error } = useAppStore((state) => state.subscription);
   const loadProducts = useAppStore((state) => state.subscription.loadProducts);
   const purchase = useAppStore((state) => state.subscription.purchase);
   const restorePurchases = useAppStore((state) => state.subscription.restorePurchases);
+  const clearSubscriptionError = useAppStore((state) => state.subscription.clearSubscriptionError);
 
   // Select-then-confirm: yearly is pre-selected as the best-value default.
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>('yearly');
@@ -67,6 +81,10 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, 
     // canonical paywall impression. `source` is the gate that opened it, which is
     // what turns this into "which feature actually drives upgrades".
     if (isVisible) {
+      // `error` is store state, so it outlives the sheet: without this, last
+      // session's "nothing to restore" / purchase failure greets whoever opens
+      // the paywall next.
+      clearSubscriptionError();
       AnalyticsTracker.track('paywall_viewed', { source: source ?? 'unknown' });
     }
   }, [isVisible]);
@@ -94,9 +112,10 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, 
     return { yearlyPerMonth, savePercent };
   }, [monthlyProduct, yearlyProduct]);
 
-  // Sign-in is gated BEFORE this sheet opens (the flow shows the sign-in sheet
-  // first), so a user reaching Continue is already authenticated and the
-  // purchase's entitlement will attach to their account.
+  // Buying never requires an account (guideline 5.1.1 — the perks are local
+  // features, not account-specific content). A signed-out purchase lives on the
+  // device's StoreKit entitlement and is attached to an account later, if and
+  // when the user chooses to sign in.
   const proceedPurchase = async () => {
     const product = selectedPlan === 'yearly' ? yearlyProduct : monthlyProduct;
     if (!product) return;
@@ -196,6 +215,23 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, 
         {t('subscription.restorePurchases')}
       </Button>
 
+      {/* Optional account link. Explicitly framed as a way to extend the
+          subscription to other devices — never a condition of buying, which
+          guideline 5.1.1 forbids for non-account-based purchases. */}
+      {!isAuthenticated && onRequestSignIn ? (
+        <Button
+          variant="ghost"
+          size="small"
+          fullWidth
+          disabled={isLoading}
+          textColor="secondary"
+          textVariant="body-12"
+          className="mt-1"
+          onPress={onRequestSignIn}>
+          {t('subscription.syncAcrossDevices')}
+        </Button>
+      ) : null}
+
       {/* Terms */}
       <Typography variant="tiny-10" color="secondary" className="mt-3 text-center">
         {t('subscription.autoRenewTerms')}
@@ -222,7 +258,12 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({ isVisible, onClose, 
   );
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose} scrollable footer={footer}>
+    <BottomSheet
+      isVisible={isVisible}
+      onClose={onClose}
+      onClosed={onClosed}
+      scrollable
+      footer={footer}>
       {/* Hero */}
       <View className="mb-5 mt-1 items-center">
         <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-primary/15">

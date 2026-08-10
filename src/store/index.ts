@@ -22,7 +22,8 @@ import { customRewardProductId } from '../config/customRewards';
 import { FamilyControlsModule } from '../modules/BitterSweetFamilyControls';
 import { LiveActivityService } from '../services/LiveActivityService';
 import { WidgetService } from '../services/WidgetService';
-import { FocusGoal, WeeklyCoachReport, Todo, TodoRecurrence } from './types';
+import { FocusGoal, TargetHistoryEntry, WeeklyCoachReport, Todo, TodoRecurrence } from './types';
+import { getPeriodKey } from '../utils/goalProgress';
 import { nextOccurrence, startOfDay } from '../utils/todoRecurrence';
 import { persistenceConfig, persistStateNow } from './middleware/persistence';
 import { computeBadgeStats, computeTagBadgeStats } from '../utils/badgeStats';
@@ -167,6 +168,10 @@ interface AppStore {
     // Goal management
     addGoal: (goal: Omit<FocusGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
     updateGoal: (id: string, updates: Partial<FocusGoal>) => void;
+    // Records a rest-days preference change into every daily goal's target
+    // history, so past days keep the rest-day layout they were scored under.
+    // Call this BEFORE writing the new preference.
+    snapshotRestDaysChange: (prevRestDays: number[], nextRestDays: number[]) => void;
     // Off-Marker purchase: pay fruit to mark missed slots as "off" across one or
     // more goals in a single transaction. Spends the total once, appends each
     // goal's keys to its offMarks bucket. Throws on insufficient balance.
@@ -441,6 +446,120 @@ const generateId = () => {
     randomStr += Math.floor(Math.random() * 36).toString(36);
   }
   return `${timestamp}-${randomStr}`;
+};
+
+const HISTORY_PERIODS = ['daily', 'weekly', 'monthly'] as const;
+
+/**
+ * Versions a goal's targets — and the rest-day layout they depend on — instead
+ * of overwriting them.
+ *
+ * Every past day/week/month is scored against the target that was live back
+ * then (`getTargetForDate` resolves it), which is what `goals.targetChangeNote`
+ * promises the user: raising a target must not un-complete history. That only
+ * holds if each change is recorded here — with an empty `targetHistory`,
+ * `getTargetForDate` falls back to the goal's *current* target for every date,
+ * so a raise silently rewrites the past.
+ *
+ * Returns the new history, or undefined when there is nothing to record.
+ */
+const buildTargetHistory = (
+  goal: FocusGoal,
+  updates: Partial<FocusGoal>,
+  restDaysChange?: { prev: number[]; next: number[] }
+): TargetHistoryEntry[] | undefined => {
+  // Which days count as rest is a preference, not a goal field, so a change to
+  // it swings every daily target it touches. It is versioned here for the same
+  // reason the targets are: each entry carries the snapshot that was live when
+  // it took effect, so past days keep being scored against the week they
+  // actually had.
+  const current = useUnifiedStore.getState().preferences.restDays ?? [0, 6];
+  const prevRestDays = restDaysChange?.prev ?? current;
+  const nextRestDays = restDaysChange?.next ?? current;
+  const restDaysChanged = [...prevRestDays].sort().join(',') !== [...nextRestDays].sort().join(',');
+
+  const today = getPeriodKey(new Date());
+  // Backdate a period's first entry to the goal's creation: a first-time
+  // configuration is meant to measure everything already logged, and it gives
+  // later edits a baseline to fall back on for dates before them.
+  const created = getPeriodKey(new Date(goal.createdAt));
+
+  const history = [...(goal.targetHistory ?? [])];
+  let dirty = false;
+
+  const upsert = (entry: TargetHistoryEntry) => {
+    const idx = history.findIndex(
+      (e) => e.effectiveDate === entry.effectiveDate && e.period === entry.period
+    );
+    if (idx >= 0) history[idx] = entry;
+    else history.push(entry);
+    dirty = true;
+  };
+
+  for (const period of HISTORY_PERIODS) {
+    const prevTarget =
+      period === 'daily'
+        ? goal.dailyTargetMinutes
+        : period === 'weekly'
+          ? goal.weeklyTargetMinutes
+          : goal.monthlyTargetMinutes;
+    const nextTarget =
+      period === 'daily'
+        ? (updates.dailyTargetMinutes ?? prevTarget)
+        : period === 'weekly'
+          ? (updates.weeklyTargetMinutes ?? prevTarget)
+          : (updates.monthlyTargetMinutes ?? prevTarget);
+
+    // Only daily goals distinguish rest days; the others reuse their target.
+    const prevRest = period === 'daily' ? goal.dailyRestDayTargetMinutes : prevTarget;
+    const nextRest =
+      period === 'daily' ? (updates.dailyRestDayTargetMinutes ?? prevRest) : nextTarget;
+
+    // 0 means "not configured" — nothing worth versioning yet.
+    if (nextTarget <= 0) continue;
+
+    // getTargetForDate only consults rest days for daily goals, so a rest-day
+    // change is only worth versioning there.
+    const changed =
+      nextTarget !== prevTarget || nextRest !== prevRest || (period === 'daily' && restDaysChanged);
+    const hasEntry = history.some((e) => e.period === period);
+    if (hasEntry && !changed) continue;
+
+    // A period with no entry yet needs its baseline backdated. Which value goes
+    // in it depends on whether the past was ever measured against something
+    // else: an edit to an already-configured goal (prevTarget > 0) means the
+    // PRE-edit target is what history was scored against, so that gets
+    // backdated and the new value lands on today's entry. A first-time
+    // configuration has no such past, so the new target is backdated instead —
+    // the user's first goal is meant to measure everything they've logged.
+    const seedWithPrev = !hasEntry && changed && prevTarget > 0;
+
+    if (!hasEntry) {
+      upsert({
+        effectiveDate: created,
+        period,
+        targetMinutes: seedWithPrev ? prevTarget : nextTarget,
+        restDayTargetMinutes: seedWithPrev ? prevRest : nextRest,
+        restDays: seedWithPrev ? prevRestDays : nextRestDays,
+      });
+    }
+
+    if (changed && (hasEntry || seedWithPrev)) {
+      upsert({
+        effectiveDate: today,
+        period,
+        targetMinutes: nextTarget,
+        restDayTargetMinutes: nextRest,
+        restDays: nextRestDays,
+      });
+    }
+  }
+
+  if (!dirty) return undefined;
+  // getTargetForDate walks entries in order and stops at the first one past the
+  // date, so ascending order is a hard requirement.
+  history.sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
+  return history;
 };
 
 // Todos with no start time get a sortOrder above this base so they always sort
@@ -1469,6 +1588,9 @@ export const useAppStore = create<AppStore>()(
             set((state) => {
               const existingGoal = state.focus.goals.byId[goalId];
               if (existingGoal) {
+                // Record the target change before merging it in, so past periods
+                // keep being scored against the target that was live then.
+                const targetHistory = buildTargetHistory(existingGoal, updates);
                 return {
                   focus: {
                     ...state.focus,
@@ -1476,7 +1598,12 @@ export const useAppStore = create<AppStore>()(
                       ...state.focus.goals,
                       byId: {
                         ...state.focus.goals.byId,
-                        [goalId]: { ...existingGoal, ...updates, updatedAt: new Date() },
+                        [goalId]: {
+                          ...existingGoal,
+                          ...updates,
+                          ...(targetHistory ? { targetHistory } : {}),
+                          updatedAt: new Date(),
+                        },
                       },
                     },
                   },
@@ -1508,6 +1635,36 @@ export const useAppStore = create<AppStore>()(
               // however the goal was activated, onboarding included.
               get().rewards.markTaskSetup('goal');
             }
+          },
+
+          snapshotRestDaysChange: (prevRestDays, nextRestDays) => {
+            set((state) => {
+              const byId = { ...state.focus.goals.byId };
+              let touched = false;
+
+              for (const goalId of state.focus.goals.allIds) {
+                const goal = byId[goalId];
+                if (!goal) continue;
+                // No target change here — only the rest-day snapshot moves, which
+                // buildTargetHistory versions on the daily period alone.
+                const targetHistory = buildTargetHistory(
+                  goal,
+                  {},
+                  { prev: prevRestDays, next: nextRestDays }
+                );
+                if (!targetHistory) continue;
+                byId[goalId] = { ...goal, targetHistory, updatedAt: new Date() };
+                touched = true;
+              }
+
+              if (!touched) return state;
+              return {
+                focus: {
+                  ...state.focus,
+                  goals: { ...state.focus.goals, byId },
+                },
+              };
+            });
           },
 
           applyOffMarks: (marks, totalCost) => {
@@ -3459,6 +3616,7 @@ export const useFocusActions = () =>
       reorderTags: state.focus.reorderTags,
       addGoal: state.focus.addGoal,
       updateGoal: state.focus.updateGoal,
+      snapshotRestDaysChange: state.focus.snapshotRestDaysChange,
       deleteGoal: state.focus.deleteGoal,
       concludeGoal: state.focus.concludeGoal,
       badgeTag: state.focus.badgeTag,
@@ -3725,10 +3883,15 @@ export const clearAllStoreData = (keepAuth: boolean = false) => {
           },
         }),
     subscription: {
+      // Tier is re-derived right after the wipe from StoreKit (an App Store
+      // subscription belongs to the Apple ID, not the account, and buying one
+      // never required signing in) — but the *account-granted* sources must not
+      // survive, or the next user inherits a referral/manual premium.
       ...s.subscription,
       tier: 'free',
       expiresAt: null,
       productId: null,
+      membershipSource: 'none',
       isLoading: false,
       error: null,
     },

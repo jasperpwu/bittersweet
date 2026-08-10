@@ -391,8 +391,14 @@ export default function RootLayout() {
     // Fetch server-side subscription state immediately (before IAP init completes)
     useAppStore.getState().subscription.fetchTierFromServer();
 
-    // Initialize IAP connection
-    useAppStore.getState().subscription.initializeIAP();
+    // Initialize IAP connection, then reconcile against StoreKit. A subscriber
+    // who never signed in (allowed — purchase must not require registration)
+    // has no server row to read, so the device's own entitlement is the only
+    // thing that can restore Premium after a reinstall or a sign-out wipe.
+    useAppStore
+      .getState()
+      .subscription.initializeIAP()
+      .then(() => useAppStore.getState().subscription.checkSubscriptionStatus());
 
     // Initialize sync middleware
     const teardownSync = initSyncMiddleware(useAppStore);
@@ -458,6 +464,11 @@ export default function RootLayout() {
             // 5. Clear/reset all store states
             clearAllStoreData(false); // keepAuth = false
             clearUnifiedStoreData();
+
+            // 6. Re-derive Premium from StoreKit. The wipe zeroed the tier, but
+            // the subscription belongs to the Apple ID, not the account — a
+            // signed-out subscriber must keep the features they paid for.
+            useAppStore.getState().subscription.checkSubscriptionStatus();
           } else if (event === 'TOKEN_REFRESHED' && session?.user) {
             // Sync refreshed JWT so native intents always have a valid token
             WidgetService.syncSupabaseCredentials(session.user.id, session.access_token);
@@ -762,6 +773,12 @@ export default function RootLayout() {
             } catch (error) {
               console.error('Post sign-in sync error:', error);
             }
+
+            // Reconcile the subscription with this account. Runs AFTER the sync
+            // block because the existing-account path wipes local state (tier
+            // included). Two jobs: push a subscription bought while signed out
+            // up to the profile, and pull down premium this account already has.
+            useAppStore.getState().subscription.checkSubscriptionStatus();
 
             // Blocklist sync is handled inside triggerSync() and pullAndApply()
 
