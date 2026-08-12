@@ -721,8 +721,8 @@
     "perkHealthSync": "Apple-Health-Workout-Sync",
     "perkMultiTask": "Multitasking-Modus (zwei Labels pro Session)",
     "savePercent": "Spare {{percent}} %",
-    "perMonth": "{{price}}/Mon.",
-    "billedAnnually": "{{price}} jährlich abgerechnet",
+    "billedYearly": "Jährliche Abrechnung",
+    "billedYearlyPerMonth": "Jährliche Abrechnung · ca. {{price}}/Mon.",
     "continue": "Weiter"
   },
   "groveSettings": {

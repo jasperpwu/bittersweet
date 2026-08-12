@@ -720,8 +720,8 @@
     "perkHealthSync": "Apple Health ワークアウト同期",
     "perkMultiTask": "マルチタスクモード（2つのタグ）",
     "savePercent": "{{percent}}%お得",
-    "perMonth": "{{price}}/月",
-    "billedAnnually": "年額 {{price}} で請求",
+    "billedYearly": "年額請求",
+    "billedYearlyPerMonth": "年額請求・約{{price}}/月",
     "continue": "続ける"
   },
   "groveSettings": {

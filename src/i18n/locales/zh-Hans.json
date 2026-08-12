@@ -720,8 +720,8 @@
     "perkHealthSync": "Apple Health 运动同步",
     "perkMultiTask": "多任务模式（双标签专注）",
     "savePercent": "节省 {{percent}}%",
-    "perMonth": "{{price}}/月",
-    "billedAnnually": "按年收费 {{price}}",
+    "billedYearly": "按年扣费",
+    "billedYearlyPerMonth": "按年扣费 · 约{{price}}/月",
     "continue": "继续"
   },
   "groveSettings": {

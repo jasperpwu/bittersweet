@@ -749,8 +749,8 @@
     "perkHealthSync": "مزامنة تمارين Apple Health",
     "perkMultiTask": "وضع المهام المتعددة (جلسات بوسمين)",
     "savePercent": "وفّر {{percent}}%",
-    "perMonth": "{{price}}/شهر",
-    "billedAnnually": "{{price}} تُفوتر سنويًا",
+    "billedYearly": "فوترة سنوية",
+    "billedYearlyPerMonth": "فوترة سنوية · ≈{{price}}/شهر",
     "continue": "متابعة"
   },
   "groveSettings": {

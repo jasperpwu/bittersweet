@@ -721,8 +721,8 @@
     "perkHealthSync": "Sincronización de entrenamientos de Apple Health",
     "perkMultiTask": "Modo multitarea (dos etiquetas por sesión)",
     "savePercent": "Ahorra {{percent}} %",
-    "perMonth": "{{price}}/mes",
-    "billedAnnually": "{{price}} facturado al año",
+    "billedYearly": "Facturación anual",
+    "billedYearlyPerMonth": "Facturación anual · ≈{{price}}/mes",
     "continue": "Continuar"
   },
   "groveSettings": {

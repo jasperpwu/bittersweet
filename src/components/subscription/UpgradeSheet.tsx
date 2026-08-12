@@ -129,8 +129,10 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({
   const PlanCard = ({ plan }: { plan: PlanKey }) => {
     const isSelected = selectedPlan === plan;
     const product = plan === 'yearly' ? yearlyProduct : monthlyProduct;
-    const price =
-      plan === 'yearly' ? (pricing.yearlyPerMonth ?? product?.displayPrice) : product?.displayPrice;
+    // Guideline 3.1.2(c): the amount actually billed is the headline price on
+    // both cards. The yearly per-month equivalent is *calculated* pricing, so it
+    // stays subordinate — smaller, secondary color, on the billing-detail line.
+    const billedPrice = product?.displayPrice;
 
     return (
       <Pressable
@@ -162,20 +164,18 @@ export const UpgradeSheet: React.FC<UpgradeSheetProps> = ({
               </View>
             ) : null}
           </View>
-          {plan === 'yearly' && product?.displayPrice ? (
-            <Typography variant="body-12" color="secondary" className="mt-0.5">
-              {t('subscription.billedAnnually', { price: product.displayPrice })}
-            </Typography>
-          ) : (
-            <Typography variant="body-12" color="secondary" className="mt-0.5">
-              {t('subscription.billedMonthly')}
-            </Typography>
-          )}
+          <Typography variant="tiny-10" color="secondary" className="mt-0.5">
+            {plan === 'monthly'
+              ? t('subscription.billedMonthly')
+              : pricing.yearlyPerMonth
+                ? t('subscription.billedYearlyPerMonth', { price: pricing.yearlyPerMonth })
+                : t('subscription.billedYearly')}
+          </Typography>
         </View>
 
-        {/* Per-month price */}
-        <Typography variant="subtitle-16" color="primary">
-          {price ? t('subscription.perMonth', { price }) : '...'}
+        {/* Total billed amount — the most prominent pricing element. */}
+        <Typography variant="headline-20" color="primary" className="ml-3">
+          {billedPrice ?? '...'}
         </Typography>
       </Pressable>
     );

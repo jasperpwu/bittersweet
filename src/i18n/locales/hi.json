@@ -721,8 +721,8 @@
     "perkHealthSync": "Apple Health वर्कआउट सिंक",
     "perkMultiTask": "मल्टी-टास्क मोड (दो टैग वाले सत्र)",
     "savePercent": "{{percent}}% बचाएँ",
-    "perMonth": "{{price}}/माह",
-    "billedAnnually": "{{price}} सालाना बिल",
+    "billedYearly": "सालाना बिल",
+    "billedYearlyPerMonth": "सालाना बिल · ≈{{price}}/माह",
     "continue": "जारी रखें"
   },
   "groveSettings": {

@@ -721,8 +721,8 @@
     "perkHealthSync": "Apple Health ورزش سِنک",
     "perkMultiTask": "ملٹی ٹاسک موڈ (دو ٹیگ والے سیشن)",
     "savePercent": "{{percent}}% بچائیں",
-    "perMonth": "{{price}}/ماہ",
-    "billedAnnually": "{{price}} سالانہ بل",
+    "billedYearly": "سالانہ بل",
+    "billedYearlyPerMonth": "سالانہ بل · ≈{{price}}/ماہ",
     "continue": "جاری رکھیں"
   },
   "groveSettings": {

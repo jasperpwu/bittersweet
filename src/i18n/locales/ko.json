@@ -720,8 +720,8 @@
     "perkHealthSync": "Apple Health 운동 동기화",
     "perkMultiTask": "멀티태스크 모드 (태그 2개)",
     "savePercent": "{{percent}}% 절약",
-    "perMonth": "{{price}}/월",
-    "billedAnnually": "연 {{price}} 청구",
+    "billedYearly": "매년 청구",
+    "billedYearlyPerMonth": "매년 청구 · 약 {{price}}/월",
     "continue": "계속"
   },
   "groveSettings": {

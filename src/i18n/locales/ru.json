@@ -735,8 +735,8 @@
     "perkHealthSync": "Синхронизация тренировок Apple Health",
     "perkMultiTask": "Режим мультизадачности (два тега в сессии)",
     "savePercent": "Экономия {{percent}}%",
-    "perMonth": "{{price}}/мес",
-    "billedAnnually": "{{price}} при оплате за год",
+    "billedYearly": "Списание раз в год",
+    "billedYearlyPerMonth": "Списание раз в год · ≈{{price}}/мес",
     "continue": "Продолжить"
   },
   "groveSettings": {
