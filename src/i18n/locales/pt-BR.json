@@ -674,7 +674,7 @@
     "aboutSection": "Sobre",
     "shareTitle": "Compartilhar com amigos",
     "shareSub": "Espalhe o foco",
-    "shareMessage": "Conheça o Bittersweet — um timer de foco que ajuda você a ser produtivo! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Conheça o Bittersweet — um timer de foco que ajuda você a ser produtivo! {{url}}",
     "helpTitle": "Ajuda e feedback",
     "helpSub": "Converse com a gente",
     "featureTitle": "Sugestões de recursos",

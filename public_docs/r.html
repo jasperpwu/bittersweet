@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Join me on Bittersweet</title>
+<meta name="description" content="Open your Bittersweet invite.">
+<!-- Preview card for iMessage / WhatsApp / Slack. -->
+<meta property="og:title" content="Join me on Bittersweet">
+<meta property="og:description" content="Focus sessions, grown into a grove.">
+<meta property="og:type" content="website">
+<style>
+  /* Colors mirrored from src/config/theme.ts in the app repo. This page is
+     hosted separately (GitHub Pages) so it cannot import the Tailwind tokens —
+     keep these in sync by hand if the brand palette changes. */
+  :root {
+    --primary: #6592E9;
+    --bg: #F5E6D3;         /* light.screen  */
+    --surface: #F0E0CC;    /* light.input   */
+    --border: #D4C4A8;     /* light.screenBorder */
+    --text: #5D4E37;       /* light.screenTextPrimary */
+    --text-dim: #6B5A42;   /* light.screenTextSecondary */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1B1C30;       /* dark.screen */
+      --surface: #242540;  /* dark.card   */
+      --border: #575757;   /* dark.border */
+      --text: #FFFFFF;     /* dark.textPrimary   */
+      --text-dim: #CACACA; /* dark.textSecondary */
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { width: 100%; max-width: 400px; text-align: center; }
+  .mark { font-size: 56px; line-height: 1; margin-bottom: 20px; }
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 8px; }
+  p { font-size: 15px; line-height: 1.5; color: var(--text-dim); margin: 0 0 24px; }
+  .code-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  .code-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    word-break: break-all;
+    color: var(--text);
+  }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 15px 20px;
+    border: 0;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+  .btn-primary { background: var(--primary); color: #FFFFFF; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .btn:active { opacity: 0.8; }
+  .hint { font-size: 13px; color: var(--text-dim); margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <div class="mark">🍎</div>
+  <h1 id="title">Join me on Bittersweet</h1>
+  <p id="subtitle">Opening the app…</p>
+
+  <div class="code-box" id="code-box" hidden>
+    <div class="code-label">Your invite code</div>
+    <div class="code" id="code-text"></div>
+  </div>
+
+  <a class="btn btn-primary" id="open-btn" href="#">Open in Bittersweet</a>
+  <a class="btn btn-secondary" id="store-btn" href="https://apps.apple.com/app/id6752638348">Get the app</a>
+  <p class="hint" id="hint" hidden>
+    After installing, enter the code above in Settings → Referral.
+  </p>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // No storefront locale in the path — Apple redirects each visitor to their own
+  // country's store. Hardcoding /us/ would send our non-US users to the wrong one.
+  var APP_STORE_URL = 'https://apps.apple.com/app/id6752638348';
+  var SCHEME = 'bittersweet-mobile://';
+  // How long to wait for the app to take over before giving up and sending the
+  // visitor to the App Store. Long enough for iOS to show its "Open in
+  // Bittersweet?" prompt, short enough not to feel broken.
+  var FALLBACK_MS = 1500;
+
+  var params = new URLSearchParams(window.location.search);
+  var code = (params.get('c') || '').trim();
+  // Which flow the code belongs to: 'refer' (referral credit) or 'invite'
+  // (Grove friend request). Anything else is rejected rather than pasted into
+  // a URL we then navigate to.
+  var type = params.get('t') === 'invite' ? 'invite' : 'refer';
+
+  // Codes are generated as 8 chars of [A-Za-z0-9] (GroveFriendService.generateInviteLink).
+  // Validate before use so a crafted `c` can't inject a different scheme or path.
+  var valid = /^[A-Za-z0-9]{1,32}$/.test(code);
+
+  var openBtn = document.getElementById('open-btn');
+  var storeBtn = document.getElementById('store-btn');
+  var subtitle = document.getElementById('subtitle');
+
+  storeBtn.href = APP_STORE_URL;
+
+  if (!valid) {
+    // No usable code — this is just a download link. Don't attempt the scheme
+    // (an unregistered scheme throws up an error dialog in Safari) and don't
+    // show a code box with nothing in it.
+    document.getElementById('title').textContent = 'Bittersweet';
+    subtitle.textContent = 'Focus sessions, grown into a grove.';
+    openBtn.hidden = true;
+    return;
+  }
+
+  var appUrl = SCHEME + type + '/' + code;
+
+  document.getElementById('code-text').textContent = code;
+  document.getElementById('code-box').hidden = false;
+  document.getElementById('hint').hidden = false;
+  openBtn.href = appUrl;
+
+  var wentToStore = false;
+
+  function goToStore() {
+    if (wentToStore || document.hidden) return;
+    wentToStore = true;
+    subtitle.textContent = 'Get Bittersweet to accept this invite.';
+    // replace() so the back button returns to the sender's message, not here.
+    window.location.replace(APP_STORE_URL);
+  }
+
+  // If the app opens, iOS backgrounds Safari and the page goes hidden — that's
+  // our only reliable signal that the scheme was handled, so cancel the fallback.
+  // pagehide covers the case where the page is torn down before visibilitychange.
+  function cancelFallback() {
+    wentToStore = true;
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) cancelFallback();
+  });
+  window.addEventListener('pagehide', cancelFallback);
+
+  // Attempt the app immediately. If it's installed the visitor never sees this
+  // page; if not, the timer takes them to the App Store.
+  window.location.href = appUrl;
+  setTimeout(goToStore, FALLBACK_MS);
+
+  // Explicit retry. No fallback timer here — if the app doesn't take over, the
+  // visitor is already looking at the "Get the app" button.
+  openBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    window.location.href = appUrl;
+  });
+})();
+</script>
+</body>
+</html>

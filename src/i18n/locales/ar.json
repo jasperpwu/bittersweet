@@ -702,7 +702,7 @@
     "aboutSection": "حول التطبيق",
     "shareTitle": "شارك مع الأصدقاء",
     "shareSub": "انشر التركيز",
-    "shareMessage": "جرّب Bittersweet — مؤقّت تركيز يساعدك على الإنتاجية! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "جرّب Bittersweet — مؤقّت تركيز يساعدك على الإنتاجية! {{url}}",
     "helpTitle": "المساعدة والملاحظات",
     "helpSub": "تحدّث إلينا",
     "featureTitle": "طلبات الميزات",

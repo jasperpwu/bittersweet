@@ -8,6 +8,7 @@ import { SettingsItem, SettingsSection } from '../../src/components/ui/SettingsI
 import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { openChat } from '../../src/services/crisp';
 import { openFeedbackBoard } from '../../src/services/userjot';
+import { APP_STORE_URL } from '../../src/config/constants';
 import { useTranslation } from 'react-i18next';
 import * as Application from 'expo-application';
 import { directionalIcon } from '../../src/utils/directionalIcon';
@@ -24,7 +25,10 @@ export default function SupportScreen() {
     triggerHaptic('light');
     try {
       await Share.share({
-        message: t('support.shareMessage'),
+        // The store URL is interpolated rather than baked into each locale
+        // string — it was hardcoded in all 13 as `/app/bittersweet`, which has
+        // no numeric ID and resolves to nothing. One constant, one place to fix.
+        message: t('support.shareMessage', { url: APP_STORE_URL }),
       });
     } catch (error) {
       console.error('Failed to share:', error);

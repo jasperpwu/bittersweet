@@ -674,7 +674,7 @@
     "aboutSection": "About",
     "shareTitle": "Share with Friends",
     "shareSub": "Spread the focus",
-    "shareMessage": "Check out Bittersweet — a focus timer that helps you stay productive! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Check out Bittersweet — a focus timer that helps you stay productive! {{url}}",
     "helpTitle": "Help & Feedback",
     "helpSub": "Chat with us",
     "featureTitle": "Feature Requests",

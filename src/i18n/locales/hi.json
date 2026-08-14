@@ -674,7 +674,7 @@
     "aboutSection": "परिचय",
     "shareTitle": "मित्रों के साथ साझा करें",
     "shareSub": "फ़ोकस फैलाएँ",
-    "shareMessage": "Bittersweet देखें — एक फ़ोकस टाइमर जो आपको उत्पादक बनाए रखता है! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Bittersweet देखें — एक फ़ोकस टाइमर जो आपको उत्पादक बनाए रखता है! {{url}}",
     "helpTitle": "सहायता और प्रतिक्रिया",
     "helpSub": "हमसे बात करें",
     "featureTitle": "फ़ीचर अनुरोध",

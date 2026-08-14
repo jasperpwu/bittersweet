@@ -688,7 +688,7 @@
     "aboutSection": "О приложении",
     "shareTitle": "Поделиться с друзьями",
     "shareSub": "Распространяйте фокус",
-    "shareMessage": "Попробуйте Bittersweet — таймер фокуса, который помогает не отвлекаться! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Попробуйте Bittersweet — таймер фокуса, который помогает не отвлекаться! {{url}}",
     "helpTitle": "Помощь и отзывы",
     "helpSub": "Напишите нам",
     "featureTitle": "Пожелания к функциям",

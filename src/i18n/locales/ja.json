@@ -673,7 +673,7 @@
     "aboutSection": "アプリについて",
     "shareTitle": "友だちにシェア",
     "shareSub": "集中を広めよう",
-    "shareMessage": "Bittersweetをチェック — 生産性を保つのに役立つ集中タイマーです！ https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Bittersweetをチェック — 生産性を保つのに役立つ集中タイマーです！ {{url}}",
     "helpTitle": "ヘルプとフィードバック",
     "helpSub": "チャットでお問い合わせ",
     "featureTitle": "機能のリクエスト",

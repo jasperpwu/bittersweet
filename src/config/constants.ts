@@ -62,6 +62,16 @@ export const LEGAL_URLS = {
   privacy: 'https://bittersweet-app.github.io/privacy.html',
 } as const;
 
+// Landing page for shared referral / Grove invite links (source in
+// `public_docs/r.html`). Takes `?c=<code>&t=refer|invite`, tries the deep link,
+// and falls back to the App Store. See src/utils/shareLinks.ts for why shared
+// links are https rather than the raw `bittersweet-mobile://` scheme.
+export const SHARE_LINK_BASE = 'https://bittersweet-app.github.io/r.html';
+
+// Storefront-neutral App Store URL — no `/us/` prefix, so Apple redirects each
+// visitor to their own country's store (the app ships in 8+ languages).
+export const APP_STORE_URL = 'https://apps.apple.com/app/id6752638348';
+
 // Developer Debug Flags — dev builds only (every flag is AND-ed with `__DEV__`,
 // so flipping one on can never leak logging into a release build).
 export const DEBUG_FLAGS = {

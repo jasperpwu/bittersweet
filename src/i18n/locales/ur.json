@@ -674,7 +674,7 @@
     "aboutSection": "تعارف",
     "shareTitle": "دوستوں کے ساتھ شیئر کریں",
     "shareSub": "فوکس پھیلائیں",
-    "shareMessage": "Bittersweet آزمائیں — ایک فوکس ٹائمر جو آپ کو نتیجہ خیز رکھتا ہے! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Bittersweet آزمائیں — ایک فوکس ٹائمر جو آپ کو نتیجہ خیز رکھتا ہے! {{url}}",
     "helpTitle": "مدد اور رائے",
     "helpSub": "ہم سے بات کریں",
     "featureTitle": "فیچر کی درخواستیں",

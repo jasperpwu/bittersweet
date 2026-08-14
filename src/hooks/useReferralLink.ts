@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Share } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useAppStore } from '../store';
+import { buildShareLink } from '../utils/shareLinks';
 
 export function useReferralLink() {
   const referralCode = useAppStore((s) => s.referral.referralCode);
@@ -20,7 +21,7 @@ export function useReferralLink() {
   }, [referralCode, generateReferralCode]);
 
   const getLink = useCallback((code: string) => {
-    return `bittersweet-mobile://refer/${code}`;
+    return buildShareLink('refer', code);
   }, []);
 
   const copyToClipboard = useCallback(async () => {

@@ -673,7 +673,7 @@
     "aboutSection": "정보",
     "shareTitle": "친구와 공유",
     "shareSub": "집중을 널리 퍼뜨려요",
-    "shareMessage": "Bittersweet를 확인해 보세요 — 생산성을 지켜주는 집중 타이머예요! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Bittersweet를 확인해 보세요 — 생산성을 지켜주는 집중 타이머예요! {{url}}",
     "helpTitle": "도움말 및 피드백",
     "helpSub": "채팅으로 문의하기",
     "featureTitle": "기능 요청",

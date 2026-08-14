@@ -674,7 +674,7 @@
     "aboutSection": "Acerca de",
     "shareTitle": "Compartir con amigos",
     "shareSub": "Difunde la concentración",
-    "shareMessage": "¡Echa un vistazo a Bittersweet, un temporizador de concentración que te ayuda a ser productivo! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "¡Echa un vistazo a Bittersweet, un temporizador de concentración que te ayuda a ser productivo! {{url}}",
     "helpTitle": "Ayuda y comentarios",
     "helpSub": "Chatea con nosotros",
     "featureTitle": "Sugerencias de funciones",

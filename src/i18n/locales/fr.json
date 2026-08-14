@@ -674,7 +674,7 @@
     "aboutSection": "À propos",
     "shareTitle": "Partager avec des amis",
     "shareSub": "Diffusez la concentration",
-    "shareMessage": "Découvrez Bittersweet — un minuteur de concentration qui vous aide à rester productif ! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Découvrez Bittersweet — un minuteur de concentration qui vous aide à rester productif ! {{url}}",
     "helpTitle": "Aide et retours",
     "helpSub": "Discutez avec nous",
     "featureTitle": "Suggestions de fonctionnalités",

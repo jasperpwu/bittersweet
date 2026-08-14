@@ -674,7 +674,7 @@
     "aboutSection": "পরিচিতি",
     "shareTitle": "বন্ধুদের সঙ্গে শেয়ার করুন",
     "shareSub": "ফোকাস ছড়িয়ে দিন",
-    "shareMessage": "Bittersweet দেখুন — একটি ফোকাস টাইমার যা আপনাকে কর্মক্ষম রাখে! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Bittersweet দেখুন — একটি ফোকাস টাইমার যা আপনাকে কর্মক্ষম রাখে! {{url}}",
     "helpTitle": "সহায়তা ও মতামত",
     "helpSub": "আমাদের সঙ্গে কথা বলুন",
     "featureTitle": "ফিচারের অনুরোধ",

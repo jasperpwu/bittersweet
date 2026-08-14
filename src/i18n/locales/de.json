@@ -674,7 +674,7 @@
     "aboutSection": "Info",
     "shareTitle": "Mit Freunden teilen",
     "shareSub": "Verbreite den Fokus",
-    "shareMessage": "Schau dir Bittersweet an — ein Fokus-Timer, der dir hilft, produktiv zu bleiben! https://apps.apple.com/app/bittersweet",
+    "shareMessage": "Schau dir Bittersweet an — ein Fokus-Timer, der dir hilft, produktiv zu bleiben! {{url}}",
     "helpTitle": "Hilfe & Feedback",
     "helpSub": "Chatte mit uns",
     "featureTitle": "Funktionswünsche",

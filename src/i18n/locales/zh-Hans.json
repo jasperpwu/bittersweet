@@ -673,7 +673,7 @@
     "aboutSection": "关于",
     "shareTitle": "分享给好友",
     "shareSub": "传播专注",
-    "shareMessage": "来看看 Bittersweet —— 一款帮你保持高效的专注计时器！ https://apps.apple.com/app/bittersweet",
+    "shareMessage": "来看看 Bittersweet —— 一款帮你保持高效的专注计时器！ {{url}}",
     "helpTitle": "帮助与反馈",
     "helpSub": "与我们聊聊",
     "featureTitle": "功能建议",

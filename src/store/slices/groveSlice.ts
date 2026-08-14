@@ -25,6 +25,7 @@ import { computeChallengeReward } from '../../utils/challengeReward';
 import type { HeartbeatSettings, InnerCircleMember, HeartbeatAlert } from '../../services/grove/GroveHeartbeatService';
 import { WidgetService } from '../../services/WidgetService';
 import { AnalyticsTracker } from '../../services/analytics';
+import { buildShareLink } from '../../utils/shareLinks';
 
 export interface PendingInvite {
   code: string;
@@ -750,7 +751,7 @@ export const createGroveSlice = (set: any, get: any): GroveSlice => ({
   generateInviteLink: async () => {
     try {
       const invite = await GroveFriendService.generateInviteLink();
-      const link = `bittersweet-mobile://invite/${invite.code}`;
+      const link = buildShareLink('invite', invite.code);
       set((state: any) => ({
         grove: { ...state.grove, inviteLink: link },
       }));
