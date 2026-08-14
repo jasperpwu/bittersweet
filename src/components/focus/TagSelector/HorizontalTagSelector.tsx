@@ -4,11 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedGestureHandler,
   runOnJS,
   withSpring,
 } from 'react-native-reanimated';
-import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '../../ui/Typography';
 import { colors } from '../../../config/theme';
@@ -107,13 +106,14 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
       elevation: zIndex.value,
     }));
 
-    const gestureHandler = useAnimatedGestureHandler({
-      onStart: () => {
+    const panGesture = Gesture.Pan()
+      .enabled(!!onTagReorder)
+      .onStart(() => {
         runOnJS(setDraggingIndex)(index);
         scale.value = withSpring(1.1);
         zIndex.value = 1000;
-      },
-      onActive: (event) => {
+      })
+      .onUpdate((event) => {
         translateX.value = event.translationX;
         translateY.value = event.translationY;
 
@@ -121,22 +121,21 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
         const tagWidth = 120; // Approximate tag width
         const newIndex = Math.round(event.translationX / tagWidth) + index;
         const clampedIndex = Math.max(0, Math.min(newIndex, tags.length - 1));
-        
+
         if (clampedIndex !== index) {
           runOnJS(onReorder)(index, clampedIndex);
         }
-      },
-      onEnd: () => {
+      })
+      .onEnd(() => {
         translateX.value = withSpring(0);
         translateY.value = withSpring(0);
         scale.value = withSpring(1);
         zIndex.value = withSpring(0);
         runOnJS(setDraggingIndex)(null);
-      },
-    });
+      });
 
     return (
-      <PanGestureHandler onGestureEvent={gestureHandler} enabled={!!onTagReorder}>
+      <GestureDetector gesture={panGesture}>
         <Animated.View 
           style={[animatedStyle]} 
           className="relative mr-3"
@@ -176,7 +175,7 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
             </Pressable>
           )}
         </Animated.View>
-      </PanGestureHandler>
+      </GestureDetector>
     );
   };
 

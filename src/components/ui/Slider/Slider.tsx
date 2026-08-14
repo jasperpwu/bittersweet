@@ -1,8 +1,7 @@
 import React, { FC, useCallback } from 'react';
 import { View, Text } from 'react-native';
-import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -109,28 +108,31 @@ export const Slider: FC<SliderProps> = ({
     [trackWidth, snapPoints, minimumValue, maximumValue, step]
   );
 
-  // The gesture now spans the whole track, so `event.x` is the finger position
-  // along the full width. Center the thumb under the finger and clamp to the track.
-  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-    onStart: (event) => {
+  // The gesture spans the whole track, so `event.x` is the finger position along
+  // the full width. Center the thumb under the finger and clamp to the track.
+  // `activeOffsetX` claims only horizontal drags so a parent ScrollView can still
+  // scroll vertically.
+  const panGesture = Gesture.Pan()
+    .enabled(!disabled)
+    .activeOffsetX([-8, 8])
+    .onStart((event) => {
       isSliding.value = true;
       scale.value = withSpring(1.2);
       const newTranslateX = Math.max(0, Math.min(trackWidth, event.x - thumbSize / 2));
       translateX.value = newTranslateX;
       runOnJS(updateValue)(valueFromTranslate(newTranslateX));
-    },
-    onActive: (event) => {
+    })
+    .onUpdate((event) => {
       const newTranslateX = Math.max(0, Math.min(trackWidth, event.x - thumbSize / 2));
       translateX.value = newTranslateX;
       runOnJS(updateValue)(valueFromTranslate(newTranslateX));
-    },
-    // onFinish, not onEnd: reanimated only calls onEnd for a gesture that went
-    // ACTIVE → END. A touch that begins on the track but is then cancelled or
-    // fails — e.g. a parent horizontal pager wins the same drag — skips onEnd
-    // entirely, so onSlidingComplete would never fire and any caller that
+    })
+    // onFinalize, not onEnd: a touch that begins on the track but is then
+    // cancelled or fails — e.g. a parent horizontal pager wins the same drag —
+    // must still settle the thumb and fire onSlidingComplete, or any caller that
     // disabled something for the duration of the drag would stay stuck.
-    // onFinish runs for END, FAILED and CANCELLED alike.
-    onFinish: () => {
+    // onFinalize runs whether or not the gesture ever activated; onEnd does not.
+    .onFinalize(() => {
       isSliding.value = false;
       scale.value = withSpring(1);
 
@@ -140,8 +142,7 @@ export const Slider: FC<SliderProps> = ({
       translateX.value = withSpring(percentage * trackWidth);
 
       runOnJS(completeSliding)(value);
-    },
-  });
+    });
 
   const trackStyle = useAnimatedStyle(() => ({
     opacity: disabled ? 0.5 : 1,
@@ -171,15 +172,9 @@ export const Slider: FC<SliderProps> = ({
 
       {/* The whole track is one large touch target — start a horizontal drag
           anywhere along the full width to move the thumb, not just on the thumb
-          itself. `activeOffsetX` claims only horizontal drags so a parent
-          ScrollView can still scroll vertically. */}
-      <PanGestureHandler
-        onGestureEvent={gestureHandler}
-        enabled={!disabled}
-        activeOffsetX={[-8, 8]}>
-        <Animated.View
-          style={[trackStyle, { width, justifyContent: 'center' }]}
-          className="h-14">
+          itself. */}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[trackStyle, { width, justifyContent: 'center' }]} className="h-14">
           {/* Track Background */}
           <View
             className="rounded-full bg-light-border dark:bg-dark-border"
@@ -239,7 +234,7 @@ export const Slider: FC<SliderProps> = ({
             )}
           </Animated.View>
         </Animated.View>
-      </PanGestureHandler>
+      </GestureDetector>
 
       {/* Value Labels */}
       <View className="mt-2 w-full flex-row justify-between">
