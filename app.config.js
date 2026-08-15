@@ -56,7 +56,7 @@ const GOOGLE_IOS_URL_SCHEME = `com.googleusercontent.apps.${GOOGLE_IOS_CLIENT_ID
   ''
 )}`;
 
-export default ({ config }) => {
+module.exports = ({ config }) => {
   // Keep the internal project name unchanged so the Xcode project directory
   // and extension target names remain consistent across dev/prod builds.
   // Use CFBundleDisplayName for the user-visible app name instead.
