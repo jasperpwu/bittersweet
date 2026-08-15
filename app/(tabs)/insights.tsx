@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { View, SafeAreaView, Alert, ScrollView } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router';
 import { Typography } from '../../src/components/ui/Typography';
 import { colors } from '../../src/config/theme';
 import { StatisticsView } from '../../src/components/analytics/StatisticsView';

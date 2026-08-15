@@ -1,5 +1,5 @@
 import React, { FC, useRef, useEffect } from 'react';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router';
 import { View, Pressable, StyleSheet, useColorScheme } from 'react-native';
 import { Gesture, GestureDetector, type PanGesture } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';

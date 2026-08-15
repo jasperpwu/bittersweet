@@ -24,7 +24,7 @@ import Animated, {
   FadeOut,
 } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Modal, Slider, Typography, TimePicker, DatePicker, Button } from '../../src/components/ui';

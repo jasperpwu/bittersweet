@@ -11,7 +11,7 @@ const DEBOUNCE_MS = 500;
 export function useHandleValidation() {
   const [handle, setHandle] = useState('');
   const [status, setStatus] = useState<HandleStatus>('idle');
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef(false);
 
   const validateHandle = useCallback((value: string) => {

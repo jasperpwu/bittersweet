@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

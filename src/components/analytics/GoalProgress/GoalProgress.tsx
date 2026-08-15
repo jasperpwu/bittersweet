@@ -1,5 +1,5 @@
 import React, { FC, RefObject, useRef, useState, useEffect, useMemo, useCallback } from 'react';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router';
 import { router } from 'expo-router';
 import { View, Text, Pressable, Share, Platform } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';

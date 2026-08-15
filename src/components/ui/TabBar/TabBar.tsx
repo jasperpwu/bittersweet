@@ -1,6 +1,6 @@
 import React, { FC } from 'react';
 import { View, Pressable } from 'react-native';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { BottomTabBarProps } from 'expo-router/js-tabs';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,

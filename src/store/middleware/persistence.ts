@@ -27,7 +27,7 @@ export const storeHydrationSettled: Promise<void> = new Promise((resolve) => {
 // Optimized storage implementation with empty-state write guard
 class OptimizedStorage {
   private batchWrites = new Map<string, string>();
-  private batchTimeout: NodeJS.Timeout | null = null;
+  private batchTimeout: ReturnType<typeof setTimeout> | null = null;
   private firstWriteTime: number | null = null;
   private static readonly DEBOUNCE_MS = 100;
   private static readonly MAX_DELAY_MS = 2000;

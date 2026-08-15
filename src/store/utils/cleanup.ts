@@ -24,7 +24,7 @@ export const DEFAULT_CLEANUP_CONFIG: CleanupConfig = {
 // Entity cleanup utilities
 export class EntityCleanup {
   private static config: CleanupConfig = DEFAULT_CLEANUP_CONFIG;
-  private static cleanupTimer: NodeJS.Timeout | null = null;
+  private static cleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
   static setConfig(config: Partial<CleanupConfig>): void {
     this.config = { ...this.config, ...config };
@@ -255,7 +255,7 @@ export class CacheManager {
 
 // Batch operations for performance
 export class BatchProcessor {
-  private static batches: Map<string, { operations: (() => void)[]; timeout: NodeJS.Timeout }> = new Map();
+  private static batches: Map<string, { operations: (() => void)[]; timeout: ReturnType<typeof setTimeout> }> = new Map();
   private static readonly DEFAULT_BATCH_SIZE = 10;
   private static readonly DEFAULT_BATCH_DELAY = 100; // ms
 

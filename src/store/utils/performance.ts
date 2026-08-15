@@ -378,7 +378,7 @@ export const useOptimizedCallback = <T extends (...args: any[]) => any>(
   deps: any[],
   delay: number = 0
 ): T => {
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   
   return useCallback((...args: Parameters<T>) => {
     if (delay > 0) {

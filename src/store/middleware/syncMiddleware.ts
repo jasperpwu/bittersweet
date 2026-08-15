@@ -22,7 +22,7 @@ import { AnalyticsTracker } from '../../services/analytics';
  * Uses subscribe() — does NOT modify slice code at all.
  */
 
-let debounceTimer: NodeJS.Timeout | null = null;
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 const DEBOUNCE_MS = 2000;
 
 // Accumulated change flags across debounce resets
@@ -44,7 +44,7 @@ let lastSyncedSnapshot: {
 // Track last-synced settings to detect changes (from unified store)
 let lastSyncedSettings: any = null;
 
-let settingsDebounceTimer: NodeJS.Timeout | null = null;
+let settingsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function initSyncMiddleware(store: any): () => void {
   // Subscribe to unified store for settings changes

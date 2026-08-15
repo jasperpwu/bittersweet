@@ -50,21 +50,29 @@ module.exports = function withSiriShortcutsRefresh(config) {
     }
 
     // 1. Ensure AppIntents is imported (BittersweetAppShortcuts lives there).
-    if (!/^import AppIntents$/m.test(contents)) {
-      contents = contents.replace(
-        /^import Expo$/m,
-        "import Expo\nimport AppIntents"
-      );
+    //    SDK 56 emits `internal import Expo`, earlier SDKs plain `import Expo`,
+    //    so tolerate an optional access modifier on both the test and the anchor.
+    const IMPORT_RE = /^((?:internal |public |package )?import Expo)$/m;
+    if (!/^(?:internal |public |package )?import AppIntents$/m.test(contents)) {
+      if (!IMPORT_RE.test(contents)) {
+        throw new Error(
+          "withSiriShortcutsRefresh could not find the `import Expo` line to anchor the AppIntents import on."
+        );
+      }
+      contents = contents.replace(IMPORT_RE, "$1\nimport AppIntents");
     }
 
     // 2. Insert the override right after the AppDelegate class opening brace.
-    const anchor = "public class AppDelegate: ExpoAppDelegate {";
-    if (!contents.includes(anchor)) {
+    //    SDK 56 dropped the `public` modifier and moved to `@main`, so match the
+    //    declaration by shape rather than as a fixed string.
+    const ANCHOR_RE =
+      /((?:public |internal |final )*class AppDelegate\s*:\s*ExpoAppDelegate\s*\{)/;
+    if (!ANCHOR_RE.test(contents)) {
       throw new Error(
         "withSiriShortcutsRefresh could not find the AppDelegate class declaration to anchor on."
       );
     }
-    contents = contents.replace(anchor, anchor + "\n" + REFRESH_METHOD);
+    contents = contents.replace(ANCHOR_RE, "$1\n" + REFRESH_METHOD);
 
     cfg.modResults.contents = contents;
     return cfg;

@@ -150,7 +150,7 @@ export function ConfettiOverlay({ onComplete }: ConfettiOverlayProps) {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 999,
   },
   piece: {
