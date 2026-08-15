@@ -1,0 +1,122 @@
+diff --git a/node_modules/react-native-gesture-handler/lib/commonjs/components/ReanimatedSwipeable/ReanimatedSwipeable.js b/node_modules/react-native-gesture-handler/lib/commonjs/components/ReanimatedSwipeable/ReanimatedSwipeable.js
+index 053051f..fdf8239 100644
+--- a/node_modules/react-native-gesture-handler/lib/commonjs/components/ReanimatedSwipeable/ReanimatedSwipeable.js
++++ b/node_modules/react-native-gesture-handler/lib/commonjs/components/ReanimatedSwipeable/ReanimatedSwipeable.js
+@@ -34,6 +34,7 @@ const Swipeable = props => {
+     enableTrackpadTwoFingerGesture = DEFAULT_ENABLE_TRACKING_TWO_FINGER_GESTURE,
+     dragOffsetFromLeftEdge = DEFAULT_DRAG_OFFSET,
+     dragOffsetFromRightEdge = DEFAULT_DRAG_OFFSET,
++    failOffsetY,
+     friction = DEFAULT_FRICTION,
+     overshootFriction = DEFAULT_OVERSHOOT_FRICTION,
+     onSwipeableOpenStartDrag,
+@@ -283,11 +284,14 @@ const Swipeable = props => {
+     }).onFinalize(() => {
+       dragStarted.value = false;
+     });
++    if (failOffsetY != null) {
++      pan.failOffsetY(failOffsetY);
++    }
+     Object.entries(relationProps).forEach(([relationName, relation]) => {
+       (0, _utils.applyRelationProp)(pan, relationName, relation);
+     });
+     return pan;
+-  }, [enabled, enableTrackpadTwoFingerGesture, dragOffsetFromRightEdge, dragOffsetFromLeftEdge, updateElementWidths, relationProps, userDrag, rowState, dragStarted, updateAnimatedEvent, onSwipeableOpenStartDrag, onSwipeableCloseStartDrag, handleRelease]);
++  }, [enabled, enableTrackpadTwoFingerGesture, dragOffsetFromRightEdge, dragOffsetFromLeftEdge, failOffsetY, updateElementWidths, relationProps, userDrag, rowState, dragStarted, updateAnimatedEvent, onSwipeableOpenStartDrag, onSwipeableCloseStartDrag, handleRelease]);
+   (0, _react.useImperativeHandle)(ref, () => swipeableMethods, [swipeableMethods]);
+   const animatedStyle = (0, _reactNativeReanimated.useAnimatedStyle)(() => ({
+     transform: [{
+diff --git a/node_modules/react-native-gesture-handler/lib/module/components/ReanimatedSwipeable/ReanimatedSwipeable.js b/node_modules/react-native-gesture-handler/lib/module/components/ReanimatedSwipeable/ReanimatedSwipeable.js
+index 5d0b9e3..6120b96 100644
+--- a/node_modules/react-native-gesture-handler/lib/module/components/ReanimatedSwipeable/ReanimatedSwipeable.js
++++ b/node_modules/react-native-gesture-handler/lib/module/components/ReanimatedSwipeable/ReanimatedSwipeable.js
+@@ -29,6 +29,7 @@ const Swipeable = props => {
+     enableTrackpadTwoFingerGesture = DEFAULT_ENABLE_TRACKING_TWO_FINGER_GESTURE,
+     dragOffsetFromLeftEdge = DEFAULT_DRAG_OFFSET,
+     dragOffsetFromRightEdge = DEFAULT_DRAG_OFFSET,
++    failOffsetY,
+     friction = DEFAULT_FRICTION,
+     overshootFriction = DEFAULT_OVERSHOOT_FRICTION,
+     onSwipeableOpenStartDrag,
+@@ -278,11 +279,14 @@ const Swipeable = props => {
+     }).onFinalize(() => {
+       dragStarted.value = false;
+     });
++    if (failOffsetY != null) {
++      pan.failOffsetY(failOffsetY);
++    }
+     Object.entries(relationProps).forEach(([relationName, relation]) => {
+       applyRelationProp(pan, relationName, relation);
+     });
+     return pan;
+-  }, [enabled, enableTrackpadTwoFingerGesture, dragOffsetFromRightEdge, dragOffsetFromLeftEdge, updateElementWidths, relationProps, userDrag, rowState, dragStarted, updateAnimatedEvent, onSwipeableOpenStartDrag, onSwipeableCloseStartDrag, handleRelease]);
++  }, [enabled, enableTrackpadTwoFingerGesture, dragOffsetFromRightEdge, dragOffsetFromLeftEdge, failOffsetY, updateElementWidths, relationProps, userDrag, rowState, dragStarted, updateAnimatedEvent, onSwipeableOpenStartDrag, onSwipeableCloseStartDrag, handleRelease]);
+   useImperativeHandle(ref, () => swipeableMethods, [swipeableMethods]);
+   const animatedStyle = useAnimatedStyle(() => ({
+     transform: [{
+diff --git a/node_modules/react-native-gesture-handler/lib/typescript/components/ReanimatedSwipeable/ReanimatedSwipeableProps.d.ts b/node_modules/react-native-gesture-handler/lib/typescript/components/ReanimatedSwipeable/ReanimatedSwipeableProps.d.ts
+index c8798f4..f5944c7 100644
+--- a/node_modules/react-native-gesture-handler/lib/typescript/components/ReanimatedSwipeable/ReanimatedSwipeableProps.d.ts
++++ b/node_modules/react-native-gesture-handler/lib/typescript/components/ReanimatedSwipeable/ReanimatedSwipeableProps.d.ts
+@@ -49,6 +49,12 @@ export interface SwipeableProps extends Pick<PanGestureHandlerProps, SwipeableEx
+      * a swipe. The default value is 10.
+      */
+     dragOffsetFromRightEdge?: number;
++    /**
++     * Vertical distance after which the swipe gesture fails, letting a parent
++     * vertical scroll/pan win instead. Forwarded to the underlying pan gesture's
++     * `failOffsetY`. Not supported by stock ReanimatedSwipeable.
++     */
++    failOffsetY?: number | [number, number];
+     /**
+      * Value indicating if the swipeable panel can be pulled further than the left
+      * actions panel's width. It is set to true by default as long as the left
+diff --git a/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeable.tsx b/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeable.tsx
+index 53cce68..6a07296 100644
+--- a/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeable.tsx
++++ b/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeable.tsx
+@@ -48,6 +48,7 @@ const Swipeable = (props: SwipeableProps) => {
+     enableTrackpadTwoFingerGesture = DEFAULT_ENABLE_TRACKING_TWO_FINGER_GESTURE,
+     dragOffsetFromLeftEdge = DEFAULT_DRAG_OFFSET,
+     dragOffsetFromRightEdge = DEFAULT_DRAG_OFFSET,
++    failOffsetY,
+     friction = DEFAULT_FRICTION,
+     overshootFriction = DEFAULT_OVERSHOOT_FRICTION,
+     onSwipeableOpenStartDrag,
+@@ -523,6 +524,10 @@ const Swipeable = (props: SwipeableProps) => {
+         dragStarted.value = false;
+       });
+ 
++    if (failOffsetY != null) {
++      pan.failOffsetY(failOffsetY);
++    }
++
+     Object.entries(relationProps).forEach(([relationName, relation]) => {
+       applyRelationProp(
+         pan,
+@@ -537,6 +542,7 @@ const Swipeable = (props: SwipeableProps) => {
+     enableTrackpadTwoFingerGesture,
+     dragOffsetFromRightEdge,
+     dragOffsetFromLeftEdge,
++    failOffsetY,
+     updateElementWidths,
+     relationProps,
+     userDrag,
+diff --git a/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeableProps.ts b/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeableProps.ts
+index 3aa66b9..ff6a81c 100644
+--- a/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeableProps.ts
++++ b/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeableProps.ts
+@@ -63,6 +63,13 @@ export interface SwipeableProps
+    */
+   dragOffsetFromRightEdge?: number;
+ 
++  /**
++   * Vertical distance after which the swipe gesture fails, letting a parent
++   * vertical scroll/pan win instead. Forwarded to the underlying pan gesture's
++   * `failOffsetY`. Not supported by stock ReanimatedSwipeable.
++   */
++  failOffsetY?: number | [number, number];
++
+   /**
+    * Value indicating if the swipeable panel can be pulled further than the left
+    * actions panel's width. It is set to true by default as long as the left
