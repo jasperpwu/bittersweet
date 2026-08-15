@@ -1,5 +1,5 @@
 diff --git a/node_modules/react-native-gesture-handler/lib/commonjs/components/ReanimatedSwipeable/ReanimatedSwipeable.js b/node_modules/react-native-gesture-handler/lib/commonjs/components/ReanimatedSwipeable/ReanimatedSwipeable.js
-index 11ba05e..0fc5b4e 100644
+index 551ab92..a34146c 100644
 --- a/node_modules/react-native-gesture-handler/lib/commonjs/components/ReanimatedSwipeable/ReanimatedSwipeable.js
 +++ b/node_modules/react-native-gesture-handler/lib/commonjs/components/ReanimatedSwipeable/ReanimatedSwipeable.js
 @@ -34,6 +34,7 @@ const Swipeable = props => {
@@ -27,7 +27,7 @@ index 11ba05e..0fc5b4e 100644
    const animatedStyle = (0, _reactNativeReanimated.useAnimatedStyle)(() => ({
      transform: [{
 diff --git a/node_modules/react-native-gesture-handler/lib/module/components/ReanimatedSwipeable/ReanimatedSwipeable.js b/node_modules/react-native-gesture-handler/lib/module/components/ReanimatedSwipeable/ReanimatedSwipeable.js
-index 1400213..4c35867 100644
+index a2835d5..518c86e 100644
 --- a/node_modules/react-native-gesture-handler/lib/module/components/ReanimatedSwipeable/ReanimatedSwipeable.js
 +++ b/node_modules/react-native-gesture-handler/lib/module/components/ReanimatedSwipeable/ReanimatedSwipeable.js
 @@ -29,6 +29,7 @@ const Swipeable = props => {
@@ -55,7 +55,7 @@ index 1400213..4c35867 100644
    const animatedStyle = useAnimatedStyle(() => ({
      transform: [{
 diff --git a/node_modules/react-native-gesture-handler/lib/typescript/components/ReanimatedSwipeable/ReanimatedSwipeableProps.d.ts b/node_modules/react-native-gesture-handler/lib/typescript/components/ReanimatedSwipeable/ReanimatedSwipeableProps.d.ts
-index 81d4a9b..fffea0a 100644
+index ac8b768..649404a 100644
 --- a/node_modules/react-native-gesture-handler/lib/typescript/components/ReanimatedSwipeable/ReanimatedSwipeableProps.d.ts
 +++ b/node_modules/react-native-gesture-handler/lib/typescript/components/ReanimatedSwipeable/ReanimatedSwipeableProps.d.ts
 @@ -64,6 +64,7 @@ export interface SwipeableProps {
@@ -67,7 +67,7 @@ index 81d4a9b..fffea0a 100644
       * Value indicating if the swipeable panel can be pulled further than the left
       * actions panel's width. It is set to true by default as long as the left
 diff --git a/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeable.tsx b/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeable.tsx
-index a1c840e..8da3e0e 100644
+index b6134c9..dffa519 100644
 --- a/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeable.tsx
 +++ b/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeable.tsx
 @@ -58,6 +58,7 @@ const Swipeable = (props: SwipeableProps) => {
@@ -98,7 +98,7 @@ index a1c840e..8da3e0e 100644
      relationProps,
      userDrag,
 diff --git a/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeableProps.ts b/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeableProps.ts
-index f81877d..0aa11eb 100644
+index 0c0e517..75b50c2 100644
 --- a/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeableProps.ts
 +++ b/node_modules/react-native-gesture-handler/src/components/ReanimatedSwipeable/ReanimatedSwipeableProps.ts
 @@ -77,6 +77,13 @@ export interface SwipeableProps {

@@ -13,7 +13,24 @@
       "expo-router",
       "expo-font",
       "expo-secure-store",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F5E6D3",
+          "dark": {
+            "image": "./assets/splash-dark.png",
+            "backgroundColor": "#1B1C30"
+          },
+          "ios": {
+            "enableFullScreenImage_legacy": true
+          },
+          "android": {
+            "backgroundColor": "#f1f1f1"
+          }
+        }
+      ],
       "expo-dev-client",
       "expo-localization",
       "expo-web-browser",
@@ -82,11 +99,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F5E6D3"
-    },
     "assetBundlePatterns": ["**/*"],
     "locales": {
       "de": "./assets/locales/de.json",
@@ -107,16 +119,6 @@
       "requireFullScreen": true,
       "deploymentTarget": "18.0",
       "appleTeamId": "WFHA987U5W",
-      "splash": {
-        "image": "./assets/splash.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#F5E6D3",
-        "dark": {
-          "image": "./assets/splash-dark.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#1B1C30"
-        }
-      },
       "bundleIdentifier": "com.path2us.bittersweet",
       "infoPlist": {
         "CFBundleDisplayName": "Bittersweet",
@@ -136,11 +138,6 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      },
-      "splash": {
-        "image": "./assets/splash.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#f1f1f1"
       },
       "package": "com.path2us.bittersweet"
     },

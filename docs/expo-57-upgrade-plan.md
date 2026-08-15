@@ -1,6 +1,7 @@
 # Expo SDK 53 → 57 Upgrade Plan
 
-**Status:** Pre-flight partially executed; **go/no-go gate PASSED**
+**Status:** ✅ **JS/config upgrade complete — 53 → 54 → 55 → 56 → 57, one commit per step.**
+Device validation still outstanding (see checklist).
 **Motivation:** Adopt Expo UI (stable since SDK 56) and get back onto a current SDK
 **Baseline audited:** 2026-08-12 against `expo@53.0.22` / `react-native@0.79.0`
 **Revised:** 2026-08-13 — target moved 56 → 57, and every claim below re-verified by building against real SDKs
@@ -239,6 +240,44 @@ npm run lint
 ```
 
 Then install on device and run the validation checklist before moving on.
+
+### What the 57 step actually landed (2026-08-15)
+
+Everything code-level had already been handled in the 54/55/56 steps — `useIsFocused`
+from `expo-router`, `useBottomTabBarHeight`/`BottomTabBarProps` from `expo-router/js-tabs`,
+`expo-file-system/legacy`, and the `useAnimatedGestureHandler`/`PanGestureHandler` rewrites
+(zero remaining call sites). The 57 step itself was:
+
+- `expo@^57.0.0 --fix` → RN 0.86.2, React 19.2.3, Reanimated 4.5.1, worklets 0.10.1,
+  gesture-handler 2.32.0, expo-router 57.0.13.
+- **The gesture-handler patch did NOT break**, contrary to the prediction above — it had
+  already been regenerated against the `ReanimatedSwipeable/` directory layout during an
+  earlier step. Only the filename version was stale; content is byte-identical.
+  Renamed `+2.30.1.patch` → `+2.32.0.patch`.
+- **Splash screen migration (a real fix, not just schema cleanup).** SDK 57's config schema
+  rejects the legacy `splash` / `ios.splash` / `android.splash` fields. Investigating showed
+  the splash was *already silently broken as of the SDK 56 commit*: `expo-splash-screen`'s
+  plugin is a no-op when passed no props (`if (props != null)` in `withSplashScreen.js`),
+  and it no longer falls back to `config.splash`. The generated storyboard had
+  `systemColor systemBackgroundColor` and referenced an image asset that did not exist.
+  Fixed by moving the values into the plugin's props with
+  `ios.enableFullScreenImage_legacy: true` (our assets are full-screen 1284×2778, and that
+  flag is what reproduces the old full-screen `contain` behavior — the new default is a
+  100pt-wide centered logo). Verified in the generated output: `SplashScreenLegacy.imageset`
+  with light+dark variants, and a `SplashScreenBackground.colorset` resolving to
+  `#F5E6D3` / `#1B1C30`.
+
+**Pre-existing debt confirmed unchanged by this step** (do not mistake for regressions):
+`npm run lint` already failed at the SDK 56 commit — `eslint-config-expo` 56.0.4 and 57.0.1
+are byte-identical, and eslint-plugin-react-hooks was already 7.1.1, so all 258 eslint
+errors (mostly React Compiler `react-hooks/immutability`, `refs`, `set-state-in-effect`)
+and the 289 prettier files predate 57. `tsc --noEmit` reports 44 errors, down from the
+72 recorded at the SDK 53 baseline; the three that look SDK-related
+(`expo-notifications` trigger missing `type`, `new EventEmitter({})`,
+`unblockSelection({ currentBlocklist })`) sit in files untouched by any upgrade commit.
+
+**Still open:** `expo-iap` is still `^4.3.1` (5.3.1 available) and the other hand-managed
+packages in §4 are unbumped — deliberately left out so the SDK jump stays isolated.
 
 **Note on `prebuild --clean`:** required repeatedly, and safe here *because* `ios/` is fully
 generated. Re-verify after each step that no manual `ios/` edits crept in.
