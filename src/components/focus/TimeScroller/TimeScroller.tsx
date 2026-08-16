@@ -1,5 +1,19 @@
-import { FC, useRef, useEffect, useMemo } from 'react';
-import { View, Animated, useColorScheme, useWindowDimensions } from 'react-native';
+import { FC, useRef, useEffect } from 'react';
+import {
+  View,
+  ScrollView,
+  useColorScheme,
+  useWindowDimensions,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
+} from 'react-native';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { colors } from '../../../config/theme';
 import * as Haptics from 'expo-haptics';
 
@@ -66,46 +80,64 @@ const FONT_BOLD = 'Poppins-Bold';
 
 /**
  * Animated tick item that reacts to scroll position for smooth scale/opacity transitions.
+ *
+ * Driven by a Reanimated shared value rather than `Animated.Value` +
+ * `Animated.event({useNativeDriver: true})`: as of SDK 57 (RN 0.86) RN's
+ * native-driven scroll events never reach the animated graph, so every tick
+ * stayed frozen at its mount-time scale/opacity while the list scrolled under
+ * it — the pointer ended up highlighting a different tick than the one it
+ * pointed at. Reanimated runs the same interpolation on the UI thread.
  */
 const TickItem: FC<{
   time: number;
   index: number;
-  scrollX: Animated.Value;
+  scrollX: SharedValue<number>;
   textColor: string;
   minorTickColor: string;
   majorTickColor: string;
 }> = ({ time, index, scrollX, textColor, minorTickColor, majorTickColor }) => {
   const itemCenter = index * TICK_SPACING; // scroll position when this item is centered
 
-  // Distance from center in scroll coordinates
-  const inputRange = [
-    itemCenter - TICK_SPACING * 3,
-    itemCenter - TICK_SPACING * 2,
-    itemCenter - TICK_SPACING,
-    itemCenter,
-    itemCenter + TICK_SPACING,
-    itemCenter + TICK_SPACING * 2,
-    itemCenter + TICK_SPACING * 3,
-  ];
-
-  const scale = scrollX.interpolate({
-    inputRange,
-    outputRange: [0.42, 0.5, 0.62, 1, 0.62, 0.5, 0.42],
-    extrapolate: 'clamp',
-  });
-
-  const opacity = scrollX.interpolate({
-    inputRange,
-    outputRange: [0.2, 0.35, 0.6, 1, 0.6, 0.35, 0.2],
-    extrapolate: 'clamp',
+  const textStyle = useAnimatedStyle(() => {
+    // Distance from center in scroll coordinates
+    const inputRange = [
+      itemCenter - TICK_SPACING * 3,
+      itemCenter - TICK_SPACING * 2,
+      itemCenter - TICK_SPACING,
+      itemCenter,
+      itemCenter + TICK_SPACING,
+      itemCenter + TICK_SPACING * 2,
+      itemCenter + TICK_SPACING * 3,
+    ];
+    return {
+      opacity: interpolate(
+        scrollX.value,
+        inputRange,
+        [0.2, 0.35, 0.6, 1, 0.6, 0.35, 0.2],
+        Extrapolation.CLAMP
+      ),
+      transform: [
+        {
+          scale: interpolate(
+            scrollX.value,
+            inputRange,
+            [0.42, 0.5, 0.62, 1, 0.62, 0.5, 0.42],
+            Extrapolation.CLAMP
+          ),
+        },
+      ],
+    };
   });
 
   // Tick height: hide when centered (selected), show otherwise
-  const tickOpacity = scrollX.interpolate({
-    inputRange: [itemCenter - TICK_SPACING * 0.5, itemCenter, itemCenter + TICK_SPACING * 0.5],
-    outputRange: [0.4, 0, 0.4],
-    extrapolate: 'clamp',
-  });
+  const tickStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollX.value,
+      [itemCenter - TICK_SPACING * 0.5, itemCenter, itemCenter + TICK_SPACING * 0.5],
+      [0.4, 0, 0.4],
+      Extrapolation.CLAMP
+    ),
+  }));
 
   return (
     <View
@@ -118,19 +150,20 @@ const TickItem: FC<{
       }}
     >
       <View style={{ height: 80, justifyContent: 'center', width: TICK_SPACING }}>
-        <Animated.Text
-          style={{
-            color: textColor,
-            fontSize: time >= 60 ? 36 : 56,
-            fontFamily: FONT_BOLD,
-            textAlign: 'center',
-            paddingBottom: 100,
-            opacity,
-            transform: [{ scale }],
-          }}
+        <Reanimated.Text
+          style={[
+            {
+              color: textColor,
+              fontSize: time >= 60 ? 36 : 56,
+              fontFamily: FONT_BOLD,
+              textAlign: 'center',
+              paddingBottom: 100,
+            },
+            textStyle,
+          ]}
         >
           {formatTickLabel(time)}
-        </Animated.Text>
+        </Reanimated.Text>
       </View>
 
       {/* Minor ticks inside the segment */}
@@ -157,14 +190,16 @@ const TickItem: FC<{
       </View>
 
       {/* Major tick */}
-      <Animated.View
-        style={{
-          width: 3,
-          height: 24,
-          backgroundColor: majorTickColor,
-          borderRadius: 1.5,
-          opacity: tickOpacity,
-        }}
+      <Reanimated.View
+        style={[
+          {
+            width: 3,
+            height: 24,
+            backgroundColor: majorTickColor,
+            borderRadius: 1.5,
+          },
+          tickStyle,
+        ]}
       />
     </View>
   );
@@ -183,17 +218,27 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
   const minorTickColor = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(93,78,55,0.25)';
   const majorTickColor = isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary;
   const indicatorColor = isDark ? colors.dark.textPrimary : colors.light.screenTextPrimary;
-  const scrollViewRef = useRef<typeof Animated.ScrollView | null>(null);
+  const scrollViewRef = useRef<ScrollView | null>(null);
   const isUserScrollingRef = useRef(false);
   const lastSnappedRef = useRef(selectedTime);
-  const scrollX = useRef(new Animated.Value(nearestTickIndex(selectedTime) * TICK_SPACING)).current;
+  // Fed from the plain `onScroll` prop below, NOT from a native-driven animated
+  // event. On this RN version every by-view-tag scroll registration we tried
+  // silently received nothing on iOS — RN's own `Animated.event` native driver,
+  // Reanimated's `useAnimatedScrollHandler`, and `useScrollOffset` alike. The
+  // JS `onScroll` prop is the one path measured to fire reliably here, so the
+  // offset is sampled there and only the interpolation runs on the UI thread.
+  const scrollX = useSharedValue(nearestTickIndex(selectedTime) * TICK_SPACING);
 
   useEffect(() => {
     if (isUserScrollingRef.current) return;
     const tickIndex = nearestTickIndex(selectedTime);
     if (scrollViewRef.current) {
-      (scrollViewRef.current as any).scrollTo({ x: tickIndex * TICK_SPACING, animated: false });
+      scrollViewRef.current.scrollTo({ x: tickIndex * TICK_SPACING, animated: false });
     }
+    // Keep the animated position in step with the jump we just made. A
+    // programmatic scrollTo does emit a scroll event, but setting it here means
+    // the ticks are correct on the very first frame rather than one event later.
+    scrollX.value = tickIndex * TICK_SPACING;
     // The incoming value has no tick of its own — adopt the tick we just centered
     // as the real duration so the number under the indicator is the one that runs.
     const tickTime = TIME_VALUES[tickIndex];
@@ -204,19 +249,25 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTime]);
 
-  // Haptic feedback during scroll — fire when crossing a snap boundary
-  useEffect(() => {
-    const listenerId = scrollX.addListener(({ value }) => {
-      if (!isUserScrollingRef.current) return;
-      const snappedIndex = Math.max(0, Math.min(TIME_VALUES.length - 1, Math.round(value / TICK_SPACING)));
-      const snappedTime = TIME_VALUES[snappedIndex];
-      if (snappedTime !== lastSnappedRef.current) {
-        lastSnappedRef.current = snappedTime;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-    });
-    return () => scrollX.removeListener(listenerId);
-  }, [scrollX]);
+  // Drives the tick highlight, and fires a haptic on each snap boundary.
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const x = event.nativeEvent.contentOffset.x;
+
+    // Only track while the user drives the scroll — a late event arriving after
+    // settle would otherwise write back a stale offset. The selectedTime effect
+    // sets scrollX for every programmatic jump.
+    if (!isUserScrollingRef.current) return;
+    scrollX.value = x;
+    const snappedIndex = Math.max(
+      0,
+      Math.min(TIME_VALUES.length - 1, Math.round(x / TICK_SPACING))
+    );
+    const snappedTime = TIME_VALUES[snappedIndex];
+    if (snappedTime !== lastSnappedRef.current) {
+      lastSnappedRef.current = snappedTime;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
 
   const handleScrollBeginDrag = () => {
     isUserScrollingRef.current = true;
@@ -259,15 +310,6 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
     }
   };
 
-  const onScroll = useMemo(
-    () =>
-      Animated.event(
-        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-        { useNativeDriver: true },
-      ),
-    [scrollX],
-  );
-
   return (
     <View style={{ height: 140 }}>
       <View style={{ height: 110, position: 'relative' }}>
@@ -284,15 +326,18 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
             zIndex: 10,
           }}
         />
-        <Animated.ScrollView
-          ref={scrollViewRef as any}
+        <Reanimated.ScrollView
+          ref={scrollViewRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           onScrollBeginDrag={handleScrollBeginDrag}
           onScrollEndDrag={handleScrollEndDrag}
           onMomentumScrollEnd={handleMomentumScrollEnd}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
+          onScroll={handleScroll}
+          // 1, not 16: this handler is what feeds the tick highlight, so the
+          // sampling rate IS the animation's frame rate. 16ms caps it at ~60/s,
+          // which is half the scroll's own rate on a 120Hz ProMotion display.
+          scrollEventThrottle={1}
           decelerationRate="fast"
           snapToInterval={TICK_SPACING}
           snapToAlignment="start"
@@ -303,7 +348,7 @@ export const TimeScroller: FC<TimeScrollerProps> = ({
           {TIME_VALUES.map((time, idx) => (
             <TickItem key={time} time={time} index={idx} scrollX={scrollX} textColor={textColor} minorTickColor={minorTickColor} majorTickColor={majorTickColor} />
           ))}
-        </Animated.ScrollView>
+        </Reanimated.ScrollView>
       </View>
       {/* Triangle pointer */}
       <View style={{ position: 'relative', height: 24, marginTop: 6 }}>

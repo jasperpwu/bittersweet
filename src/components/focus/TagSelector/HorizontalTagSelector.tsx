@@ -91,6 +91,9 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
     onReorder: (fromIndex: number, toIndex: number) => void;
     isDragging: boolean;
   }> = ({ tag, index, selected, disabled, onSelect, onDelete, onReorder, isDragging }) => {
+    // Capture the count only — closing over `tags` would serialize the store's Tag
+    // objects (which carry Date fields) into the worklet, which Worklets can't copy.
+    const tagCount = tags.length;
     const translateX = useSharedValue(0);
     const translateY = useSharedValue(0);
     const scale = useSharedValue(1);
@@ -120,7 +123,7 @@ export const HorizontalTagSelector: FC<HorizontalTagSelectorProps> = ({
         // Calculate new position based on horizontal movement
         const tagWidth = 120; // Approximate tag width
         const newIndex = Math.round(event.translationX / tagWidth) + index;
-        const clampedIndex = Math.max(0, Math.min(newIndex, tags.length - 1));
+        const clampedIndex = Math.max(0, Math.min(newIndex, tagCount - 1));
 
         if (clampedIndex !== index) {
           runOnJS(onReorder)(index, clampedIndex);
