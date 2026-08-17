@@ -1,0 +1,8 @@
+dist
+ios
+android
+
+# Separate project with its own toolchain — formatted from inside desktop/.
+# `shared/` is deliberately absent: it compiles into this app, so it is
+# formatted and linted by the root scripts like the rest of src/.
+desktop

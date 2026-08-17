@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "types": ["vite/client"],
+    // Mirrors the `shared` alias in vite.config.ts. Both are required: Vite
+    // resolves at bundle time, tsc at typecheck time, and neither reads the
+    // other's config. No `baseUrl` — it's deprecated in TS 6, and under
+    // moduleResolution "bundler" these paths resolve relative to this file.
+    "paths": { "shared/*": ["../shared/*"] }
+  },
+  "include": ["src", "vite.config.ts", "../shared/**/*.ts"]
+}

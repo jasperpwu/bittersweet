@@ -19,68 +19,35 @@
  * running fractions, queried retroactively over the session window.
  */
 
-export type ActivityType = 'stationary' | 'self_rated' | 'active';
-export type RatingSource = 'suggested' | 'user';
+// The vocabulary below (activity types, motion snapshot shape) crosses the wire
+// on `session_tags.activity_type` and `focus_sessions.motion_summary`, so it
+// lives in `shared/` where the desktop client's row mappers can reach it. The
+// rating *logic* in the rest of this file stays iOS-only — the desktop client
+// never grades a session. Imported for local use here, and re-exported below so
+// the existing import sites keep working.
+import type {
+  ActivityType,
+  MotionActivitySummary,
+  MotionProfile,
+  MotionSignal,
+  MotionSnapshot,
+  RatingSource,
+} from '../../shared/types';
+import {
+  DEFAULT_ACTIVITY_TYPE,
+  isSelfRated,
+  normalizeActivityType,
+} from '../../shared/activityType';
 
-/** Applied when a tag has no activity type set. */
-export const DEFAULT_ACTIVITY_TYPE: ActivityType = 'self_rated';
-
-/**
- * Values retired from `ActivityType` that may still be persisted locally or in
- * the `session_tags.activity_type` column (plain TEXT, no CHECK constraint), so
- * they're mapped on read rather than migrated.
- */
-const LEGACY_ACTIVITY_TYPES: Record<string, ActivityType> = {
-  // 'on_phone' graded phone-based work leniently (5★ unless you walked half the
-  // session). That 4★ dock measured nothing a user could act on, so the category
-  // became purely self-rated.
-  on_phone: 'self_rated',
+export type {
+  ActivityType,
+  RatingSource,
+  MotionProfile,
+  MotionSignal,
+  MotionActivitySummary,
+  MotionSnapshot,
 };
-
-/** Canonical activity type for a stored value, or undefined when unset/unknown. */
-export function normalizeActivityType(
-  raw?: ActivityType | string | null
-): ActivityType | undefined {
-  if (!raw) return undefined;
-  if (raw === 'stationary' || raw === 'active' || raw === 'self_rated') return raw;
-  return LEGACY_ACTIVITY_TYPES[raw];
-}
-
-/**
- * Whether this activity type leaves the stars up to the user — true for
- * `self_rated` and for an unset type, which defaults to it.
- */
-export function isSelfRated(activityType?: ActivityType | string | null): boolean {
-  return (normalizeActivityType(activityType) ?? DEFAULT_ACTIVITY_TYPE) === 'self_rated';
-}
-
-/** How a session's physical motion is characterised. */
-export type MotionProfile = 'still' | 'occasional' | 'constant' | 'unknown';
-
-/** Which signal produced the classification (surfaced in the "why" sheet). */
-export type MotionSignal = 'activity' | 'none';
-
-/** CMMotionActivity time breakdown (motion-insights native module). */
-export interface MotionActivitySummary {
-  stationarySec: number;
-  walkingSec: number;
-  runningSec: number;
-  cyclingSec: number;
-  automotiveSec: number;
-  unknownSec: number;
-  totalSec: number;
-}
-
-/**
- * Snapshot persisted on the session so the insights sheet still works after the
- * ~7-day Core Motion history window has expired.
- */
-export interface MotionSnapshot {
-  signal: MotionSignal;
-  profile: MotionProfile;
-  activity?: MotionActivitySummary | null;
-  steps?: number | null;
-}
+export { DEFAULT_ACTIVITY_TYPE, normalizeActivityType, isSelfRated };
 
 /** Linear 20%-per-star fruit multiplier (locked product decision). */
 export const RATING_FRUIT_MULTIPLIER: Record<number, number> = {

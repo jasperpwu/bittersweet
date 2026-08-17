@@ -1,3 +1,9 @@
+// SESSION_NOTES is defined in `shared/` because `sessionToRow` clamps notes
+// against it and the desktop client runs that same mapper. Imported here (rather
+// than a bare `export ... from`) so the `constants` aggregate at the bottom of
+// this file can still reference it.
+import { SESSION_NOTES } from '../../shared/sessionNotes';
+
 // App Configuration Constants
 export const APP_CONFIG = {
   name: 'bittersweet',
@@ -29,10 +35,7 @@ export const FOCUS_CONSTANTS = {
 // src/utils/textUtils.ts) so a legacy or imported over-length note can never
 // reach the cloud — an over-length row would fail its upsert and strand the
 // whole session in the sync queue.
-export const SESSION_NOTES = {
-  maxLength: 500,
-  previewLength: 125,
-} as const;
+export { SESSION_NOTES };
 
 // Reward System Constants
 export const REWARD_CONSTANTS = {

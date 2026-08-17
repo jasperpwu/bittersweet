@@ -10,6 +10,8 @@ Bittersweet — an iOS mobile app built with Expo 53 (React Native), TypeScript,
 - **Native extensions:** Custom Expo plugins (`plugins/`), patches (`patches/` via patch-package)
 
 ## Directory Map
+- `shared/` — **pure TypeScript, zero dependencies.** Compiled by both Metro and the desktop client's Vite. Holds the Supabase wire format only (session/tag row mappers + the types they need). Never import `react-native`, `expo-*`, `react` or anything else here — there is deliberately no `package.json`. See `shared/README.md`.
+- `desktop/` — standalone Vite + React client against the same Supabase project (own `node_modules`, own tsconfig, NOT an npm workspace member). Excluded from the root tsconfig/eslint/prettier; typecheck it separately. See `desktop/README.md` and `docs/desktop-and-remote-shield-plan.md`.
 - `app/` — Expo Router screens and layouts
 - `src/components/` — Reusable UI components
 - `src/modules/` — Feature-specific logic and components
@@ -28,6 +30,8 @@ Bittersweet — an iOS mobile app built with Expo 53 (React Native), TypeScript,
 - `npm run prebuild` — Regenerate native projects
 - `npm run lint` — ESLint + Prettier check
 - `npm run format` — Auto-fix lint + formatting
+- `npm run typecheck` — **both** typecheckers (root + `desktop/`). The root `tsconfig.json` excludes `desktop/`, so `npx tsc --noEmit` alone cannot catch desktop-side breakage in `shared/`.
+- `cd desktop && npm run dev` — desktop client on `localhost:5173`
 
 ## Bug Fixing Approach
 When fixing bugs, follow this structured approach:
@@ -86,3 +90,5 @@ The sync pipeline (`syncMiddleware.ts` + `SyncService` + `SyncQueue`) has three 
 
 ## Sync Mapper Symmetry
 - **`rowToX()` must restore every field that `xToRow()` saves.** When adding a field to `xToRow()` (writing to DB), always add the inverse mapping in `rowToX()` (reading from DB). Missing fields in `rowToX()` cause silent data loss during sync — e.g., `updatedAt` not restored breaks last-write-wins merge, `deletedAt` not restored causes deleted items to reappear, `sortOrder` not restored loses user ordering.
+- **Session and tag mappers live in `shared/`, not `src/services/sync/`.** `SyncMapper.ts` re-exports them; the desktop client imports the same files. Both mappers name an explicit row type (`FocusSessionRow`, `SessionTagRow` in `shared/types.ts`), so a field added to one side without the other is a compile error rather than silent drift — but only if you run **both** typecheckers (`npm run typecheck`). Everything else in `SyncMapper.ts` (goals, todos, badges, rewards, settings, referral, coach reports) is iOS-only and stays there.
+- **`src/types/models.ts` `FocusSession`/`SessionTag` extend `FocusSessionCore`/`SessionTagCore` from `shared/`.** Add a *synced* field to the Core type; add an iOS-only field (`liveActivityId`, `baseFruits`, `usageCount`, …) to the extending interface. This keeps the local model provably a superset of the wire model.

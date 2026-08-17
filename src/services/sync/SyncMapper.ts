@@ -3,8 +3,12 @@
  * and Supabase rows (snake_case, ISO strings).
  */
 
-import { clampSessionNotes } from '../../utils/textUtils';
-import { normalizeActivityType } from '../../utils/focusRating';
+// Session and tag rows are the only shapes the desktop client also reads and
+// writes, so their mappers live in `shared/` and are re-exported here — one
+// copy, so `rowToX` losing a field `xToRow` writes breaks both typechecks.
+// Everything below (goals, todos, badges, rewards, settings, …) is iOS-only.
+export { sessionToRow, rowToSession } from '../../../shared/sessionRow';
+export { tagToRow, rowToTag } from '../../../shared/tagRow';
 
 // --- Generic helpers ---
 
@@ -60,104 +64,6 @@ const DATE_FIELDS: Record<string, string[]> = {
     'deleted_at',
   ],
 };
-
-// --- Session mapper ---
-
-export function sessionToRow(session: any, userId: string): Record<string, any> {
-  const row: Record<string, any> = {
-    id: session.id,
-    user_id: userId,
-    start_time:
-      session.startTime instanceof Date ? session.startTime.toISOString() : session.startTime,
-    end_time: session.endTime instanceof Date ? session.endTime.toISOString() : session.endTime,
-    duration: session.duration,
-    initial_set_duration: session.initialSetDuration ?? null,
-    actual_duration: session.actualDuration ?? null,
-    adjusted_duration: session.adjustedDuration ?? null,
-    tag_id: session.tagId,
-    secondary_tag_id: session.secondaryTagId ?? null,
-    notes: clampSessionNotes(session.notes) ?? null,
-    photo_url: session.photoUrl ?? null,
-    is_manual_entry: session.isManualEntry ?? false,
-    accelerate_multiplier: session.accelerateMultiplier ?? 1,
-    focus_rating: session.focusRating ?? null,
-    rating_source: session.ratingSource ?? null,
-    motion_summary: session.motionSummary ?? null,
-    // Always emit deleted_at (null when active) so an undo/restore explicitly
-    // un-tombstones the cloud row. Sessions are hard-deleted locally, so a live
-    // session never carries deletedAt → this resolves to null, and re-upserting a
-    // restored session clears the deleted_at set by an earlier soft_delete. Without
-    // this the row stays tombstoned in the cloud and the next pull drops it.
-    deleted_at:
-      session.deletedAt instanceof Date
-        ? session.deletedAt.toISOString()
-        : (session.deletedAt ?? null),
-  };
-  if (session.createdAt instanceof Date) row.created_at = session.createdAt.toISOString();
-  if (session.updatedAt instanceof Date) row.updated_at = session.updatedAt.toISOString();
-  return row;
-}
-
-export function rowToSession(row: Record<string, any>): any {
-  return {
-    id: row.id,
-    startTime: new Date(row.start_time),
-    endTime: new Date(row.end_time),
-    duration: row.duration,
-    initialSetDuration: row.initial_set_duration,
-    actualDuration: row.actual_duration,
-    adjustedDuration: row.adjusted_duration,
-    tagId: row.tag_id,
-    secondaryTagId: row.secondary_tag_id ?? undefined,
-    notes: row.notes,
-    photoUrl: row.photo_url ?? undefined,
-    isManualEntry: row.is_manual_entry ?? false,
-    accelerateMultiplier: row.accelerate_multiplier ?? 1,
-    focusRating: row.focus_rating ?? undefined,
-    ratingSource: row.rating_source ?? undefined,
-    motionSummary: row.motion_summary ?? undefined,
-    createdAt: new Date(row.created_at),
-    updatedAt: new Date(row.updated_at),
-    ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
-  };
-}
-
-// --- Tag mapper ---
-
-export function tagToRow(tag: any, userId: string): Record<string, any> {
-  const row: Record<string, any> = {
-    id: tag.id,
-    user_id: userId,
-    name: tag.name,
-    icon: tag.icon,
-    color: tag.color,
-    sort_order: tag.sortOrder ?? 0,
-    activity_type: tag.activityType ?? null,
-  };
-  // Only include timestamps if they exist — otherwise let DB defaults apply
-  if (tag.createdAt instanceof Date) row.created_at = tag.createdAt.toISOString();
-  if (tag.updatedAt instanceof Date) row.updated_at = tag.updatedAt.toISOString();
-  if (tag.deletedAt instanceof Date) row.deleted_at = tag.deletedAt.toISOString();
-  return row;
-}
-
-export function rowToTag(row: Record<string, any>): any {
-  return {
-    id: row.id,
-    name: row.name,
-    icon: row.icon,
-    color: row.color,
-    sortOrder: row.sort_order ?? 0,
-    // Canonicalised on read so retired values (e.g. 'on_phone') map to their
-    // current equivalent instead of falling through the rating engine's switch.
-    ...(normalizeActivityType(row.activity_type)
-      ? { activityType: normalizeActivityType(row.activity_type) }
-      : {}),
-    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
-    updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
-    ...(row.deleted_at ? { deletedAt: new Date(row.deleted_at) } : {}),
-  };
-}
 
 // --- Goal mapper ---
 
@@ -619,10 +525,15 @@ export function normalizedToRows<T>(
 
 /**
  * Convert an array of Supabase rows into a normalized { byId, allIds } structure.
+ *
+ * Generic over the row type as well as the item type: the shared mappers name a
+ * concrete row shape (`FocusSessionRow`, `SessionTagRow`) rather than
+ * `Record<string, any>`, and a function taking a narrower parameter is not
+ * assignable to one taking a wider one.
  */
-export function rowsToNormalized<T extends { id: string }>(
-  rows: Record<string, any>[],
-  mapFn: (row: Record<string, any>) => T
+export function rowsToNormalized<T extends { id: string }, R = Record<string, any>>(
+  rows: R[],
+  mapFn: (row: R) => T
 ): { byId: Record<string, T>; allIds: string[] } {
   const byId: Record<string, T> = {};
   const allIds: string[] = [];

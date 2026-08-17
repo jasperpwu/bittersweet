@@ -1,0 +1,211 @@
+/*
+ * Desktop token layer.
+ *
+ * The Expo app forbids raw hex in UI chrome and routes everything through
+ * `tailwind.config.js` / `src/config/theme.ts`. There is no NativeWind here, so
+ * the equivalent is these custom properties: the hex values appear exactly once,
+ * mirrored from `src/config/theme.ts`, and every rule below references a var.
+ * If a token changes there, change it here too.
+ */
+
+:root {
+  --primary: #6592e9;
+  --error: #ef786c;
+  --success: #51bc6f;
+
+  /* Light — the cream app screen (theme.ts `colors.light`). */
+  --bg: #f5e6d3;
+  --surface: #f0e0cc;
+  --border: #d4c4a8;
+  --text-primary: #5d4e37;
+  --text-secondary: #6b5a42;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark — the navy app screen (theme.ts `colors.dark`). */
+    --bg: #1b1c30;
+    --surface: #242540;
+    --border: #575757;
+    --text-primary: #ffffff;
+    --text-secondary: #cacaca;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+main,
+.signin {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+section {
+  margin-bottom: 32px;
+}
+
+.muted {
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+}
+
+.error {
+  color: var(--error);
+}
+
+/* Realtime connection indicator. */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+.dot-live {
+  background: var(--success);
+}
+.dot-error {
+  background: var(--error);
+}
+
+button {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input {
+  font: inherit;
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+label {
+  display: block;
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.signin button {
+  width: 100%;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tags li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.sessions li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  margin-bottom: 8px;
+}
+.sessions .icon {
+  font-size: 20px;
+}
+.sessions .body {
+  flex: 1;
+  min-width: 0;
+}
+.sessions .name {
+  display: block;
+  font-weight: 600;
+}
+.sessions .notes {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sessions .meta {
+  text-align: right;
+  flex-shrink: 0;
+}
+.sessions .duration {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+.sessions .when {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 12px;
+}

@@ -5,7 +5,10 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    // `desktop/` is a separate project with its own toolchain and tsconfig; it
+    // is typechecked by `cd desktop && npx tsc --noEmit`, not from here.
+    // `shared/` is deliberately NOT ignored — it compiles into this app too.
+    ignores: ['dist/*', 'desktop/*'],
   },
   {
     rules: {

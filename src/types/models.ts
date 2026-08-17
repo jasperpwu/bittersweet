@@ -1,4 +1,8 @@
-import type { ActivityType, RatingSource, MotionSnapshot } from '../utils/focusRating';
+// The syncable half of these two models is defined in `shared/` and shared with
+// the desktop client; the iOS-only fields are added here. Extending rather than
+// re-declaring means the local model is provably a superset of the wire model,
+// so a field can never round-trip differently between the two clients.
+import type { FocusSessionCore, SessionTagCore } from '../../shared/types';
 
 // App Settings Types
 export interface AppPreferences {
@@ -17,51 +21,16 @@ export interface FocusSettings {
 }
 
 // Focus Session Types (merged with Task functionality)
-export interface FocusSession {
-  id: string;
-  notes?: string;
-  photoUrl?: string;
-
-  // Timing
-  startTime: Date;
-  endTime: Date; // Now required - end time of the session
-  duration: number; // adjusted duration in minutes, kept for existing analytics/UI
-  initialSetDuration?: number; // originally selected duration in minutes
-  actualDuration?: number; // elapsed duration in minutes before user adjustment
-  adjustedDuration?: number; // user-adjusted duration in minutes
-
-  tagId: string; // Required single tag ID for each session
-  secondaryTagId?: string; // Optional second tag for dual-activity sessions (e.g. workout + audiobook)
-
+// Synced fields (timing, tag, notes, rating, motion) come from FocusSessionCore.
+export interface FocusSession extends FocusSessionCore {
   liveActivityId?: string; // iOS Live Activity ID for timer display
-  isManualEntry?: boolean; // Whether the session was added manually without timer
-  accelerateMultiplier?: number; // Multiplier applied when fruits were earned (1 = normal, 2 = accelerate active)
-
-  // Motion-based focus rating
-  focusRating?: number; // 1–5, suggested from motion or set by the user
-  ratingSource?: RatingSource; // who set focusRating
   baseFruits?: number; // fruits earned before the rating discount
   awardedFruits?: number; // fruits actually credited after the rating discount
-  motionSummary?: MotionSnapshot; // on-device motion estimate, for the insights sheet
-
-  // Metadata
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-export interface SessionTag {
-  id: string; // Stable unique identifier
-  name: string;
-  icon: string;
-  color: string; // Hex color string like '#6592E9'
+// Synced fields (name, icon, color, sortOrder, activityType) come from SessionTagCore.
+export interface SessionTag extends SessionTagCore {
   usageCount: number;
-  sortOrder: number;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date;
-
-  // Optional hint for motion-based focus rating. Unset is treated as 'stationary'.
-  activityType?: ActivityType;
 }
 
 // Analytics Types
@@ -192,11 +161,7 @@ export interface UnlockTransaction {
 export interface Purchase {
   id: string;
   productId:
-    | 'accelerate_card'
-    | 'usage_tip'
-    | `theme_${string}`
-    | `custom_${string}`
-    | `gift_${string}`;
+    'accelerate_card' | 'usage_tip' | `theme_${string}` | `custom_${string}` | `gift_${string}`;
   cost: number; // fruits spent
   tipId?: string;
   // Photo the user attached to a bought custom reward: local file:// path
