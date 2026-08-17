@@ -1,7 +1,8 @@
 # Desktop App + Remote Shield Control — Design & Plan
 
-**Status:** Phase 1 built (read-only desktop client). Phases 0, 2–5 not started.
-**Date:** 2026-08-15 (Phase 1 landed 2026-08-16)
+**Status:** Phases 1 and 5 done and verified against the live project. Phase 2 built,
+pending its migration being applied. Phases 0, 3–4 not started.
+**Date:** 2026-08-15 (Phase 1 landed and verified 2026-08-16; Phase 2 built 2026-08-16)
 
 > **Phase 1 as built.** `shared/` holds the session/tag row mappers plus the
 > types, activity-type normaliser and note clamp they need; `src/` re-exports
@@ -330,12 +331,49 @@ mappers, plus the two util functions that have to move out of RN-importing files
 scaffold `desktop/`, then auth, tag list, session history, Realtime subscription. No
 writes. Proves auth + RLS + realtime end to end.
 
-*Not yet verified against the live project:* nobody has signed in from the desktop
-client, and the Realtime migration has not been applied. Both are the first things to
-do before Phase 2.
+*Verified 2026-08-16:* signed in from the desktop client, tags and history render, and
+`20260816_realtime_focus_sessions.sql` is applied — a session created on the phone
+appears on the desktop live, and deleting it there removes it (the soft-delete-as-UPDATE
+path). Realtime is confirmed working end to end, not just `SUBSCRIBED`.
 
-**Phase 2 — Desktop writes + iOS realtime.** Start/stop from desktop; iOS subscribes
-while foregrounded. At this point desktop→iOS works whenever the iOS app is open.
+One bug found and fixed during that pass: `App.tsx` gated the session list on the
+sessions query alone while ignoring the `loading` flag `useTags` returns. The two fetch
+in parallel, so whenever sessions won the race the list rendered against an empty tag
+array and every row showed "Untitled" until the tags query landed. Anything that
+resolves a session's tag by id has to wait for both.
+
+**Phase 2 — Desktop writes + iOS realtime. ✅ BUILT 2026-08-16, not yet verified against
+the live project.** Start/stop from desktop; iOS subscribes while foregrounded.
+
+`focus_sessions.end_time` is NOT NULL, so a *running* session cannot live there. It gets
+its own table, `active_sessions`, keyed by `user_id` — one live session per user is a key
+constraint rather than client merge logic, which is what answers "both devices started at
+once" from the open questions below. `session_id` is chosen at start and carried on the
+row, so whichever device finishes the session writes the same `focus_sessions` row; this
+reuses the caller-supplied-id seam `createCompletedSession` already had for native widget
+stops.
+
+Writes go through `start_active_session` / `stop_active_session` RPCs, because PostgREST
+cannot express a conditional upsert and a plain one would clobber a session running on the
+other device. Stop sets `ended_at` rather than deleting: a DELETE reaches Realtime carrying
+only the primary key, and a subscriber that misses a stop is left running a timer forever.
+
+`active_sessions` is deliberately outside the sync pipeline. That pipeline is a debounced,
+offline-tolerant, last-write-wins differ; a live session is a single mutable row whose only
+value is being current, and replaying one from an offline queue would resurrect a finished
+session.
+
+On iOS the follower reuses the Journal TODO autostart machinery (prime tag + duration, bump
+a nonce, fire the normal handler), so there is still exactly one code path that starts a
+session — with the shield, Live Activity, scheduled notification and widget state all
+identical to an in-app start. A desktop stop follows the widget-stop precedent: record the
+session, then rate from historical Core Motion, and do not open the summary modal.
+
+*Known limits, by design:* a desktop start older than 60s is ignored rather than followed,
+because this screen's timer always begins now and adopting an old start would misreport
+elapsed time — the phone-was-closed case is what Phases 3 and 4 are for, and the desktop
+writes that session's finished row itself. There is no toast when the phone follows a
+remote stop; adding user-facing copy means the full 8-language i18n pass.
 
 **Phase 3 — Live Activity push.** Timer follows on Lock Screen / Dynamic Island even when
 the app is closed. Uses tokens the fork already exposes. Requires the direct-APNs edge
@@ -362,11 +400,15 @@ uncertain is isolated in Phase 0 and Phase 4.
 
 ## Open questions
 
-- Should a desktop-started session block apps on the phone at all by default, or be
-  opt-in per session? Blocking a phone from a laptop is surprising behavior the first time
-  it happens.
-- What wins if both devices have an active session? Suggest: reject the second start
-  server-side rather than merging.
+- ~~Should a desktop-started session block apps on the phone by default?~~ **Settled in
+  Phase 2: yes**, identical to an in-app start. The follower runs the same start path, so
+  the shield update comes for free rather than needing a no-shield variant. Revisit as a
+  setting if it proves surprising in use.
+- ~~What wins if both devices have an active session?~~ **Settled in Phase 2:** rejected
+  server-side, by making `active_sessions.user_id` the primary key and starting through an
+  RPC whose upsert branch only fires when the previous session has ended. The phone is the
+  one exception — it does not roll its local timer back on a refusal, because the user
+  physically pressed start and losing that to a stale row is the worse failure.
 - Does the desktop session count toward fruits/streaks? Leaning yes, computed on iOS at
   reconcile so there is exactly one implementation of the reward curve.
 

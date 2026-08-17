@@ -58,6 +58,10 @@ import { useDeviceIntegration } from '../../src/hooks/useDeviceIntegration';
 import { FruitCounter } from '../../src/components/rewards';
 import { showToast } from '../../src/components/ui/Toast';
 import { LiveActivityService } from '../../src/services/LiveActivityService';
+import { ActiveSessionService } from '../../src/services/ActiveSessionService';
+import { supabase } from '../../src/config/supabase';
+import { generateId } from '../../shared/id';
+import type { ActiveSessionCore } from '../../shared/types';
 import { WidgetService } from '../../src/services/WidgetService';
 import { AnalyticsTracker } from '../../src/services/analytics';
 import { SETUP_TASK_IDS } from '../../src/services/sync/SyncMapper';
@@ -75,6 +79,11 @@ import { useBrandFonts } from '../../src/hooks/useBrandFonts';
 import { directionalIcon } from '../../src/utils/directionalIcon';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
+
+// How late a desktop-started session may be picked up. Covers socket latency and
+// an app resume; beyond it the phone would misreport elapsed time. See the
+// remote-start branch in the desktop follower.
+const REMOTE_START_MAX_AGE_MS = 60_000;
 
 const ROW_HEIGHT = 84; // row height (72px) + margin-bottom (12px from mb-3)
 const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 0.8 };
@@ -370,6 +379,11 @@ type PersistedSession = {
   isInfinite: boolean;
   liveActivityId?: string; // iOS Live Activity ID to stop after app restart
   notificationId?: string; // scheduled completion notification
+  // Id the finished focus_sessions row will use, chosen at start rather than at
+  // completion so the live session can be published to `active_sessions` and the
+  // desktop client can finish the same row instead of creating a second one.
+  // Optional: sessions persisted by an older build won't carry it.
+  sessionId?: string;
 };
 
 export default function FocusScreen() {
@@ -609,10 +623,18 @@ export default function FocusScreen() {
   const stoppedBonusSecondsRef = useRef(0);
   const stoppedSessionStartTimeRef = useRef<number | null>(null);
   const stoppedSessionTargetDurationRef = useRef<number | null>(null);
+  // The id the session was published under, captured at stop like the refs above:
+  // teardownSession clears the live refs, but saveSessionAndNavigate runs later
+  // from the stop animation's callback and still needs it.
+  const stoppedSessionIdRef = useRef<string | null>(null);
   const liveActivityIdRef = useRef<string | undefined>(undefined);
   const sessionEndTimeRef = useRef<number | null>(null); // Unix ms when session should end
   const sessionStartTimeRef = useRef<number | null>(null); // Unix ms when session started
   const sessionTargetDurationRef = useRef<number | null>(null); // target duration in minutes, immune to state races
+  // Id the finished session will be written under, chosen at start so the live
+  // session can be published to `active_sessions`. Survives a kill via
+  // PersistedSession.sessionId. Null when no session is running.
+  const plannedSessionIdRef = useRef<string | null>(null);
   const scheduledNotificationRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unlockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -816,9 +838,7 @@ export default function FocusScreen() {
     const name = tag?.name ? `"${tag.name}"` : t('home.deleteThisTag');
     Alert.alert(
       t('home.deleteTag'),
-      hasHistory
-        ? t('home.deleteConfirmWithBadge', { name })
-        : t('home.deleteConfirm', { name }),
+      hasHistory ? t('home.deleteConfirmWithBadge', { name }) : t('home.deleteConfirm', { name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         ...(hasHistory
@@ -895,7 +915,36 @@ export default function FocusScreen() {
     showToast(t('home.unlockStopped'), 'neutral');
   };
 
+  /**
+   * Start a focus session.
+   *
+   * A desktop-started session reaches here the same way a Journal TODO autostart
+   * does: the follower primes `selectedTag`/`selectedTime` and fires the normal
+   * start handler, so the whole sequence below — Live Activity, scheduled
+   * notification, shield, widget state, persisted session — runs identically and
+   * a session started from the laptop is indistinguishable from one started here.
+   *
+   * The one thing that cannot be primed through state is the session id, so it
+   * arrives on `pendingRemoteStartRef` instead of as an argument: the start flow
+   * runs from handleStartFocus's animation callback, which takes none. Reusing
+   * the id the other device published is what makes both finish the same
+   * focus_sessions row rather than racing to create two.
+   */
   const startTimer = async () => {
+    const remote = pendingRemoteStartRef.current;
+    pendingRemoteStartRef.current = null;
+
+    const activeTag = selectedTag;
+    const activeMinutes = selectedTime;
+    // A local session gets its id here, at start rather than at completion, so it
+    // can be published to `active_sessions` while it is still running. A primed
+    // remote id only applies to the tag it was published for — otherwise this is a
+    // different session that happened to start first, and reusing the id would
+    // finish it under the desktop's session.
+    const isRemote = remote != null && remote.tagId === activeTag;
+    const sessionId = isRemote ? remote.sessionId : generateId();
+    plannedSessionIdRef.current = sessionId;
+
     // Signal focusing status to friends
     useAppStore.getState().grove.setFocusing(true);
 
@@ -908,11 +957,12 @@ export default function FocusScreen() {
     // Caveat: sessions started from the widget / Live Activity never pass through
     // here (they're adopted on foreground as already-complete), so `source` marks
     // this as the in-app path and the rate must be read on source='app' only.
+    // A desktop-started session does pass through here, tagged source='desktop'.
     AnalyticsTracker.track('focus_session_started', {
-      source: 'app',
-      duration_minutes: selectedTime === -1 ? 1 : selectedTime === -2 ? 30 : selectedTime,
-      is_infinite: selectedTime === 0,
-      tag_id: selectedTag ?? undefined,
+      source: isRemote ? 'desktop' : 'app',
+      duration_minutes: activeMinutes === -1 ? 1 : activeMinutes === -2 ? 30 : activeMinutes,
+      is_infinite: activeMinutes === 0,
+      tag_id: activeTag ?? undefined,
       has_blocklist: useAppStore.getState().blocklist.currentSelectionId != null,
     });
 
@@ -927,17 +977,17 @@ export default function FocusScreen() {
     });
 
     // Dev-only test timers: -1 = 5s (counts as 1 min), -2 = 10s (counts as 30 min)
-    const isDevTimer = selectedTime === -1 || selectedTime === -2;
-    const devSeconds = selectedTime === -1 ? 5 : 10;
-    const devCountsAsMinutes = selectedTime === -1 ? 1 : 30;
-    const timerSeconds = isDevTimer ? devSeconds : selectedTime * 60;
-    const infinite = selectedTime === 0;
+    const isDevTimer = activeMinutes === -1 || activeMinutes === -2;
+    const devSeconds = activeMinutes === -1 ? 5 : 10;
+    const devCountsAsMinutes = activeMinutes === -1 ? 1 : 30;
+    const timerSeconds = isDevTimer ? devSeconds : activeMinutes * 60;
+    const infinite = activeMinutes === 0;
     setIsInfinite(infinite);
     setIsRunning(true);
 
     const now = Date.now();
     sessionStartTimeRef.current = now;
-    sessionTargetDurationRef.current = isDevTimer ? devCountsAsMinutes : selectedTime;
+    sessionTargetDurationRef.current = isDevTimer ? devCountsAsMinutes : activeMinutes;
 
     if (infinite) {
       setElapsedSeconds(0);
@@ -950,16 +1000,16 @@ export default function FocusScreen() {
     let liveActivityId: string | undefined;
 
     // Store tag info for later idle state (when session ends, LA transitions to idle)
-    const selectedTagObj = selectedTag
-      ? tags.byId[selectedTag] || challengeTags.find((ct) => ct.id === selectedTag)
+    const selectedTagObj = activeTag
+      ? tags.byId[activeTag] || challengeTags.find((ct) => ct.id === activeTag)
       : undefined;
     const selectedTagLabel = selectedTagObj
       ? `${selectedTagObj.icon || '🎯'} ${selectedTagObj.name}`
       : 'Focus';
     LiveActivityService.setLastTag(
-      selectedTag || undefined,
+      activeTag || undefined,
       selectedTagLabel,
-      isDevTimer ? devCountsAsMinutes : selectedTime
+      isDevTimer ? devCountsAsMinutes : activeMinutes
     );
 
     if (infinite) {
@@ -981,7 +1031,7 @@ export default function FocusScreen() {
       sessionEndTimeRef.current = endTime.getTime();
       const activityId = await LiveActivityService.startFocusTimer(
         endTime,
-        isDevTimer ? devCountsAsMinutes : selectedTime,
+        isDevTimer ? devCountsAsMinutes : activeMinutes,
         selectedTagLabel
       );
       if (activityId) {
@@ -994,7 +1044,7 @@ export default function FocusScreen() {
     }
 
     // Schedule a notification with sound for when the timer ends
-    if (selectedTime > 0 || isDevTimer) {
+    if (activeMinutes > 0 || isDevTimer) {
       // Cancel any existing scheduled notification
       if (scheduledNotificationRef.current) {
         Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
@@ -1005,8 +1055,8 @@ export default function FocusScreen() {
           body: isDevTimer
             ? `Your ${devSeconds}s dev test session is done!`
             : t('home.sessionCompleteBody', {
-                minutes: selectedTime,
-                tag: selectedTag ? tags.byId[selectedTag]?.name || 'focus' : 'focus',
+                minutes: activeMinutes,
+                tag: activeTag ? tags.byId[activeTag]?.name || 'focus' : 'focus',
               }),
           sound: true,
         },
@@ -1042,19 +1092,36 @@ export default function FocusScreen() {
       JSON.stringify({
         startTime: persistNow,
         endTime: infinite ? 0 : persistNow + timerSeconds * 1000,
-        targetDuration: isDevTimer ? devCountsAsMinutes : selectedTime,
-        tagId: selectedTag || 'Focus',
+        targetDuration: isDevTimer ? devCountsAsMinutes : activeMinutes,
+        tagId: activeTag || 'Focus',
         tagLabel: selectedTagLabel,
         isInfinite: infinite,
         liveActivityId,
+        sessionId,
       } satisfies PersistedSession)
     );
 
+    // Publish to `active_sessions` so the desktop client can follow this session.
+    // Only for locally-started ones: a remote start is already published — that
+    // row is what told us to start in the first place.
+    //
+    // Fire-and-forget and deliberately not rolled back on failure. The phone's
+    // local timer is the source of truth here; a network hiccup must not stop a
+    // session the user just started in front of us.
+    if (!isRemote) {
+      ActiveSessionService.publishStart({
+        sessionId,
+        tagId: activeTag || 'Focus',
+        startedAt: new Date(persistNow),
+        targetMinutes: infinite ? undefined : isDevTimer ? devCountsAsMinutes : activeMinutes,
+      }).catch(() => {});
+    }
+
     // Sync widget with active session state
-    const tagInfo = selectedTag ? tags.byId[selectedTag] : null;
+    const tagInfo = activeTag ? tags.byId[activeTag] : null;
     WidgetService.syncSessionState({
       isActive: true,
-      tagId: selectedTag || '',
+      tagId: activeTag || '',
       tagName: tagInfo?.name || 'Focus',
       tagIcon: tagInfo?.icon || '🎯',
       tagColor: tagInfo?.color || '#8B4513',
@@ -1095,10 +1162,15 @@ export default function FocusScreen() {
     // Clear focusing status
     useAppStore.getState().grove.setFocusing(false);
 
+    // Clear the live record so the desktop client stops showing a timer, and so
+    // the next start isn't refused by a row that outlived its session.
+    ActiveSessionService.publishStop().catch(() => {});
+
     if (timerRef.current) clearInterval(timerRef.current as any);
     timerRef.current = null;
     sessionStartTimeRef.current = null;
     sessionTargetDurationRef.current = null;
+    plannedSessionIdRef.current = null;
     setIsRunning(false);
     setIsSessionActive(false);
     setTodoListVisible(false);
@@ -1123,6 +1195,11 @@ export default function FocusScreen() {
   const teardownSession = () => {
     // Clear focusing status
     useAppStore.getState().grove.setFocusing(false);
+
+    // Clear the live record (see stopCompletely). A no-op when the session was
+    // already stopped from the desktop — the RPC only matches a running row —
+    // so this is safe on the remote-stop path too.
+    ActiveSessionService.publishStop().catch(() => {});
 
     // Clear timer
     if (timerRef.current) clearInterval(timerRef.current as any);
@@ -1151,6 +1228,7 @@ export default function FocusScreen() {
     sessionEndTimeRef.current = null;
     sessionStartTimeRef.current = null;
     sessionTargetDurationRef.current = null;
+    plannedSessionIdRef.current = null;
     const activityId = liveActivityIdRef.current;
     liveActivityIdRef.current = undefined;
 
@@ -1172,6 +1250,7 @@ export default function FocusScreen() {
     stoppedBonusSecondsRef.current = bonusSeconds;
     stoppedSessionStartTimeRef.current = sessionStartTimeRef.current;
     stoppedSessionTargetDurationRef.current = sessionTargetDurationRef.current;
+    stoppedSessionIdRef.current = plannedSessionIdRef.current;
 
     teardownSession();
     LiveActivityService.stopFocusTimer(wasBonusTime ? 'completed' : 'cancelled');
@@ -1492,6 +1571,9 @@ export default function FocusScreen() {
       if (persisted.liveActivityId) {
         liveActivityIdRef.current = persisted.liveActivityId;
       }
+      // Recover the published id so a session that survived a kill still finishes
+      // under the id the desktop client knows it by.
+      plannedSessionIdRef.current = persisted.sessionId ?? null;
 
       // Restore shield to focus-session mode (block unlocking)
       const currentBalance = useAppStore.getState().rewards.balance;
@@ -1779,6 +1861,11 @@ export default function FocusScreen() {
     openBlocklist?: string;
   }>();
   const pendingStartRef = useRef<{ tagId: string; duration: number } | null>(null);
+  // Set by the desktop follower below, consumed by startTimer. See its doc comment.
+  // Carries the tag so a prime that never ran (the follower primed a start, then the
+  // user started something themselves first) can't hand the desktop's session id to
+  // an unrelated session.
+  const pendingRemoteStartRef = useRef<{ sessionId: string; tagId: string } | null>(null);
   // Bumped each time a start is requested so the commit effect below runs even when
   // setSelectedTag/setSelectedTime are no-ops (home already had that tag/duration) —
   // otherwise the effect's deps wouldn't change and the start would silently never fire.
@@ -1822,10 +1909,148 @@ export default function FocusScreen() {
     if (!pending) return;
     pendingStartRef.current = null;
     // Can't start over a live/transitioning session — that would toggle Stop instead.
+    // A remote start abandoned here leaves its id primed, which startTimer discards
+    // on the tag check rather than applying it to an unrelated session.
     if (isRunning || isSessionActive) return;
     handleStartFocusGuarded();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autostartNonce]);
+
+  /**
+   * End the local session because the desktop client stopped it.
+   *
+   * Deliberately does not open the session-complete modal — the user is at their
+   * laptop, not looking at the phone. This follows the widget / Live Activity
+   * precedent in adoptAndRecoverSession: record the session, then rate it from
+   * historical Core Motion, because the modal where rating normally happens
+   * never appears for an externally-stopped session.
+   */
+  const stopFromRemote = (active: ActiveSessionCore) => {
+    const store = useAppStore.getState();
+    // Prefer this device's own start marker; fall back to the published one for a
+    // session that began on the desktop before the phone was following.
+    const startedAtMs = sessionStartTimeRef.current ?? active.startedAt.getTime();
+    const endedAtMs = (active.endedAt ?? new Date()).getTime();
+    // Floor to match the in-app finish path and the native stop write. All three
+    // must agree so the merged focus_sessions row is deterministic whatever the
+    // write order turns out to be.
+    const durationMinutes = Math.floor((endedAtMs - startedAtMs) / 60000);
+    const targetDuration = sessionTargetDurationRef.current ?? active.targetMinutes ?? 0;
+    const sessionId = plannedSessionIdRef.current ?? active.sessionId;
+    // Read before teardownSession clears the refs it derives from.
+    const wasUIActive = !!(sessionStartTimeRef.current || sessionEndTimeRef.current);
+
+    teardownSession();
+    LiveActivityService.stopFocusTimer('completed');
+
+    if (durationMinutes > 0) {
+      const adopted = store.focus.createCompletedSession({
+        id: sessionId,
+        startTime: new Date(startedAtMs),
+        endTime: new Date(endedAtMs),
+        duration: durationMinutes,
+        // An infinite session has no target; fruits are then computed against the
+        // actual duration, mirroring the widget adoption path.
+        targetDuration: targetDuration > 0 ? targetDuration : Math.max(1, durationMinutes),
+        tagId: active.tagId,
+      });
+      store.focus.autoRateSessionFromMotion(adopted.id).catch(() => {});
+    }
+
+    // teardownSession resets session state but not this screen's visuals.
+    if (wasUIActive) {
+      setIsSessionActive(false);
+      setRemainingSeconds(0);
+      setElapsedSeconds(0);
+      setIsInfinite(false);
+      scrollerOpacity.setValue(1);
+      tagsOpacity.setValue(1);
+      headerOpacity.setValue(1);
+      timerOpacity.setValue(0);
+      timerScale.setValue(0.94);
+      timerTranslateY.setValue(6);
+    }
+  };
+
+  // --- Desktop remote control ---
+  //
+  // Mirror the shared `active_sessions` record: a session started or stopped on
+  // the desktop client runs here too, with the same timer, Live Activity and
+  // shield. Reuses the autostart machinery above rather than duplicating the
+  // start flow, so there is exactly one path that starts a session.
+  //
+  // Foreground-only, by design. A Realtime websocket dies when the app is
+  // backgrounded or swiped away, which is precisely the gap Phases 3 and 4 close.
+  // Because events can be missed, the record is re-fetched on every foreground
+  // rather than trusting that the socket saw everything.
+  const remoteUserId = useAppStore((s) => s.auth.user?.id);
+  const applyRemoteRef = useRef<(active: ActiveSessionCore | null) => void>(() => {});
+
+  // Refreshed after every render (no dep array) so the subscription — which is
+  // set up once per user — always calls the current closure over isRunning,
+  // isSessionActive and tags, without resubscribing on each keystroke.
+  useEffect(() => {
+    applyRemoteRef.current = (active: ActiveSessionCore | null) => {
+      if (!active) return;
+
+      // Our own writes echo back over the socket. Only the desktop's actions are
+      // worth following — either it started this session, or it stopped one of ours.
+      if (active.origin !== 'desktop' && active.stoppedBy !== 'desktop') return;
+
+      const localRunning = isRunning || isSessionActive;
+
+      if (!active.endedAt && !localRunning && active.origin === 'desktop') {
+        if (!tags.byId[active.tagId]) {
+          console.warn('[ActiveSession] remote start references unknown tag:', active.tagId);
+          return;
+        }
+        // Only follow a start we can still represent honestly. This screen's timer
+        // always begins now, so adopting a session that started long ago would show
+        // — and ultimately record — the wrong elapsed time. A start older than this
+        // means the phone was closed when it happened, which is the case Phases 3
+        // and 4 exist to handle; until then the desktop owns that session and
+        // writes the finished row itself.
+        const ageMs = Date.now() - active.startedAt.getTime();
+        if (ageMs > REMOTE_START_MAX_AGE_MS) {
+          console.log('💻 Ignoring stale desktop start:', active.sessionId, `${ageMs}ms old`);
+          return;
+        }
+
+        console.log('💻 Following desktop-started session:', active.sessionId);
+        pendingRemoteStartRef.current = { sessionId: active.sessionId, tagId: active.tagId };
+        pendingStartRef.current = { tagId: active.tagId, duration: active.targetMinutes ?? 0 };
+        setSelectedTag(active.tagId);
+        // targetMinutes null = infinite, which this screen represents as 0.
+        setSelectedTime(active.targetMinutes ?? 0);
+        setAutostartNonce((n) => n + 1);
+        return;
+      }
+
+      // Remote stop: the desktop finished the session this phone is running.
+      if (active.endedAt && active.stoppedBy === 'desktop' && localRunning) {
+        console.log('💻 Following desktop stop for session:', active.sessionId);
+        stopFromRemote(active);
+      }
+    };
+  });
+
+  useEffect(() => {
+    if (!remoteUserId) return;
+
+    const apply = (a: ActiveSessionCore | null) => applyRemoteRef.current(a);
+    const channel = ActiveSessionService.subscribe(remoteUserId, apply);
+    // Catch up on anything that happened while the socket was down.
+    ActiveSessionService.fetch(remoteUserId).then(apply);
+
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') ActiveSessionService.fetch(remoteUserId).then(apply);
+    });
+
+    return () => {
+      sub.remove();
+      supabase.removeChannel(channel);
+    };
+  }, [remoteUserId]);
 
   // Arrivals that want the blocklist (the "Silence the distractions" re-engagement
   // nudge, the coach's block_apps action) land here rather than pushing
@@ -1969,6 +2194,11 @@ export default function FocusScreen() {
       const endTime = new Date(now);
 
       const session = createCompletedSession({
+        // Finish under the id this session was published as, so a desktop client
+        // finishing the same session converges on one row. Falls back to a fresh
+        // id for sessions started before this existed (recovered from an older
+        // PersistedSession, which carries no sessionId).
+        id: stoppedSessionIdRef.current ?? undefined,
         startTime,
         endTime,
         duration: Math.max(1, actualDuration),
@@ -1976,6 +2206,7 @@ export default function FocusScreen() {
         tagId: selectedTag!,
         notes: notes || undefined,
       });
+      stoppedSessionIdRef.current = null;
 
       // Navigate to session complete modal
       router.push({ pathname: '/(modals)/session-complete', params: { sessionId: session.id } });

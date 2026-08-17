@@ -16,6 +16,9 @@ import {
   Purchase,
   CustomReward,
 } from '../types/models';
+// Session ids are minted by both clients now (desktop chooses one when it starts
+// a live session), so the generator lives in shared/ rather than here.
+import { generateId } from '../../shared/id';
 import { pickTipId } from '../config/tips';
 import { sliderThemeCostForUser, themeProductId } from '../config/sliderThemes';
 import { customRewardProductId } from '../config/customRewards';
@@ -431,21 +434,6 @@ const getWeekStart = () => {
   weekStart.setDate(today.getDate() - daysFromMonday);
   weekStart.setHours(0, 0, 0, 0);
   return weekStart;
-};
-
-// Compact time-ordered id: base36 ms timestamp + 10 random base36 chars.
-// The timestamp prefix keeps ids lexicographically chronological (right-edge
-// B-tree inserts in Postgres); 10 random chars (~3.6e15) rules out cross-user
-// collisions within a millisecond at any realistic scale. The Swift widget
-// stop path (SessionIntent.swift generateCompactId) mirrors this format —
-// keep the two in sync.
-const generateId = () => {
-  const timestamp = Date.now().toString(36);
-  let randomStr = '';
-  for (let i = 0; i < 10; i++) {
-    randomStr += Math.floor(Math.random() * 36).toString(36);
-  }
-  return `${timestamp}-${randomStr}`;
 };
 
 const HISTORY_PERIODS = ['daily', 'weekly', 'monthly'] as const;

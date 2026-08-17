@@ -168,6 +168,77 @@ ul {
   background: var(--surface);
 }
 
+/* --- Start / stop controls --- */
+
+.starter,
+.timer {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.starter select {
+  font: inherit;
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.durations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--bg);
+}
+.chip-on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.start {
+  width: 100%;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.timer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.timer-main {
+  min-width: 0;
+}
+
+.clock {
+  display: block;
+  font-size: 32px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stop {
+  flex-shrink: 0;
+  background: var(--error);
+  border-color: var(--error);
+  color: #ffffff;
+}
+
 .sessions li {
   display: flex;
   align-items: center;

@@ -106,6 +106,49 @@ export interface FocusSessionCore {
   deletedAt?: Date;
 }
 
+// --- active_sessions ---
+
+/** Which client started or stopped a live session. */
+export type SessionDeviceKind = 'ios' | 'desktop';
+
+/**
+ * An `active_sessions` row — a focus session that is currently running, so the
+ * other device can follow it.
+ *
+ * Separate from `FocusSessionRow` because `focus_sessions.end_time` is NOT NULL
+ * and that table only ever holds finished sessions. `session_id` is the id the
+ * finished row will be written under, chosen up front by whichever client
+ * started it, so both devices converge on one row instead of racing to create two.
+ */
+export type ActiveSessionRow = {
+  user_id: string;
+  session_id: string;
+  tag_id: string;
+  started_at: string;
+  /** Null while running. Set on stop — the table is never deleted from. */
+  ended_at: string | null;
+  /** Null = infinite / count-up session. */
+  target_minutes: number | null;
+  origin: SessionDeviceKind;
+  stopped_by: SessionDeviceKind | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+/** The syncable core of a live session — every field a row round-trips. */
+export interface ActiveSessionCore {
+  userId: string;
+  sessionId: string;
+  tagId: string;
+  startedAt: Date;
+  endedAt?: Date;
+  targetMinutes?: number;
+  origin: SessionDeviceKind;
+  stoppedBy?: SessionDeviceKind;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // --- session_tags ---
 
 /** A `session_tags` row, exactly as it goes over the wire. (A `type`, for the
