@@ -1983,6 +1983,18 @@ export default function FocusScreen() {
   // backgrounded or swiped away, which is precisely the gap Phases 3 and 4 close.
   // Because events can be missed, the record is re-fetched on every foreground
   // rather than trusting that the socket saw everything.
+  /**
+   * Point the shield at a desktop-owned session (or back at the idle state).
+   * `focusActive: false` re-derives from AsyncStorage rather than forcing idle,
+   * so it can never unlock a session running locally.
+   */
+  const syncShieldToRemoteSession = (focusActive: boolean) => {
+    const balance = useAppStore.getState().rewards.balance;
+    FamilyControlsModule.updateShieldBalance(balance, focusActive || undefined).catch((error) => {
+      console.error('Failed to update shield for desktop session:', error);
+    });
+  };
+
   const remoteUserId = useAppStore((s) => s.auth.user?.id);
   const applyRemoteRef = useRef<(active: ActiveSessionCore | null) => void>(() => {});
 
@@ -1996,6 +2008,30 @@ export default function FocusScreen() {
       // Our own writes echo back over the socket. Only the desktop's actions are
       // worth following — either it started this session, or it stopped one of ours.
       if (active.origin !== 'desktop' && active.stoppedBy !== 'desktop') return;
+
+      // Following a start is a foreground-only act. ActivityKit refuses
+      // `Activity.request` outside the foreground ("Target is not foreground",
+      // ExpoLiveActivityModule.swift:401), and the rest of the start flow — shield,
+      // scheduled notification, running timer UI — is equally pointless on a phone
+      // nobody is holding. Events do reach us outside the foreground even though the
+      // subscription is nominally foreground-only: the socket survives for a moment
+      // after the app backgrounds, and a Phase 3 push-to-start wake mounts this
+      // screen with no UI at all, where the mount-time fetch below applies whatever
+      // it finds. Skip it there — the AppState 'active' refetch re-applies the start
+      // if it is still fresh, and until then the pushed Live Activity is already
+      // mirroring the timer.
+      if (!active.endedAt && AppState.currentState !== 'active') {
+        // Still mirror the *shield*, which is the half of a session that means
+        // something on a phone nobody is holding: blocked apps stay blocked
+        // either way, but the shield's own copy and actions are a UserDefaults
+        // blob only this app writes, and its default offers "unlock for N
+        // fruits" — an escape hatch out of a session the user just started from
+        // their laptop. Cheap and background-safe (a UserDefaults write, not
+        // ActivityKit). _layout's syncShieldConfiguration re-derives the same
+        // thing on every mount and foreground, so this is only the live edge.
+        syncShieldToRemoteSession(true);
+        return;
+      }
 
       const localRunning = isRunning || isSessionActive;
 
@@ -2027,9 +2063,18 @@ export default function FocusScreen() {
       }
 
       // Remote stop: the desktop finished the session this phone is running.
-      if (active.endedAt && active.stoppedBy === 'desktop' && localRunning) {
-        console.log('💻 Following desktop stop for session:', active.sessionId);
-        stopFromRemote(active);
+      if (active.endedAt && active.stoppedBy === 'desktop') {
+        if (localRunning) {
+          console.log('💻 Following desktop stop for session:', active.sessionId);
+          stopFromRemote(active);
+        } else {
+          // Nothing local to stop — but the shield may be held in focus mode for
+          // this session (above, or by syncShieldConfiguration on a background
+          // launch). Hand it back its unlock button. No second argument: the
+          // helper re-reads AsyncStorage, so a local session that is somehow
+          // still running keeps focus mode.
+          syncShieldToRemoteSession(false);
+        }
       }
     };
   });

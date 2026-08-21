@@ -1,8 +1,10 @@
 # Desktop App + Remote Shield Control — Design & Plan
 
-**Status:** Phases 1 and 5 done and verified against the live project. Phase 2 built,
-pending its migration being applied. Phases 0, 3–4 not started.
-**Date:** 2026-08-15 (Phase 1 landed and verified 2026-08-16; Phase 2 built 2026-08-16)
+**Status:** Phases 1 and 5 done and verified against the live project. Phases 2 and 3
+built, both pending their migrations being applied — and Phase 3 additionally pending an
+APNs auth key. Phases 0 and 4 not started.
+**Date:** 2026-08-15 (Phase 1 landed and verified 2026-08-16; Phase 2 built 2026-08-16;
+Phase 3 built 2026-08-20)
 
 > **Phase 1 as built.** `shared/` holds the session/tag row mappers plus the
 > types, activity-type normaliser and note clamp they need; `src/` re-exports
@@ -275,20 +277,17 @@ create table device_push_tokens (
 -- RLS: auth.uid() = user_id, matching every other syncable table
 ```
 
-**4. Edge function — and this one is not free**
+**4. Edge function — and this one is not free. ✅ BUILT in Phase 3**
 
 Every existing function pushes through **Expo Push Service** (`exp.host/--/api/v2/push/send`).
 Expo does not support `apns-push-type: widgets` or `liveactivity`. This needs a **direct
 APNs path**: an APNs auth key (`.p8`), ES256 JWT signing, and `POST` to
 `api.push.apple.com`. That's new infrastructure, not a variation on `heartbeat-blocklist-notify`.
 
-New function `session-remote-control`, invoked when a desktop client writes a session
-start/stop:
-
-- look up the user's widget token
-- send `apns-push-type: widgets`, `apns-priority: 10`
-- also send an `apns-push-type: liveactivity` update so the Dynamic Island / Lock Screen
-  timer tracks (this part works today with the tokens the fork already exposes)
+That path now exists as `supabase/functions/_shared/apns.ts` and is used by
+`session-remote-control` for the `liveactivity` half. Phase 4 adds the `widgets` half by
+calling the same `sendApnsPush()` with a different push type — the auth key is team-wide
+and topic-agnostic, so no new credential is needed.
 
 **5. Widget timeline provider**
 
@@ -375,9 +374,111 @@ elapsed time — the phone-was-closed case is what Phases 3 and 4 are for, and t
 writes that session's finished row itself. There is no toast when the phone follows a
 remote stop; adding user-facing copy means the full 8-language i18n pass.
 
-**Phase 3 — Live Activity push.** Timer follows on Lock Screen / Dynamic Island even when
-the app is closed. Uses tokens the fork already exposes. Requires the direct-APNs edge
-function, so this is where item 4 lands.
+**Phase 3 — Live Activity push. ✅ BUILT 2026-08-20, not yet verified against the live
+project.** Timer follows on Lock Screen / Dynamic Island even when the app is closed.
+
+What ships: `device_push_tokens` (migration `20260820_device_push_tokens.sql`),
+`LiveActivityPushService` on iOS, `_shared/apns.ts` + `_shared/liveActivityCopy.ts`, the
+`session-remote-control` function, and a `functions.invoke` after each desktop start/stop.
+
+*This phase mirrors a timer, not a session.* No shield, no `focus_sessions` row, no
+fruits on the phone — the desktop still writes the finished row for a session it started
+while the phone was closed, exactly as in Phase 2. Blocking apps remotely is Phase 4.
+
+**Two tokens, and the difference is the whole design.** `pushToStartTokenUpdates` is
+per-install, exists whether or not an activity is running, and is the only way to make a
+Live Activity appear on a phone whose app is force-quit. `activity.pushTokenUpdates` is
+per-*activity* and is the only way to update or end that one activity. So a start prefers
+the **update** token — the app keeps an idle "Start" card alive whenever the user has
+picked a tag, and turning that card into a running timer costs no banner and no new
+activity — and falls back to **push-to-start** only when there is no live activity to
+reuse. A stop always needs the update token; there is nothing to end without it.
+
+**Apple mandates an `alert` on push-to-start** ("Include an alert in the JSON payload").
+There is no quiet variant, so a remotely-started session on a closed phone shows a banner.
+The copy is localized in `_shared/liveActivityCopy.ts` (all 13 languages) and sent without
+a `sound`. The update path — the common one — has no alert at all.
+
+**Why the copy lives server-side.** A pushed Live Activity renders text the *server* sent:
+the phone's JS isn't running to call `i18n.t()`, so the four native button/status labels
+`laLabels()` normally supplies have to travel in the payload. `_shared/liveActivityCopy.ts`
+is a **copy of `liveActivity.*` from `src/i18n/locales/*.json`, not a re-translation** —
+the same SwiftUI view renders both, and they must not diverge depending on whether the
+session started on the phone or the laptop. It carries a regeneration one-liner.
+
+**The stop push reproduces `endAllFocusActivitiesWithState`**: `event: "end"` with the idle
+card as final content and no `dismissal-date`, which is ActivityKit's `.default` policy —
+out of the Dynamic Island immediately, Lock Screen banner for up to four hours. That is the
+behaviour the app already settled on, so a remote finish looks like a local one.
+
+*Known limits, by design:*
+
+- **The update token can only be captured while the app has a JS runtime.** A push-to-start
+  wakes the app in the background specifically to hand it over ("the system wakes your app
+  and you'll receive new push tokens to use for updates"), and `LiveActivityPushService.start()`
+  is the first statement of the root layout's init effect for that reason. If the event
+  still lands before the bundle runs, that session cannot be ended remotely — it goes stale
+  at its `stale-date` and ActivityKit ends it at the eight-hour mark. The fix, if this bites
+  in practice, is a native getter on the fork (`Activity.activities.compactMap { $0.pushToken }`)
+  polled on foreground; deliberately not built yet because it costs a prebuild.
+- **An update token is trusted for eight hours.** Past that, ActivityKit has ended the
+  activity on its own, and pushing at it fails *silently* — "the system ignores an
+  ActivityKit push notification if it arrives after the Live Activity ended", so APNs still
+  answers 200 and nothing signals a fallback. The app deletes the row when it sees the
+  activity end; the age check is the backstop for when it wasn't running to notice.
+- **The APNs environment is probed, not configured.** The fork's plugin hardcodes
+  `aps-environment: development`, so a locally-installed build yields sandbox tokens while
+  TestFlight/App Store yields production ones — and both hit the same function. It tries
+  production, then sandbox on `BadDeviceToken`. Set `APNS_ENV` to skip the probe.
+- **`bundle_id` is stored per token** rather than configured, because the topic must match
+  the app that owns the token and this project ships `com.path2us.bittersweet` and `.dev`.
+- **`color_scheme` is stored per token** because a Live Activity's colors live in its
+  `ActivityAttributes`, fixed at creation. When the *server* creates the activity it has to
+  be told which palette to use, and `user_settings.theme` can't answer — its usual value is
+  `system`, which resolves on the device.
+- **The Live Activity's End button still stops nothing remotely.** On a push-started card
+  `StopSessionIntent` runs against a phone with no local session; its Supabase write is
+  already guarded on `active.isActive`, so it doesn't invent a row, but it also can't call
+  `stop_active_session`. That needs the widget extension to reach Supabase for writes —
+  Phase 4 territory, where the entitlement work happens anyway.
+- **The Phase 2 follower had to be made foreground-only for real.** It was written as
+  foreground-only, but nothing enforced it: the socket outlives the app's transition to
+  background by a moment, and a push-to-start wake mounts the Focus screen with no UI,
+  where its mount-time `ActiveSessionService.fetch()` applied whatever it found. Following
+  a start there throws `Target is not foreground` — ActivityKit only lets the *app* call
+  `Activity.request` in the foreground — after the shield and the scheduled notification
+  have already been set up for a session the user can't see. The apply path now returns
+  early on a start when `AppState.currentState !== 'active'`; the foreground refetch
+  re-applies it if it is still inside the 60s window, and the pushed Live Activity is
+  mirroring the timer meanwhile, which is the whole point of this phase. Stops are
+  unaffected — ending an activity needs no foreground.
+- **The shield is not remote-controllable, and the gap is visible.** Blocked apps stay
+  blocked during a desktop session — blocking here is persistent, not per-session — but the
+  shield's copy and actions are a UserDefaults blob only the app (or the widget's native
+  start/stop intents) writes, and its default variant offers "unlock for N fruits". So a
+  session started from the laptop can be bought out of from the phone. The app now holds the
+  shield in focus mode whenever it can see the desktop row — `syncShieldConfiguration` on
+  mount/foreground, and the follower on live events — which covers a backgrounded app and a
+  push-to-start background wake. It cannot cover the case this phase was built for: a start
+  that reuses the **update** token never wakes the app, so no JS runs and the shield keeps
+  its idle copy until the next launch. Closing that needs code running on-device at push
+  time, which is Phase 4. Corollary in the other direction: a session that ends while the
+  app is closed leaves the shield in focus mode (no unlock button) until the next
+  foreground — the same staleness a local session already has, and why the app-side check is
+  bounded to eight hours.
+- **The LA subtitle stays English** (`"25m focus session"`), matching what the app itself
+  renders today. Localizing it is a separate fix and has to change both sides at once, or
+  the card's wording would depend on which device started the session.
+
+*Before this can be verified:* apply `20260820_device_push_tokens.sql`, create an APNs auth
+key (Certificates, Identifiers & Profiles → Keys → enable APNs; the `.p8` downloads once,
+and a key is team-wide so an existing one works if you still have the file), then:
+
+```
+supabase secrets set APNS_KEY_ID=XXXXXXXXXX APNS_TEAM_ID=YYYYYYYYYY APNS_ENV=auto
+supabase secrets set APNS_PRIVATE_KEY="$(cat AuthKey_XXXXXXXXXX.p8)"
+supabase functions deploy session-remote-control
+```
 
 **Phase 4 — Widget push + remote shield.** Entitlement, shared shield code, widget token,
 timeline apply. The swipe-away case.
@@ -395,7 +496,8 @@ A real CSP is set in `tauri.conf.json` (the scaffold ships `csp: null`), with a 
 `devCsp` allowing the Vite HMR websocket. Both allow `https://*.supabase.co` and
 `wss://*.supabase.co` — the wss entry is what Realtime needs.
 
-Phases 1–2 are useful on their own and carry no native risk. Everything genuinely
+Phases 1–3 are useful on their own and carry no native risk — Phase 3 touches no Swift and
+needs no prebuild, only a migration, a secret and a function deploy. Everything genuinely
 uncertain is isolated in Phase 0 and Phase 4.
 
 ## Open questions
@@ -414,6 +516,11 @@ uncertain is isolated in Phase 0 and Phase 4.
 
 ## References
 
+- [Starting and updating Live Activities with ActivityKit push notifications](https://developer.apple.com/documentation/ActivityKit/starting-and-updating-live-activities-with-activitykit-push-notifications)
+  — payload shape, the mandatory `alert` on `start`, and the background wake that delivers
+  the update token
+- [Establishing a token-based connection to APNs](https://developer.apple.com/documentation/UserNotifications/establishing-a-token-based-connection-to-apns)
+  — the ES256 provider JWT in `_shared/apns.ts`
 - [WWDC25 — What's new in widgets](https://developer.apple.com/videos/play/wwdc2025/278/)
   ([notes](https://wwdcnotes.com/documentation/wwdc25-278-whats-new-in-widgets/)) — push type + budgeting
 - [Updating widgets with WidgetKit push notifications](https://developer.apple.com/documentation/WidgetKit/Updating-widgets-with-widgetkit-push-notifications)

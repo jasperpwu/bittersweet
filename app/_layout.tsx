@@ -31,6 +31,8 @@ import NetInfo from '@react-native-community/netinfo';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
 import { Toast } from '../src/components/ui/Toast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
+import { LiveActivityPushService } from '../src/services/LiveActivityPushService';
+import { ActiveSessionService } from '../src/services/ActiveSessionService';
 import { WidgetService } from '../src/services/WidgetService';
 import { syncWidgetTodos } from '../src/services/widgetTodos';
 import { syncHealthKitWorkouts } from '../src/services/health/syncHealthKitWorkouts';
@@ -283,6 +285,39 @@ export default function RootLayout() {
     }
   };
 
+  /**
+   * Is a focus session running on the *desktop* right now?
+   *
+   * The shield's copy and actions are a UserDefaults blob this app writes, and
+   * the local store knows nothing about a session started from the laptop — so
+   * without this check the phone keeps offering "unlock for N fruits" during a
+   * session the user deliberately started, which is the one thing a focus
+   * session is supposed to take away. Same shape of problem as the
+   * widget-started session below: a real session no local state records.
+   *
+   * Only `desktop` rows count. A local session is already detected through
+   * AsyncStorage, and treating our own row as authoritative would leave the
+   * shield stuck in focus mode forever if this phone ever stranded one.
+   */
+  const hasRunningDesktopSession = async (): Promise<boolean> => {
+    try {
+      const userId = useAppStore.getState().auth.user?.id;
+      if (!userId) return false;
+      const active = await ActiveSessionService.fetch(userId);
+      if (!active || active.endedAt || active.origin !== 'desktop') return false;
+      // Bound it by the same eight hours ActivityKit gives a Live Activity. The
+      // shield must not outlive the card that represents the session: past that
+      // the row is a leftover from a desktop that never wrote its stop, and a
+      // shield stuck in focus mode can never be unlocked from this phone.
+      return Date.now() - active.startedAt.getTime() < 8 * 60 * 60 * 1000;
+    } catch (error) {
+      // A shield left in its previous state beats blocking the launch path on
+      // the network — the next trigger re-runs this.
+      console.warn('⚠️ Could not check for a desktop session:', error);
+      return false;
+    }
+  };
+
   const syncShieldConfiguration = async (trigger: string) => {
     try {
       const store = useAppStore.getState();
@@ -300,6 +335,9 @@ export default function RootLayout() {
       const widgetSession = WidgetService.readWidgetStartedSession();
       if (widgetSession) {
         console.log('🛡️ Widget-started focus session detected, keeping shield in focus mode');
+        await FamilyControlsModule.updateShieldBalance(store.rewards.balance, true);
+      } else if (await hasRunningDesktopSession()) {
+        console.log('🛡️ Desktop-started focus session detected, keeping shield in focus mode');
         await FamilyControlsModule.updateShieldBalance(store.rewards.balance, true);
       } else {
         await FamilyControlsModule.updateShieldBalance(store.rewards.balance);
@@ -329,6 +367,16 @@ export default function RootLayout() {
 
   // Initialize stores and global error handling
   useEffect(() => {
+    // First, before anything that can await. A push-to-start push wakes this app
+    // in the background purely to hand over the new activity's update push token
+    // (Apple: "the system wakes your app and you'll receive new push tokens to
+    // use for updates"), and expo-modules drops an event that has no listener
+    // yet. Without that token the desktop can start a Live Activity but never
+    // end one. The remaining race — the token arriving before the JS bundle has
+    // run at all — is why LiveActivityPushService also re-registers on every
+    // subsequent activity.
+    LiveActivityPushService.start();
+
     initializeUnifiedStore();
     configureCrisp();
 
@@ -433,9 +481,8 @@ export default function RootLayout() {
             try {
               const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
               if (currentSelectionId) {
-                const { FamilyControlsModule } = await import(
-                  '../src/modules/BitterSweetFamilyControls'
-                );
+                const { FamilyControlsModule } =
+                  await import('../src/modules/BitterSweetFamilyControls');
                 await FamilyControlsModule.removeRestrictions(currentSelectionId);
                 await FamilyControlsModule.clearShieldConfiguration();
               }
@@ -505,9 +552,8 @@ export default function RootLayout() {
               try {
                 const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
                 if (currentSelectionId) {
-                  const { FamilyControlsModule } = await import(
-                    '../src/modules/BitterSweetFamilyControls'
-                  );
+                  const { FamilyControlsModule } =
+                    await import('../src/modules/BitterSweetFamilyControls');
                   await FamilyControlsModule.removeRestrictions(currentSelectionId);
                   await FamilyControlsModule.clearShieldConfiguration();
                 }
@@ -679,9 +725,8 @@ export default function RootLayout() {
                   try {
                     const currentSelectionId = useAppStore.getState().blocklist.currentSelectionId;
                     if (currentSelectionId) {
-                      const { FamilyControlsModule } = await import(
-                        '../src/modules/BitterSweetFamilyControls'
-                      );
+                      const { FamilyControlsModule } =
+                        await import('../src/modules/BitterSweetFamilyControls');
                       await FamilyControlsModule.removeRestrictions(currentSelectionId);
                       await FamilyControlsModule.clearShieldConfiguration();
                     }
@@ -790,6 +835,14 @@ export default function RootLayout() {
 
             // Register push token after sign-in
             PushNotificationService.registerPushToken();
+
+            // File this device's ActivityKit push tokens under the account that
+            // just became current. Separate from the call above in every way —
+            // different tokens, different APNs topic, no notification permission
+            // involved — and needed here because ActivityKit hands them over at
+            // launch, which on a cold start is before the session is restored and
+            // on a sign-in was hours ago. See LiveActivityPushService.
+            LiveActivityPushService.syncToCurrentUser().catch(() => {});
 
             // Record activity immediately on sign-in (captures timezone for the
             // re-engagement cron even if the app is never backgrounded).

@@ -159,22 +159,33 @@ export const DateSelector: FC<DateSelectorProps> = ({
   onDateSelect,
 }) => {
   const { width: screenWidth } = useWindowDimensions();
-  const flatListRef = useRef<FlatList>(null);
   const lastScrolledIndex = useRef(CENTER_INDEX);
-  const isUserScrolling = useRef(false);
 
   // Calculate which week index the selected date falls on
   const selectedWeekIndex = CENTER_INDEX + getWeekOffset(selectedDate);
 
-  // Scroll to the correct week when selectedDate changes (e.g. from timeline swipe or "Today" button)
+  // The week the strip is parked on is driven by this prop rather than by an
+  // imperative `scrollToIndex`. Scroll *commands* are silently dropped on this
+  // stack — `ScrollView.scrollTo` bails out without warning when
+  // `getNativeScrollRef()` is null — so a command-based jump never moved the
+  // strip when `selectedDate` changed from a timeline swipe. Fabric applies
+  // `contentOffset` on every props change where the value differs
+  // (RCTScrollViewComponentView `updateProps`), which is the same path that
+  // already parks the strip on today's week at mount.
+  //
+  // This does not fight a user drag: the prop only changes when the *week*
+  // changes, and by the time `onMomentumScrollEnd` reports a new week the
+  // native offset is already there, so re-applying it is a no-op.
+  const contentOffset = useMemo(
+    () => ({ x: selectedWeekIndex * screenWidth, y: 0 }),
+    [selectedWeekIndex, screenWidth]
+  );
+
+  // Keep the drag bookkeeping in sync when the week changes from outside the
+  // strip (timeline swipe, "Back to today"), so the next drag compares against
+  // the week actually on screen.
   useEffect(() => {
-    if (selectedWeekIndex !== lastScrolledIndex.current) {
-      lastScrolledIndex.current = selectedWeekIndex;
-      flatListRef.current?.scrollToIndex({
-        index: selectedWeekIndex,
-        animated: true,
-      });
-    }
+    lastScrolledIndex.current = selectedWeekIndex;
   }, [selectedWeekIndex]);
 
   const handleMomentumScrollEnd = useCallback((event: any) => {
@@ -220,7 +231,6 @@ export const DateSelector: FC<DateSelectorProps> = ({
   return (
     <View style={{ paddingVertical: 12 }}>
       <FlatList
-        ref={flatListRef}
         data={weekIndices}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
@@ -228,11 +238,23 @@ export const DateSelector: FC<DateSelectorProps> = ({
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         getItemLayout={getItemLayout}
+        // `initialScrollIndex` seeds the render window at today's week (cells
+        // CENTER_INDEX..+10), but on its own it also makes VirtualizedList issue a
+        // `scrollTo` once content size lands — and that command silently no-ops on
+        // iOS since SDK 57, leaving the viewport at x=0 where nothing is rendered
+        // (a blank strip). Supplying `contentOffset` makes the start position a
+        // native prop instead of a command; VirtualizedList explicitly skips its
+        // own scroll when it is set (`_maybeScrollToInitialScrollIndex`), so the
+        // two work together rather than fight.
         initialScrollIndex={CENTER_INDEX}
+        contentOffset={contentOffset}
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        // Defaults to 10, so mount built 10 week pages (70 animated day cells) for
+        // the one that is visible. Matched to windowSize so the initial render
+        // region equals the steady-state window instead of over-shooting it.
+        initialNumToRender={3}
         windowSize={3}
         maxToRenderPerBatch={3}
-        removeClippedSubviews
       />
     </View>
   );

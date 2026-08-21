@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../../config/supabase';
 import { SyncService } from '../../services/sync/SyncService';
+import { LiveActivityPushService } from '../../services/LiveActivityPushService';
 import { PENDING_REFERRAL_KEY } from '../../hooks/useDeepLinkHandler';
 
 export interface AuthUser {
@@ -387,6 +388,17 @@ export const createAuthSlice = (set: any, get: any): AuthSlice => ({
         );
       } catch (flushError) {
         console.warn('[signOut] Pre-sign-out flush failed:', flushError);
+      }
+
+      // Drop this device's ActivityKit push tokens while the token is still
+      // valid, for the same reason as the flush above — device_push_tokens is
+      // RLS'd on auth.uid(), so a delete attempted after sign-out matches
+      // nothing. Left behind, the push-to-start token would still be live and
+      // the next person to use this phone would get the previous account's
+      // sessions on their Lock Screen.
+      const signedOutUserId = get().auth.user?.id;
+      if (signedOutUserId) {
+        await LiveActivityPushService.clear(signedOutUserId);
       }
 
       const { error } = await supabase.auth.signOut();

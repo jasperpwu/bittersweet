@@ -14,6 +14,31 @@ import { supabase } from '../supabase';
 const MIN_RECORDED_MINUTES = 1;
 
 /**
+ * Ask the phone's Live Activity to follow what we just did.
+ *
+ * Realtime already tells a *foregrounded* phone (Phase 2), but a websocket dies
+ * the moment the app is backgrounded or swiped away. This goes out over APNs
+ * instead, and a Live Activity is drawn by the system's widget extension, so the
+ * Lock Screen timer starts even with no app process at all.
+ *
+ * Deliberately fire-and-forget: the session is already committed in the database
+ * by the time this runs, and a failed push must never make the desktop think the
+ * start or stop didn't happen. The function derives everything it sends from
+ * `active_sessions` itself — we pass only which transition we made.
+ */
+async function notifyPhone(event: 'start' | 'stop') {
+  try {
+    const { data, error } = await supabase.functions.invoke('session-remote-control', {
+      body: { event },
+    });
+    if (error) console.warn('[ActiveSession] remote-control push failed:', error.message);
+    else if (data?.skipped) console.info('[ActiveSession] remote-control skipped:', data.skipped);
+  } catch (e) {
+    console.warn('[ActiveSession] remote-control push threw:', e);
+  }
+}
+
+/**
  * The user's live session, if any — the record iOS follows.
  *
  * Start and stop go through the `start_active_session` / `stop_active_session`
@@ -99,6 +124,7 @@ export function useActiveSession(userId: string | undefined) {
           return;
         }
         setActive(rowToActiveSession(data as ActiveSessionRow));
+        void notifyPhone('start');
       } finally {
         setBusy(false);
       }
@@ -126,6 +152,7 @@ export function useActiveSession(userId: string | undefined) {
 
       const stopped = rowToActiveSession(data as ActiveSessionRow);
       setActive(stopped);
+      void notifyPhone('stop');
 
       const endedAt = stopped.endedAt ?? new Date();
       const minutes = elapsedMinutes(stopped, endedAt.getTime());

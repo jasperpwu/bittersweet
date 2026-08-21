@@ -20,8 +20,6 @@ import Animated, {
   withSequence,
   runOnJS,
   Easing,
-  FadeIn,
-  FadeOut,
 } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from 'expo-router';
@@ -869,12 +867,12 @@ export default function JournalScreen() {
 
           {/* Jump to Today floating button */}
           {showJumpToToday && (
-            <Animated.View
-              entering={FadeIn.duration(200)}
-              exiting={FadeOut.duration(200)}
+            <View
               style={{
                 position: 'absolute',
-                bottom: 12,
+                // The tab bar overlaps the bottom of the scene by the home-indicator
+                // inset, so a small `bottom` lands underneath it and never shows.
+                bottom: insets.bottom + 36,
                 right: 20,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
@@ -882,17 +880,16 @@ export default function JournalScreen() {
                 shadowRadius: 4,
                 elevation: 5,
               }}>
-              <Button
-                variant="ghost"
-                className="flex-row rounded-full px-4 py-2.5"
-                style={{ backgroundColor: colors.primary + '80' }}
-                onPress={handleJumpToToday}>
+              <Pressable
+                className="flex-row items-center rounded-full bg-primary/80 px-4 py-2.5 active:opacity-80"
+                onPress={handleJumpToToday}
+                accessibilityRole="button">
                 <Ionicons name="today-outline" size={18} color={colors.white} />
                 <Typography variant="subtitle-14-semibold" color="white" className="ml-1.5">
                   {t('journal.backToToday')}
                 </Typography>
-              </Button>
-            </Animated.View>
+              </Pressable>
+            </View>
           )}
         </View>
       </>

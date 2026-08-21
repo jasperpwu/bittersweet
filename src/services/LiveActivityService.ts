@@ -13,6 +13,16 @@ const laLabels = () => ({
   unblockExpiredLabel: i18n.t('liveActivity.unblockExpired'),
 });
 
+/**
+ * ActivityKit lets the *app* create an activity only while it is in the
+ * foreground; outside it, `Activity.request` throws "Target is not foreground"
+ * (a push-started activity is the exception — the system creates that one).
+ * Worth telling apart from a real failure: it is a refusal, not a broken build,
+ * and the "rebuild after adding the plugin" hint points the reader the wrong way.
+ */
+const isNotForegroundError = (error: unknown): boolean =>
+  String((error as { message?: string })?.message ?? error).includes('Target is not foreground');
+
 // Color palettes for Live Activity based on system appearance
 const LA_COLORS = {
   light: {
@@ -180,6 +190,10 @@ export class LiveActivityService {
         return undefined;
       }
     } catch (error) {
+      if (isNotForegroundError(error)) {
+        console.warn('⏸️ Live Activity not created — the app is not in the foreground');
+        return undefined;
+      }
       console.error('❌ Error starting Live Activity:', error);
       console.error('💡 Hint: Make sure to rebuild the app after adding expo-live-activity plugin');
       return undefined;
@@ -323,6 +337,10 @@ export class LiveActivityService {
         return undefined;
       }
     } catch (error) {
+      if (isNotForegroundError(error)) {
+        console.warn('⏸️ Live Activity not created — the app is not in the foreground');
+        return undefined;
+      }
       console.error('❌ Error starting Live Activity:', error);
       console.error('💡 Hint: Make sure to rebuild the app after adding expo-live-activity plugin');
       return undefined;
@@ -381,6 +399,12 @@ export class LiveActivityService {
       const activityId = await LiveActivity.startOrUpdateActivity(state, config);
       return activityId || undefined;
     } catch (error) {
+      if (isNotForegroundError(error)) {
+        console.warn(
+          '⏸️ Infinite focus Live Activity not created — the app is not in the foreground'
+        );
+        return undefined;
+      }
       console.error('Error starting infinite focus Live Activity:', error);
       return undefined;
     }
