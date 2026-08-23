@@ -51,6 +51,10 @@ const withHomeWidget = (config) => {
         "ToggleTodoIntent.swift",
         "TodoWidget.swift",
         "TodoWidgetView.swift",
+        // Widget-extension only: the WidgetKit push handler and the code that
+        // applies a desktop-started session. Nothing in the main app references
+        // it — the app has Realtime for the same job (Phase 2).
+        "RemoteSessionSync.swift",
       ];
 
       // Files also needed in main app target (for LiveActivityIntent to run in app process)
@@ -142,6 +146,63 @@ const withHomeWidget = (config) => {
           fs.writeFileSync(liveActivityInfoPlistPath, plist.default.build(infoPlist), "utf8");
           console.log("[withHomeWidget] Injected REACT_NATIVE_DEVICE_ACTIVITY_APP_GROUP into live activity Info.plist");
         }
+      }
+
+      // 3c. Give the widget extension the Push Notifications capability.
+      //
+      // WidgetKit push (iOS 26) is what lets a desktop start/stop reach a phone
+      // whose app has been swiped away — see targets/HomeWidget/RemoteSessionSync.swift.
+      // Apple: "Add the capability to use remote push notifications to your
+      // widget extension target in Xcode." The extension needs its own
+      // `aps-environment`; the main app's does not cover it.
+      //
+      // The value is copied from the main app rather than hardcoded because the
+      // two must agree — a sandbox app token alongside a production widget token
+      // would send half this feature's pushes to the wrong APNs host. The
+      // expo-live-activity fork hardcodes `development` on the app today, so in
+      // practice that is what gets copied.
+      //
+      // NOT added here: com.apple.developer.family-controls. The remote shield
+      // change is a UserDefaults write to the shield *configuration* in the app
+      // group, which the already-entitled ShieldConfiguration extension reads —
+      // no Screen Time API is called from the widget, so no per-bundle-ID Family
+      // Controls (Distribution) request is needed for this target.
+      const widgetEntitlementsPath = path.join(
+        liveActivityDir,
+        "bittersweetmobileLiveActivity.entitlements"
+      );
+      const mainAppEntitlementsPath = path.join(
+        mainAppDir,
+        "bittersweetmobile.entitlements"
+      );
+      if (fs.existsSync(widgetEntitlementsPath)) {
+        const widgetEntitlements = plist.default.parse(
+          fs.readFileSync(widgetEntitlementsPath, "utf8")
+        );
+        let apsEnvironment = "development";
+        if (fs.existsSync(mainAppEntitlementsPath)) {
+          const mainAppEntitlements = plist.default.parse(
+            fs.readFileSync(mainAppEntitlementsPath, "utf8")
+          );
+          if (mainAppEntitlements["aps-environment"]) {
+            apsEnvironment = mainAppEntitlements["aps-environment"];
+          }
+        }
+        if (widgetEntitlements["aps-environment"] !== apsEnvironment) {
+          widgetEntitlements["aps-environment"] = apsEnvironment;
+          fs.writeFileSync(
+            widgetEntitlementsPath,
+            plist.default.build(widgetEntitlements),
+            "utf8"
+          );
+          console.log(
+            `[withHomeWidget] Set aps-environment=${apsEnvironment} on widget extension entitlements`
+          );
+        }
+      } else {
+        console.warn(
+          "[withHomeWidget] Widget extension entitlements not found, skipping aps-environment"
+        );
       }
 
       // 3b. Raise widget extension deployment target to iOS 18 for

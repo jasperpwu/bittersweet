@@ -158,6 +158,11 @@ struct StartSessionIntent: LiveActivityIntent {
     // set it here for immediate effect when starting from the widget.
     WidgetDataManager.shared.setShieldForFocusMode()
 
+    // This session is the user's own, so nothing here is mirrored from the
+    // desktop any more. RemoteSessionSync would refuse to touch it anyway (it
+    // matches on start time), but dropping the marker keeps the state honest.
+    WidgetDataManager.shared.clearRemoteSession()
+
     // Notify friends immediately via Supabase (fire-and-forget)
     SupabaseClient.setFocusing(true)
 
@@ -303,6 +308,20 @@ struct StopSessionIntent: LiveActivityIntent {
     // --- Supabase sync (fire-and-forget) ---
     // Clear focusing status immediately so friends see the user is done
     SupabaseClient.setFocusing(false)
+
+    // Close the live-session record, outside the `active.isActive` guard below
+    // on purpose. On a Live Activity that the *desktop* pushed onto this phone
+    // (Phase 3) there is no local session at all, so everything below is
+    // correctly skipped — but the End button on that card still has to stop the
+    // session, or the desktop keeps showing a timer the user just ended. The RPC
+    // no-ops when nothing is running, so the ordinary local-stop case is
+    // unaffected apart from one redundant call.
+    SupabaseClient.stopActiveSession()
+
+    // The mirrored-session marker has to go with it: leaving it behind would let
+    // RemoteSessionSync think it still owns the widget's state and clear a
+    // session the user starts next.
+    WidgetDataManager.shared.clearRemoteSession()
 
     // Best-effort record of the completed session straight from native, so it
     // survives even if the app is never reopened (e.g. user deletes it after

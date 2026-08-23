@@ -74,6 +74,21 @@ struct SmallWidgetProvider: TimelineProvider {
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<HomeWidgetEntry>) -> Void) {
+    // A WidgetKit push reloads timelines rather than delivering a payload, so
+    // this is where a desktop start/stop lands on a phone whose app is closed.
+    // Awaited before reading session data — the entry has to reflect the session
+    // the push was announcing, not the one from before it. See RemoteSessionSync.
+    if #available(iOS 17.0, *) {
+      Task {
+        await RemoteSessionSync.refreshIfNeeded()
+        completion(buildTimeline())
+      }
+      return
+    }
+    completion(buildTimeline())
+  }
+
+  private func buildTimeline() -> Timeline<HomeWidgetEntry> {
     let session = WidgetDataManager.shared.getSessionData()
     let unlockData = WidgetDataManager.shared.getUnlockSessionData()
     let tag = resolveSelectedTag()
@@ -116,72 +131,7 @@ struct SmallWidgetProvider: TimelineProvider {
     }
 
     let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
-    completion(Timeline(entries: entries, policy: .after(refreshDate)))
-  }
-}
-
-// MARK: - Medium Widget Static Provider (iOS < 17 fallback, no configuration)
-
-struct MediumWidgetStaticProvider: TimelineProvider {
-  typealias Entry = HomeWidgetEntry
-
-  func placeholder(in context: Context) -> HomeWidgetEntry {
-    makeEntry(date: Date(), session: nil, tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil, tagDuration: nil, gridItems: [])
-  }
-
-  func getSnapshot(in context: Context, completion: @escaping (HomeWidgetEntry) -> Void) {
-    let session = WidgetDataManager.shared.getSessionData()
-    let unlockData = WidgetDataManager.shared.getUnlockSessionData()
-    let tags = WidgetDataManager.shared.getTagList()
-    let entry = makeEntry(
-      date: Date(), session: session, unlockData: unlockData,
-      tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
-      tagDuration: nil, gridItems: buildGridItems(from: tags, count: 4)
-    )
-    completion(entry)
-  }
-
-  func getTimeline(in context: Context, completion: @escaping (Timeline<HomeWidgetEntry>) -> Void) {
-    let session = WidgetDataManager.shared.getSessionData()
-    let unlockData = WidgetDataManager.shared.getUnlockSessionData()
-    let tags = WidgetDataManager.shared.getTagList()
-    let gridItems = buildGridItems(from: tags, count: 4)
-
-    let currentEntry = makeEntry(
-      date: Date(), session: session, unlockData: unlockData,
-      tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
-      tagDuration: nil, gridItems: gridItems
-    )
-
-    var entries = [currentEntry]
-
-    if let session = session, session.isActive, !session.isInfinite, session.endTime > 0 {
-      let endDate = Date(timeIntervalSince1970: session.endTime / 1000)
-      if endDate > Date() {
-        let bonusEntry = makeEntry(
-          date: endDate, session: session, unlockData: unlockData,
-          tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
-          tagDuration: nil, gridItems: gridItems
-        )
-        entries.append(bonusEntry)
-      }
-    }
-
-    // For active unlock sessions, add an entry at endTime so widget auto-refreshes to idle
-    if let unlock = unlockData, unlock.isActive, unlock.endTime > 0 {
-      let unlockEndDate = Date(timeIntervalSince1970: unlock.endTime / 1000)
-      if unlockEndDate > Date() {
-        let unlockExpiryEntry = makeEntry(
-          date: unlockEndDate, session: session, unlockData: nil,
-          tagId: nil, tagName: nil, tagIcon: nil, tagColor: nil,
-          tagDuration: nil, gridItems: gridItems
-        )
-        entries.append(unlockExpiryEntry)
-      }
-    }
-
-    let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
-    completion(Timeline(entries: entries, policy: .after(refreshDate)))
+    return Timeline(entries: entries, policy: .after(refreshDate))
   }
 }
 
@@ -209,6 +159,8 @@ struct MediumWidgetProvider: AppIntentTimelineProvider {
   }
 
   func timeline(for configuration: SelectGridIntent, in context: Context) async -> Timeline<HomeWidgetEntry> {
+    await RemoteSessionSync.refreshIfNeeded()
+
     let session = WidgetDataManager.shared.getSessionData()
     let unlockData = WidgetDataManager.shared.getUnlockSessionData()
     let tags = WidgetDataManager.shared.getTagList()
@@ -267,19 +219,47 @@ struct MediumWidgetProvider: AppIntentTimelineProvider {
 
 // MARK: - Widget Definitions
 
+// The pre-iOS-17 MediumWidgetStaticProvider fallback was removed with the push
+// handler, not by accident: `some WidgetConfiguration` unifies its branches
+// through availability erasure (SE-0360), which permits exactly ONE `#available`
+// alternative — a second one fails with "return statements do not have matching
+// underlying types". The iOS 17 branch was already dead code, since
+// plugins/withHomeWidget.js pins this extension's deployment target to iOS 18,
+// so iOS 26 vs. everything-else is the only split that can still occur.
+//
+// `.pushHandler` is what subscribes a widget to WidgetKit push (iOS 26+), and it
+// is declared per widget rather than per extension: only widgets carrying it are
+// reloaded when a push arrives. Both focus widgets get it because both render
+// session state and both providers drive RemoteSessionSync — which is also why a
+// remote shield change reaches this phone only if one of them is on a Home
+// Screen. The configuration has to be spelled out twice: the modifier changes the
+// concrete type, so it cannot be applied conditionally to a shared value.
 struct SmallFocusWidget: Widget {
   let kind: String = "com.path2us.bittersweet.HomeScreenWidget"
 
   var body: some WidgetConfiguration {
-    StaticConfiguration(
-      kind: kind,
-      provider: SmallWidgetProvider()
-    ) { entry in
-      HomeScreenWidgetView(entry: entry)
+    if #available(iOS 26.0, *) {
+      return StaticConfiguration(
+        kind: kind,
+        provider: SmallWidgetProvider()
+      ) { entry in
+        HomeScreenWidgetView(entry: entry)
+      }
+      .configurationDisplayName("Focus Session")
+      .description("Quick-start a focus session with one tap.")
+      .supportedFamilies([.systemSmall])
+      .pushHandler(FocusWidgetPushHandler.self)
+    } else {
+      return StaticConfiguration(
+        kind: kind,
+        provider: SmallWidgetProvider()
+      ) { entry in
+        HomeScreenWidgetView(entry: entry)
+      }
+      .configurationDisplayName("Focus Session")
+      .description("Quick-start a focus session with one tap.")
+      .supportedFamilies([.systemSmall])
     }
-    .configurationDisplayName("Focus Session")
-    .description("Quick-start a focus session with one tap.")
-    .supportedFamilies([.systemSmall])
   }
 }
 
@@ -287,7 +267,7 @@ struct MediumFocusWidget: Widget {
   let kind: String = "com.path2us.bittersweet.MediumFocusWidget"
 
   var body: some WidgetConfiguration {
-    if #available(iOS 17.0, *) {
+    if #available(iOS 26.0, *) {
       return AppIntentConfiguration(
         kind: kind,
         intent: SelectGridIntent.self,
@@ -299,10 +279,12 @@ struct MediumFocusWidget: Widget {
       .description("Start any focus session from a tag grid.")
       .supportedFamilies([.systemMedium])
       .contentMarginsDisabled()
+      .pushHandler(FocusWidgetPushHandler.self)
     } else {
-      return StaticConfiguration(
+      return AppIntentConfiguration(
         kind: kind,
-        provider: MediumWidgetStaticProvider()
+        intent: SelectGridIntent.self,
+        provider: MediumWidgetProvider()
       ) { entry in
         HomeScreenWidgetView(entry: entry)
       }

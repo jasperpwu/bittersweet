@@ -35,6 +35,24 @@ enum WidgetKeys {
   static let supabaseAccessToken = "supabaseAccessToken"
   static let groveShowLiveStatus = "groveShowLiveStatus"
   static let groveActiveChallenges = "groveActiveChallenges"
+
+  // MARK: Remote (desktop-driven) session — Phase 4
+  //
+  // The WidgetKit push token, written by FocusWidgetPushHandler in the widget
+  // extension and read back out by JS (WidgetPushService) to file in Supabase.
+  // The extension also uploads it itself, because a phone whose app is never
+  // reopened would otherwise never register one — see RemoteSessionSync.swift.
+  static let widgetPushToken = "widgetPushToken"
+  static let widgetPushTokenUpdatedAt = "widgetPushTokenUpdatedAt"
+  // `session_id` of the desktop-started session this device is currently
+  // mirroring, or absent. This is what separates "the widget put the phone into
+  // focus mode on behalf of the desktop" from "the user started a session here",
+  // so the remote path can only ever clean up state it created itself.
+  static let remoteSessionId = "widgetRemoteSessionId"
+  // Throttle stamp for the active_sessions read in the timeline provider. A
+  // single push reloads every widget kind at once, so without this each one
+  // would fire its own request for the same row.
+  static let remoteSessionCheckedAt = "widgetRemoteSessionCheckedAt"
 }
 
 // UserDefaults keys used by react-native-device-activity for shield configuration
@@ -594,6 +612,67 @@ struct WidgetDataManager {
       return []
     }
     return array
+  }
+
+  // MARK: - Remote (desktop-driven) Session — Phase 4
+
+  func getWidgetPushToken() -> String? {
+    return userDefaults?.string(forKey: WidgetKeys.widgetPushToken)
+  }
+
+  /// Persist a freshly issued WidgetKit push token. Returns false when the token
+  /// is unchanged, so the caller can skip the upload — WidgetKit hands the same
+  /// token back on every widget add/remove, not only when it rotates.
+  @discardableResult
+  func writeWidgetPushToken(_ token: String) -> Bool {
+    guard getWidgetPushToken() != token else { return false }
+    userDefaults?.set(token, forKey: WidgetKeys.widgetPushToken)
+    userDefaults?.set(Date().timeIntervalSince1970 * 1000, forKey: WidgetKeys.widgetPushTokenUpdatedAt)
+    userDefaults?.synchronize()
+    return true
+  }
+
+  /// The desktop session this device is mirroring, with the start time it was
+  /// written with.
+  ///
+  /// The start time is what makes the marker safe. The id alone says "the widget
+  /// put a session here", but not whether that session is still the one on
+  /// screen — JS overwrites the same `widgetSessionData` key when the user
+  /// starts a session on the phone, and a marker that couldn't tell the two
+  /// apart would let the remote path clear a local session out from under them.
+  /// Start times are millisecond-precise and chosen by whoever started the
+  /// session, so matching one is proof the state is still ours.
+  func getRemoteSession() -> (sessionId: String, startTime: Double)? {
+    guard let dict = userDefaults?.dictionary(forKey: WidgetKeys.remoteSessionId),
+          let sessionId = dict["sessionId"] as? String,
+          let startTime = dict["startTime"] as? Double else {
+      return nil
+    }
+    return (sessionId, startTime)
+  }
+
+  func setRemoteSession(sessionId: String, startTime: Double) {
+    userDefaults?.set(
+      ["sessionId": sessionId, "startTime": startTime],
+      forKey: WidgetKeys.remoteSessionId
+    )
+    userDefaults?.synchronize()
+  }
+
+  func clearRemoteSession() {
+    userDefaults?.removeObject(forKey: WidgetKeys.remoteSessionId)
+    userDefaults?.synchronize()
+  }
+
+  /// True when enough time has passed to hit the network again, and stamps the
+  /// clock as a side effect so concurrent callers get exactly one yes.
+  func claimRemoteSessionCheck(minimumInterval: TimeInterval) -> Bool {
+    let now = Date().timeIntervalSince1970
+    let last = userDefaults?.double(forKey: WidgetKeys.remoteSessionCheckedAt) ?? 0
+    guard now - last >= minimumInterval else { return false }
+    userDefaults?.set(now, forKey: WidgetKeys.remoteSessionCheckedAt)
+    userDefaults?.synchronize()
+    return true
   }
 
   // MARK: - Widget Reload

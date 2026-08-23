@@ -32,6 +32,7 @@ import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
 import { Toast } from '../src/components/ui/Toast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
 import { LiveActivityPushService } from '../src/services/LiveActivityPushService';
+import { WidgetPushService } from '../src/services/WidgetPushService';
 import { ActiveSessionService } from '../src/services/ActiveSessionService';
 import { WidgetService } from '../src/services/WidgetService';
 import { syncWidgetTodos } from '../src/services/widgetTodos';
@@ -844,6 +845,12 @@ export default function RootLayout() {
             // on a sign-in was hours ago. See LiveActivityPushService.
             LiveActivityPushService.syncToCurrentUser().catch(() => {});
 
+            // Same idea for the WidgetKit push token, which is what lets a
+            // desktop start/stop change the *shield* on a phone whose app is
+            // closed (Phase 4). Captured natively by FocusWidgetPushHandler into
+            // the app group; this files it under the current account.
+            WidgetPushService.syncToCurrentUser().catch(() => {});
+
             // Record activity immediately on sign-in (captures timezone for the
             // re-engagement cron even if the app is never backgrounded).
             ActivityPingService.ping(true);
@@ -1120,6 +1127,10 @@ export default function RootLayout() {
         LiveActivityService.cleanupExpired();
         checkExpiredUnlockSessions('foreground');
         syncShieldConfiguration('foreground');
+        // iOS may have issued or rotated the widget push token while the app was
+        // away — the handler that receives it runs in the widget extension, so
+        // the app only ever finds out by re-reading the app group.
+        WidgetPushService.syncToCurrentUser().catch(() => {});
         syncWidgetTagList();
         syncWidgetGoalsData();
         adoptWidgetTodoToggles();

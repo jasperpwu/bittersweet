@@ -25,6 +25,14 @@ const TODO_LIST_KEY = 'widgetTodoList';
 const TODO_TOGGLES_KEY = 'widgetTodoToggles';
 const OPEN_NEW_TODO_KEY = 'widgetOpenNewTodo';
 const WIDGET_STRINGS_KEY = 'widgetStrings';
+// Phase 4 — written by RemoteSessionSync in the widget extension, which mirrors a
+// desktop-started session into the app group while this app is closed. Per-user
+// state, so it is part of the sign-out wipe below. The widget push TOKEN
+// deliberately is not: it identifies the device, not the account, and matches how
+// LiveActivityPushService keeps its token cache across a sign-out while deleting
+// the Supabase rows that tie it to a user.
+const REMOTE_SESSION_KEY = 'widgetRemoteSessionId';
+const REMOTE_SESSION_CHECKED_AT_KEY = 'widgetRemoteSessionCheckedAt';
 
 export interface WidgetSessionData {
   isActive: boolean;
@@ -512,6 +520,8 @@ export class WidgetService {
       ReactNativeDeviceActivity.userDefaultsRemove(TODO_LIST_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(TODO_TOGGLES_KEY);
       ReactNativeDeviceActivity.userDefaultsRemove(OPEN_NEW_TODO_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(REMOTE_SESSION_KEY);
+      ReactNativeDeviceActivity.userDefaultsRemove(REMOTE_SESSION_CHECKED_AT_KEY);
       reloadWidgetTimelines();
     } catch (error) {
       console.error('📱 [Widget] Failed to clear all widget data:', error);

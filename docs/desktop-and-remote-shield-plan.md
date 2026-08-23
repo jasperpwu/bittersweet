@@ -1,10 +1,11 @@
 # Desktop App + Remote Shield Control — Design & Plan
 
-**Status:** Phases 1 and 5 done and verified against the live project. Phases 2 and 3
-built, both pending their migrations being applied — and Phase 3 additionally pending an
-APNs auth key. Phases 0 and 4 not started.
+**Status:** Phases 1 and 5 done and verified against the live project. Phases 2, 3 and 4
+built, all pending their migrations being applied — and Phases 3/4 additionally pending an
+APNs auth key. Phase 4 also needs a prebuild (new entitlement + new Swift file). Phase 0
+was answered by documentation and the SDK rather than by a spike; see below.
 **Date:** 2026-08-15 (Phase 1 landed and verified 2026-08-16; Phase 2 built 2026-08-16;
-Phase 3 built 2026-08-20)
+Phase 3 built 2026-08-20; Phase 4 built 2026-08-21)
 
 > **Phase 1 as built.** `shared/` holds the session/tag row mappers plus the
 > types, activity-type normaliser and note clamp they need; `src/` re-exports
@@ -229,34 +230,40 @@ annotated *"main app process only"*. The widget extension currently **cannot** t
 
 ### Work items
 
-**1. Entitle the widget target**
+> **Superseded by what Phase 4 actually built (2026-08-21).** Items 1 and 2 below assumed
+> the widget would call Screen Time APIs. It does not — see Phase 0 in the phasing section.
+> Item 1 became `aps-environment` (Push Notifications) instead of `family-controls`, and
+> item 2 dissolved: there is no `ManagedSettingsStore` write to share, only a shield
+> *configuration* write that `WidgetDataManager` already had. Items 3–5 shipped as written.
 
-`app.config.js:123-145` gives `ShieldConfiguration`, `ShieldAction`, and
-`ActivityMonitorExtension` this block:
+**1. Entitle the widget target** — *as built: Push Notifications, not Family Controls.*
 
-```js
-entitlements: {
-  'com.apple.developer.family-controls': true,
-  'com.apple.security.application-groups': [APP_GROUP],
-},
-```
+`app.config.js` gives `ShieldConfiguration`, `ShieldAction`, and `ActivityMonitorExtension`
+the `family-controls` + app-group block. `bittersweetmobileLiveActivity` is listed there
+too but with app-groups only, and its generated `.entitlements` is written by
+`expo-live-activity`, not by that array.
 
-`HomeWidget` is built by `plugins/withHomeWidget.js`, not by that array, so it never got
-one. Add the same entitlements there. Family Controls (Distribution) is already approved
-for this app ID, so no new Apple request — but the provisioning profile for the widget
-target has to be regenerated.
+What Phase 4 adds is `aps-environment`, injected into the widget extension's entitlements
+by `plugins/withHomeWidget.js` and copied from the main app's rather than hardcoded — the
+two must agree, or half this feature's pushes go to the wrong APNs host. It is *not* given
+`family-controls`: nothing in the widget calls a Screen Time API, and adding it would have
+required a fresh per-bundle-ID Family Controls (Distribution) request from Apple.
 
-**2. Move the shield write into shared code**
+The provisioning profile for the widget target still has to be regenerated, and the widget
+extension's App ID needs the Push Notifications capability enabled.
 
-Extract the `ManagedSettingsStore` apply/clear into a file compiled into **both** the
-main app and the widget extension. Per CLAUDE.md, new Swift files must be registered in
-`plugins/withHomeWidget.js` in both `widgetExtensionFiles` and `mainAppFiles`.
+**2. Move the shield write into shared code** — *not needed.*
 
-Reuse the canonical blocklist key `"bittersweet-blocklist"` — do not introduce a second
-selection ID. When the widget applies a shield remotely it must still leave the three
-pieces of state consistent (store `currentSelectionId`, `blockedApps`, and
-`WidgetService.syncCurrentSelectionId()`); the widget can only write the app-group half,
-so the app reconciles the Zustand half on next foreground.
+There is no `ManagedSettingsStore` call to share. Blocking is persistent, so the tokens are
+already applied; what a session boundary changes is the shield's configuration blob in the
+app group, and `WidgetDataManager.setShieldForFocusMode()` /
+`restoreShieldForNonFocusMode()` already write it from either target. `RemoteSessionSync`
+just calls them.
+
+The canonical blocklist key `"bittersweet-blocklist"` is untouched by this phase for the
+same reason. The widget writes only the app-group half of the state; the app reconciles the
+Zustand half (`currentSelectionId`, `blockedApps`, `WidgetService.syncCurrentSelectionId()`)
+on next foreground, exactly as before.
 
 **3. Widget push token plumbing**
 
@@ -285,16 +292,19 @@ APNs path**: an APNs auth key (`.p8`), ES256 JWT signing, and `POST` to
 `api.push.apple.com`. That's new infrastructure, not a variation on `heartbeat-blocklist-notify`.
 
 That path now exists as `supabase/functions/_shared/apns.ts` and is used by
-`session-remote-control` for the `liveactivity` half. Phase 4 adds the `widgets` half by
+`session-remote-control` for the `liveactivity` half. Phase 4 added the `widgets` half by
 calling the same `sendApnsPush()` with a different push type — the auth key is team-wide
-and topic-agnostic, so no new credential is needed.
+and topic-agnostic, so no new credential is needed. ✅ BUILT in Phase 4.
 
-**5. Widget timeline provider**
+**5. Widget timeline provider** ✅ BUILT in Phase 4.
 
-On reload: read pending command from Supabase via the existing `SupabaseClient`, apply or
-clear the shield, write the new state into the app group, return a fresh timeline.
+On reload: read `active_sessions` via the existing `SupabaseClient`, apply or clear the
+shield configuration, write the new state into the app group, return a fresh timeline. The
+providers await `RemoteSessionSync.refreshIfNeeded()` before reading session data, so the
+entry reflects the session the push was announcing rather than the one before it.
 
-Keep it inside the widget memory budget — extensions here are tight, and the
+Kept inside the widget memory budget: one row, one `URLSession` call, no JSON decoding
+beyond `JSONSerialization` on a single object — extensions here are tight, and the
 `DeviceActivityMonitor` 6MB experience is a warning about how little room there is.
 
 ### Known limits — design around them, don't fight them
@@ -314,16 +324,40 @@ Keep it inside the widget memory budget — extensions here are tight, and the
 
 ## Phasing
 
-**Phase 0 — Spike (half a day).** Two unverified assumptions, both cheap to settle and
-both fatal to the plan if wrong:
+**Phase 0 — Spike. ✅ ANSWERED 2026-08-21, without needing the spike.** Both assumptions
+were settled from Apple's documentation and the installed iOS 26.5 SDK, and question 2
+turned out to be the wrong question.
 
-1. Does WidgetKit push arrive with notification permission denied? (Inferred from the
-   dedicated `push-type.widgets` topic; not confirmed in Apple's docs.)
-2. Can a widget extension with `family-controls` actually write `ManagedSettingsStore`?
-   (Extensions provably can — `ShieldAction` does — but no example of a *widget* doing it
-   was found.)
+1. *Does WidgetKit push arrive with notification permission denied?* **Yes.** Apple's own
+   page is explicit: "you can't use the User Notifications framework to register your
+   widget for push notifications. Instead, you use WidgetKit to obtain a push token."
+   The token comes from `WidgetPushHandler.pushTokenDidChange`, never from
+   `registerForRemoteNotifications`, and nothing in the path consults
+   `UNUserNotificationCenter` authorization. What it *does* need is the **Push
+   Notifications capability on the widget extension target** — an `aps-environment`
+   entitlement of its own; the app's does not cover it.
+2. *Can a widget extension with `family-controls` write `ManagedSettingsStore`?*
+   **Moot — nothing needs to.** Blocking in this app is persistent, not per-session:
+   `react-native-device-activity` keeps a saved blocklist and leaves the
+   `ManagedSettingsStore` tokens applied whether or not a session is running
+   (`updateBlockInternal`, its `Shared.swift`). What actually changes at a session
+   boundary is the shield's **configuration** — title, subtitle, and whether the primary
+   button offers "Unlock App" or merely closes — and that is a plain UserDefaults blob in
+   the app group, read by the already-entitled `ShieldConfiguration` extension when it
+   draws the shield. Writing it calls no Screen Time API at all.
 
-Do not build anything else until both are yes.
+   That removes the riskiest unknown in the plan *and* a shipping blocker nobody had
+   costed: Apple grants Family Controls **per bundle ID**, and "if your app includes a
+   Screen Time API app extension, submit the same request for the extension"
+   (*Configuring Family Controls*). Entitling the widget target would have meant a fresh
+   Family Controls (Distribution) request for
+   `com.path2us.bittersweet.bittersweetmobileLiveActivity` and a wait on Apple before the
+   next release could ship. Phase 4 as built needs neither.
+
+The API shape was read out of `WidgetKit.swiftinterface` in the iOS 26.5 SDK rather than
+from forum threads, per the house rule: `WidgetPushInfo { let token: Data }`,
+`protocol WidgetPushHandler { init(); func pushTokenDidChange(_:widgets:) }`, and
+`WidgetConfiguration.pushHandler(_:)`, all `@available(iOS 26.0, *)`.
 
 **Phase 1 — Desktop, read-only. ✅ DONE (2026-08-16).** Extract `shared/` (types + row
 mappers, plus the two util functions that have to move out of RN-importing files),
@@ -436,11 +470,13 @@ behaviour the app already settled on, so a remote finish looks like a local one.
   `ActivityAttributes`, fixed at creation. When the *server* creates the activity it has to
   be told which palette to use, and `user_settings.theme` can't answer — its usual value is
   `system`, which resolves on the device.
-- **The Live Activity's End button still stops nothing remotely.** On a push-started card
-  `StopSessionIntent` runs against a phone with no local session; its Supabase write is
-  already guarded on `active.isActive`, so it doesn't invent a row, but it also can't call
-  `stop_active_session`. That needs the widget extension to reach Supabase for writes —
-  Phase 4 territory, where the entitlement work happens anyway.
+- ~~**The Live Activity's End button still stops nothing remotely.**~~ **Fixed in Phase 4.**
+  On a push-started card `StopSessionIntent` runs against a phone with no local session; its
+  Supabase write is guarded on `active.isActive`, so it never invented a row, but it also
+  never called `stop_active_session`. It now does, unconditionally and outside that guard.
+  This needed no entitlement in the end — `StopSessionIntent` is a `LiveActivityIntent`, so
+  the system runs `perform()` in the *main app* process, which has had a working Supabase
+  client all along.
 - **The Phase 2 follower had to be made foreground-only for real.** It was written as
   foreground-only, but nothing enforced it: the socket outlives the app's transition to
   background by a moment, and a push-to-start wake mounts the Focus screen with no UI,
@@ -452,7 +488,11 @@ behaviour the app already settled on, so a remote finish looks like a local one.
   re-applies it if it is still inside the 60s window, and the pushed Live Activity is
   mirroring the timer meanwhile, which is the whole point of this phase. Stops are
   unaffected — ending an activity needs no foreground.
-- **The shield is not remote-controllable, and the gap is visible.** Blocked apps stay
+- ~~**The shield is not remote-controllable, and the gap is visible.**~~ **Closed by
+  Phase 4**, which is exactly the case described in the last two sentences of this bullet.
+  Kept here because the app-side reconciliation it describes is still what runs on
+  foreground, and is still the fallback whenever a widget push is not delivered (no widget
+  installed, iOS 25, or simply budgeted away). Blocked apps stay
   blocked during a desktop session — blocking here is persistent, not per-session — but the
   shield's copy and actions are a UserDefaults blob only the app (or the widget's native
   start/stop intents) writes, and its default variant offers "unlock for N fruits". So a
@@ -480,8 +520,99 @@ supabase secrets set APNS_PRIVATE_KEY="$(cat AuthKey_XXXXXXXXXX.p8)"
 supabase functions deploy session-remote-control
 ```
 
-**Phase 4 — Widget push + remote shield.** Entitlement, shared shield code, widget token,
-timeline apply. The swipe-away case.
+**Phase 4 — Widget push + remote shield. ✅ BUILT 2026-08-21, not yet verified against the
+live project.** The swipe-away case: a session started or stopped on the desktop now moves
+the *shield* on a phone whose app has been swiped away, with no notification permission and
+no banner.
+
+What ships: `targets/HomeWidget/RemoteSessionSync.swift` (the push handler and the apply
+logic), `aps-environment` on the widget extension via `plugins/withHomeWidget.js`,
+`SupabaseClient.fetchActiveSession/stopActiveSession/upsertWidgetPushToken`,
+`src/services/WidgetPushService.ts`, and the `widgets` half of `session-remote-control`.
+No new migration — `device_push_tokens` already allows `kind = 'widget'`.
+
+**The push carries no command.** A WidgetKit push is only ever
+`{"aps":{"content-changed":true}}`; it wakes the extension and reloads its timelines, and
+the timeline provider then reads `active_sessions` itself. That indirection is deliberate
+rather than a limitation of the payload: these pushes are explicitly opportunistic and
+budgeted, so one can arrive late — and a phone that applies *what is true when it wakes*
+cannot act on a stale command the way one replaying a payload would.
+
+**Only `origin == 'desktop'` rows are ever acted on**, matching `hasRunningDesktopSession()`
+in `_layout.tsx`, and the apply path can only undo state it wrote itself. The marker it
+leaves (`widgetRemoteSessionId`) stores the mirrored session's **start time** alongside its
+id, because the id alone proves only that the widget once wrote a session — not that the
+session still on screen is that one. JS writes the same `widgetSessionData` key when the
+user starts a session on the phone, and a marker that couldn't tell the two apart would let
+a desktop stop clear a local session out from under the user.
+
+**The Live Activity's End button now works on a push-started card.** `StopSessionIntent`
+calls `stop_active_session` unconditionally — outside the `active.isActive` guard, because
+on a card the desktop pushed there *is* no local session and everything else in that intent
+is correctly skipped. The RPC no-ops when nothing is running, so a local stop just makes one
+redundant call. This also closes a pre-existing gap: a widget-stopped session used to leave
+its `active_sessions` row open.
+
+*Known limits, by design:*
+
+- **A Focus widget on the Home Screen is the *quiet* path, not the only path.** WidgetKit
+  issues a push token in relation to the widgets a person has actually configured, and
+  `.pushHandler` is declared per widget — only widgets carrying it are reloaded by a push.
+  Both focus widgets carry it; the Goal and Todo widgets do not, since neither renders
+  session state.
+
+  Without a widget, a **start** falls back to push-to-start (added 2026-08-22). That is the
+  only other push that gets our code running on a closed phone: iOS wakes the whole app to
+  hand over the new activity's update token, and the woken app runs
+  `syncShieldConfiguration('mount')`, which sees the desktop row and flips the shield
+  itself. Phase 3 already depended on this wake; Phase 4 just stops the update-token
+  optimization from preempting it when the shield still needs moving.
+
+  The cost is a banner — Apple mandates an `alert` on push-to-start and there is no quiet
+  variant. So the real trade is **widget installed → silent** vs. **no widget → banner**,
+  not widget vs. nothing. Because push-to-start always creates a *new* activity, the
+  fallback first ends any idle "Start" card with a past `dismissal-date`, or the phone
+  would show two.
+
+  A remote **stop** has no equivalent: ending an activity by update token wakes nothing, so
+  a widget-less phone keeps the focus-mode shield until next foreground. That is the safe
+  direction to fail — enforced slightly too long rather than not at all — and
+  `syncShieldConfiguration` clears it on open.
+
+  Which path ran is visible in the function's JSON: `via`, plus `toWakeAppForShield: true`
+  when push-to-start was chosen deliberately rather than as a last resort after a dead
+  update token.
+- **Removing the pre-iOS-17 medium-widget fallback was forced, not opportunistic.**
+  `some WidgetConfiguration` unifies its branches through availability erasure (SE-0360),
+  which permits exactly **one** `#available` alternative — a second fails with "return
+  statements do not have matching underlying types". Adding an iOS 26 branch therefore
+  meant dropping the iOS 17 one. It was already dead code: `withHomeWidget.js` pins this
+  extension's deployment target to iOS 18. The same rule is why both branches need an
+  explicit `return`; without it the erasure does not kick in and the branches fail to
+  unify. `MediumWidgetStaticProvider` went with it.
+- **Priority 5, not 10.** Apple documents no priority rule for `apns-push-type: widgets`,
+  but it is a non-alerting wake in the same family as `background`, where 10 is rejected
+  outright — and delivery is opportunistic regardless, so 10 would buy nothing even if
+  accepted. If APNs answers `BadPriority`, this is the line to look at.
+- **The token is uploaded twice, on purpose.** `WidgetPushService` (JS) is the reliable
+  path — it knows who is signed in, and can re-file a token left under a previous account.
+  `FocusWidgetPushHandler` also POSTs directly, because it is the only path that works on
+  the phone this feature exists for: one whose app is never reopened after the token
+  changes. That copy is a fire-and-forget request from a process the system may suspend
+  mid-flight, which is exactly why it is not the only one.
+- **The widget writes the app-group half only.** It deliberately does *not* call
+  `writeWidgetStartedSession` — that marker is the JS adoption seam and would make the app
+  record a `focus_sessions` row for a session the desktop already owns and writes itself
+  (Phase 2). The Zustand half is reconciled by `syncShieldConfiguration` on next
+  foreground, as Phase 3 already arranged.
+- **A dropped push self-heals within 15 minutes.** Because the reconcile hangs off the
+  timeline provider rather than off the push, the widget's ordinary
+  `.after(15 minutes)` refresh policy re-runs it. Push is the fast path, not the only
+  path — which matters given Apple budgets these and delivers them opportunistically.
+- **The `active_sessions` read costs a request on ordinary timeline reloads too**, since a
+  push is indistinguishable from any other reload. It is one row, throttled to at most one
+  request per five seconds across all widget kinds (a push reloads every kind at once), and
+  short-circuits before the network when no user is signed in.
 
 **Phase 5 — Tauri wrap. ✅ DONE (2026-08-16), out of order.** Pulled forward because
 running the client in a browser tab isn't what "desktop app" means. `desktop/src-tauri/`,
@@ -497,8 +628,32 @@ A real CSP is set in `tauri.conf.json` (the scaffold ships `csp: null`), with a 
 `wss://*.supabase.co` — the wss entry is what Realtime needs.
 
 Phases 1–3 are useful on their own and carry no native risk — Phase 3 touches no Swift and
-needs no prebuild, only a migration, a secret and a function deploy. Everything genuinely
-uncertain is isolated in Phase 0 and Phase 4.
+needs no prebuild, only a migration, a secret and a function deploy.
+
+**Phase 4 is the one that needs a prebuild**, because it adds an entitlement and a new
+Swift file to the widget extension. Both target file sets were type-checked against the
+iOS 26.5 SDK before landing (`swiftc -typecheck` over `widgetExtensionFiles` and over
+`mainAppFiles`), which is what caught the SE-0360 branch-unification failure described
+above — but a clean type-check is not a build, and none of this has run on a device.
+
+*Before Phase 4 can be verified:* everything Phase 3 lists (the `device_push_tokens`
+migration, the APNs auth key, the secrets, the function deploy), plus:
+
+```
+APP_VARIANT=development npx expo prebuild     # new entitlement + RemoteSessionSync.swift
+supabase functions deploy session-remote-control
+```
+
+Then enable the Push Notifications capability on the widget extension's App ID and
+regenerate its provisioning profile. Test both paths, since they are different code:
+
+1. **With** a Bittersweet Focus widget on the Home Screen — start from the desktop with the
+   iOS app swiped away. Expect no banner; a blocked app's shield should read "Focus session
+   in progress" with no unlock button. Response: `widget.sent: true`, `via: "update"`.
+2. **Without** any Bittersweet widget installed — same test. Expect a banner, the idle card
+   replaced by a running timer, and the same shield change. Response:
+   `widget.skipped: "no widget token"`, `via: "push-to-start"`,
+   `toWakeAppForShield: true`.
 
 ## Open questions
 

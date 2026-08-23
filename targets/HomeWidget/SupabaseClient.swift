@@ -175,6 +175,160 @@ enum SupabaseClient {
     fire(request, label: "setTodoCompleted(\(todoId), \(completed))")
   }
 
+  // MARK: - Remote (desktop-driven) Sessions — Phase 4
+
+  /// One row of `active_sessions`, the live-session record the desktop client
+  /// writes. Only the fields the widget acts on are decoded.
+  struct ActiveSession {
+    let sessionId: String
+    let tagId: String
+    let startedAtMs: Double
+    let endedAt: Bool
+    let targetMinutes: Int
+    let origin: String
+  }
+
+  /// Read the user's live session record.
+  ///
+  /// Unlike everything else here this is awaited rather than fired and
+  /// forgotten: the widget's timeline provider has to know the answer before it
+  /// can build an entry, and a timeline built against last hour's state is the
+  /// bug this whole path exists to fix. Returns nil on any failure — no
+  /// credentials, no network, no row — and every caller treats nil as "leave
+  /// local state exactly as it is".
+  static func fetchActiveSession() async -> ActiveSession? {
+    guard let creds = credentials() else { return nil }
+
+    let path = "/rest/v1/active_sessions"
+      + "?user_id=eq.\(creds.userId)"
+      + "&select=session_id,tag_id,started_at,ended_at,target_minutes,origin"
+      + "&limit=1"
+
+    guard let request = makeRequest(
+      path: path,
+      method: "GET",
+      body: nil,
+      accessToken: creds.accessToken
+    ) else { return nil }
+
+    do {
+      let (data, response) = try await URLSession.shared.data(for: request)
+      if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+        print("⚡️ [SupabaseClient] fetchActiveSession HTTP \(http.statusCode)")
+        return nil
+      }
+      guard let rows = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+            let row = rows.first,
+            let sessionId = row["session_id"] as? String,
+            let tagId = row["tag_id"] as? String,
+            let startedAt = row["started_at"] as? String,
+            let origin = row["origin"] as? String else {
+        return nil
+      }
+      guard let startedDate = parsePostgresTimestamp(startedAt) else { return nil }
+
+      // A running session has ended_at JSON null, which decodes to NSNull rather
+      // than to a missing key — treating NSNull as "present" would read every
+      // live session as already finished.
+      let endedAtValue = row["ended_at"]
+      let hasEnded = endedAtValue != nil && !(endedAtValue is NSNull)
+
+      return ActiveSession(
+        sessionId: sessionId,
+        tagId: tagId,
+        startedAtMs: startedDate.timeIntervalSince1970 * 1000,
+        endedAt: hasEnded,
+        targetMinutes: row["target_minutes"] as? Int ?? 0,
+        origin: origin
+      )
+    } catch {
+      print("⚡️ [SupabaseClient] fetchActiveSession failed: \(error.localizedDescription)")
+      return nil
+    }
+  }
+
+  /// Postgres hands back `2026-08-21T09:14:22.117+00:00`, whose fractional
+  /// seconds `ISO8601DateFormatter` rejects unless explicitly told to expect
+  /// them — and it is not always present. Try both rather than lose the row.
+  private static func parsePostgresTimestamp(_ value: String) -> Date? {
+    let withFraction = ISO8601DateFormatter()
+    withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let date = withFraction.date(from: value) { return date }
+    return ISO8601DateFormatter().date(from: value)
+  }
+
+  /// Mark the live session finished. Idempotent: the RPC no-ops when nothing is
+  /// running, so it is safe to call on every stop regardless of who started it.
+  ///
+  /// This is what lets the Live Activity's End button stop a session the desktop
+  /// started. On a push-started card the phone has no local session at all, so
+  /// the rest of StopSessionIntent's Supabase work is (correctly) skipped —
+  /// without this call the desktop would keep showing a timer the user just
+  /// ended from their Lock Screen.
+  static func stopActiveSession() {
+    guard let creds = credentials() else { return }
+
+    guard let request = makeRequest(
+      path: "/rest/v1/rpc/stop_active_session",
+      method: "POST",
+      body: ["p_stopped_by": "ios"],
+      accessToken: creds.accessToken
+    ) else { return }
+
+    fire(request, label: "stopActiveSession()")
+  }
+
+  /// File the WidgetKit push token so `session-remote-control` can wake this
+  /// widget extension.
+  ///
+  /// JS does this too (WidgetPushService) and is the more reliable path — it has
+  /// a real runtime and can retry. This copy exists for the case JS can't cover:
+  /// the token changes (a widget is added, or iOS rotates it) on a phone whose
+  /// app is never reopened, which is exactly the phone that needs remote control.
+  ///
+  /// `bundleId` is the *app's*, not this extension's — the APNs topic is
+  /// `<app bundle id>.push-type.widgets`, and pushing at the extension's own id
+  /// gets 400 TopicDisallowed.
+  static func upsertWidgetPushToken(_ token: String) {
+    guard let creds = credentials() else { return }
+    guard let bundleId = containingAppBundleId() else { return }
+
+    let body: [String: Any] = [
+      "user_id": creds.userId,
+      "kind": "widget",
+      "token": token,
+      "bundle_id": bundleId,
+      "updated_at": ISO8601DateFormatter().string(from: Date()),
+    ]
+
+    guard let request = makeRequest(
+      path: "/rest/v1/device_push_tokens",
+      method: "POST",
+      body: body,
+      accessToken: creds.accessToken,
+      extraHeaders: ["Prefer": "resolution=merge-duplicates"]
+    ) else { return }
+
+    fire(request, label: "upsertWidgetPushToken()")
+  }
+
+  /// The bundle identifier of the app hosting this extension.
+  ///
+  /// `Bundle.main` inside an extension is the `.appex`, so its identifier is
+  /// `<app id>.bittersweetmobileLiveActivity`. The containing app sits two
+  /// directories up (`App.app/PlugIns/Ext.appex`); reading its Info.plist is
+  /// exact, where string-trimming the suffix only works by convention.
+  private static func containingAppBundleId() -> String? {
+    let appBundleUrl = Bundle.main.bundleURL
+      .deletingLastPathComponent()
+      .deletingLastPathComponent()
+    if let identifier = Bundle(url: appBundleUrl)?.bundleIdentifier {
+      return identifier
+    }
+    // Fallback for the main-app target, where Bundle.main already IS the app.
+    return Bundle.main.bundleIdentifier
+  }
+
   /// Record challenge progress via the server-side RPC.
   /// The RPC is idempotent (returns `already_logged` if day was already recorded).
   static func recordChallengeProgress(challengeId: String) {

@@ -15,11 +15,32 @@
 // extension rather than by the app, so the timer keeps running on the Lock
 // Screen with no app process involved.
 //
-// This function does NOT tell the phone to start a *session* — no shield, no
-// focus_sessions row, no fruits. It mirrors a timer. The desktop client owns
-// the session it started while the phone was closed and writes its finished row
-// itself (see useActiveSession.stop). Blocking apps remotely is Phase 4, which
-// needs the widget extension entitled for Family Controls.
+// Two pushes, to two different processes:
+//
+//   liveactivity → ActivityKit renders the timer on the Lock Screen / Dynamic
+//                  Island. No code of ours runs; it is display only.
+//   widgets      → WidgetKit (iOS 26) wakes our widget extension, which reads
+//                  `active_sessions` and moves the SHIELD (Phase 4). This is the
+//                  half that makes a desktop session actually binding on the
+//                  phone rather than merely visible.
+//
+// The widget push only reaches a phone with a Bittersweet Focus widget on its
+// Home Screen — WidgetKit issues no token, and has nothing to reload, otherwise.
+// For everyone else a start falls back to push-to-start, which is the only other
+// push that gets our code running on a closed phone: iOS wakes the whole app to
+// hand over the new activity's token, and a woken app sets the shield itself.
+// That costs a banner (Apple mandates an `alert` on push-to-start), which is why
+// it is the fallback and not the default.
+//
+// A remote STOP has no such fallback. Ending an activity by its update token
+// wakes nothing, so a phone with no widget keeps the focus-mode shield until the
+// app is next opened, where syncShieldConfiguration corrects it. That failure is
+// the safe direction — the session stays enforced a little too long rather than
+// not long enough.
+//
+// Still not done here: the phone does not record the session. No focus_sessions
+// row, no fruits. The desktop client owns the session it started while the phone
+// was closed and writes its finished row itself (see useActiveSession.stop).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { fetchUserLanguages, langOf, type Lang } from '../_shared/i18n.ts';
@@ -96,6 +117,64 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+/**
+ * Wake the widget extension so it can move the *shield* (Phase 4).
+ *
+ * The Live Activity push below mirrors a timer; this one is what stops the user
+ * buying their way out of a desktop-started session from their phone. It carries
+ * no session data at all — a WidgetKit push is only ever `content-changed`, and
+ * the extension answers by reloading its timelines, at which point
+ * RemoteSessionSync reads `active_sessions` itself. That indirection is a
+ * feature: the phone applies whatever is true when it wakes, so a push delivered
+ * late (they are explicitly opportunistic and budgeted) can't apply a stale
+ * command.
+ *
+ * Sent for start and stop alike, and independently of the Live Activity result —
+ * the two mechanisms address different processes and either can be missing. A
+ * user with no Bittersweet widget on their Home Screen has no widget token, and
+ * this quietly does nothing.
+ */
+async function sendWidgetPush(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  userId: string
+): Promise<Record<string, unknown>> {
+  const { data: rows } = await supabase
+    .from('device_push_tokens')
+    .select('token, bundle_id, updated_at')
+    .eq('user_id', userId)
+    .eq('kind', 'widget')
+    .order('updated_at', { ascending: false })
+    .limit(1);
+
+  const widgetToken = (rows ?? [])[0] as
+    Pick<TokenRow, 'token' | 'bundle_id' | 'updated_at'> | undefined;
+  if (!widgetToken) return { skipped: 'no widget token' };
+
+  const result = await sendApnsPush({
+    deviceToken: widgetToken.token,
+    bundleId: widgetToken.bundle_id,
+    pushType: 'widgets',
+    // Priority 5, not 10. Apple documents no priority rule for `widgets`, but it
+    // is a non-alerting wake in the same family as `background`, where 10 is
+    // rejected outright — and WidgetKit delivers these opportunistically
+    // regardless, so 10 would buy nothing even if it were accepted.
+    priority: 5,
+    payload: { aps: { 'content-changed': true } },
+  });
+
+  if (isDeadToken(result)) {
+    await supabase
+      .from('device_push_tokens')
+      .delete()
+      .eq('user_id', userId)
+      .eq('kind', 'widget')
+      .eq('token', widgetToken.token);
+  }
+
+  return { sent: result.ok, apns: result };
 }
 
 /**
@@ -227,6 +306,13 @@ Deno.serve(async (req: Request) => {
       return json({ skipped: 'not a desktop stop' });
     }
 
+    // Move the shield first. This is the half that has a deadline: the Live
+    // Activity is cosmetic if it arrives a beat late, whereas a shield still
+    // offering "unlock for N fruits" is a session the user can walk out of.
+    // Awaited rather than raced with the push below because Deno may tear the
+    // isolate down the moment the response is returned.
+    const widget = await sendWidgetPush(supabase, user.id);
+
     // Tag label: "🎯 Deep Work", the same string the app builds for the LA title.
     const { data: tagRow } = await supabase
       .from('session_tags')
@@ -282,7 +368,7 @@ Deno.serve(async (req: Request) => {
     // Lock Screen banner for up to four hours — the behaviour the app settled on
     // to stop a finished session squatting in the Dynamic Island.
     if (event === 'stop') {
-      if (!updateToken) return json({ skipped: 'no live activity token' });
+      if (!updateToken) return json({ skipped: 'no live activity token', widget });
 
       const result = await sendApnsPush({
         deviceToken: updateToken.token,
@@ -305,17 +391,36 @@ Deno.serve(async (req: Request) => {
       // tell us, which is the normal outcome when the phone stayed closed.
       if (isDeadToken(result)) await dropToken(updateToken.token);
 
-      return json({ event, sent: result.ok, via: 'update', apns: result });
+      return json({ event, sent: result.ok, via: 'update', apns: result, widget });
     }
 
     // ---- start ----
     //
+    // Which token to use is not just an optimization — it decides whether the
+    // SHIELD moves on a phone whose app is closed.
+    //
+    //   update token   → ActivityKit redraws the card. No code of ours runs. The
+    //                    timer appears; the shield keeps its idle "unlock for N
+    //                    fruits" copy until the app is next opened.
+    //   push-to-start  → iOS wakes the whole app in the background to hand over
+    //                    the new activity's update token. A woken app runs
+    //                    syncShieldConfiguration('mount') (app/_layout.tsx),
+    //                    which sees the desktop row and flips the shield.
+    //
+    // So when the widget push already handled the shield, prefer the update
+    // token: it is quieter (no banner) and cheaper. When it did NOT — the user
+    // has no Bittersweet widget installed, or APNs rejected the widget token —
+    // push-to-start becomes the only way to make the session binding rather than
+    // merely visible, and its mandatory alert is the price.
+    const widgetWillMoveShield = widget.sent === true;
+    const preferPushToStart = !widgetWillMoveShield && !!startToken;
+
     // Preferred path: UPDATE an activity that is already on screen. The app keeps
     // an idle "Start" card alive whenever the user has picked a tag
     // (LiveActivityService.showIdleFocusActivity), and turning that card into a
     // running timer is both cheaper and quieter than creating one — no banner,
     // no new activity, and it matches what tapping Start on the phone does.
-    if (updateToken) {
+    if (updateToken && !preferPushToStart) {
       const result = await sendApnsPush({
         deviceToken: updateToken.token,
         bundleId: updateToken.bundle_id,
@@ -333,19 +438,52 @@ Deno.serve(async (req: Request) => {
         },
       });
 
-      if (result.ok) return json({ event, sent: true, via: 'update', apns: result });
+      if (result.ok) return json({ event, sent: true, via: 'update', apns: result, widget });
 
       // A dead update token means the activity ended while the app was closed —
       // fall through and create a new one instead of giving up.
       if (isDeadToken(result)) await dropToken(updateToken.token);
-      else return json({ event, sent: false, via: 'update', apns: result });
+      else return json({ event, sent: false, via: 'update', apns: result, widget });
     }
 
     // Fallback: push-to-start. Creates a Live Activity on a phone whose app is
     // backgrounded or force-quit — the whole point of Phase 3. iOS 17.2+ only,
     // and Apple requires an `alert`, so this is the one path the user sees a
     // banner for.
-    if (!startToken) return json({ skipped: 'no push-to-start token' });
+    if (!startToken) return json({ skipped: 'no push-to-start token', widget });
+
+    // Retire the idle card first when we chose this path deliberately (rather
+    // than arriving here because the update token was dead). Push-to-start
+    // always creates a NEW activity, so without this the phone briefly shows two
+    // — the stale "Start" card and the running timer.
+    //
+    // Unlike the stop path, this end DOES carry a `dismissal-date`, in the past:
+    // Apple removes an activity immediately when its dismissal date has passed,
+    // whereas the default policy would leave the idle card on the Lock Screen
+    // for up to four hours next to the timer that replaced it.
+    let retiredIdleCard: Record<string, unknown> | undefined;
+    if (preferPushToStart && updateToken) {
+      const endResult = await sendApnsPush({
+        deviceToken: updateToken.token,
+        bundleId: updateToken.bundle_id,
+        pushType: 'liveactivity',
+        priority: 10,
+        collapseId: `${session.session_id}-retire`,
+        payload: {
+          aps: {
+            timestamp,
+            event: 'end',
+            'content-state': idleContentState(session, tagLabel, lang),
+            'dismissal-date': timestamp - 1,
+          },
+        },
+      });
+
+      // That token addressed the activity we just ended, so it is spent either
+      // way. The app files a fresh one when push-to-start wakes it.
+      await dropToken(updateToken.token);
+      retiredIdleCard = { sent: endResult.ok, apns: endResult };
+    }
 
     const alert = REMOTE_START_ALERT[lang];
     const result = await sendApnsPush({
@@ -373,7 +511,17 @@ Deno.serve(async (req: Request) => {
 
     if (isDeadToken(result)) await dropToken(startToken.token);
 
-    return json({ event, sent: result.ok, via: 'push-to-start', apns: result });
+    return json({
+      event,
+      sent: result.ok,
+      via: 'push-to-start',
+      // True when push-to-start was chosen to wake the app for the shield, as
+      // opposed to being the last resort after a dead update token.
+      toWakeAppForShield: preferPushToStart,
+      apns: result,
+      retiredIdleCard,
+      widget,
+    });
   } catch (error) {
     console.error('session-remote-control error:', error);
     return json({ error: String(error) }, 500);

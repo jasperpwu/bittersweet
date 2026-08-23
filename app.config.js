@@ -148,6 +148,11 @@ module.exports = ({ config }) => {
       targetName: 'bittersweetmobileLiveActivity',
       entitlements: {
         'com.apple.security.application-groups': [APP_GROUP],
+        // WidgetKit push (iOS 26) — the widget extension needs the Push
+        // Notifications capability on its own App ID so it can be issued a push
+        // token and reloaded remotely. See plugins/withHomeWidget.js, which
+        // writes the matching aps-environment into the generated entitlements.
+        'aps-environment': 'development',
       },
     },
   ];
