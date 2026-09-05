@@ -60,6 +60,7 @@ import { AnalyticsTracker } from '../src/services/analytics';
 import { getInstalledWidgetFamilies } from '../modules/widget-info';
 import { installNavigationGuard } from '../src/utils/navigationGuard';
 import { maybePromptForShieldUnlockNotifications } from '../src/utils/shieldUnlockHandoff';
+import { whenAppActive } from '../src/utils/whenAppActive';
 
 // Dedupe duplicate navigations from fast double-taps (router.push/navigate/replace).
 installNavigationGuard();
@@ -381,8 +382,10 @@ export default function RootLayout() {
     initializeUnifiedStore();
     configureCrisp();
 
-    // Request notification permissions for focus timer completion sound
-    Notifications.requestPermissionsAsync();
+    // Request notification permissions for focus timer completion sound.
+    // Deferred while the app is in the background (push-to-start wake, widget
+    // token rotation) so the system alert never appears over another app.
+    whenAppActive('notification-permission', () => Notifications.requestPermissionsAsync());
 
     // Handle incoming notifications (vibration + unlock expiry dismissal)
     const notificationSubscription = Notifications.addNotificationReceivedListener(
@@ -834,8 +837,10 @@ export default function RootLayout() {
               console.warn('Session photo backfill failed:', error)
             );
 
-            // Register push token after sign-in
-            PushNotificationService.registerPushToken();
+            // Register push token after sign-in. It requests the notification
+            // permission when it is still undetermined, and INITIAL_SESSION also
+            // fires on a background wake — so wait for the app to be frontmost.
+            whenAppActive('push-token', () => PushNotificationService.registerPushToken());
 
             // File this device's ActivityKit push tokens under the account that
             // just became current. Separate from the call above in every way —
@@ -1125,8 +1130,15 @@ export default function RootLayout() {
       // Re-assert blocklist blocking (requesting Screen Time directly if a restored
       // blocklist lost its native authorization), and reconcile Apple Health guarded
       // by Screen Time being granted — so the two system prompts never stack.
-      reconcileBlocklistAuth();
-      reconcileHealthIfScreenTimeReady();
+      //
+      // Both can prompt, so both wait for the app to be frontmost: a background
+      // launch (ActivityKit push-to-start, widget push token, remote push) mounts
+      // this tree with no app on screen, and an unguarded request puts the Screen
+      // Time sheet or the Health dialog over whatever the user is doing.
+      whenAppActive('blocklist-auth', async () => {
+        await reconcileBlocklistAuth();
+        await reconcileHealthIfScreenTimeReady();
+      });
     }
   }, [fontsLoaded, isHydrated, mainStoreHydrated]);
 

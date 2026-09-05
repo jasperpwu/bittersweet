@@ -12,6 +12,7 @@ import {
   type MotionSnapshot,
   type MotionActivitySummary,
 } from '../utils/focusRating';
+import { isAppActive } from '../utils/whenAppActive';
 
 async function safe<T>(fn: () => Promise<T | null> | undefined): Promise<T | null> {
   try {
@@ -53,6 +54,10 @@ export async function ensureMotionPermission(): Promise<boolean> {
     const current = await Pedometer.getPermissionsAsync();
     if (current.granted) return true;
     if (!current.canAskAgain) return false;
+    // Backstop: never pop the system prompt while the app is in the background.
+    // The caller treats false as "not granted" and falls back, and the next
+    // in-app tap asks again with the app on screen.
+    if (!isAppActive()) return false;
     const requested = await Pedometer.requestPermissionsAsync();
     return requested.granted;
   } catch {

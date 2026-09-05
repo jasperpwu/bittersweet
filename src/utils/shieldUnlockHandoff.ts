@@ -19,6 +19,7 @@ import * as Notifications from 'expo-notifications';
 import { Alert, Linking, Platform } from 'react-native';
 
 import i18n from '../i18n';
+import { isAppActive, whenAppActive } from './whenAppActive';
 
 /**
  * Mirrors the `#available(iOS 26.5, *)` guard in
@@ -72,6 +73,14 @@ export function shieldOpensAppDirectly(): boolean {
 export async function maybePromptForShieldUnlockNotifications(): Promise<void> {
   try {
     if (shieldOpensAppDirectly()) return;
+
+    // Never explain a shield feature to an app that is not on screen. A cold
+    // start can happen in the background, and the alert would land on top of
+    // another app. Retry on the next foreground instead.
+    if (!isAppActive()) {
+      whenAppActive('shield-unlock-notifications', maybePromptForShieldUnlockNotifications);
+      return;
+    }
 
     const { status, canAskAgain } = await Notifications.getPermissionsAsync();
     if (status === 'granted') return;
