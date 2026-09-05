@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import '../global.css';
-import '../src/i18n';
+import i18n from '../src/i18n';
 
 import { Stack, router, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -29,7 +29,7 @@ import * as Haptics from 'expo-haptics';
 import { AppState, AppStateStatus } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { UnlockSnackbar } from '../src/components/ui/UnlockSnackbar';
-import { Toast } from '../src/components/ui/Toast';
+import { Toast, showToast } from '../src/components/ui/Toast';
 import { LiveActivityService } from '../src/services/LiveActivityService';
 import { LiveActivityPushService } from '../src/services/LiveActivityPushService';
 import { WidgetPushService } from '../src/services/WidgetPushService';
@@ -1051,7 +1051,13 @@ export default function RootLayout() {
   // Check if app was opened from shield (both on mount and app foreground)
   const checkShieldOpening = async (trigger: string) => {
     try {
-      if (!fontsLoaded || !isHydrated) {
+      // `mainStoreHydrated` matters as much as the other two: both answers this
+      // function can give — the unlock sheet and the toast below — render inside
+      // the `isReady` branch of the tree, and the shield's marker is consumed on
+      // read, so a tap answered before that branch mounts is answered into
+      // nothing. The effect re-runs on each of these, so nothing is lost by
+      // waiting.
+      if (!fontsLoaded || !isHydrated || !mainStoreHydrated) {
         return;
       }
 
@@ -1060,15 +1066,24 @@ export default function RootLayout() {
       const wasOpenedFromShield = await FamilyControlsModule.checkIfOpenedFromShield();
 
       if (wasOpenedFromShield) {
-        // Don't show unlock sheet during a focus session
-        const activeSession = await AsyncStorage.getItem('active-focus-session');
-        if (activeSession) {
-          return;
-        }
+        // The shield's Unlock button must never buy the user out of a session
+        // that is actually running, so check every place a live session can
+        // exist. The first two are local reads; `hasRunningDesktopSession` is a
+        // network read and runs only when neither local one answers, because it
+        // covers the case they cannot see — a session the desktop client started
+        // while this app was closed, which lives in the cloud alone until the
+        // focus screen adopts it.
+        const localSession = await AsyncStorage.getItem('active-focus-session');
+        // A widget-started session exists in UserDefaults until
+        // adoptAndRecoverSession writes it into AsyncStorage.
+        const widgetSession = localSession ? null : WidgetService.readWidgetStartedSession();
+        const desktopSession =
+          localSession || widgetSession ? false : await hasRunningDesktopSession();
 
-        // Also check for widget-started sessions not yet adopted into AsyncStorage
-        const widgetSession = WidgetService.readWidgetStartedSession();
-        if (widgetSession) {
+        if (localSession || widgetSession || desktopSession) {
+          // Say why. This used to return in silence, so the Unlock button looked
+          // broken: the app opened and nothing happened.
+          showToast(i18n.t('home.sessionAlreadyRunning'), 'neutral', undefined, 2500, 'bottom');
           return;
         }
 
@@ -1115,7 +1130,12 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, isHydrated, mainStoreHydrated]);
 
-  // Check when app comes to foreground
+  // Check when app comes to foreground.
+  //
+  // `mainStoreHydrated` is a dependency because checkShieldOpening gates on it:
+  // the handler closes over the value it was subscribed with, so without the
+  // resubscribe every foreground check would keep reading the `false` this effect
+  // captured first.
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
@@ -1185,7 +1205,7 @@ export default function RootLayout() {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => subscription?.remove();
-  }, [fontsLoaded, isHydrated]);
+  }, [fontsLoaded, isHydrated, mainStoreHydrated]);
 
   // Flush the offline sync queue the instant connectivity is restored. The queue
   // otherwise only flushes on app-foreground or cold-start, so a session completed

@@ -1,4 +1,4 @@
-git import Foundation
+import Foundation
 import WidgetKit
 
 // Phase 4 — remote shield control.

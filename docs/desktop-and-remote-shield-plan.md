@@ -402,11 +402,23 @@ session — with the shield, Live Activity, scheduled notification and widget st
 identical to an in-app start. A desktop stop follows the widget-stop precedent: record the
 session, then rate from historical Core Motion, and do not open the summary modal.
 
-*Known limits, by design:* a desktop start older than 60s is ignored rather than followed,
-because this screen's timer always begins now and adopting an old start would misreport
-elapsed time — the phone-was-closed case is what Phases 3 and 4 are for, and the desktop
-writes that session's finished row itself. There is no toast when the phone follows a
-remote stop; adding user-facing copy means the full 8-language i18n pass.
+*Known limits, by design:* there is no toast when the phone follows a remote stop; adding
+user-facing copy means the full 8-language i18n pass.
+
+*Amended 2026-08-23 — the follower adopts the desktop's start time.* It first ignored any
+start older than 60s, because `startTimer` always began the timer at `Date.now()`; a phone
+that opened mid-session therefore restarted the countdown from zero and the two devices
+disagreed for the rest of the session. `startTimer` now takes the published `startedAt`
+off `pendingRemoteStartRef` and derives every time from it — the Live Activity end date,
+the completion notification's interval, the persisted `active-focus-session` blob, and the
+widget's session state. A session already past its target resumes in bonus time, which is
+the same state the app restores into after a kill. The age cap stays, raised to the eight
+hours `hasRunningDesktopSession` already uses, and now means only "this row outlived the
+session it describes" rather than "we cannot represent this honestly".
+
+That also removes a small pre-existing drift on locally-started sessions: the persisted
+`startTime` used to be read *after* the `await` on the Live Activity start, so it sat a few
+tens of milliseconds ahead of `sessionStartTimeRef`. Both now come from one value.
 
 **Phase 3 — Live Activity push. ✅ BUILT 2026-08-20, not yet verified against the live
 project.** Timer follows on Lock Screen / Dynamic Island even when the app is closed.
@@ -613,6 +625,23 @@ its `active_sessions` row open.
   push is indistinguishable from any other reload. It is one row, throttled to at most one
   request per five seconds across all widget kinds (a push reloads every kind at once), and
   short-circuits before the network when no user is signed in.
+- **The unlock tap itself is now checked against the cloud** (added 2026-08-23). Whenever a
+  widget push is not delivered, the shield keeps its idle copy — including the "unlock for N
+  fruits" button — until the app next opens. `checkShieldOpening` in `app/_layout.tsx` used
+  to answer that tap from local state alone (`active-focus-session` in AsyncStorage, plus a
+  widget-started session in UserDefaults), neither of which knows about a session the desktop
+  started while the app was closed, so the sheet opened and the session could be bought out
+  of. It now falls through to `hasRunningDesktopSession()` when both local reads come back
+  empty, and answers a live session with a bottom toast (`home.sessionAlreadyRunning`)
+  instead of the silent `return` it used before — that silence made the shield's own button
+  look broken. The extra request costs nothing on the common path: it runs only on a tap that
+  found no local session.
+
+  This also raised the function's own gate to the full `isReady` triple. Both answers it can
+  give render inside that branch of the tree, and the shield's marker is consumed on read, so
+  a tap answered before the branch mounts was answered into nothing. The AppState effect
+  gained `mainStoreHydrated` as a dependency for the same reason — its handler closes over
+  the value it subscribed with.
 
 **Phase 5 — Tauri wrap. ✅ DONE (2026-08-16), out of order.** Pulled forward because
 running the client in a browser tab isn't what "desktop app" means. `desktop/src-tauri/`,

@@ -80,10 +80,14 @@ import { directionalIcon } from '../../src/utils/directionalIcon';
 
 const ACTIVE_SESSION_KEY = 'active-focus-session';
 
-// How late a desktop-started session may be picked up. Covers socket latency and
-// an app resume; beyond it the phone would misreport elapsed time. See the
-// remote-start branch in the desktop follower.
-const REMOTE_START_MAX_AGE_MS = 60_000;
+// How late a desktop-started session may be picked up. The phone adopts the
+// desktop's own `startedAt`, so an older start no longer misreports elapsed time
+// — this is only a sanity bound on a row that outlived the session it describes
+// (a laptop that slept or crashed without stopping). Eight hours is the point at
+// which ActivityKit ends a Live Activity on its own, and is the same bound
+// `hasRunningDesktopSession` in _layout.tsx puts on holding the shield — the two
+// must agree, or the shield and the timer disagree about the same row.
+const REMOTE_START_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 
 const ROW_HEIGHT = 84; // row height (72px) + margin-bottom (12px from mb-3)
 const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 0.8 };
@@ -985,14 +989,23 @@ export default function FocusScreen() {
     setIsInfinite(infinite);
     setIsRunning(true);
 
-    const now = Date.now();
-    sessionStartTimeRef.current = now;
+    // A session the desktop started keeps the desktop's start time. Without this
+    // the timer restarts from zero on the phone whenever the app was not open at
+    // the moment of the start, and the two devices then disagree for the whole
+    // session. Clamped to the present so a clock skew cannot start a session in
+    // the future.
+    const startedAtMs = isRemote ? Math.min(remote.startedAtMs, Date.now()) : Date.now();
+    const endAtMs = startedAtMs + timerSeconds * 1000;
+    const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));
+    // Whole seconds already served, and what is left of a finite session.
+    const remainingSec = Math.max(0, timerSeconds - elapsedSec);
+    sessionStartTimeRef.current = startedAtMs;
     sessionTargetDurationRef.current = isDevTimer ? devCountsAsMinutes : activeMinutes;
 
     if (infinite) {
-      setElapsedSeconds(0);
+      setElapsedSeconds(elapsedSec);
     } else {
-      setRemainingSeconds(timerSeconds);
+      setRemainingSeconds(remainingSec);
     }
 
     // Start Live Activity for the focus timer (service will reuse existing
@@ -1016,7 +1029,7 @@ export default function FocusScreen() {
       // Infinite mode: no end time — use a count-up live activity
       sessionEndTimeRef.current = null;
       const activityId = await LiveActivityService.startFocusTimerInfinite(
-        new Date(),
+        new Date(startedAtMs),
         selectedTagLabel
       );
       if (activityId) {
@@ -1027,8 +1040,8 @@ export default function FocusScreen() {
         console.log('⚠️ Live Activity was not created (may not be available on this device)');
       }
     } else {
-      const endTime = new Date(Date.now() + timerSeconds * 1000);
-      sessionEndTimeRef.current = endTime.getTime();
+      const endTime = new Date(endAtMs);
+      sessionEndTimeRef.current = endAtMs;
       const activityId = await LiveActivityService.startFocusTimer(
         endTime,
         isDevTimer ? devCountsAsMinutes : activeMinutes,
@@ -1044,7 +1057,7 @@ export default function FocusScreen() {
     }
 
     // Schedule a notification with sound for when the timer ends
-    if (activeMinutes > 0 || isDevTimer) {
+    if ((activeMinutes > 0 || isDevTimer) && remainingSec > 0) {
       // Cancel any existing scheduled notification
       if (scheduledNotificationRef.current) {
         Notifications.cancelScheduledNotificationAsync(scheduledNotificationRef.current);
@@ -1062,7 +1075,7 @@ export default function FocusScreen() {
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: timerSeconds,
+          seconds: remainingSec,
         },
       }).then((id) => {
         scheduledNotificationRef.current = id;
@@ -1086,12 +1099,11 @@ export default function FocusScreen() {
     });
 
     // Persist active session so it survives app kills
-    const persistNow = Date.now();
     AsyncStorage.setItem(
       ACTIVE_SESSION_KEY,
       JSON.stringify({
-        startTime: persistNow,
-        endTime: infinite ? 0 : persistNow + timerSeconds * 1000,
+        startTime: startedAtMs,
+        endTime: infinite ? 0 : endAtMs,
         targetDuration: isDevTimer ? devCountsAsMinutes : activeMinutes,
         tagId: activeTag || 'Focus',
         tagLabel: selectedTagLabel,
@@ -1112,7 +1124,7 @@ export default function FocusScreen() {
       ActiveSessionService.publishStart({
         sessionId,
         tagId: activeTag || 'Focus',
-        startedAt: new Date(persistNow),
+        startedAt: new Date(startedAtMs),
         targetMinutes: infinite ? undefined : isDevTimer ? devCountsAsMinutes : activeMinutes,
       }).catch(() => {});
     }
@@ -1125,12 +1137,26 @@ export default function FocusScreen() {
       tagName: tagInfo?.name || 'Focus',
       tagIcon: tagInfo?.icon || '🎯',
       tagColor: tagInfo?.color || '#8B4513',
-      startTime: persistNow,
-      endTime: infinite ? 0 : persistNow + timerSeconds * 1000,
+      startTime: startedAtMs,
+      endTime: infinite ? 0 : endAtMs,
       isInfinite: infinite,
     });
 
     if (timerRef.current) clearInterval(timerRef.current as any);
+
+    // An adopted session can already be past its target — the desktop ran it
+    // while the app was closed. Resume in bonus time, the same state the app
+    // restores into after a kill, rather than letting the countdown fall through
+    // zero and fire a success haptic for a goal that was reached earlier.
+    if (!infinite && remainingSec === 0) {
+      setIsBonusTime(true);
+      setBonusSeconds(elapsedSec - timerSeconds);
+      timerRef.current = setInterval(() => {
+        setBonusSeconds((b) => b + 1);
+      }, 1000);
+      return;
+    }
+
     timerRef.current = setInterval(() => {
       if (infinite) {
         setElapsedSeconds((prev) => prev + 1);
@@ -1771,11 +1797,18 @@ export default function FocusScreen() {
     setIsSessionActive(true);
     transitionCancelledRef.current = false;
 
-    // Set the display value before the timer fades in
+    // Set the display value before the timer fades in. A desktop session that is
+    // already under way shows its real progress here too — startTimer runs only
+    // after the fade-out, so otherwise the timer flashes the full duration first.
+    const adopted = pendingRemoteStartRef.current;
+    const adoptedElapsedSec =
+      adopted && adopted.tagId === selectedTag
+        ? Math.max(0, Math.floor((Date.now() - adopted.startedAtMs) / 1000))
+        : 0;
     if (selectedTime === 0) {
-      setElapsedSeconds(0);
+      setElapsedSeconds(adoptedElapsedSec);
     } else {
-      setRemainingSeconds(selectedTime * 60);
+      setRemainingSeconds(Math.max(0, selectedTime * 60 - adoptedElapsedSec));
     }
 
     // Prepare timer visuals for entrance
@@ -1865,7 +1898,12 @@ export default function FocusScreen() {
   // Carries the tag so a prime that never ran (the follower primed a start, then the
   // user started something themselves first) can't hand the desktop's session id to
   // an unrelated session.
-  const pendingRemoteStartRef = useRef<{ sessionId: string; tagId: string } | null>(null);
+  const pendingRemoteStartRef = useRef<{
+    sessionId: string;
+    tagId: string;
+    /** The desktop's own start time, adopted by startTimer so both agree. */
+    startedAtMs: number;
+  } | null>(null);
   // Bumped each time a start is requested so the commit effect below runs even when
   // setSelectedTag/setSelectedTime are no-ops (home already had that tag/duration) —
   // otherwise the effect's deps wouldn't change and the start would silently never fire.
@@ -2040,12 +2078,10 @@ export default function FocusScreen() {
           console.warn('[ActiveSession] remote start references unknown tag:', active.tagId);
           return;
         }
-        // Only follow a start we can still represent honestly. This screen's timer
-        // always begins now, so adopting a session that started long ago would show
-        // — and ultimately record — the wrong elapsed time. A start older than this
-        // means the phone was closed when it happened, which is the case Phases 3
-        // and 4 exist to handle; until then the desktop owns that session and
-        // writes the finished row itself.
+        // startTimer adopts `startedAt` below, so a start that happened while the
+        // app was closed resumes at the elapsed time the desktop is showing rather
+        // than restarting from zero. The cap only rejects a row so old that it has
+        // most likely outlived the session it describes.
         const ageMs = Date.now() - active.startedAt.getTime();
         if (ageMs > REMOTE_START_MAX_AGE_MS) {
           console.log('💻 Ignoring stale desktop start:', active.sessionId, `${ageMs}ms old`);
@@ -2053,7 +2089,11 @@ export default function FocusScreen() {
         }
 
         console.log('💻 Following desktop-started session:', active.sessionId);
-        pendingRemoteStartRef.current = { sessionId: active.sessionId, tagId: active.tagId };
+        pendingRemoteStartRef.current = {
+          sessionId: active.sessionId,
+          tagId: active.tagId,
+          startedAtMs: active.startedAt.getTime(),
+        };
         pendingStartRef.current = { tagId: active.tagId, duration: active.targetMinutes ?? 0 };
         setSelectedTag(active.tagId);
         // targetMinutes null = infinite, which this screen represents as 0.
