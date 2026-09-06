@@ -14,8 +14,15 @@ Phase 3 built 2026-08-20; Phase 4 built 2026-08-21)
 > Realtime needs `supabase/migrations/20260816_realtime_focus_sessions.sql`
 > applied. Two deviations from the sketch below, both noted inline: the local
 > `FocusSession`/`SessionTag` models now *extend* shared `*Core` types rather
-> than the mappers staying `any`-typed, and desktop auth is email-only for now
-> because Apple/Google need a browser redirect URL allowlisted first.
+> than the mappers staying `any`-typed, and desktop auth started email-only.
+
+> **Auth parity, added later.** Apple and Google now sign in on the desktop too,
+> through the web OAuth flow rather than the native token flow iOS uses. In the
+> Tauri app the provider page opens in the user's real browser and a throwaway
+> `127.0.0.1` server catches the redirect — Google rejects embedded webviews, so
+> the app's own window is not an option. It needs dashboard configuration that is
+> not in the repo (Supabase redirect allowlist, a Google redirect URI, and an
+> Apple Services ID + signing key); `desktop/README.md` lists all four steps.
 
 ## Goal
 

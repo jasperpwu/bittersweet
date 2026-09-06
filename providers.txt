@@ -1,0 +1,11 @@
+supabase:
+github - jasper.pwu@gmail.com
+
+github page:
+junxwoo@icloud.com
+
+apple:
+junxwoo@icloud.com
+
+google:
+jasper.pwu@gmail.com
