@@ -195,6 +195,32 @@ export default function JournalScreen() {
   const [editFocusRating, setEditFocusRating] = useState<number | null>(null);
   const [isEditSaving, setIsEditSaving] = useState(false);
 
+  // The tag creator and the paywall ride the `overlay` slot of whichever modal
+  // opened them (edit-session or manual-entry), not a sibling: iOS cannot
+  // present a modal over one that is already on screen, so a sibling sheet
+  // never appears. Same pattern as TodoEditModal.
+  const createTagOverlay = (
+    <>
+      <CreateTagModal
+        visible={createTagTarget !== null}
+        onClose={() => setCreateTagTarget(null)}
+        onUpgradeNeeded={triggerUpgrade}
+        onCreated={(tag) => {
+          if (createTagTarget === 'manual') {
+            setManualTag(tag.id);
+            if (manualSecondaryTag === tag.id) setManualSecondaryTag('');
+          } else if (createTagTarget === 'manualSecondary') {
+            setManualSecondaryTag(tag.id);
+          } else if (createTagTarget === 'editSecondary') {
+            setEditSecondaryTag(tag.id);
+          }
+          setCreateTagTarget(null);
+        }}
+      />
+      {upgradeModals}
+    </>
+  );
+
   const colorScheme = useColorScheme();
 
   // Shake animation for manual entry modal
@@ -948,7 +974,11 @@ export default function JournalScreen() {
           );
         })()}
 
-      <Modal isVisible={!!selectedSession} onClose={closeSessionModal} size="medium">
+      <Modal
+        isVisible={!!selectedSession}
+        onClose={closeSessionModal}
+        size="medium"
+        overlay={createTagOverlay}>
         {selectedSession && (
           <Pressable onPress={Keyboard.dismiss} accessible={false}>
             <Typography variant="headline-20" color="primary" className="mb-1">
@@ -1226,7 +1256,11 @@ export default function JournalScreen() {
       </Modal>
 
       {/* Manual Entry Modal */}
-      <Modal isVisible={isManualEntryModalVisible} onClose={closeManualEntryModal} size="large">
+      <Modal
+        isVisible={isManualEntryModalVisible}
+        onClose={closeManualEntryModal}
+        size="large"
+        overlay={createTagOverlay}>
         <Pressable onPress={Keyboard.dismiss} accessible={false}>
           <Animated.View style={manualEntryShakeStyle}>
             <Typography variant="headline-20" color="primary" className="mb-4">
@@ -1452,25 +1486,6 @@ export default function JournalScreen() {
         onClose={() => setCalendarEditVisible(false)}
         todo={calendarEditTodo}
       />
-
-      {/* Create-new-tag modal, shared across the journal's tag selectors */}
-      <CreateTagModal
-        visible={createTagTarget !== null}
-        onClose={() => setCreateTagTarget(null)}
-        onUpgradeNeeded={triggerUpgrade}
-        onCreated={(tag) => {
-          if (createTagTarget === 'manual') {
-            setManualTag(tag.id);
-            if (manualSecondaryTag === tag.id) setManualSecondaryTag('');
-          } else if (createTagTarget === 'manualSecondary') {
-            setManualSecondaryTag(tag.id);
-          } else if (createTagTarget === 'editSecondary') {
-            setEditSecondaryTag(tag.id);
-          }
-          setCreateTagTarget(null);
-        }}
-      />
-      {upgradeModals}
 
       {/* First-visit walkthrough — one spotlight per point */}
       <CoachMark

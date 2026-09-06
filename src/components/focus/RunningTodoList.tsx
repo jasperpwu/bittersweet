@@ -1,10 +1,19 @@
 import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, useColorScheme } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ScrollView,
+  Keyboard,
+  useColorScheme,
+} from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
   runOnJS,
   FadeIn,
 } from 'react-native-reanimated';
@@ -63,6 +72,7 @@ export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor, 
   const isDark = useColorScheme() === 'dark';
   const toggleTodo = useRef(useAppStore.getState().focus.toggleTodo).current;
   const reorderTodos = useRef(useAppStore.getState().focus.reorderTodos).current;
+  const updateTodo = useRef(useAppStore.getState().focus.updateTodo).current;
 
   // Completing a task drops it from the running list. Confirm with a success
   // haptic + a bottom toast carrying an Undo that flips it back open.
@@ -75,10 +85,10 @@ export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor, 
         'neutral',
         { label: t('todos.undo'), onPress: () => toggleTodo(id) },
         undefined,
-        'bottom',
+        'bottom'
       );
     },
-    [toggleTodo, t],
+    [toggleTodo, t]
   );
 
   // The tag's open tasks, chronological by default (sortOrder seeds from startAt).
@@ -93,6 +103,60 @@ export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor, 
   // Latest store order, read inside gesture handlers without re-subscribing.
   const derivedIdsRef = useRef<string[]>(derivedIds);
   derivedIdsRef.current = derivedIds;
+
+  // Inline rename — one row at a time. The row owns the draft text; this only
+  // tracks which row is open, so a second tap elsewhere closes the first.
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const handleStartEdit = useCallback((id: string) => {
+    Haptics.selectionAsync();
+    setEditingId(id);
+  }, []);
+
+  // Commit on submit or blur. An empty name is a discard, not a wipe: the
+  // Journal editor refuses one too, so a stray backspace cannot erase a task.
+  const handleCommitEdit = useCallback(
+    (id: string, value: string) => {
+      const name = value.trim();
+      const current = useAppStore.getState().focus.todos.byId[id];
+      if (name && current && name !== current.name) updateTodo(id, { name });
+      setEditingId((prev) => (prev === id ? null : prev));
+    },
+    [updateTodo]
+  );
+
+  // The list sits low on the focus screen, so the keyboard covers the row being
+  // renamed. Lift the whole card by the overlap only — no lift when it already
+  // clears the keyboard, and none of the screen-wide relayout a
+  // KeyboardAvoidingView around the timer would cause.
+  const cardRef = useRef<View>(null);
+  const liftY = useSharedValue(0);
+  const editingIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    editingIdRef.current = editingId;
+  }, [editingId]);
+
+  useEffect(() => {
+    const onShow = (e: { endCoordinates: { screenY: number } }) => {
+      if (!editingIdRef.current || !cardRef.current) return;
+      const keyboardTop = e.endCoordinates.screenY;
+      cardRef.current.measureInWindow((_x, y, _w, height) => {
+        const overlap = y + height + 12 - keyboardTop;
+        liftY.value = withTiming(overlap > 0 ? -overlap : 0, { duration: 220 });
+      });
+    };
+    const onHide = () => {
+      liftY.value = withTiming(0, { duration: 220 });
+    };
+    const showSub = Keyboard.addListener('keyboardWillShow', onShow);
+    const hideSub = Keyboard.addListener('keyboardWillHide', onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [liftY]);
+
+  const liftStyle = useAnimatedStyle(() => ({ transform: [{ translateY: liftY.value }] }));
 
   const [isDragging, setIsDragging] = useState(false);
   const [dragOriginalIdx, setDragOriginalIdx] = useState(-1);
@@ -154,11 +218,12 @@ export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor, 
   return (
     <Reanimated.View
       entering={FadeIn.duration(550)}
-      style={{ width: '100%', paddingHorizontal: 8 }}>
+      style={[{ width: '100%', paddingHorizontal: 8 }, liftStyle]}>
       {/* TODO list — card container matching the Journal todo cards (border token,
           filled surface, soft drop shadow). */}
       {orderedTodos.length > 0 && (
         <View
+          ref={cardRef}
           style={{
             borderRadius: 16,
             borderWidth: 1,
@@ -189,6 +254,9 @@ export const RunningTodoList: FC<RunningTodoListProps> = ({ tagId, accentColor, 
                   dragOriginalIndex={dragOriginalIdx}
                   dragTargetIndex={dragTargetIdx}
                   accentColor={accentColor}
+                  isEditing={editingId === todo.id}
+                  onStartEdit={handleStartEdit}
+                  onCommitEdit={handleCommitEdit}
                   onToggle={handleToggle}
                   onDragStart={handleDragStart}
                   onDragMove={handleDragMove}
@@ -237,6 +305,10 @@ interface TodoDragRowProps {
   dragOriginalIndex: number;
   dragTargetIndex: number;
   accentColor?: string;
+  /** This row's name is open for inline rename. */
+  isEditing: boolean;
+  onStartEdit: (id: string) => void;
+  onCommitEdit: (id: string, value: string) => void;
   onToggle: (id: string) => void;
   onDragStart: (index: number) => void;
   onDragMove: (translationY: number) => void;
@@ -251,6 +323,9 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
   dragOriginalIndex,
   dragTargetIndex,
   accentColor,
+  isEditing,
+  onStartEdit,
+  onCommitEdit,
   onToggle,
   onDragStart,
   onDragMove,
@@ -288,6 +363,8 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
   }, [isDragging, isBeingDragged, dragOriginalIndex, dragTargetIndex, index]);
 
   const panGesture = Gesture.Pan()
+    // A long press inside the field is text selection, not a reorder drag.
+    .enabled(!isEditing)
     .activateAfterLongPress(200)
     .onStart(() => {
       gestureActive.value = true;
@@ -363,23 +440,33 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
             borderBottomColor: dividerColor,
           }}>
           {/* Checkbox — completes the task (drops it from the running list) */}
-          <Pressable
-            onPress={() => onToggle(todo.id)}
-            hitSlop={10}
-            style={{ marginRight: 10 }}>
+          <Pressable onPress={() => onToggle(todo.id)} hitSlop={10} style={{ marginRight: 10 }}>
             <Ionicons name="ellipse-outline" size={22} color={colors.textGrey} />
           </Pressable>
 
-          <Text
-            numberOfLines={1}
-            style={{
-              flex: 1,
-              fontSize: 14,
-              ...fonts.regular,
-              color: textPrimary,
-            }}>
-            {todo.name}
-          </Text>
+          {isEditing ? (
+            <TodoNameInput
+              initialName={todo.name}
+              textColor={textPrimary}
+              placeholderColor={textSecondary}
+              onCommit={(value) => onCommitEdit(todo.id, value)}
+            />
+          ) : (
+            <Pressable
+              // Full row height, so the tap target is the whole name cell.
+              style={{ flex: 1, height: '100%', justifyContent: 'center' }}
+              onPress={() => onStartEdit(todo.id)}>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 14,
+                  ...fonts.regular,
+                  color: textPrimary,
+                }}>
+                {todo.name}
+              </Text>
+            </Pressable>
+          )}
 
           {timeLabel && (
             <Text
@@ -402,5 +489,46 @@ const TodoDragRow: FC<TodoDragRowProps> = ({
         </View>
       </Reanimated.View>
     </GestureDetector>
+  );
+};
+
+interface TodoNameInputProps {
+  initialName: string;
+  textColor: string;
+  placeholderColor: string;
+  onCommit: (value: string) => void;
+}
+
+// Mounted only while its row is open for rename, so the draft seeds from the
+// live name on every open — no effect needed to resync it.
+const TodoNameInput: FC<TodoNameInputProps> = ({
+  initialName,
+  textColor,
+  placeholderColor,
+  onCommit,
+}) => {
+  const { t } = useTranslation();
+  const fonts = useBrandFonts();
+  const [draft, setDraft] = useState(initialName);
+
+  return (
+    <TextInput
+      value={draft}
+      onChangeText={setDraft}
+      onSubmitEditing={() => onCommit(draft)}
+      onBlur={() => onCommit(draft)}
+      placeholder={t('todos.namePlaceholder')}
+      placeholderTextColor={placeholderColor}
+      autoFocus
+      selectTextOnFocus
+      returnKeyType="done"
+      style={{
+        flex: 1,
+        fontSize: 14,
+        padding: 0,
+        ...fonts.regular,
+        color: textColor,
+      }}
+    />
   );
 };

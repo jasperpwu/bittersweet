@@ -1,4 +1,4 @@
-import React, { FC, useRef, useEffect } from 'react';
+import React, { FC, useCallback, useRef, useEffect } from 'react';
 import { useIsFocused } from 'expo-router';
 import { View, Pressable, StyleSheet, useColorScheme } from 'react-native';
 import { Gesture, GestureDetector, type PanGesture } from 'react-native-gesture-handler';
@@ -18,7 +18,12 @@ import { colors } from '../../../config/theme';
 import type { Todo } from '../../../store/types';
 import type { SessionTag } from '../../../types/models';
 import type { TodoScheduleController } from './TodoScheduleController';
-import { PIXELS_PER_MINUTE, SNAP_MINUTES, END_HOUR, DEFAULT_TODO_DURATION } from '../Timeline/constants';
+import {
+  PIXELS_PER_MINUTE,
+  SNAP_MINUTES,
+  END_HOUR,
+  DEFAULT_TODO_DURATION,
+} from '../Timeline/constants';
 
 const DAY_END_MINUTES = (END_HOUR + 1) * 60;
 
@@ -71,20 +76,17 @@ interface ActionPanelProps {
 const ActionPanel: FC<ActionPanelProps> = ({ progress, align, color, icon, label }) => {
   const iconStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.5, 1], [0, 0.6, 1], Extrapolation.CLAMP),
-    transform: [
-      { scale: interpolate(progress.value, [0, 1], [0.7, 1], Extrapolation.CLAMP) },
-    ],
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.7, 1], Extrapolation.CLAMP) }],
   }));
 
   return (
     <View
-      className="flex-1 mb-2.5 rounded-2xl justify-center"
+      className="mb-2.5 flex-1 justify-center rounded-2xl"
       style={{
         backgroundColor: color,
         alignItems: align === 'left' ? 'flex-start' : 'flex-end',
         paddingHorizontal: 22,
-      }}
-    >
+      }}>
       <Animated.View style={iconStyle} className="items-center">
         <Ionicons name={icon} size={22} color={colors.white} />
         <Typography variant="tiny-10" color="white">
@@ -124,7 +126,16 @@ const isPastDeadline = (date: Date, hasTime: boolean): boolean => {
   return due.getTime() < Date.now();
 };
 
-export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, onDelete, onStart, schedule, sheetPan }) => {
+export const TodoRow: FC<TodoRowProps> = ({
+  todo,
+  tag,
+  onToggle,
+  onPressEdit,
+  onDelete,
+  onStart,
+  schedule,
+  sheetPan,
+}) => {
   const { t, i18n } = useTranslation();
   const isDark = useColorScheme() === 'dark';
   // Matches the Typography "secondary" tokens; textGrey is unreadable on the
@@ -153,6 +164,13 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
     }
   }, [isFocused]);
 
+  // `todo` must stay OUT of the gesture closure below: a worklet copies every
+  // captured value, and a Todo carries Dates (`startAt`, `createdAt`,
+  // `updatedAt`) that Worklets cannot copy. Hoist the one number the worklet
+  // needs, and hand the object to JS through a callback instead.
+  const dragDurationMin = todo.durationMinutes ?? DEFAULT_TODO_DURATION;
+  const beginDrag = useCallback(() => schedule?.beginDrag(todo), [schedule, todo]);
+
   // Long-press picks the row up and drags it onto the calendar to schedule it.
   // A quick horizontal flick still triggers the swipe actions below, because
   // the drag only activates after a stationary long press.
@@ -165,9 +183,9 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
       // without waiting for the JS round-trip; beginDrag handles haptic + state.
       schedule.fingerX.value = e.absoluteX;
       schedule.fingerY.value = e.absoluteY;
-      schedule.durationMin.value = todo.durationMinutes ?? DEFAULT_TODO_DURATION;
+      schedule.durationMin.value = dragDurationMin;
       schedule.dragActive.value = 1;
-      runOnJS(schedule.beginDrag)(todo);
+      runOnJS(beginDrag)();
     })
     .onUpdate((e) => {
       if (!schedule) return;
@@ -177,8 +195,16 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
     .onEnd(() => {
       if (!schedule) return;
       const {
-        fingerX, fingerY, tlPageY, tlScrollY, tlHeight, sheetTopY, durationMin,
-        tlDaysLeftX, tlDayWidth, tlNumDays,
+        fingerX,
+        fingerY,
+        tlPageY,
+        tlScrollY,
+        tlHeight,
+        sheetTopY,
+        durationMin,
+        tlDaysLeftX,
+        tlDayWidth,
+        tlNumDays,
       } = schedule;
       const contentY = fingerY.value - tlPageY.value + tlScrollY.value;
       const snapped = Math.round(contentY / PIXELS_PER_MINUTE / SNAP_MINUTES) * SNAP_MINUTES;
@@ -205,12 +231,24 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
 
   // Swiping LEFT (row pulled left → right-side panel) starts a focus session.
   const renderRightActions = (progress: SharedValue<number>) => (
-    <ActionPanel progress={progress} align="right" color={colors.primary} icon="play" label={t('todos.start')} />
+    <ActionPanel
+      progress={progress}
+      align="right"
+      color={colors.primary}
+      icon="play"
+      label={t('todos.start')}
+    />
   );
 
   // Swiping RIGHT (row pulled right → left-side panel) deletes the task.
   const renderLeftActions = (progress: SharedValue<number>) => (
-    <ActionPanel progress={progress} align="left" color={colors.error} icon="trash" label={t('common.delete')} />
+    <ActionPanel
+      progress={progress}
+      align="left"
+      color={colors.error}
+      icon="trash"
+      label={t('common.delete')}
+    />
   );
 
   // Full-swipe commit: the gesture itself performs the action once it crosses the
@@ -246,107 +284,102 @@ export const TodoRow: FC<TodoRowProps> = ({ todo, tag, onToggle, onPressEdit, on
 
   return (
     <GestureDetector gesture={dragGesture}>
-    <Swipeable
-      ref={swipeableRef}
-      renderRightActions={renderRightActions}
-      renderLeftActions={renderLeftActions}
-      leftThreshold={ACTION_THRESHOLD}
-      rightThreshold={START_ACTION_THRESHOLD}
-      dragOffsetFromLeftEdge={SWIPE_ACTIVATION_OFFSET}
-      dragOffsetFromRightEdge={SWIPE_ACTIVATION_OFFSET}
-      failOffsetY={[-SWIPE_FAIL_OFFSET_Y, SWIPE_FAIL_OFFSET_Y]}
-      simultaneousWithExternalGesture={sheetPan}
-      overshootFriction={8}
-      onSwipeableWillOpen={handleWillOpen}
-      onSwipeableClose={() => {
-        firedRef.current = false;
-        setTimeout(() => { didSwipe.current = false; }, 100);
-      }}
-    >
-      <Pressable
-        onPress={handlePress}
-        style={styles.card}
-        className="flex-row items-center px-3.5 py-3.5 mb-2.5 rounded-2xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg"
-      >
-        {/* Checkbox */}
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderRightActions}
+        renderLeftActions={renderLeftActions}
+        leftThreshold={ACTION_THRESHOLD}
+        rightThreshold={START_ACTION_THRESHOLD}
+        dragOffsetFromLeftEdge={SWIPE_ACTIVATION_OFFSET}
+        dragOffsetFromRightEdge={SWIPE_ACTIVATION_OFFSET}
+        failOffsetY={[-SWIPE_FAIL_OFFSET_Y, SWIPE_FAIL_OFFSET_Y]}
+        simultaneousWithExternalGesture={sheetPan}
+        overshootFriction={8}
+        onSwipeableWillOpen={handleWillOpen}
+        onSwipeableClose={() => {
+          firedRef.current = false;
+          setTimeout(() => {
+            didSwipe.current = false;
+          }, 100);
+        }}>
         <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onToggle(todo.id);
-          }}
-          hitSlop={10}
-          className="mr-3 active:opacity-70"
-        >
-          <Ionicons
-            name={todo.completed ? 'checkmark-circle' : 'ellipse-outline'}
-            size={24}
-            color={todo.completed ? colors.success : colors.textGrey}
-          />
-        </Pressable>
+          onPress={handlePress}
+          style={styles.card}
+          className="mb-2.5 flex-row items-center rounded-2xl border border-light-border bg-light-bg px-3.5 py-3.5 dark:border-dark-border dark:bg-dark-bg">
+          {/* Checkbox */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onToggle(todo.id);
+            }}
+            hitSlop={10}
+            className="mr-3 active:opacity-70">
+            <Ionicons
+              name={todo.completed ? 'checkmark-circle' : 'ellipse-outline'}
+              size={24}
+              color={todo.completed ? colors.success : colors.textGrey}
+            />
+          </Pressable>
 
-        {/* Name + optional deadline */}
-        <View className="flex-1 mr-2">
-          <View className="flex-row items-center">
-            <Typography
-              variant="body-14"
-              color={todo.completed ? 'secondary' : 'primary'}
-              numberOfLines={1}
-              style={[
-                { flexShrink: 1 },
-                todo.completed ? { textDecorationLine: 'line-through' } : null,
-              ]}
-            >
-              {todo.name}
-            </Typography>
-            {!!todo.recurrence && (
-              <Ionicons
-                name="repeat"
-                size={13}
-                color={secondaryIconColor}
-                style={{ marginLeft: 5 }}
-              />
+          {/* Name + optional deadline */}
+          <View className="mr-2 flex-1">
+            <View className="flex-row items-center">
+              <Typography
+                variant="body-14"
+                color={todo.completed ? 'secondary' : 'primary'}
+                numberOfLines={1}
+                style={[
+                  { flexShrink: 1 },
+                  todo.completed ? { textDecorationLine: 'line-through' } : null,
+                ]}>
+                {todo.name}
+              </Typography>
+              {!!todo.recurrence && (
+                <Ionicons
+                  name="repeat"
+                  size={13}
+                  color={secondaryIconColor}
+                  style={{ marginLeft: 5 }}
+                />
+              )}
+            </View>
+            {deadlineLabel && (
+              <View
+                className="mt-1 flex-row items-center self-start rounded-full border border-light-border px-2 py-0.5 dark:border-dark-border"
+                style={deadlineOverdue ? { borderColor: colors.error } : undefined}>
+                <Ionicons
+                  name="flag-outline"
+                  size={11}
+                  color={deadlineOverdue ? colors.error : colors.textGrey}
+                />
+                <Typography
+                  variant="tiny-10"
+                  color="secondary"
+                  className="ml-1"
+                  style={deadlineOverdue ? { color: colors.error } : undefined}>
+                  {deadlineLabel}
+                </Typography>
+              </View>
             )}
           </View>
-          {deadlineLabel && (
+
+          {/* Tag pill */}
+          {tag && (
             <View
-              className="flex-row items-center self-start mt-1 px-2 py-0.5 rounded-full border border-light-border dark:border-dark-border"
-              style={deadlineOverdue ? { borderColor: colors.error } : undefined}
-            >
-              <Ionicons
-                name="flag-outline"
-                size={11}
-                color={deadlineOverdue ? colors.error : colors.textGrey}
-              />
-              <Typography
-                variant="tiny-10"
-                color="secondary"
-                className="ml-1"
-                style={deadlineOverdue ? { color: colors.error } : undefined}
-              >
-                {deadlineLabel}
+              className="flex-row items-center rounded-full px-2.5 py-1"
+              style={{ backgroundColor: `${tag.color}22` }}>
+              {!!tag.icon && (
+                <Typography variant="tiny-10" color="primary" className="mr-1">
+                  {tag.icon}
+                </Typography>
+              )}
+              <Typography variant="tiny-10" color="primary" style={{ color: tag.color }}>
+                {tag.name}
               </Typography>
             </View>
           )}
-        </View>
-
-        {/* Tag pill */}
-        {tag && (
-          <View
-            className="flex-row items-center rounded-full px-2.5 py-1"
-            style={{ backgroundColor: `${tag.color}22` }}
-          >
-            {!!tag.icon && (
-              <Typography variant="tiny-10" color="primary" className="mr-1">
-                {tag.icon}
-              </Typography>
-            )}
-            <Typography variant="tiny-10" color="primary" style={{ color: tag.color }}>
-              {tag.name}
-            </Typography>
-          </View>
-        )}
-      </Pressable>
-    </Swipeable>
+        </Pressable>
+      </Swipeable>
     </GestureDetector>
   );
 };

@@ -20,6 +20,22 @@ import { DEFAULT_TODO_DURATION, BLOCK_H_PADDING } from '../Timeline/constants';
  * view reports three. Finger X → day index and finger Y → minute-of-day both
  * derive from these values, so the same drag gesture works against either view.
  */
+/**
+ * Worklet-safe summary of the row being dragged. Primitives only, deliberately:
+ * the controller object below is captured by the sheet, both timelines, the drag
+ * ghost and every row's drag gesture, and a worklet copies the WHOLE captured
+ * object. A `Date` anywhere on it (a full `Todo` carries `startAt`,
+ * `createdAt`, `updatedAt`) crashes every one of them with
+ * "[Worklets] Cannot copy value of type `Date`". The full `Todo` stays in a ref
+ * inside the controller, where only the JS callbacks read it.
+ */
+export interface DraggingTodoSummary {
+  id: string;
+  name: string;
+  tagId: string;
+}
+
+/** Nothing on this object may carry a `Date` — see DraggingTodoSummary. */
 export interface TodoScheduleController {
   // --- UI-thread drag state ---
   dragActive: SharedValue<number>; // 0 | 1
@@ -44,7 +60,7 @@ export interface TodoScheduleController {
   previewDayIndex: SharedValue<number>; // which day column the previewed block lives in
 
   // --- JS state / callbacks ---
-  draggingTodo: Todo | null; // non-null while a sheet row is being dragged
+  draggingTodo: DraggingTodoSummary | null; // non-null while a sheet row is being dragged
   beginDrag: (todo: Todo) => void;
   commitSchedule: (minutes: number, inRange: boolean, dayIndex?: number) => void;
   cancelDrag: () => void;
@@ -95,7 +111,7 @@ export function useTodoScheduleController({
   const previewDuration = useSharedValue(DEFAULT_TODO_DURATION);
   const previewDayIndex = useSharedValue(0);
 
-  const [draggingTodo, setDraggingTodo] = useState<Todo | null>(null);
+  const [draggingTodo, setDraggingTodo] = useState<DraggingTodoSummary | null>(null);
   // Latest values read inside gesture callbacks (which capture stale closures).
   const draggingRef = useRef<Todo | null>(null);
   const selectedDateRef = useRef(selectedDate);
@@ -106,7 +122,7 @@ export function useTodoScheduleController({
       draggingRef.current = todo;
       durationMin.value = todo.durationMinutes ?? DEFAULT_TODO_DURATION;
       dragActive.value = 1;
-      setDraggingTodo(todo);
+      setDraggingTodo({ id: todo.id, name: todo.name, tagId: todo.tagId });
       onDragStart?.();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
