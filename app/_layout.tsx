@@ -61,6 +61,8 @@ import { getInstalledWidgetFamilies } from '../modules/widget-info';
 import { installNavigationGuard } from '../src/utils/navigationGuard';
 import { maybePromptForShieldUnlockNotifications } from '../src/utils/shieldUnlockHandoff';
 import { whenAppActive } from '../src/utils/whenAppActive';
+// TEMPORARY DIAGNOSTIC (unblock-sometimes-fails bug) — remove with the logs below.
+import { isShieldActive, userDefaultsGet } from 'react-native-device-activity';
 
 // Dedupe duplicate navigations from fast double-taps (router.push/navigate/replace).
 installNavigationGuard();
@@ -105,6 +107,70 @@ async function reconcileBlocklistAuth() {
   } finally {
     blocklistAuthInFlight = false;
   }
+}
+
+/** The audit record react-native-device-activity writes on every block change. */
+interface LastBlockUpdate {
+  triggeredBy?: string;
+  blockedAt?: string;
+  blocklistAppCount?: number;
+  blocklistCategoryCount?: number;
+  blocklistWebDomainCount?: number;
+}
+
+// One report per unlock session — the check runs on every foreground.
+const reportedUnlockAnomalies = new Set<string>();
+
+/**
+ * Record the "paid to unblock, but the apps stayed blocked" anomaly.
+ *
+ * The bug is rare and nobody can trigger it on demand, so this leaves evidence
+ * in PostHog instead of waiting for someone to be attached to Metro when it
+ * happens. `lastBlockUpdate` is written by react-native-device-activity on every
+ * block change, in whichever process makes it, so a record that is newer than
+ * the unlock start AND carries a non-empty blocklist means something re-blocked
+ * the apps inside the paid window — and `triggered_by` names it. The unblock
+ * itself writes the same record with count 0, so a clean unlock never reports.
+ *
+ * Runs on foreground, which is exactly when the user comes back to complain.
+ */
+function reportUnlockShieldAnomaly(activeSessions: {
+  allIds: string[];
+  byId: Record<string, { isActive: boolean; startTime: Date | string; id: string }>;
+}) {
+  const session = activeSessions.allIds
+    .map((id) => activeSessions.byId[id])
+    .find((s) => s?.isActive);
+  if (!session || reportedUnlockAnomalies.has(session.id)) return;
+
+  const startedAtMs = new Date(session.startTime).getTime();
+  const update = userDefaultsGet<LastBlockUpdate>('lastBlockUpdate');
+  const blockedAtMs = update?.blockedAt ? new Date(update.blockedAt).getTime() : 0;
+  const blockedCount =
+    (update?.blocklistAppCount ?? 0) +
+    (update?.blocklistCategoryCount ?? 0) +
+    (update?.blocklistWebDomainCount ?? 0);
+
+  // A block written after this unlock started, with apps still in it, is the bug.
+  const reblocked = blockedAtMs > startedAtMs && blockedCount > 0;
+  if (!reblocked && !isShieldActive()) return;
+
+  reportedUnlockAnomalies.add(session.id);
+  console.warn('🚨 Apps blocked during a paid unlock window:', {
+    reblocked,
+    shieldActive: isShieldActive(),
+    lastBlockUpdate: update,
+  });
+  AnalyticsTracker.track('unlock_shield_unexpectedly_active', {
+    // false here means nothing re-blocked — the unblock write itself never
+    // reached the system (a stale ManagedSettingsStore), which is the other
+    // candidate cause and needs a different fix.
+    reblocked,
+    shield_active: isShieldActive(),
+    triggered_by: update?.triggeredBy ?? 'unknown',
+    blocked_app_count: blockedCount,
+    seconds_since_unlock_start: Math.round((Date.now() - startedAtMs) / 1000),
+  });
 }
 
 /**
@@ -281,6 +347,8 @@ export default function RootLayout() {
       const hasActiveUnlock = activeSessions.allIds.some((id) => activeSessions.byId[id]?.isActive);
       if (!hasActiveUnlock) {
         WidgetService.syncUnlockSessionState(null);
+      } else {
+        reportUnlockShieldAnomaly(activeSessions);
       }
     } catch (error) {
       console.error('❌ Failed to check expired unlock sessions:', error);

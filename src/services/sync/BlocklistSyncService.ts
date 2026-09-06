@@ -250,14 +250,48 @@ export class BlocklistSyncService {
   }
 
   /**
+   * True while the user has a paid unlock window open.
+   *
+   * Read HERE, immediately before the native `blockSelection()`, and never
+   * passed in from a caller. `sync()` and `pullAndApply()` used to capture this
+   * as a boolean before their network round trips (pull, push, AsyncStorage) and
+   * hand the stale value down. A user who paid to unblock DURING that window —
+   * the common case, because a cold start from the shield notification runs a
+   * full sync while the unlock sheet is already on screen — was re-blocked by
+   * the stale `false`, and the apps stayed shielded for the whole unlock. The
+   * only way out was to cancel the unlock and buy it again.
+   */
+  private static isUnlockWindowOpen(): boolean {
+    // Lazy require: the store imports this service, so a static import cycles.
+    const { useAppStore } = require('../../store');
+    const sessions = useAppStore.getState().blocklist.activeSessions.byId;
+    const now = Date.now();
+    return Object.values(sessions).some(
+      (s: any) => s.isActive && new Date(s.endTime).getTime() > now
+    );
+  }
+
+  /**
+   * Apply native blocking for a selection ID, unless an unlock window is open.
+   * Single choke point — every path that re-blocks goes through here.
+   */
+  private static blockUnlessUnlocked(selectionId: string, skipBlocking: boolean): void {
+    if (skipBlocking) {
+      return;
+    }
+    if (BlocklistSyncService.isUnlockWindowOpen()) {
+      console.log('🔓 [BlocklistSync] Unlock window open — skipping blockSelection');
+      return;
+    }
+    blockSelection({ activitySelectionId: selectionId });
+  }
+
+  /**
    * Re-apply native blocking for an existing selection ID.
    * Used on cold start when data hasn't changed but native state may have been cleared.
    */
   static reapplyBlocking(selectionId: string, skipBlocking = false): void {
-    if (skipBlocking) {
-      return;
-    }
-    blockSelection({ activitySelectionId: selectionId });
+    BlocklistSyncService.blockUnlessUnlocked(selectionId, skipBlocking);
   }
 
   // --- Edit-cost escalation (weekly, reinstall-proof) ---
@@ -345,15 +379,14 @@ export class BlocklistSyncService {
    * If skipBlocking is true, still clean up old selection but don't apply
    * native blocking (used when an unlock session is active so we don't
    * re-block prematurely — the updated blob is still stored under the
-   * canonical ID and will be used when the unlock expires).
+   * canonical ID and will be used when the unlock expires). An unlock that
+   * started after the caller captured that flag is caught by the live check in
+   * blockUnlessUnlocked().
    */
   private static applyLocally(oldSelectionId: string | null, skipBlocking = false): void {
     if (oldSelectionId && oldSelectionId !== CANONICAL_SELECTION_ID) {
       unblockSelection({ activitySelectionId: oldSelectionId });
     }
-    if (skipBlocking) {
-      return;
-    }
-    blockSelection({ activitySelectionId: CANONICAL_SELECTION_ID });
+    BlocklistSyncService.blockUnlessUnlocked(CANONICAL_SELECTION_ID, skipBlocking);
   }
 }

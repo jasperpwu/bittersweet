@@ -11,10 +11,11 @@ import { Slider } from './Slider';
 import { UnlockTrendChart } from './UnlockTrendChart';
 import { useBlocklist, useBlocklistActions, useRewards, useAppStore } from '../../store';
 import { useDeviceIntegration } from '../../hooks/useDeviceIntegration';
-import { unblockSelection, startMonitoring, stopMonitoring, configureActions } from 'react-native-device-activity';
+import { unblockSelection, startMonitoring, stopMonitoring, configureActions, isShieldActive, userDefaultsGet } from 'react-native-device-activity';
 import { LiveActivityService } from '../../services/LiveActivityService';
 import { WidgetService } from '../../services/WidgetService';
 import { showToast } from './Toast';
+import { AnalyticsTracker } from '../../services/analytics';
 import * as Notifications from 'expo-notifications';
 
 interface UnlockSnackbarProps {
@@ -85,6 +86,19 @@ export const UnlockSnackbar: React.FC<UnlockSnackbarProps> = ({
         { activitySelectionId: currentSelectionId },
         `temporary-unlock-${Date.now()}`
       );
+
+      // The unblock above empties the blocklist, so the shield must be off the
+      // moment it returns. If it is not, the ManagedSettingsStore write did not
+      // land — one of the two candidate causes of "I paid and the apps stayed
+      // blocked". Recorded rather than logged, because the bug is rare and
+      // nobody is watching Metro when it happens. The foreground check in
+      // app/_layout.tsx catches the other cause (something re-blocks later).
+      if (isShieldActive()) {
+        console.warn('🚨 Shield still active immediately after unblockSelection');
+        AnalyticsTracker.track('unlock_unblock_did_not_clear_shield', {
+          last_block_update: userDefaultsGet('lastBlockUpdate'),
+        });
+      }
 
       // Create a unique activity name for this unlock session
       const activityName = `reblock-${currentSelectionId}`;
