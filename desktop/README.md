@@ -7,10 +7,10 @@ Not a port of the Expo app — see `docs/desktop-and-remote-shield-plan.md` for 
 Scope is deliberately three things: pick a tag, start/stop a session, and see
 sessions sync. Grove, goals, badges, rewards, journal and health stay iOS-only.
 
-## Status: Phase 1 — read-only
+## Status: Phase 3 — a menu bar app
 
-Done: auth, tag list, session history, Realtime subscription. **No writes yet.**
-Phase 2 adds start/stop.
+Done: auth, tag list, session history, Realtime, start/stop, and the menu bar
+timer with its two global shortcuts. See **Menu bar** below.
 
 ## Setup
 
@@ -163,6 +163,77 @@ http://localhost:5173
 The three loopback ports are `OAUTH_PORTS`; the plugin binds the first that is
 free, so all three belong in the list. The last one is the Vite dev server, for
 the browser path.
+
+## Menu bar
+
+The window is no longer how you use this app. The timer sits in the menu bar,
+two system-wide keys start and stop it, and closing the window does not stop
+anything.
+
+| | |
+|---|---|
+| Menu bar reads | `📚 24:59` — the tag, then the time. Past the target it counts up behind a plus: `📚 +03:12`. Nothing but the icon when no session runs. |
+| `⌘⇧B` | Start or stop, with the tag and duration the window last showed |
+| `⌘⇧M` | Show or hide the window |
+| Red close button | Hides the window. The session keeps running. There is no `⌘W`; see below. |
+| Quit | The menu bar item's menu, or `Quit Bittersweet` |
+
+### It is an accessory app
+
+`set_activation_policy(Accessory)` in `src-tauri/src/lib.rs` is what removes the
+Dock icon and the Cmd+Tab entry. Two things follow from it, both deliberate:
+
+- **macOS draws no menu bar for the app**, so there is no Edit menu and no
+  guaranteed `⌘C` / `⌘V` / `⌘Q`. The webview still handles copy and paste in a
+  text field. Quit lives in the tray menu instead.
+- **The window must never be the only way back in.** That is why the tray icon is
+  built in Rust at launch rather than in `useTray.ts`: it must exist before
+  sign-in, and a webview reload must not be able to leave a second one behind or
+  none at all. Rust also gives it a fallback `Open` / `Quit` menu, so a launch
+  where the webview never loads is still recoverable without Force Quit.
+  `useTray.ts` replaces that menu once React mounts.
+
+### The hidden window keeps counting
+
+The clock is a `setInterval` in the webview (`src/session/useTick.ts`), and macOS
+suspends a hidden webview's timers after about five minutes. The menu bar clock
+would freeze and the app would look dead. `backgroundThrottling: "disabled"` on
+the window in `tauri.conf.json` is the fix — supported on macOS 14 and later, and
+unsupported on Linux and Windows, which do not matter here.
+
+Rust turns the close button into a hide (`on_window_event` → `prevent_close`). A
+real close would destroy the webview, and with it the timer, the Realtime
+subscription and the session.
+
+One trap in that split: a tray's `on_menu_event` registers a **global** menu
+listener, not one scoped to its own menu, so it is offered the webview's menu
+events too. The fallback items are named `fallback-open` and `fallback-quit` for
+exactly that reason — a plain `open` would be handled twice.
+
+### The icon
+
+`src-tauri/icons/tray.png` is a 36px monochrome template PNG — the app's seed as
+a line drawing. macOS discards a template icon's colour and re-tints its alpha
+channel, so one file is correct in a light and in a dark menu bar; the app icon
+itself would render as a black blob. `scripts/make-tray-icon.py` redraws it and
+needs Pillow. The output is committed, so a build does not.
+
+### The plugins
+
+| Plugin | Why |
+|---|---|
+| `global-shortcut` | `⌘⇧B` and `⌘⇧M`. Registered through Carbon, so no Accessibility permission. |
+| `single-instance` | A second copy would add a second menu bar item and a second timer. Registered **first**, as its docs require. |
+| `window-state` | The window is hidden far more than it is closed, so it must come back where it was. Size and position only — restoring *visibility* too would let a launch from Finder show nothing but a menu bar icon. |
+| `autostart` | A timer nobody opened a window for is only there if the app started itself. The checkbox is in the window. |
+
+### Where the state lives
+
+The tag and the duration the next session will use are one object, `useStarter`,
+because three places start a session now: the window, the tray menu and the
+shortcut. It is a preference in `localStorage`, not synced data — it never
+reaches Supabase. `src/session/clock.ts` is the same story for the countdown: the
+window and the menu bar read one function and cannot drift apart.
 
 ## Realtime
 

@@ -1,12 +1,22 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Core defaults, plus the OAuth loopback server and permission to hand exactly one URL to the browser: the Supabase authorize endpoint. Not opener:default, which would allow any http(s) URL. Change the scope if the project ever moves to a custom auth domain.",
+  "description": "Core defaults, the OAuth loopback server, the two global shortcuts, launch at login, the window show/hide the menu bar item needs, and permission to hand exactly one URL to the browser: the Supabase authorize endpoint. Not opener:default, which would allow any http(s) URL. Change the scope if the project ever moves to a custom auth domain.",
   "windows": [
     "main"
   ],
   "permissions": [
     "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-unminimize",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
     "oauth:allow-start",
     "oauth:allow-cancel",
     {

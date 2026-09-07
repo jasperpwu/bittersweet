@@ -21,10 +21,21 @@ tauri-build = { version = "2.6.3", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.11.3", features = [] }
+# `tray-icon` puts the timer in the menu bar. `image-png` is what lets
+# `Image::from_bytes` read icons/tray.png at startup.
+tauri = { version = "2.11.3", features = ["tray-icon", "image-png"] }
 tauri-plugin-log = "2"
 # Opens the provider page in the user's real browser. Google refuses to sign
 # anyone in from an embedded webview, so it cannot happen in our own window.
 tauri-plugin-opener = "2"
 # Throwaway 127.0.0.1 server that catches the OAuth redirect on the way back.
 tauri-plugin-oauth = "2"
+# Starts and stops a session with no window open.
+tauri-plugin-global-shortcut = "2"
+# "Launch at login", as a macOS LaunchAgent.
+tauri-plugin-autostart = "2"
+# Remembers where the window was. It is hidden far more than it is closed now,
+# so it must come back in the same place.
+tauri-plugin-window-state = "2"
+# A second copy would add a second menu bar item. Must be registered first.
+tauri-plugin-single-instance = "2"

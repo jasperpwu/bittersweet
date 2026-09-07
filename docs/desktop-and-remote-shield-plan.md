@@ -16,6 +16,15 @@ Phase 3 built 2026-08-20; Phase 4 built 2026-08-21)
 > `FocusSession`/`SessionTag` models now *extend* shared `*Core` types rather
 > than the mappers staying `any`-typed, and desktop auth started email-only.
 
+> **Menu bar, added later (2026-09-06).** The desktop client is now a menu bar
+> app: no Dock icon, the running timer in the menu bar as `📚 24:59`, `⌘⇧B` to
+> start or stop from anywhere, `⌘⇧M` to show or hide the window, and a close
+> button that hides rather than quits. Four plugins came with it —
+> `global-shortcut`, `single-instance`, `window-state`, `autostart`. Nothing in
+> the schema or on iOS changed. `desktop/README.md` § Menu bar has the detail,
+> including why the tray icon is built in Rust and why the window sets
+> `backgroundThrottling: "disabled"`.
+
 > **Auth parity, added later.** Apple and Google now sign in on the desktop too,
 > through the web OAuth flow rather than the native token flow iOS uses. In the
 > Tauri app the provider page opens in the user's real browser and a throwaway

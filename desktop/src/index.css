@@ -332,3 +332,47 @@ ul {
   color: var(--text-secondary);
   font-size: 12px;
 }
+
+/* --- Menu bar: the shortcut hint and the launch-at-login row --- */
+
+.shortcuts {
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+kbd {
+  font: inherit;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.setting {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.setting-row input {
+  display: inline;
+  width: auto;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.setting .muted {
+  font-size: 13px;
+}
